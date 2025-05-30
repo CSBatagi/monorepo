@@ -1,7 +1,21 @@
 export interface Player {
   name: string;
   steamId: string;
-  status: string; // e.g., "Aktif Oyuncu", "Adam Evde Yok"
+  status: string; // e.g., "Aktif Oyuncu", "Adam Evde Yok", "coming", "not_coming", "no_response"
+  avatar?: string; // Optional: URL to player's avatar
+
+  // Last 10 games stats
+  l10Hlt?: number | null;
+  l10Adr?: number | null;
+  l10Kd?: number | null;
+
+  // Season stats
+  sHlt?: number | null;
+  sAdr?: number | null;
+  sKd?: number | null;
+
+  // You might also want to store which team they are on, if any, directly here for easier filtering
+  // assignedTeam?: 'A' | 'B' | null;
 }
 
 export interface PlayerAttendance extends Player {
