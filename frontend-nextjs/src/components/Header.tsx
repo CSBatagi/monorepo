@@ -52,24 +52,39 @@ export default function Header() {
 
   return (
     <header className="bg-gray-800 text-white shadow-lg">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        {/* Logo and Title */}
-        <Link href="/" legacyBehavior>
-          <a className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-            <Image src="/images/BatakLogo.png" alt="CS2 Stats Hub Logo" width={40} height={40} className="rounded-full" />
-            <span className="text-xl font-bold tracking-tight">CS2 Stats Hub</span>
-          </a>
-        </Link>
+      <div className="container mx-auto px-4 py-3 flex items-center">
+        {/* Left: Logo and Title */}
+        <div className="flex-shrink-0">
+          <Link href="/" legacyBehavior>
+            <a className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+              <Image src="/images/BatakLogo.png" alt="CS2 Stats Hub Logo" width={40} height={40} className="rounded-full" />
+              <span className="text-xl font-bold tracking-tight">CS2 Stats Hub</span>
+            </a>
+          </Link>
+        </div>
 
-        {/* Desktop Navigation & Auth */}
-        <nav className="hidden md:flex items-center space-x-4">
-          {navLinks.slice(0, 5).map(link => (
-            <Link key={link.href} href={link.href} legacyBehavior>
-              <a className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors">{link.label}</a>
-            </Link>
-          ))}
-          {/* More links dropdown could be added here if needed */}
-          
+        {/* Center: Desktop Navigation Links (two rows) */}
+        <div className="hidden md:flex flex-1 justify-center">
+          <nav className="flex flex-col items-center space-y-1">
+            <div className="flex items-center space-x-2 flex-wrap">
+              {navLinks.slice(0, Math.ceil(navLinks.length / 2)).map(link => (
+                <Link key={link.href} href={link.href} legacyBehavior>
+                  <a className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors whitespace-nowrap">{link.label}</a>
+                </Link>
+              ))}
+            </div>
+            <div className="flex items-center space-x-2 flex-wrap">
+              {navLinks.slice(Math.ceil(navLinks.length / 2)).map(link => (
+                <Link key={link.href} href={link.href} legacyBehavior>
+                  <a className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors whitespace-nowrap">{link.label}</a>
+                </Link>
+              ))}
+            </div>
+          </nav>
+        </div>
+
+        {/* Right: Auth Buttons */}
+        <div className="hidden md:flex items-center space-x-3 flex-shrink-0">
           {loading ? (
             <div className="px-3 py-2 text-sm">Loading...</div>
           ) : user ? (
@@ -85,7 +100,7 @@ export default function Header() {
               Sign In with Google
             </button>
           )}
-        </nav>
+        </div>
 
         {/* Mobile Menu Button */}
         <div className="md:hidden flex items-center">
