@@ -52,7 +52,7 @@ export default function Header() {
 
   return (
     <header className="bg-gray-800 text-white shadow-lg">
-      <div className="container mx-auto px-4 py-3 flex items-center">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         {/* Left: Logo and Title */}
         <div className="flex-shrink-0">
         <Link href="/" legacyBehavior>
@@ -83,7 +83,7 @@ export default function Header() {
           </nav>
         </div>
           
-        {/* Right: Auth Buttons */}
+        {/* Right: Auth Buttons (desktop) and Mobile Menu/Avatar (mobile) */}
         <div className="hidden md:flex items-center space-x-3 flex-shrink-0">
           {loading ? (
             <div className="px-3 py-2 text-sm">Loading...</div>
@@ -102,7 +102,7 @@ export default function Header() {
           )}
         </div>
 
-        {/* Mobile Menu Button */}
+        {/* Mobile Menu Button and Avatar (right-aligned) */}
         <div className="md:hidden flex items-center">
           {loading ? (
              <div className="px-3 py-2 text-sm">...</div>
