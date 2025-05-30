@@ -114,6 +114,10 @@ function showPage(pageId) {
     if (pageId === 'team_picker' && typeof TeamPicker !== 'undefined' && typeof TeamPicker.init === 'function') {
         TeamPicker.init();
     }
+    // ADD THIS ELSE IF BLOCK:
+    else if (pageId === 'performans-odulleri' && typeof PerformansOdulleri !== 'undefined' && typeof PerformansOdulleri.init === 'function') {
+        PerformansOdulleri.init();
+    }
 
     // Close mobile menu after selecting an item (optional but good UX)
     if (navLinksContainer.classList.contains('mobile-menu-active')) {
