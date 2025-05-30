@@ -347,16 +347,16 @@ export default function AttendancePage() {
 
           {/* Desktop: Table Layout */}
           <div className="hidden md:block overflow-x-auto shadow-md rounded-lg">
-            <table className="min-w-full text-sm text-left text-gray-500 styled-table">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-                <tr>
+          <table className="min-w-full text-sm text-left text-gray-500 styled-table">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+              <tr>
                   <th scope="col" className="px-4 py-3 md:px-6 text-left">Oyuncu</th>
                   <th scope="col" className="px-4 py-3 md:px-6 text-center w-32">Durum</th>
                   <th scope="col" className="px-4 py-3 md:px-6 text-center w-32">Katılım</th>
-                </tr>
-              </thead>
-              <tbody id="player-list">
-                {combinedPlayers.map((player) => (
+              </tr>
+            </thead>
+            <tbody id="player-list">
+              {combinedPlayers.map((player) => (
                   <tr key={player.steamId} className={`border-b ${player.status === 'Adam Evde Yok' ? 'bg-red-50 opacity-70' : 'bg-white'} hover:bg-gray-50`}>
                     <td className="px-4 py-3 md:px-6 md:py-4">
                       {player.status === 'Adam Evde Yok' ? (
@@ -370,34 +370,34 @@ export default function AttendancePage() {
                         </div>
                       ) : (
                         <span className="font-medium text-sm text-gray-900 truncate">
-                          {player.name}
+                    {player.name}
                         </span>
                       )}
-                    </td>
+                  </td>
                     <td className={`px-4 py-3 md:px-6 md:py-4 text-center ${player.status === 'Adam Evde Yok' ? 'bg-red-50' : ''}`}>
-                      <EmojiControls 
-                        player={player} 
-                        currentEmoji={player.currentEmoji}
-                        emojiStates={EMOJI_STATES}
-                        emojiMapping={EMOJI_MAPPING}
-                        emojiExplanations={EMOJI_EXPLANATIONS}
-                        onEmojiChange={handleEmojiChange}
-                        disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
-                      />
-                    </td>
+                    <EmojiControls 
+                      player={player} 
+                      currentEmoji={player.currentEmoji}
+                      emojiStates={EMOJI_STATES}
+                      emojiMapping={EMOJI_MAPPING}
+                      emojiExplanations={EMOJI_EXPLANATIONS}
+                      onEmojiChange={handleEmojiChange}
+                      disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
+                    />
+                  </td>
                     <td className={`px-4 py-3 md:px-6 md:py-4 text-center ${player.status === 'Adam Evde Yok' ? 'bg-red-50' : ''}`}>
-                      <AttendanceControls 
-                        player={player}
-                        currentAttendance={player.attendanceStatus}
-                        attendanceStates={ATTENDANCE_STATES}
-                        onAttendanceChange={handleAttendanceChange}
-                        disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    <AttendanceControls 
+                      player={player}
+                      currentAttendance={player.attendanceStatus}
+                      attendanceStates={ATTENDANCE_STATES}
+                      onAttendanceChange={handleAttendanceChange}
+                      disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           </div>
         </div>
       )}
