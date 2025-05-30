@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth, googleProvider } from '@/lib/firebase'; // Firebase auth and provider
-import { signInWithRedirect, signOut, User } from 'firebase/auth';
+import { signInWithRedirect, signOut, User, signInWithPopup } from 'firebase/auth';
 import { useState, useEffect } from 'react';
 
 const navLinks = [
@@ -25,12 +25,14 @@ export default function Header() {
   const { user, loading } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  console.log('[Header Debug] User:', user, 'Loading:', loading);
+
   const handleGoogleSignIn = async () => {
     try {
-      await signInWithRedirect(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log("[Header] Google Sign-In successful:", result.user?.displayName);
     } catch (error) {
-      console.error("Error during Google Sign-In:", error);
-      // Handle error (e.g., show a message to the user)
+      console.error("[Header] Error during Google Sign-In:", error);
     }
   };
 

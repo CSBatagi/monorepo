@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, onAuthStateChanged } from 'firebase/auth';
+import { User, onAuthStateChanged, getRedirectResult, AuthError } from 'firebase/auth';
 import { auth } from '@/lib/firebase'; // Assuming your firebase.ts is in lib
 
 interface AuthContextType {
@@ -16,14 +16,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-      console.log('Auth state changed in AuthContext:', currentUser?.displayName);
-    });
-
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
+    // Check for redirect result first
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          // This gives you a Google Access Token. You can use it to access Google APIs.
+          // const credential = GoogleAuthProvider.credentialFromResult(result);
+          // const token = credential?.accessToken;
+          // The signed-in user info.
+          // const signedInUser = result.user;
+          console.log('[AuthContext] Redirect result processed:', result.user?.displayName);
+          // setUser(result.user); // onAuthStateChanged will also fire, so this might be redundant but can be useful
+        } else {
+          console.log('[AuthContext] No redirect result found on initial load.');
+        }
+      })
+      .catch((error: AuthError) => {
+        console.error('[AuthContext] Error processing redirect result:', error);
+        // Handle specific errors here, e.g., error.code, error.message
+      })
+      .finally(() => {
+        // Now set up the onAuthStateChanged listener
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+          setUser(currentUser);
+          setLoading(false);
+          console.log('[AuthContext] Auth state changed via onAuthStateChanged:', currentUser?.displayName);
+        });
+        // Cleanup subscription on unmount
+        return () => unsubscribe();
+      });
   }, []);
 
   return (
