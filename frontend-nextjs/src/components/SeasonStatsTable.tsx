@@ -66,15 +66,16 @@ function getHeatmapColor(value: number, min: number, max: number): string {
   }
 }
 
-export default function SeasonStatsTable({ data }: { data: any[] | null }) {
-  const [sortKey, setSortKey] = useState<string>("hltv_2");
+export default function SeasonStatsTable({ data, columns: customColumns, tableClassName }: { data: any[] | null, columns?: any[], tableClassName?: string }) {
+  const cols = customColumns || columns;
+  const [sortKey, setSortKey] = useState<string>(cols[1]?.key || "hltv_2");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   // Compute min/max for heatmap columns
   const heatmapStats = useMemo(() => {
     const stats: Record<string, { min: number; max: number }> = {};
     if (!data || data.length === 0) return stats;
-    columns.forEach((col) => {
+    cols.forEach((col) => {
       if (col.heatmap) {
         let min = Infinity, max = -Infinity;
         for (const row of data) {
@@ -88,13 +89,13 @@ export default function SeasonStatsTable({ data }: { data: any[] | null }) {
       }
     });
     return stats;
-  }, [data]);
+  }, [data, cols]);
 
   if (!data) {
-    return <table className="styled-table min-w-full text-sm"><tbody><tr><td colSpan={columns.length} className="text-center p-4 text-red-600">Veri yüklenemedi</td></tr></tbody></table>;
+    return <table className="styled-table min-w-full text-sm"><tbody><tr><td colSpan={cols.length} className="text-center p-4 text-red-600">Veri yüklenemedi</td></tr></tbody></table>;
   }
   if (data.length === 0) {
-    return <table className="styled-table min-w-full text-sm"><tbody><tr><td colSpan={columns.length} className="text-center p-4 text-gray-500">Veri yok.</td></tr></tbody></table>;
+    return <table className="styled-table min-w-full text-sm"><tbody><tr><td colSpan={cols.length} className="text-center p-4 text-gray-500">Veri yok.</td></tr></tbody></table>;
   }
 
   const sorted = [...data].sort((a, b) => {
@@ -125,10 +126,10 @@ export default function SeasonStatsTable({ data }: { data: any[] | null }) {
   }
 
   return (
-    <table className="styled-table min-w-full text-sm">
+    <table className={tableClassName || "styled-table min-w-full text-sm"}>
       <thead>
         <tr>
-          {columns.map((col) => (
+          {cols.map((col) => (
             <th
               key={col.key}
               className={
@@ -148,7 +149,7 @@ export default function SeasonStatsTable({ data }: { data: any[] | null }) {
       <tbody>
         {sorted.map((row, i) => (
           <tr key={row.steam_id || i}>
-            {columns.map((col, j) => {
+            {cols.map((col, j) => {
               let badgeStyle = {};
               if (col.heatmap && col.isBadge && heatmapStats[col.key]) {
                 const v = Number(row[col.key]);

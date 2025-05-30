@@ -1,4 +1,24 @@
-export default function Last10Page() {
+import SeasonStatsTable from "@/components/SeasonStatsTable";
+import path from "path";
+import fs from "fs/promises";
+
+export default async function Last10Page() {
+  // Read the JSON file from the public directory at build/runtime
+  const filePath = path.join(process.cwd(), "frontend-nextjs/public/data/last10.json");
+  let data: any[] | null = [];
+  try {
+    const file = await fs.readFile(filePath, "utf-8");
+    data = JSON.parse(file);
+  } catch (e) {
+    // fallback: try relative to root (for Vercel/production)
+    try {
+      const file = await fs.readFile(path.join(process.cwd(), "public/data/last10.json"), "utf-8");
+      data = JSON.parse(file);
+    } catch (e2) {
+      data = null;
+    }
+  }
+
   return (
     <div id="page-last10" className="page-content page-content-container">
       <h2 className="text-2xl font-semibold text-blue-600 mb-4">Son 10 Ortalaması</h2>
@@ -20,13 +40,7 @@ export default function Last10Page() {
         {/* Table Content */}
         <div id="last10-tab-table" className="last10-tab-pane active" role="tabpanel" aria-labelledby="last10-table-tab">
           <div className="overflow-x-auto">
-            <table className="styled-table min-w-full text-sm">
-              {/* Table headers from index.html */}
-              <thead><tr><th className="text-center p-4">Table content loading...</th></tr></thead>
-              <tbody id="last10-table-body">
-                {/* Data rows will be injected here by JS */}
-              </tbody>
-            </table>
+            <SeasonStatsTable data={data} />
           </div>
         </div>
         {/* Graph Content (Initially Hidden) */}

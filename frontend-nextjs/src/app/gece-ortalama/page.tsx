@@ -1,13 +1,28 @@
-export default function GeceOrtalamasiPage() {
+import NightAvgTableClient from "@/components/NightAvgTableClient";
+import path from "path";
+import fs from "fs/promises";
+
+export default async function GeceOrtalamasiPage() {
+  // Read the JSON file from the public directory at build/runtime
+  const filePath = path.join(process.cwd(), "frontend-nextjs/public/data/night_avg.json");
+  let allData: Record<string, any[]> = {};
+  try {
+    const file = await fs.readFile(filePath, "utf-8");
+    allData = JSON.parse(file);
+  } catch (e) {
+    // fallback: try relative to root (for Vercel/production)
+    try {
+      const file = await fs.readFile(path.join(process.cwd(), "public/data/night_avg.json"), "utf-8");
+      allData = JSON.parse(file);
+    } catch (e2) {
+      allData = {};
+    }
+  }
+  const dates = Object.keys(allData).sort((a, b) => b.localeCompare(a));
+
   return (
     <div id="page-gece_ortalama" className="page-content page-content-container">
       <h2 className="text-2xl font-semibold text-blue-600 mb-4">Gece Ortalaması</h2>
-      <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
-        <label htmlFor="night-avg-date-selector" className="block text-sm font-medium text-gray-700 mb-1">Tarih Seçin:</label>
-        <select id="night-avg-date-selector" className="form-select block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-          <option>Tarihler yükleniyor...</option>
-        </select>
-      </div>
       {/* Sub Tab Navigation */}
       <div className="mb-4 border-b border-gray-200">
         <ul id="night-avg-sub-tabs" className="flex flex-wrap -mb-px text-sm font-medium text-center" role="tablist">
@@ -22,18 +37,11 @@ export default function GeceOrtalamasiPage() {
           </li>
         </ul>
       </div>
+      <NightAvgTableClient allData={allData} dates={dates} />
       <div id="night-avg-tab-content">
         {/* Table Content */}
         <div id="night-avg-tab-table" className="night-avg-tab-pane active" role="tabpanel" aria-labelledby="night-avg-table-tab">
-          <div className="overflow-x-auto">
-            <table className="styled-table min-w-full text-sm">
-              {/* Table headers from index.html */}
-              <thead><tr><th className="text-center p-4">Table content loading...</th></tr></thead>
-              <tbody id="night-avg-table-body">
-                {/* Data rows will be injected here by JS */}
-              </tbody>
-            </table>
-          </div>
+          {/* Table is rendered in NightAvgTableClient */}
         </div>
         {/* Graph Content (Initially Hidden) */}
         <div id="night-avg-tab-graph" className="night-avg-tab-pane hidden" role="tabpanel" aria-labelledby="night-avg-graph-tab">
