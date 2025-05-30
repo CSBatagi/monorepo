@@ -46,20 +46,20 @@ const EmojiControls: React.FC<EmojiControlsProps> = ({
   };
 
   return (
-    <div className="emoji-control-container flex items-center justify-center space-x-1">
+    <div className="flex items-center justify-center space-x-1 h-8">
       <button 
-        className="emoji-arrow p-1 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-transparent"
+        className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-transparent transition-colors w-6 h-6 flex items-center justify-center"
         aria-label={`Previous emoji for ${player.name}`}
         data-direction="left"
         onClick={() => handleInteraction('left')}
         disabled={disabled}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3 h-3">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
       </button>
       <span 
-        className="emoji-label text-xl cursor-pointer select-none"
+        className="flex-shrink-0 text-lg cursor-pointer select-none px-1 py-1 rounded hover:bg-gray-100 transition-colors w-8 h-8 flex items-center justify-center"
         title={emojiExplanations[currentEmoji] || currentEmoji}
         data-state={currentEmoji}
         onClick={handleClickLabel}
@@ -67,13 +67,13 @@ const EmojiControls: React.FC<EmojiControlsProps> = ({
         {emojiMapping[currentEmoji] || currentEmoji}
       </span>
       <button 
-        className="emoji-arrow p-1 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-transparent"
+        className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-transparent transition-colors w-6 h-6 flex items-center justify-center"
         aria-label={`Next emoji for ${player.name}`}
         data-direction="right"
         onClick={() => handleInteraction('right')}
         disabled={disabled}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3 h-3">
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
         </svg>
       </button>
