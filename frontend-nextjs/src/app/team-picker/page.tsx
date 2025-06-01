@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Player } from '@/types';
 import { db } from '@/lib/firebase';
@@ -17,43 +17,71 @@ interface TeamPlayerData {
     [steamId: string]: Player; // Keyed by steamId, value is Player object
 }
 
+// Add a stat formatting helper
+function formatStat(value: number | null | undefined, decimals: number = 2) {
+  if (value === null || value === undefined || isNaN(value)) return '-';
+  return decimals === 0 ? Math.round(value) : value.toFixed(decimals);
+}
+
+// Add helper for team averages
+function getTeamAverages(players: Player[]): Record<string, number | null> {
+  const statsKeys = [
+    'L10_HLTV2', 'L10_ADR', 'L10_KD', 'S_HLTV2', 'S_ADR', 'S_KD'
+  ];
+  const sums: Record<string, number> = {};
+  const counts: Record<string, number> = {};
+  statsKeys.forEach(k => { sums[k] = 0; counts[k] = 0; });
+  players.forEach(p => {
+    statsKeys.forEach(k => {
+      const v = p.stats?.[k as keyof typeof p.stats];
+      if (typeof v === 'number' && !isNaN(v)) {
+        sums[k] += v;
+        counts[k]++;
+      }
+    });
+  });
+  const avgs: Record<string, number | null> = {};
+  statsKeys.forEach(k => {
+    avgs[k] = counts[k] > 0 ? sums[k] / counts[k] : null;
+  });
+  return avgs;
+}
+
 export default function TeamPickerPage() {
   const { user, loading: authLoading } = useAuth();
-  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
-  const [firebaseAttendance, setFirebaseAttendance] = useState<FirebaseAttendanceData>({});
   const [teamAPlayers, setTeamAPlayers] = useState<TeamPlayerData>({});
   const [teamBPlayers, setTeamBPlayers] = useState<TeamPlayerData>({});
 
-  const [loadingPlayersJson, setLoadingPlayersJson] = useState(true);
   const [loadingFirebaseData, setLoadingFirebaseData] = useState(true);
   const [loadingTeamA, setLoadingTeamA] = useState(true);
   const [loadingTeamB, setLoadingTeamB] = useState(true);
 
+  const [last10Stats, setLast10Stats] = useState<any[]>([]);
+  const [seasonStats, setSeasonStats] = useState<any[]>([]);
+  const [firebaseAttendance, setFirebaseAttendance] = useState<FirebaseAttendanceData>({});
+
   console.log('[TeamPickerPage] Component Render - AuthLoading:', authLoading, 'User:', !!user);
 
   useEffect(() => {
-    const fetchPlayersJson = async () => {
-      console.log('[TeamPickerPage] Fetching players.json');
+    const fetchStats = async () => {
       try {
-        setLoadingPlayersJson(true);
-        const response = await fetch('/data/players.json?_cb=' + Date.now());
-        if (!response.ok) throw new Error(`Failed to fetch players.json: ${response.statusText}`);
-        const data: Player[] = await response.json();
-        setAllPlayers(data);
-        console.log('[TeamPickerPage] players.json loaded:', data.length, 'players');
-      } catch (error) {
-        console.error("[TeamPickerPage] Error fetching players.json:", error);
-      } finally {
-        setLoadingPlayersJson(false);
-      }
+        const l10 = await fetch('/data/last10.json?_cb=' + Date.now());
+        const l10Data = await l10.json();
+        setLast10Stats(l10Data);
+      } catch (e) { setLast10Stats([]); }
+      try {
+        const season = await fetch('/data/season_avg.json?_cb=' + Date.now());
+        const seasonData = await season.json();
+        setSeasonStats(seasonData);
+      } catch (e) { setSeasonStats([]); }
     };
-    fetchPlayersJson();
+    fetchStats();
   }, []);
 
   useEffect(() => {
     if (!user) {
       setLoadingFirebaseData(false);
-      setLoadingTeamA(false); // Ensure loading states are cleared if no user
+      setLoadingTeamA(false);
       setLoadingTeamB(false);
       console.log('[TeamPickerPage] No user, skipping Firebase listeners.');
       return;
@@ -105,16 +133,45 @@ export default function TeamPickerPage() {
     };
   }, [user]);
 
-  const getPlayerWithStats = useCallback((steamId: string): Player | undefined => {
-    return allPlayers.find(p => p.steamId === steamId);
-  }, [allPlayers]);
+  const getStatsBySteamId = useCallback((steamId: string) => {
+    const l10 = last10Stats.find((p) => p.steam_id === steamId);
+    const season = seasonStats.find((p) => p.steam_id === steamId);
+    return {
+      L10_HLTV2: l10?.hltv_2 ?? null,
+      L10_ADR: l10?.adr ?? null,
+      L10_KD: l10?.kd ?? null,
+      S_HLTV2: season?.hltv_2 ?? null,
+      S_ADR: season?.adr ?? null,
+      S_KD: season?.kd ?? null,
+    };
+  }, [last10Stats, seasonStats]);
+
+  const availablePlayers = useMemo(() => {
+    if (loadingFirebaseData || loadingTeamA || loadingTeamB) return [];
+    return Object.entries(firebaseAttendance)
+      .filter(([_, data]) => data.status === 'coming') // Include ALL coming players
+      .map(([steamId, data]) => {
+        return {
+          steamId,
+          name: data.name || 'Unknown Player',
+          status: data.status,
+          stats: getStatsBySteamId(steamId),
+        };
+      })
+      .sort((a, b) => {
+        const valueA = a.stats?.L10_HLTV2 ?? -Infinity;
+        const valueB = b.stats?.L10_HLTV2 ?? -Infinity;
+        return valueB - valueA; // Descending order (highest first)
+      });
+  }, [firebaseAttendance, teamAPlayers, teamBPlayers, loadingFirebaseData, loadingTeamA, loadingTeamB, getStatsBySteamId]);
 
   const handleAssignPlayer = useCallback(async (playerSteamId: string, targetTeam: 'A' | 'B') => {
     console.log(`[TeamPickerPage] Assigning player ${playerSteamId} to Team ${targetTeam}`);
-    const playerToAssign = getPlayerWithStats(playerSteamId);
+    // Find the player in availablePlayers to get both name and stats
+    const playerToAssign = availablePlayers.find(p => p.steamId === playerSteamId);
 
     if (!playerToAssign) {
-      console.error(`[TeamPickerPage] Player ${playerSteamId} not found in allPlayers. Cannot assign.`);
+      console.error(`[TeamPickerPage] Player ${playerSteamId} not found in availablePlayers. Cannot assign.`);
       return;
     }
 
@@ -140,7 +197,7 @@ export default function TeamPickerPage() {
     } catch (error) {
       console.error(`[TeamPickerPage] Error assigning player ${playerToAssign.name} to Team ${targetTeam}:`, error);
     }
-  }, [getPlayerWithStats, teamAPlayers, teamBPlayers]);
+  }, [availablePlayers, teamAPlayers, teamBPlayers]);
 
   const handleRemovePlayerFromTeam = useCallback(async (playerSteamId: string, targetTeam: 'A' | 'B') => {
     console.log(`[TeamPickerPage] Removing player ${playerSteamId} from Team ${targetTeam}`);
@@ -175,46 +232,12 @@ export default function TeamPickerPage() {
     }
   }, [teamAPlayers, teamBPlayers, handleRemovePlayerFromTeam]);
 
-  const getAvailablePlayers = useCallback(() => {
-    console.log('[TeamPickerPage] getAvailablePlayers called. Loading states: FirebaseData:', loadingFirebaseData, 'TeamA:', loadingTeamA, 'TeamB:', loadingTeamB);
-    console.log('[TeamPickerPage] Data for getAvailablePlayers: firebaseAttendance:', firebaseAttendance, 'teamAPlayers:', teamAPlayers, 'teamBPlayers:', teamBPlayers);
-
-    if (loadingFirebaseData || loadingTeamA || loadingTeamB || loadingPlayersJson) {
-        console.log('[TeamPickerPage] getAvailablePlayers returning empty array due to loading state (or players.json still loading).');
-        return [];
-    }
-
-    const players = Object.entries(firebaseAttendance)
-      .filter(([steamId, data]) => 
-        data.status === 'coming' && 
-        !teamAPlayers[steamId] && 
-        !teamBPlayers[steamId]
-      )
-      .map(([steamId, data]) => {
-        const fullPlayer = getPlayerWithStats(steamId);
-        return fullPlayer ? { ...fullPlayer, status: data.status } : {
-          steamId: steamId,
-          name: data.name || 'Unknown Player',
-          status: data.status,
-          // Add default/empty stats if fullPlayer not found to avoid render errors, though this shouldn't happen if players.json is loaded
-          l10Hlt: null, l10Adr: null, l10Kd: null, sHlt: null, sAdr: null, sKd: null
-        } as Player;
-      });
-    console.log('[TeamPickerPage] getAvailablePlayers calculated:', players);
-    return players;
-  }, [firebaseAttendance, teamAPlayers, teamBPlayers, loadingFirebaseData, loadingTeamA, loadingTeamB, loadingPlayersJson, getPlayerWithStats]);
-
-  const availablePlayers = getAvailablePlayers();
-
   console.log('[TeamPickerPage] Final availablePlayers for render:', availablePlayers);
-  console.log('[TeamPickerPage] Final loading states for render - Auth:', authLoading, 'FirebaseData:', loadingFirebaseData, 'TeamA:', loadingTeamA, 'TeamB:', loadingTeamB, 'PlayersJson:', loadingPlayersJson);
+  console.log('[TeamPickerPage] Final loading states for render - Auth:', authLoading, 'FirebaseData:', loadingFirebaseData, 'TeamA:', loadingTeamA, 'TeamB:', loadingTeamB);
 
-
-  const isLoading = authLoading || loadingFirebaseData || loadingTeamA || loadingTeamB || loadingPlayersJson;
+  const isLoading = authLoading || loadingFirebaseData || loadingTeamA || loadingTeamB;
   // For the initial display of available players, we primarily care about firebaseAttendance and team lists being loaded.
-  // players.json can be loading in the background as it's for stats that aren't shown in the initial list.
-  const isAvailablePlayersListLoading = loadingFirebaseData || loadingTeamA || loadingTeamB || loadingPlayersJson;
-
+  const isAvailablePlayersListLoading = loadingFirebaseData || loadingTeamA || loadingTeamB;
 
   if (authLoading) { // Changed to only authLoading for the very first check
     return <div className="text-center py-10">Authenticating...</div>;
@@ -228,104 +251,204 @@ export default function TeamPickerPage() {
     );
   }
   
+  // Table for available players
   const renderAvailablePlayersList = () => {
-    if (isAvailablePlayersListLoading || loadingPlayersJson) {
+    if (isAvailablePlayersListLoading) {
       return <p className="text-sm text-gray-500">Loading available players and stats...</p>;
     }
+    
     if (availablePlayers.length === 0) {
-      if (loadingPlayersJson) {
-        return <p className="text-sm text-gray-500">Checking player data...</p>;
-      }
-      return <p className="text-sm text-gray-500">No players are currently available or all coming players are assigned.</p>;
+      return <p className="text-sm text-gray-500">No players are currently available.</p>;
     }
     return (
-      <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-        {availablePlayers.map(player => (
-          <div key={player.steamId} className="flex items-center justify-between p-3 bg-gray-50 rounded-md shadow-sm border">
-            <span className="font-medium text-sm text-gray-800">{player.name}</span>
-            <div className="flex space-x-2">
-              <button 
-                className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md transition-colors"
-                title={`Assign ${player.name} to Team A`}
-                onClick={() => handleAssignPlayer(player.steamId, 'A')} 
-              >
-                Team A
-              </button>
-              <button 
-                className="text-xs bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-md transition-colors"
-                title={`Assign ${player.name} to Team B`}
-                onClick={() => handleAssignPlayer(player.steamId, 'B')} 
-              >
-                Team B
-              </button>
-              <button 
-                className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-md transition-colors"
-                title={`Mark ${player.name} as not coming`}
-                onClick={() => handleMarkNotComing(player.steamId)} 
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-        ))}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-xs min-w-0">
+          <colgroup>
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '24%' }} />
+          </colgroup>
+          <thead>
+            <tr className="bg-gray-100 text-xs font-medium text-gray-600 uppercase">
+              <th className="px-0.5 py-1 text-left">PLAYER</th>
+              <th className="px-0.5 py-1 text-center">L10<br/>HLT</th>
+              <th className="px-0.5 py-1 text-center">L10<br/>ADR</th>
+              <th className="px-0.5 py-1 text-center">L10<br/>K/D</th>
+              <th className="px-0.5 py-1 text-center">S<br/>HLT</th>
+              <th className="px-0.5 py-1 text-center">S<br/>ADR</th>
+              <th className="px-0.5 py-1 text-center">S<br/>K/D</th>
+              <th className="px-0.5 py-1 text-center">TEAM</th>
+              <th className="px-0.5 py-1 text-center">ACTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            {availablePlayers.map((player, idx) => {
+              const assignedTeam = teamAPlayers[player.steamId]
+                ? 'A'
+                : teamBPlayers[player.steamId]
+                ? 'B'
+                : null;
+              const isAssigned = !!assignedTeam;
+              return (
+                <tr
+                  key={player.steamId}
+                  className={`border-b border-gray-200 hover:bg-gray-50 ${isAssigned ? 'opacity-50 bg-gray-100' : idx % 2 === 1 ? 'bg-gray-50' : ''}`}
+                >
+                  <td className="px-0.5 py-1 font-medium text-gray-900 truncate">{player.name}</td>
+                  <td className="px-0.5 py-1 text-center">{formatStat(player.stats?.L10_HLTV2, 2)}</td>
+                  <td className="px-0.5 py-1 text-center">{formatStat(player.stats?.L10_ADR, 0)}</td>
+                  <td className="px-0.5 py-1 text-center">{formatStat(player.stats?.L10_KD, 2)}</td>
+                  <td className="px-0.5 py-1 text-center">{formatStat(player.stats?.S_HLTV2, 2)}</td>
+                  <td className="px-0.5 py-1 text-center">{formatStat(player.stats?.S_ADR, 0)}</td>
+                  <td className="px-0.5 py-1 text-center">{formatStat(player.stats?.S_KD, 2)}</td>
+                  <td className={`px-0.5 py-1 text-center font-medium ${assignedTeam === 'A' ? 'text-blue-600' : assignedTeam === 'B' ? 'text-green-600' : 'text-gray-500'}`}>{assignedTeam || '-'}</td>
+                  <td className="px-0.5 py-1 text-center">
+                    {isAssigned ? (
+                      <button
+                        className="text-xs text-red-500 hover:text-red-700 px-1 py-0.5 rounded"
+                        onClick={() => handleRemovePlayerFromTeam(player.steamId, assignedTeam as 'A' | 'B')}
+                      >
+                        Remove
+                      </button>
+                    ) : (
+                      <div className="flex gap-2 justify-center items-center">
+                        <button
+                          className="text-xs text-blue-500 hover:text-blue-700"
+                          onClick={() => handleAssignPlayer(player.steamId, 'A')}
+                        >
+                          ➔<span className="font-bold">A</span>
+                        </button>
+                        <button
+                          className="text-xs text-green-500 hover:text-green-700"
+                          onClick={() => handleAssignPlayer(player.steamId, 'B')}
+                        >
+                          ➔<span className="font-bold">B</span>
+                        </button>
+                        <button
+                          className="text-xs text-gray-500 hover:text-gray-700"
+                          type="button"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     );
   };
 
+  // Table for team lists
   const renderTeamList = (team: 'A' | 'B', players: TeamPlayerData, isLoadingTeam: boolean) => {
     const teamName = team === 'A' ? 'Team A' : 'Team B';
     const teamColor = team === 'A' ? 'blue' : 'green';
+    const bgColor = team === 'A' ? 'bg-blue-100' : 'bg-green-100';
+    const avgBgColor = team === 'A' ? 'bg-blue-200' : 'bg-green-200';
+    const avgTextColor = team === 'A' ? 'text-blue-800' : 'text-green-800';
 
-    if (isLoadingTeam || loadingPlayersJson) {
+    if (isLoadingTeam) {
       return <p className="text-sm text-gray-500">Loading {teamName}...</p>;
     }
     const playerArray = Object.values(players);
     if (playerArray.length === 0) {
-      return <p className="text-sm text-gray-500">No players in {teamName}.</p>;
+      return <div className={`${bgColor} rounded-lg p-3`}><p className="text-center text-gray-500 text-sm py-2">No players assigned.</p></div>;
     }
+    const avgs = getTeamAverages(playerArray);
     return (
-      <div className="space-y-1 max-h-[40vh] overflow-y-auto">
-        {playerArray.map(p => {
-          return (
-            <div key={p.steamId} className={`text-sm p-2 bg-${teamColor}-50 rounded border border-${teamColor}-200 flex justify-between items-center`}>
-              <span>{p.name}</span>
-              <button 
-                className="text-xs bg-red-500 hover:bg-red-600 text-white px-1 py-0.5 rounded-md transition-colors"
-                title={`Remove ${p.name} from ${teamName}`}
-                onClick={() => handleRemovePlayerFromTeam(p.steamId, team)}
-              >
-                X
-              </button>
-            </div>
-          );
-        })}
+      <div className={`${bgColor} rounded-lg p-2 w-full`}>
+        <div className="w-full">
+          <table className="w-full border-collapse text-xs min-w-0">
+            <colgroup>
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '12%' }} />
+            </colgroup>
+            <thead>
+              <tr className="bg-gray-50 text-xs font-medium text-gray-600 uppercase">
+                <th className="px-0.5 py-1 text-left">PLAYER</th>
+                <th className="px-0.5 py-1 text-center">L10<br/>HLT</th>
+                <th className="px-0.5 py-1 text-center">L10<br/>ADR</th>
+                <th className="px-0.5 py-1 text-center">L10<br/>K/D</th>
+                <th className="px-0.5 py-1 text-center">S<br/>HLT</th>
+                <th className="px-0.5 py-1 text-center">S<br/>ADR</th>
+                <th className="px-0.5 py-1 text-center">S<br/>K/D</th>
+                <th className="px-0.5 py-1 text-center">ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {playerArray.map((p, idx) => (
+                <tr key={p.steamId} className={`border-b border-gray-200 bg-${teamColor}-50`}>
+                  <td className="px-0.5 py-1 font-medium text-gray-900 truncate">{p.name}</td>
+                  <td className="px-0.5 py-1 text-center">{formatStat(p.stats?.L10_HLTV2, 2)}</td>
+                  <td className="px-0.5 py-1 text-center">{formatStat(p.stats?.L10_ADR, 0)}</td>
+                  <td className="px-0.5 py-1 text-center">{formatStat(p.stats?.L10_KD, 2)}</td>
+                  <td className="px-0.5 py-1 text-center">{formatStat(p.stats?.S_HLTV2, 2)}</td>
+                  <td className="px-0.5 py-1 text-center">{formatStat(p.stats?.S_ADR, 0)}</td>
+                  <td className="px-0.5 py-1 text-center">{formatStat(p.stats?.S_KD, 2)}</td>
+                  <td className="px-0.5 py-1 text-center">
+                    <button
+                      className="text-xs text-red-500 hover:text-red-700 px-1 py-0.5 rounded"
+                      onClick={() => handleRemovePlayerFromTeam(p.steamId, team)}
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className={`${avgBgColor} font-bold ${avgTextColor} text-xs`}>
+                <td className="px-0.5 py-1">TEAM AVG</td>
+                <td className="px-0.5 py-1 text-center">{formatStat(avgs.L10_HLTV2, 2)}</td>
+                <td className="px-0.5 py-1 text-center">{formatStat(avgs.L10_ADR, 0)}</td>
+                <td className="px-0.5 py-1 text-center">{formatStat(avgs.L10_KD, 2)}</td>
+                <td className="px-0.5 py-1 text-center">{formatStat(avgs.S_HLTV2, 2)}</td>
+                <td className="px-0.5 py-1 text-center">{formatStat(avgs.S_ADR, 0)}</td>
+                <td className="px-0.5 py-1 text-center">{formatStat(avgs.S_KD, 2)}</td>
+                <td className="px-0.5 py-1"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="w-full max-w-none p-3 sm:p-4 md:p-6">
-      <h1 className="text-2xl font-semibold text-blue-600 mb-4">Takım Seçme</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+    <div className="w-full min-w-0 p-2">
+      <h1 className="text-2xl font-semibold text-blue-600 mb-3">Takım Seçme</h1>
+      <div className="flex flex-col lg:flex-row gap-3 w-full min-w-0">
         {/* Available Players Section */}
-        <div className="lg:col-span-2 page-content-container bg-white p-4 rounded-lg shadow border">
-          <h2 className="text-xl font-semibold mb-3 text-gray-700">Available Players ({availablePlayers.length})</h2>
+        <div className="lg:w-2/5 bg-white p-3 rounded-lg shadow border min-w-0">
+          <h2 className="text-lg font-semibold mb-2 text-gray-700">Available Players ({availablePlayers.length})</h2>
           {renderAvailablePlayersList()}
-          {!loadingPlayersJson && allPlayers.length === 0 && (
-            <p className="text-xs text-red-500 mt-2">Warning: Player list (players.json) could not be loaded or is empty. Stats will be unavailable.</p>
-          )}
         </div>
 
         {/* Team Selection Section */}
-        <div className="lg:col-span-3 page-content-container bg-white p-4 rounded-lg shadow border">
-          <h2 className="text-xl font-semibold mb-3 text-gray-700">Team Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <h3 className="text-lg font-semibold text-blue-700 mb-2">Team A ({Object.keys(teamAPlayers).length})</h3>
+        <div className="lg:w-3/5 bg-white p-3 rounded-lg shadow border min-w-0">
+          <h2 className="text-lg font-semibold mb-2 text-gray-700">Team Details</h2>
+          <div className="flex flex-col xl:flex-row gap-3 mb-3">
+            <div className="xl:w-1/2 min-w-0">
+              <h3 className="text-base font-semibold text-blue-700 mb-2">Team A ({Object.keys(teamAPlayers).length})</h3>
               {renderTeamList('A', teamAPlayers, loadingTeamA)}
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-green-700 mb-2">Team B ({Object.keys(teamBPlayers).length})</h3>
+            <div className="xl:w-1/2 min-w-0">
+              <h3 className="text-base font-semibold text-green-700 mb-2">Team B ({Object.keys(teamBPlayers).length})</h3>
               {renderTeamList('B', teamBPlayers, loadingTeamB)}
             </div>
           </div>
@@ -334,4 +457,4 @@ export default function TeamPickerPage() {
       </div>
     </div>
   );
-} 
+}

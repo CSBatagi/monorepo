@@ -14,6 +14,16 @@ export interface Player {
   sAdr?: number | null;
   sKd?: number | null;
 
+  // Optional: stats object for team picker
+  stats?: {
+    L10_HLTV2?: number | null;
+    L10_ADR?: number | null;
+    L10_KD?: number | null;
+    S_HLTV2?: number | null;
+    S_ADR?: number | null;
+    S_KD?: number | null;
+  };
+
   // You might also want to store which team they are on, if any, directly here for easier filtering
   // assignedTeam?: 'A' | 'B' | null;
 }
