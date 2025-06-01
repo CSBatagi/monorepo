@@ -58,10 +58,10 @@ function formatValue(value: any, col: any) {
   return value;
 }
 
-export default function SeasonAvgH2HClient({ data, columns }: { data: any[]; columns: any[] }) {
+export default function H2HClient({ data, columns, matchesKey = "matches" }: { data: any[]; columns: any[]; matchesKey?: string }) {
   const players = useMemo(() =>
-    data.filter((p) => typeof p.matches === "number" && p.matches > 0).sort((a, b) => a.name.localeCompare(b.name)),
-    [data]
+    data.filter((p) => typeof p[matchesKey] === "number" && p[matchesKey] > 0).sort((a, b) => a.name.localeCompare(b.name)),
+    [data, matchesKey]
   );
   const statOptions = useMemo(() => columns.filter((c) => c.key !== "name"), [columns]);
   const [player1, setPlayer1] = useState<string>("");
@@ -183,6 +183,12 @@ export default function SeasonAvgH2HClient({ data, columns }: { data: any[]; col
     },
     layout: { padding: 10 },
   }), [selectedStats, statOptions, chartData]);
+
+  // Reset player selection when player list changes (e.g., on date change)
+  React.useEffect(() => {
+    setPlayer1("");
+    setPlayer2("");
+  }, [players.length]);
 
   return (
     <div className="max-w-2xl mx-auto">

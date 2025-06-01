@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import SeasonStatsTable from "./SeasonStatsTable";
+import H2HClient from "./H2HClient";
+import React from "react";
 
 // Night avg columns (match the keys in night_avg.json)
 const nightAvgColumns = [
@@ -34,7 +36,13 @@ const nightAvgColumns = [
 
 export default function NightAvgTableClient({ allData, dates }: { allData: Record<string, any[]>; dates: string[] }) {
   const [selectedDate, setSelectedDate] = useState(dates[0] || "");
+  const [activeTab, setActiveTab] = useState<"table" | "graph" | "head2head">("table");
   const data = allData[selectedDate] || [];
+
+  // Tab state should reset when date changes
+  React.useEffect(() => {
+    setActiveTab("table");
+  }, [selectedDate]);
 
   return (
     <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
@@ -53,8 +61,38 @@ export default function NightAvgTableClient({ allData, dates }: { allData: Recor
           ))
         )}
       </select>
-      <div className="mt-6 overflow-x-auto w-full">
-        <SeasonStatsTable data={data} columns={nightAvgColumns} tableClassName="min-w-[1200px] w-full" />
+      {/* Tabs for selected date */}
+      <div className="mt-6">
+        <ul className="flex flex-wrap -mb-px text-sm font-medium text-center" role="tablist">
+          <li className="mr-2" role="presentation">
+            <button className={`map-tab-button tab-nav-item inline-block border-b-2 rounded-t-lg ${activeTab === "table" ? "active border-blue-600 text-blue-600" : "border-transparent hover:text-gray-600 hover:border-gray-300"}`} id="night-avg-table-tab" type="button" role="tab" aria-controls="night-avg-tab-table" aria-selected={activeTab === "table"} onClick={() => setActiveTab("table")}>Tablo</button>
+          </li>
+          <li className="mr-2" role="presentation">
+            <button className={`map-tab-button tab-nav-item inline-block border-b-2 rounded-t-lg ${activeTab === "graph" ? "active border-blue-600 text-blue-600" : "border-transparent hover:text-gray-600 hover:border-gray-300"}`} id="night-avg-graph-tab" type="button" role="tab" aria-controls="night-avg-tab-graph" aria-selected={activeTab === "graph"} onClick={() => setActiveTab("graph")}>Grafik</button>
+          </li>
+          <li className="mr-2" role="presentation">
+            <button className={`map-tab-button tab-nav-item inline-block border-b-2 rounded-t-lg ${activeTab === "head2head" ? "active border-blue-600 text-blue-600" : "border-transparent hover:text-gray-600 hover:border-gray-300"}`} id="night-avg-head2head-tab" type="button" role="tab" aria-controls="night-avg-tab-head2head" aria-selected={activeTab === "head2head"} onClick={() => setActiveTab("head2head")}>Karşılaştırma</button>
+          </li>
+        </ul>
+      </div>
+      <div className="mt-6">
+        {activeTab === "table" && (
+          <div id="night-avg-tab-table" className="night-avg-tab-pane active" role="tabpanel" aria-labelledby="night-avg-table-tab">
+            <div className="overflow-x-auto w-full">
+              <SeasonStatsTable data={data} columns={nightAvgColumns} tableClassName="min-w-[1200px] w-full" />
+            </div>
+          </div>
+        )}
+        {activeTab === "graph" && (
+          <div id="night-avg-tab-graph" className="night-avg-tab-pane active" role="tabpanel" aria-labelledby="night-avg-graph-tab">
+            <p className="text-center p-4">Grafik içeriği yakında...</p>
+          </div>
+        )}
+        {activeTab === "head2head" && (
+          <div id="night-avg-tab-head2head" className="night-avg-tab-pane active" role="tabpanel" aria-labelledby="night-avg-head2head-tab">
+            <H2HClient data={data} columns={nightAvgColumns} matchesKey="Nr of Matches" />
+          </div>
+        )}
       </div>
     </div>
   );
