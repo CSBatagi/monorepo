@@ -154,7 +154,7 @@ export default function SeasonAvgH2HClient({ data, columns }: { data: any[]; col
             if (typeof raw === "number" && !isNaN(raw)) {
               if (col?.isPercentage) formatted = Number(raw).toFixed(col.decimals ?? 1) + "%";
               else if (col?.decimals !== undefined) formatted = Number(raw).toFixed(col.decimals);
-              else formatted = raw;
+              else formatted = String(raw);
             }
             return `${context.dataset.label} - ${context.label}: ${formatted}`;
           },
@@ -189,28 +189,28 @@ export default function SeasonAvgH2HClient({ data, columns }: { data: any[]; col
       {/* Player Selection */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
-          <label htmlFor="season-avg-h2h-player1-select" className="block mb-2 text-sm font-medium text-gray-900">Select Player 1</label>
+          <label htmlFor="season-avg-h2h-player1-select" className="block mb-2 text-sm font-medium text-gray-900">Oyuncu 1'i Seçin</label>
           <select
             id="season-avg-h2h-player1-select"
             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
             value={player1}
             onChange={e => setPlayer1(e.target.value)}
           >
-            <option value="" disabled>Select Player 1</option>
+            <option value="" disabled>Oyuncu 1'i Seçin</option>
             {players.map((p) => (
               <option key={p.steam_id} value={String(p.steam_id)} disabled={String(p.steam_id) === player2}>{p.name}</option>
             ))}
           </select>
         </div>
         <div>
-          <label htmlFor="season-avg-h2h-player2-select" className="block mb-2 text-sm font-medium text-gray-900">Select Player 2</label>
+          <label htmlFor="season-avg-h2h-player2-select" className="block mb-2 text-sm font-medium text-gray-900">Oyuncu 2'yi Seçin</label>
           <select
             id="season-avg-h2h-player2-select"
             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
             value={player2}
             onChange={e => setPlayer2(e.target.value)}
           >
-            <option value="" disabled>Select Player 2</option>
+            <option value="" disabled>Oyuncu 2'yi Seçin</option>
             {players.map((p) => (
               <option key={p.steam_id} value={String(p.steam_id)} disabled={String(p.steam_id) === player1}>{p.name}</option>
             ))}
@@ -219,7 +219,7 @@ export default function SeasonAvgH2HClient({ data, columns }: { data: any[]; col
       </div>
       {/* Stat Selection */}
       <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
-        <div className="font-semibold mb-2">Select 5 stats to compare:</div>
+        <div className="font-semibold mb-2">Karşılaştırmak için 5 istatistik seçin:</div>
         <div className="flex flex-wrap gap-2">
           {statOptions.map((col) => (
             <label key={col.key} className="inline-flex items-center mr-4 mb-2">
@@ -234,11 +234,11 @@ export default function SeasonAvgH2HClient({ data, columns }: { data: any[]; col
             </label>
           ))}
         </div>
-        <div className="text-xs text-gray-500 mt-1">Exactly 5 stats must be selected.</div>
+        <div className="text-xs text-gray-500 mt-1">Tam olarak 5 istatistik seçilmelidir.</div>
       </div>
       {/* Validation Message */}
       {(!canCompare || validationMsg) && (
-        <div className="text-center text-orange-600 font-medium mb-4 min-h-[24px]">{validationMsg || "Select two different players and 5 stats."}</div>
+        <div className="text-center text-orange-600 font-medium mb-4 min-h-[24px]">{validationMsg || "Farklı iki oyuncu ve 5 istatistik seçin."}</div>
       )}
       {/* Chart */}
       <div className="mb-6 flex justify-center items-center min-h-[400px]">
@@ -247,7 +247,7 @@ export default function SeasonAvgH2HClient({ data, columns }: { data: any[]; col
             <Radar data={chartData} options={chartOptions} />
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500 col-span-full">Select two players and 5 stats to see the comparison chart.</div>
+          <div className="text-center py-8 text-gray-500 col-span-full">Karşılaştırma grafiğini görmek için iki oyuncu ve 5 istatistik seçin.</div>
         )}
       </div>
     </div>
