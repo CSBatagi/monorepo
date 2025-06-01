@@ -13,21 +13,6 @@ import {
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
-// Selectable stats config (from old app)
-const SELECTABLE_STATS: Record<string, { label: string; default: boolean; format?: string }> = {
-  hltv_2: { label: "HLTV 2.0", default: true },
-  adr: { label: "ADR", default: true },
-  kd: { label: "K/D", default: true },
-  hs_ratio: { label: "HS/Kill %", default: true, format: "percent" },
-  win_rate: { label: "Win Rate %", default: true, format: "percent" },
-  kast: { label: "KAST", default: false, format: "percent" },
-  utl_dmg: { label: "Utility Dmg", default: false },
-  first_kill: { label: "First Kill Avg", default: false },
-  clutch_success: { label: "Clutch Win %", default: false, format: "percent" },
-  assists: { label: "Assists Avg", default: false },
-};
-const PENTAGON_STAT_LIMIT = 5;
-
 function calculateStatRanges(players: any[], statKeys: string[]) {
   const ranges: Record<string, { min: number; max: number }> = {};
   statKeys.forEach((stat) => {
@@ -45,7 +30,7 @@ function calculateStatRanges(players: any[], statKeys: string[]) {
   statKeys.forEach((stat) => {
     if (!isFinite(ranges[stat].min)) {
       ranges[stat].min = 0;
-      ranges[stat].max = SELECTABLE_STATS[stat]?.format === "percent" ? 100 : 1.5;
+      ranges[stat].max = 1.5;
     } else if (ranges[stat].min === ranges[stat].max) {
       const val = ranges[stat].min;
       const buffer = Math.abs(val * 0.1) || 0.1;
@@ -66,17 +51,21 @@ function normalizeStat(value: number, stat: string, allStatRanges: Record<string
   return Math.max(0, Math.min(100, normalized));
 }
 
-export default function SeasonAvgRadarGraphs({ data }: { data: any[] }) {
-  // Default selected stats: first 5 with default true
-  const defaultSelected = Object.entries(SELECTABLE_STATS)
+export function RadarGraphs({ data, statConfig, playerFilterKey = "matches", title = "Pentagon İstatistiklerini Özelleştir" }: {
+  data: any[];
+  statConfig: Record<string, { label: string; default: boolean; format?: string }>;
+  playerFilterKey?: string;
+  title?: string;
+}) {
+  const PENTAGON_STAT_LIMIT = 5;
+  const defaultSelected = Object.entries(statConfig)
     .filter(([_, v]) => v.default)
     .map(([k]) => k)
     .slice(0, PENTAGON_STAT_LIMIT);
   const [selectedStats, setSelectedStats] = useState<string[]>(defaultSelected);
   const [validationMsg, setValidationMsg] = useState<string>("");
-  const [updateTrigger, setUpdateTrigger] = useState(0); // Used to force re-render on update
+  const [updateTrigger, setUpdateTrigger] = useState(0);
 
-  // Only allow exactly 5 stats
   function handleStatChange(stat: string, checked: boolean) {
     let next = checked
       ? [...selectedStats, stat]
@@ -95,20 +84,18 @@ export default function SeasonAvgRadarGraphs({ data }: { data: any[] }) {
       return;
     }
     setValidationMsg("");
-    setUpdateTrigger((n) => n + 1); // Force re-render
+    setUpdateTrigger((n) => n + 1);
   }
 
-  // Memoize ranges for normalization
   const statRanges = useMemo(() => calculateStatRanges(data, selectedStats), [data, selectedStats, updateTrigger]);
-  // Memoize player cards (only update on trigger)
   const playerCards = useMemo(() => {
     if (selectedStats.length !== PENTAGON_STAT_LIMIT) return null;
     return data
-      .filter((p) => typeof p.matches === "number" && p.matches > 0)
+      .filter((p) => typeof p[playerFilterKey] === "number" && p[playerFilterKey] > 0)
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((player) => {
-        const chartId = `season-avg-chart-${player.name.replace(/[^a-zA-Z0-9]/g, "_")}`;
-        const statLabels = selectedStats.map((k) => SELECTABLE_STATS[k].label);
+        const chartId = `radar-chart-${player.name.replace(/[^a-zA-Z0-9]/g, "_")}`;
+        const statLabels = selectedStats.map((k) => statConfig[k].label);
         const rawValues = selectedStats.map((k) => player[k]);
         const normalized = selectedStats.map((k) => normalizeStat(player[k], k, statRanges));
         const chartData = {
@@ -139,7 +126,7 @@ export default function SeasonAvgRadarGraphs({ data }: { data: any[] }) {
                 label: function (context: any) {
                   const statKey = selectedStats[context.dataIndex];
                   const raw = rawValues[context.dataIndex];
-                  const config = SELECTABLE_STATS[statKey];
+                  const config = statConfig[statKey];
                   let formatted = "N/A";
                   if (typeof raw === "number" && !isNaN(raw)) {
                     if (config?.format === "percent") formatted = raw.toFixed(1) + "%";
@@ -185,29 +172,29 @@ export default function SeasonAvgRadarGraphs({ data }: { data: any[] }) {
           </div>
         );
       });
-  }, [data, selectedStats, statRanges, updateTrigger]);
+  }, [data, selectedStats, statRanges, updateTrigger, statConfig, playerFilterKey]);
 
   return (
     <div>
       {/* Stat Selection UI */}
       <div className="mb-6 p-4 border rounded-lg bg-gray-50 shadow-sm">
         <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => {
-          const el = document.getElementById("season-avg-stat-selector-content");
+          const el = document.getElementById("radar-stat-selector-content");
           if (el) el.classList.toggle("hidden");
-          const arrow = document.getElementById("season-avg-stat-arrow");
+          const arrow = document.getElementById("radar-stat-arrow");
           if (arrow) arrow.classList.toggle("rotate-180");
         }}>
-          <h3 className="text-lg font-semibold text-gray-800">Pentagon İstatistiklerini Özelleştir</h3>
-          <svg id="season-avg-stat-arrow" className="w-5 h-5 text-gray-500 transform transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+          <svg id="radar-stat-arrow" className="w-5 h-5 text-gray-500 transform transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
         </div>
-        <div id="season-avg-stat-selector-content" className="mt-3">
+        <div id="radar-stat-selector-content" className="mt-2 hidden">
           <p className="text-sm text-gray-600 mb-3">Grafikte göstermek için tam olarak 5 istatistik seçin:</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-2 mb-4">
-            {Object.entries(SELECTABLE_STATS).map(([key, config]) => (
+            {Object.entries(statConfig).map(([key, config]) => (
               <label key={key} className="inline-flex items-center">
                 <input
                   type="checkbox"
-                  className="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 season-avg-pentagon-stat-option"
+                  className="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 radar-pentagon-stat-option"
                   checked={selectedStats.includes(key)}
                   onChange={e => handleStatChange(key, e.target.checked)}
                   disabled={selectedStats.length === PENTAGON_STAT_LIMIT && !selectedStats.includes(key)}
@@ -227,7 +214,7 @@ export default function SeasonAvgRadarGraphs({ data }: { data: any[] }) {
         </div>
       </div>
       {/* Player Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {selectedStats.length !== PENTAGON_STAT_LIMIT ? (
           <div className="text-center py-8 text-gray-500 col-span-full">5 istatistik seçin ve "Grafikleri Güncelle"ye tıklayın.</div>
         ) : playerCards && playerCards.length > 0 ? playerCards : (
@@ -236,4 +223,22 @@ export default function SeasonAvgRadarGraphs({ data }: { data: any[] }) {
       </div>
     </div>
   );
+}
+
+// For backward compatibility
+const SELECTABLE_STATS: Record<string, { label: string; default: boolean; format?: string }> = {
+  hltv_2: { label: "HLTV 2.0", default: true },
+  adr: { label: "ADR", default: true },
+  kd: { label: "K/D", default: true },
+  hs_ratio: { label: "HS/Kill %", default: true, format: "percent" },
+  win_rate: { label: "Win Rate %", default: true, format: "percent" },
+  kast: { label: "KAST", default: false, format: "percent" },
+  utl_dmg: { label: "Utility Dmg", default: false },
+  first_kill: { label: "First Kill Avg", default: false },
+  clutch_success: { label: "Clutch Win %", default: false, format: "percent" },
+  assists: { label: "Assists Avg", default: false },
+};
+
+export default function SeasonAvgRadarGraphs({ data }: { data: any[] }) {
+  return <RadarGraphs data={data} statConfig={SELECTABLE_STATS} playerFilterKey="matches" title="Pentagon İstatistiklerini Özelleştir" />;
 } 

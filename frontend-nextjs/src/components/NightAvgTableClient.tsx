@@ -3,6 +3,7 @@ import { useState } from "react";
 import SeasonStatsTable from "./SeasonStatsTable";
 import H2HClient from "./H2HClient";
 import React from "react";
+import { RadarGraphs } from "./SeasonAvgRadarGraphs";
 
 // Night avg columns (match the keys in night_avg.json)
 const nightAvgColumns = [
@@ -85,7 +86,15 @@ export default function NightAvgTableClient({ allData, dates }: { allData: Recor
         )}
         {activeTab === "graph" && (
           <div id="night-avg-tab-graph" className="night-avg-tab-pane active" role="tabpanel" aria-labelledby="night-avg-graph-tab">
-            <p className="text-center p-4">Grafik içeriği yakında...</p>
+            <RadarGraphs
+              data={data}
+              statConfig={nightAvgColumns.reduce((acc: Record<string, any>, col, i) => {
+                acc[col.key] = { label: col.label, default: i < 5, format: col.isPercentage ? "percent" : undefined };
+                return acc;
+              }, {})}
+              playerFilterKey="Nr of Matches"
+              title="Pentagon İstatistiklerini Özelleştir (Gece Ortalaması)"
+            />
           </div>
         )}
         {activeTab === "head2head" && (

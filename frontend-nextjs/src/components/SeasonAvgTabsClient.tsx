@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import SeasonStatsTable, { columns } from "@/components/SeasonStatsTable";
-import SeasonAvgRadarGraphs from "@/components/SeasonAvgRadarGraphs";
+import { RadarGraphs } from "@/components/SeasonAvgRadarGraphs";
 import H2HClient from "@/components/H2HClient";
 
 export default function SeasonAvgTabsClient({ data }: { data: any[] }) {
@@ -22,7 +22,7 @@ export default function SeasonAvgTabsClient({ data }: { data: any[] }) {
               aria-selected={activeTab === "table"}
               onClick={() => setActiveTab("table")}
             >
-              Table
+              Tablo
             </button>
           </li>
           <li className="mr-2" role="presentation">
@@ -35,7 +35,7 @@ export default function SeasonAvgTabsClient({ data }: { data: any[] }) {
               aria-selected={activeTab === "graph"}
               onClick={() => setActiveTab("graph")}
             >
-              Graph
+              Grafik
             </button>
           </li>
           <li className="mr-2" role="presentation">
@@ -48,7 +48,7 @@ export default function SeasonAvgTabsClient({ data }: { data: any[] }) {
               aria-selected={activeTab === "head2head"}
               onClick={() => setActiveTab("head2head")}
             >
-              Head-to-Head
+              Karşılaştırma
             </button>
           </li>
         </ul>
@@ -65,7 +65,15 @@ export default function SeasonAvgTabsClient({ data }: { data: any[] }) {
         {/* Graph Content */}
         {activeTab === "graph" && (
           <div id="season-avg-tab-graph" className="season-avg-tab-pane active" role="tabpanel" aria-labelledby="season-avg-graph-tab">
-            <SeasonAvgRadarGraphs data={data} />
+            <RadarGraphs
+              data={data}
+              statConfig={columns.reduce((acc: Record<string, any>, col, i) => {
+                acc[col.key] = { label: col.label, default: i < 5, format: col.isPercentage ? "percent" : undefined };
+                return acc;
+              }, {})}
+              playerFilterKey="matches"
+              title="Pentagon İstatistiklerini Özelleştir (Sezon Ortalaması)"
+            />
           </div>
         )}
         {/* Head-to-Head Content */}

@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import SeasonStatsTable, { columns } from "@/components/SeasonStatsTable";
 import H2HClient from "@/components/H2HClient";
+import { RadarGraphs } from "./SeasonAvgRadarGraphs";
 
 export default function Last10TabsClient({ data }: { data: any[] }) {
   const [activeTab, setActiveTab] = useState<"table" | "graph" | "head2head">("table");
@@ -33,7 +34,15 @@ export default function Last10TabsClient({ data }: { data: any[] }) {
         {/* Graph Content */}
         {activeTab === "graph" && (
           <div id="last10-tab-graph" className="last10-tab-pane active" role="tabpanel" aria-labelledby="last10-graph-tab">
-            <p className="text-center p-4">Grafik içeriği yakında...</p>
+            <RadarGraphs
+              data={data}
+              statConfig={columns.reduce((acc: Record<string, any>, col, i) => {
+                acc[col.key] = { label: col.label, default: i < 5, format: col.isPercentage ? "percent" : undefined };
+                return acc;
+              }, {})}
+              playerFilterKey="matches"
+              title="Pentagon İstatistiklerini Özelleştir (Son 10)"
+            />
           </div>
         )}
         {/* Head-to-Head Content */}
