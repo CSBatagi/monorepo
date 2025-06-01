@@ -217,6 +217,11 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
   const [teamBKabile, setTeamBKabile] = useState('');
   const [loadingKabile, setLoadingKabile] = useState(false);
 
+  // --- Maps state for match creation ---
+  const [mapsState, setMapsState] = useState<any>({});
+  const [creatingMatch, setCreatingMatch] = useState(false);
+  const [matchMessage, setMatchMessage] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -283,6 +288,15 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
       off(teamBRef, 'value', onB);
     };
   }, [user]);
+
+  // Listen to Firebase for maps selection (for match creation)
+  useEffect(() => {
+    const mapsRef = ref(db, `${TEAM_PICKER_DB_PATH}/maps`);
+    const unsub = onValue(mapsRef, (snap) => {
+      setMapsState(snap.val() || {});
+    });
+    return () => off(mapsRef, 'value', unsub);
+  }, []);
 
   // Handlers for kabile change
   const handleKabileChange = async (team: 'A' | 'B', kabile: string) => {
@@ -352,6 +366,77 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
     const attendanceStatusRef = ref(db, `${ATTENDANCE_DB_PATH}/${playerSteamId}/status`);
     try { await set(attendanceStatusRef, 'not_coming'); } catch {}
   }, [teamAPlayers, teamBPlayers, handleRemovePlayerFromTeam]);
+
+  // --- Match creation handler ---
+  const handleCreateMatch = async () => {
+    setCreatingMatch(true);
+    setMatchMessage(null);
+    try {
+      // 1. Gather teams
+      const getTeamObj = (team: 'A' | 'B', players: TeamPlayerData, kabile: string) => {
+        const playerEntries = Object.entries(players).filter(([_, p]) => p && p.steamId && p.name);
+        if (playerEntries.length === 0) return null;
+        const playersObj: Record<string, string> = {};
+        playerEntries.forEach(([_, p]) => { playersObj[p.steamId] = p.name; });
+        return { name: kabile || (team === 'A' ? 'Team A' : 'Team B'), players: playersObj };
+      };
+      const team1 = getTeamObj('A', teamAPlayers, teamAKabile);
+      const team2 = getTeamObj('B', teamBPlayers, teamBKabile);
+      if (!team1 || !team2) {
+        setMatchMessage('Her iki takımda da en az bir oyuncu olmalı.');
+        setCreatingMatch(false);
+        return;
+      }
+      // 2. Gather maps and sides
+      const maps = [mapsState.map1?.mapName, mapsState.map2?.mapName, mapsState.map3?.mapName].filter((m) => m && m !== '');
+      if (maps.length === 0) {
+        setMatchMessage('En az bir harita seçmelisiniz.');
+        setCreatingMatch(false);
+        return;
+      }
+      const mapSides: string[] = [];
+      for (let i = 1; i <= maps.length; i++) {
+        const mapSel = mapsState[`map${i}`];
+        let side = 'knife';
+        if (mapSel?.ct_team === 'A') side = 'team1_ct';
+        else if (mapSel?.ct_team === 'B') side = 'team2_ct';
+        mapSides.push(side);
+      }
+      while (mapSides.length < maps.length) mapSides.push('knife');
+      mapSides.length = maps.length;
+      // 3. Build payload
+      const payload = {
+        team1,
+        team2,
+        num_maps: maps.length,
+        maplist: maps,
+        map_sides: mapSides,
+        clinch_series: true,
+        players_per_team: Object.keys(team1.players).length,
+        cvars: {
+          tv_enable: 1,
+          hostname: `${team1.name} vs ${team2.name}`,
+        },
+      };
+      // 4. POST to worker
+      const resp = await fetch('https://misty-snow-cebf.onur1atak.workers.dev/create-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) {
+        const err = await resp.text();
+        setMatchMessage(`Hata: ${resp.status} - ${err}`);
+        setCreatingMatch(false);
+        return;
+      }
+      setMatchMessage('Maç başarıyla oluşturuldu!');
+    } catch (e: any) {
+      setMatchMessage('Bir hata oluştu: ' + (e?.message || e));
+    } finally {
+      setCreatingMatch(false);
+    }
+  };
 
   const isLoading = authLoading || loadingFirebaseData || loadingTeamA || loadingTeamB;
   const isAvailablePlayersListLoading = loadingFirebaseData || loadingTeamA || loadingTeamB;
@@ -587,7 +672,18 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
           </div>
           {/* Map selection after the graph comparison */}
           <MapSelection teamAName={teamAKabile || 'A'} teamBName={teamBKabile || 'B'} />
-          <p className="text-sm text-gray-500 mt-4">Stats, Kabile selection, Map selection, and Create Match button will be here.</p>
+          <div className="flex flex-col items-center mt-4">
+            <button
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleCreateMatch}
+              disabled={creatingMatch}
+            >
+              {creatingMatch ? 'Oluşturuluyor...' : 'Maç Yarat'}
+            </button>
+            {matchMessage && (
+              <div className={`mt-2 text-sm ${matchMessage.startsWith('Maç') ? 'text-green-600' : 'text-red-600'}`}>{matchMessage}</div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,0 +1,1528 @@
+{
+  "playerRows": [
+    "Cago",
+    "HiLLbili",
+    "Malawhur",
+    "Mustasem",
+    "Nerull",
+    "Titus",
+    "Ugo",
+    "Uncle Iroh",
+    "bobinaj",
+    "candeha",
+    "daE",
+    "drb",
+    "ekl1ps",
+    "eskisigibi",
+    "firanzbekenbaver",
+    "mersido",
+    "regarnur",
+    "sedo",
+    "wormik"
+  ],
+  "playerCols": [
+    "Cago",
+    "HiLLbili",
+    "Malawhur",
+    "Mustasem",
+    "Nerull",
+    "Titus",
+    "Ugo",
+    "Uncle Iroh",
+    "bobinaj",
+    "candeha",
+    "daE",
+    "drb",
+    "ekl1ps",
+    "eskisigibi",
+    "firanzbekenbaver",
+    "mersido",
+    "regarnur",
+    "sedo",
+    "wormik"
+  ],
+  "duels": {
+    "bobinaj": {
+      "bobinaj": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Cago": {
+        "kills": 94,
+        "deaths": 177
+      },
+      "candeha": {
+        "kills": 27,
+        "deaths": 28
+      },
+      "daE": {
+        "kills": 66,
+        "deaths": 104
+      },
+      "drb": {
+        "kills": 114,
+        "deaths": 108
+      },
+      "ekl1ps": {
+        "kills": 28,
+        "deaths": 27
+      },
+      "eskisigibi": {
+        "kills": 103,
+        "deaths": 56
+      },
+      "firanzbekenbaver": {
+        "kills": 33,
+        "deaths": 10
+      },
+      "HiLLbili": {
+        "kills": 12,
+        "deaths": 11
+      },
+      "Malawhur": {
+        "kills": 15,
+        "deaths": 33
+      },
+      "mersido": {
+        "kills": 63,
+        "deaths": 48
+      },
+      "Mustasem": {
+        "kills": 25,
+        "deaths": 15
+      },
+      "Nerull": {
+        "kills": 95,
+        "deaths": 120
+      },
+      "regarnur": {
+        "kills": 14,
+        "deaths": 18
+      },
+      "sedo": {
+        "kills": 64,
+        "deaths": 59
+      },
+      "Titus": {
+        "kills": 8,
+        "deaths": 9
+      },
+      "Ugo": {
+        "kills": 51,
+        "deaths": 34
+      },
+      "Uncle Iroh": {
+        "kills": 58,
+        "deaths": 62
+      },
+      "wormik": {
+        "kills": 18,
+        "deaths": 15
+      }
+    },
+    "Cago": {
+      "bobinaj": {
+        "kills": 177,
+        "deaths": 94
+      },
+      "Cago": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "candeha": {
+        "kills": 115,
+        "deaths": 56
+      },
+      "daE": {
+        "kills": 64,
+        "deaths": 62
+      },
+      "drb": {
+        "kills": 39,
+        "deaths": 24
+      },
+      "ekl1ps": {
+        "kills": 147,
+        "deaths": 109
+      },
+      "eskisigibi": {
+        "kills": 127,
+        "deaths": 37
+      },
+      "firanzbekenbaver": {
+        "kills": 32,
+        "deaths": 2
+      },
+      "HiLLbili": {
+        "kills": 107,
+        "deaths": 67
+      },
+      "Malawhur": {
+        "kills": 203,
+        "deaths": 156
+      },
+      "mersido": {
+        "kills": 38,
+        "deaths": 19
+      },
+      "Mustasem": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 167,
+        "deaths": 164
+      },
+      "regarnur": {
+        "kills": 8,
+        "deaths": 3
+      },
+      "sedo": {
+        "kills": 129,
+        "deaths": 68
+      },
+      "Titus": {
+        "kills": 16,
+        "deaths": 5
+      },
+      "Ugo": {
+        "kills": 84,
+        "deaths": 33
+      },
+      "Uncle Iroh": {
+        "kills": 97,
+        "deaths": 40
+      },
+      "wormik": {
+        "kills": 110,
+        "deaths": 48
+      }
+    },
+    "candeha": {
+      "bobinaj": {
+        "kills": 28,
+        "deaths": 27
+      },
+      "Cago": {
+        "kills": 56,
+        "deaths": 115
+      },
+      "candeha": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "daE": {
+        "kills": 44,
+        "deaths": 69
+      },
+      "drb": {
+        "kills": 39,
+        "deaths": 43
+      },
+      "ekl1ps": {
+        "kills": 36,
+        "deaths": 59
+      },
+      "eskisigibi": {
+        "kills": 35,
+        "deaths": 13
+      },
+      "firanzbekenbaver": {
+        "kills": 43,
+        "deaths": 11
+      },
+      "HiLLbili": {
+        "kills": 37,
+        "deaths": 49
+      },
+      "Malawhur": {
+        "kills": 37,
+        "deaths": 55
+      },
+      "mersido": {
+        "kills": 64,
+        "deaths": 38
+      },
+      "Mustasem": {
+        "kills": 17,
+        "deaths": 6
+      },
+      "Nerull": {
+        "kills": 19,
+        "deaths": 43
+      },
+      "regarnur": {
+        "kills": 16,
+        "deaths": 18
+      },
+      "sedo": {
+        "kills": 20,
+        "deaths": 27
+      },
+      "Titus": {
+        "kills": 9,
+        "deaths": 5
+      },
+      "Ugo": {
+        "kills": 10,
+        "deaths": 4
+      },
+      "Uncle Iroh": {
+        "kills": 29,
+        "deaths": 20
+      },
+      "wormik": {
+        "kills": 10,
+        "deaths": 20
+      }
+    },
+    "daE": {
+      "bobinaj": {
+        "kills": 104,
+        "deaths": 66
+      },
+      "Cago": {
+        "kills": 62,
+        "deaths": 64
+      },
+      "candeha": {
+        "kills": 69,
+        "deaths": 44
+      },
+      "daE": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "drb": {
+        "kills": 38,
+        "deaths": 26
+      },
+      "ekl1ps": {
+        "kills": 119,
+        "deaths": 87
+      },
+      "eskisigibi": {
+        "kills": 97,
+        "deaths": 67
+      },
+      "firanzbekenbaver": {
+        "kills": 20,
+        "deaths": 3
+      },
+      "HiLLbili": {
+        "kills": 79,
+        "deaths": 65
+      },
+      "Malawhur": {
+        "kills": 136,
+        "deaths": 121
+      },
+      "mersido": {
+        "kills": 14,
+        "deaths": 5
+      },
+      "Mustasem": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 164,
+        "deaths": 149
+      },
+      "regarnur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 117,
+        "deaths": 79
+      },
+      "Titus": {
+        "kills": 35,
+        "deaths": 15
+      },
+      "Ugo": {
+        "kills": 100,
+        "deaths": 41
+      },
+      "Uncle Iroh": {
+        "kills": 92,
+        "deaths": 62
+      },
+      "wormik": {
+        "kills": 60,
+        "deaths": 34
+      }
+    },
+    "drb": {
+      "bobinaj": {
+        "kills": 108,
+        "deaths": 114
+      },
+      "Cago": {
+        "kills": 24,
+        "deaths": 39
+      },
+      "candeha": {
+        "kills": 43,
+        "deaths": 39
+      },
+      "daE": {
+        "kills": 26,
+        "deaths": 38
+      },
+      "drb": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 80,
+        "deaths": 98
+      },
+      "eskisigibi": {
+        "kills": 106,
+        "deaths": 39
+      },
+      "firanzbekenbaver": {
+        "kills": 28,
+        "deaths": 7
+      },
+      "HiLLbili": {
+        "kills": 63,
+        "deaths": 59
+      },
+      "Malawhur": {
+        "kills": 106,
+        "deaths": 160
+      },
+      "mersido": {
+        "kills": 34,
+        "deaths": 16
+      },
+      "Mustasem": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 107,
+        "deaths": 147
+      },
+      "regarnur": {
+        "kills": 7,
+        "deaths": 3
+      },
+      "sedo": {
+        "kills": 97,
+        "deaths": 95
+      },
+      "Titus": {
+        "kills": 13,
+        "deaths": 15
+      },
+      "Ugo": {
+        "kills": 64,
+        "deaths": 32
+      },
+      "Uncle Iroh": {
+        "kills": 70,
+        "deaths": 61
+      },
+      "wormik": {
+        "kills": 40,
+        "deaths": 24
+      }
+    },
+    "ekl1ps": {
+      "bobinaj": {
+        "kills": 27,
+        "deaths": 28
+      },
+      "Cago": {
+        "kills": 109,
+        "deaths": 147
+      },
+      "candeha": {
+        "kills": 59,
+        "deaths": 36
+      },
+      "daE": {
+        "kills": 87,
+        "deaths": 119
+      },
+      "drb": {
+        "kills": 98,
+        "deaths": 80
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "eskisigibi": {
+        "kills": 79,
+        "deaths": 34
+      },
+      "firanzbekenbaver": {
+        "kills": 41,
+        "deaths": 9
+      },
+      "HiLLbili": {
+        "kills": 8,
+        "deaths": 14
+      },
+      "Malawhur": {
+        "kills": 33,
+        "deaths": 31
+      },
+      "mersido": {
+        "kills": 88,
+        "deaths": 39
+      },
+      "Mustasem": {
+        "kills": 43,
+        "deaths": 10
+      },
+      "Nerull": {
+        "kills": 109,
+        "deaths": 123
+      },
+      "regarnur": {
+        "kills": 14,
+        "deaths": 6
+      },
+      "sedo": {
+        "kills": 76,
+        "deaths": 76
+      },
+      "Titus": {
+        "kills": 12,
+        "deaths": 5
+      },
+      "Ugo": {
+        "kills": 71,
+        "deaths": 47
+      },
+      "Uncle Iroh": {
+        "kills": 96,
+        "deaths": 62
+      },
+      "wormik": {
+        "kills": 10,
+        "deaths": 5
+      }
+    },
+    "eskisigibi": {
+      "bobinaj": {
+        "kills": 56,
+        "deaths": 103
+      },
+      "Cago": {
+        "kills": 37,
+        "deaths": 127
+      },
+      "candeha": {
+        "kills": 13,
+        "deaths": 35
+      },
+      "daE": {
+        "kills": 67,
+        "deaths": 97
+      },
+      "drb": {
+        "kills": 39,
+        "deaths": 106
+      },
+      "ekl1ps": {
+        "kills": 34,
+        "deaths": 79
+      },
+      "eskisigibi": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "firanzbekenbaver": {
+        "kills": 36,
+        "deaths": 23
+      },
+      "HiLLbili": {
+        "kills": 28,
+        "deaths": 67
+      },
+      "Malawhur": {
+        "kills": 27,
+        "deaths": 80
+      },
+      "mersido": {
+        "kills": 55,
+        "deaths": 86
+      },
+      "Mustasem": {
+        "kills": 24,
+        "deaths": 23
+      },
+      "Nerull": {
+        "kills": 16,
+        "deaths": 28
+      },
+      "regarnur": {
+        "kills": 10,
+        "deaths": 15
+      },
+      "sedo": {
+        "kills": 8,
+        "deaths": 23
+      },
+      "Titus": {
+        "kills": 10,
+        "deaths": 16
+      },
+      "Ugo": {
+        "kills": 5,
+        "deaths": 6
+      },
+      "Uncle Iroh": {
+        "kills": 12,
+        "deaths": 15
+      },
+      "wormik": {
+        "kills": 23,
+        "deaths": 25
+      }
+    },
+    "firanzbekenbaver": {
+      "bobinaj": {
+        "kills": 10,
+        "deaths": 33
+      },
+      "Cago": {
+        "kills": 2,
+        "deaths": 32
+      },
+      "candeha": {
+        "kills": 11,
+        "deaths": 43
+      },
+      "daE": {
+        "kills": 3,
+        "deaths": 20
+      },
+      "drb": {
+        "kills": 7,
+        "deaths": 28
+      },
+      "ekl1ps": {
+        "kills": 9,
+        "deaths": 41
+      },
+      "eskisigibi": {
+        "kills": 23,
+        "deaths": 36
+      },
+      "firanzbekenbaver": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLLbili": {
+        "kills": 2,
+        "deaths": 9
+      },
+      "Malawhur": {
+        "kills": 6,
+        "deaths": 44
+      },
+      "mersido": {
+        "kills": 4,
+        "deaths": 8
+      },
+      "Mustasem": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 18,
+        "deaths": 70
+      },
+      "regarnur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 15,
+        "deaths": 52
+      },
+      "Titus": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Ugo": {
+        "kills": 26,
+        "deaths": 41
+      },
+      "Uncle Iroh": {
+        "kills": 17,
+        "deaths": 33
+      },
+      "wormik": {
+        "kills": 7,
+        "deaths": 25
+      }
+    },
+    "HiLLbili": {
+      "bobinaj": {
+        "kills": 11,
+        "deaths": 12
+      },
+      "Cago": {
+        "kills": 67,
+        "deaths": 107
+      },
+      "candeha": {
+        "kills": 49,
+        "deaths": 37
+      },
+      "daE": {
+        "kills": 65,
+        "deaths": 79
+      },
+      "drb": {
+        "kills": 59,
+        "deaths": 63
+      },
+      "ekl1ps": {
+        "kills": 14,
+        "deaths": 8
+      },
+      "eskisigibi": {
+        "kills": 67,
+        "deaths": 28
+      },
+      "firanzbekenbaver": {
+        "kills": 9,
+        "deaths": 2
+      },
+      "HiLLbili": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 19,
+        "deaths": 23
+      },
+      "mersido": {
+        "kills": 30,
+        "deaths": 9
+      },
+      "Mustasem": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 63,
+        "deaths": 82
+      },
+      "regarnur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 79,
+        "deaths": 60
+      },
+      "Titus": {
+        "kills": 4,
+        "deaths": 5
+      },
+      "Ugo": {
+        "kills": 33,
+        "deaths": 28
+      },
+      "Uncle Iroh": {
+        "kills": 39,
+        "deaths": 40
+      },
+      "wormik": {
+        "kills": 25,
+        "deaths": 16
+      }
+    },
+    "Malawhur": {
+      "bobinaj": {
+        "kills": 33,
+        "deaths": 15
+      },
+      "Cago": {
+        "kills": 156,
+        "deaths": 203
+      },
+      "candeha": {
+        "kills": 55,
+        "deaths": 37
+      },
+      "daE": {
+        "kills": 121,
+        "deaths": 136
+      },
+      "drb": {
+        "kills": 160,
+        "deaths": 106
+      },
+      "ekl1ps": {
+        "kills": 31,
+        "deaths": 33
+      },
+      "eskisigibi": {
+        "kills": 80,
+        "deaths": 27
+      },
+      "firanzbekenbaver": {
+        "kills": 44,
+        "deaths": 6
+      },
+      "HiLLbili": {
+        "kills": 23,
+        "deaths": 19
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "mersido": {
+        "kills": 83,
+        "deaths": 34
+      },
+      "Mustasem": {
+        "kills": 39,
+        "deaths": 5
+      },
+      "Nerull": {
+        "kills": 79,
+        "deaths": 98
+      },
+      "regarnur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 64,
+        "deaths": 59
+      },
+      "Titus": {
+        "kills": 8,
+        "deaths": 6
+      },
+      "Ugo": {
+        "kills": 49,
+        "deaths": 20
+      },
+      "Uncle Iroh": {
+        "kills": 37,
+        "deaths": 37
+      },
+      "wormik": {
+        "kills": 23,
+        "deaths": 7
+      }
+    },
+    "mersido": {
+      "bobinaj": {
+        "kills": 48,
+        "deaths": 63
+      },
+      "Cago": {
+        "kills": 19,
+        "deaths": 38
+      },
+      "candeha": {
+        "kills": 38,
+        "deaths": 64
+      },
+      "daE": {
+        "kills": 5,
+        "deaths": 14
+      },
+      "drb": {
+        "kills": 16,
+        "deaths": 34
+      },
+      "ekl1ps": {
+        "kills": 39,
+        "deaths": 88
+      },
+      "eskisigibi": {
+        "kills": 86,
+        "deaths": 55
+      },
+      "firanzbekenbaver": {
+        "kills": 8,
+        "deaths": 4
+      },
+      "HiLLbili": {
+        "kills": 9,
+        "deaths": 30
+      },
+      "Malawhur": {
+        "kills": 34,
+        "deaths": 83
+      },
+      "mersido": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Mustasem": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 77,
+        "deaths": 143
+      },
+      "regarnur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 50,
+        "deaths": 89
+      },
+      "Titus": {
+        "kills": 5,
+        "deaths": 6
+      },
+      "Ugo": {
+        "kills": 67,
+        "deaths": 49
+      },
+      "Uncle Iroh": {
+        "kills": 46,
+        "deaths": 66
+      },
+      "wormik": {
+        "kills": 13,
+        "deaths": 18
+      }
+    },
+    "Mustasem": {
+      "bobinaj": {
+        "kills": 15,
+        "deaths": 25
+      },
+      "Cago": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "candeha": {
+        "kills": 6,
+        "deaths": 17
+      },
+      "daE": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "drb": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 10,
+        "deaths": 43
+      },
+      "eskisigibi": {
+        "kills": 23,
+        "deaths": 24
+      },
+      "firanzbekenbaver": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLLbili": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 5,
+        "deaths": 39
+      },
+      "mersido": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Mustasem": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 26,
+        "deaths": 63
+      },
+      "regarnur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 18,
+        "deaths": 37
+      },
+      "Titus": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Ugo": {
+        "kills": 5,
+        "deaths": 8
+      },
+      "Uncle Iroh": {
+        "kills": 15,
+        "deaths": 22
+      },
+      "wormik": {
+        "kills": 13,
+        "deaths": 23
+      }
+    },
+    "Nerull": {
+      "bobinaj": {
+        "kills": 120,
+        "deaths": 95
+      },
+      "Cago": {
+        "kills": 164,
+        "deaths": 167
+      },
+      "candeha": {
+        "kills": 43,
+        "deaths": 19
+      },
+      "daE": {
+        "kills": 149,
+        "deaths": 164
+      },
+      "drb": {
+        "kills": 147,
+        "deaths": 107
+      },
+      "ekl1ps": {
+        "kills": 123,
+        "deaths": 109
+      },
+      "eskisigibi": {
+        "kills": 28,
+        "deaths": 16
+      },
+      "firanzbekenbaver": {
+        "kills": 70,
+        "deaths": 18
+      },
+      "HiLLbili": {
+        "kills": 82,
+        "deaths": 63
+      },
+      "Malawhur": {
+        "kills": 98,
+        "deaths": 79
+      },
+      "mersido": {
+        "kills": 143,
+        "deaths": 77
+      },
+      "Mustasem": {
+        "kills": 63,
+        "deaths": 26
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "regarnur": {
+        "kills": 32,
+        "deaths": 16
+      },
+      "sedo": {
+        "kills": 62,
+        "deaths": 57
+      },
+      "Titus": {
+        "kills": 44,
+        "deaths": 20
+      },
+      "Ugo": {
+        "kills": 18,
+        "deaths": 12
+      },
+      "Uncle Iroh": {
+        "kills": 21,
+        "deaths": 12
+      },
+      "wormik": {
+        "kills": 68,
+        "deaths": 38
+      }
+    },
+    "regarnur": {
+      "bobinaj": {
+        "kills": 18,
+        "deaths": 14
+      },
+      "Cago": {
+        "kills": 3,
+        "deaths": 8
+      },
+      "candeha": {
+        "kills": 18,
+        "deaths": 16
+      },
+      "daE": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "drb": {
+        "kills": 3,
+        "deaths": 7
+      },
+      "ekl1ps": {
+        "kills": 6,
+        "deaths": 14
+      },
+      "eskisigibi": {
+        "kills": 15,
+        "deaths": 10
+      },
+      "firanzbekenbaver": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLLbili": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "mersido": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Mustasem": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 16,
+        "deaths": 32
+      },
+      "regarnur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 14,
+        "deaths": 13
+      },
+      "Titus": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Ugo": {
+        "kills": 18,
+        "deaths": 11
+      },
+      "Uncle Iroh": {
+        "kills": 8,
+        "deaths": 7
+      },
+      "wormik": {
+        "kills": 7,
+        "deaths": 5
+      }
+    },
+    "sedo": {
+      "bobinaj": {
+        "kills": 59,
+        "deaths": 64
+      },
+      "Cago": {
+        "kills": 68,
+        "deaths": 129
+      },
+      "candeha": {
+        "kills": 27,
+        "deaths": 20
+      },
+      "daE": {
+        "kills": 79,
+        "deaths": 117
+      },
+      "drb": {
+        "kills": 95,
+        "deaths": 97
+      },
+      "ekl1ps": {
+        "kills": 76,
+        "deaths": 76
+      },
+      "eskisigibi": {
+        "kills": 23,
+        "deaths": 8
+      },
+      "firanzbekenbaver": {
+        "kills": 52,
+        "deaths": 15
+      },
+      "HiLLbili": {
+        "kills": 60,
+        "deaths": 79
+      },
+      "Malawhur": {
+        "kills": 59,
+        "deaths": 64
+      },
+      "mersido": {
+        "kills": 89,
+        "deaths": 50
+      },
+      "Mustasem": {
+        "kills": 37,
+        "deaths": 18
+      },
+      "Nerull": {
+        "kills": 57,
+        "deaths": 62
+      },
+      "regarnur": {
+        "kills": 13,
+        "deaths": 14
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Titus": {
+        "kills": 14,
+        "deaths": 11
+      },
+      "Ugo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 16,
+        "deaths": 9
+      },
+      "wormik": {
+        "kills": 40,
+        "deaths": 37
+      }
+    },
+    "Titus": {
+      "bobinaj": {
+        "kills": 9,
+        "deaths": 8
+      },
+      "Cago": {
+        "kills": 5,
+        "deaths": 16
+      },
+      "candeha": {
+        "kills": 5,
+        "deaths": 9
+      },
+      "daE": {
+        "kills": 15,
+        "deaths": 35
+      },
+      "drb": {
+        "kills": 15,
+        "deaths": 13
+      },
+      "ekl1ps": {
+        "kills": 5,
+        "deaths": 12
+      },
+      "eskisigibi": {
+        "kills": 16,
+        "deaths": 10
+      },
+      "firanzbekenbaver": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLLbili": {
+        "kills": 5,
+        "deaths": 4
+      },
+      "Malawhur": {
+        "kills": 6,
+        "deaths": 8
+      },
+      "mersido": {
+        "kills": 6,
+        "deaths": 5
+      },
+      "Mustasem": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 20,
+        "deaths": 44
+      },
+      "regarnur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 11,
+        "deaths": 14
+      },
+      "Titus": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Ugo": {
+        "kills": 17,
+        "deaths": 9
+      },
+      "Uncle Iroh": {
+        "kills": 10,
+        "deaths": 19
+      },
+      "wormik": {
+        "kills": 8,
+        "deaths": 8
+      }
+    },
+    "Ugo": {
+      "bobinaj": {
+        "kills": 34,
+        "deaths": 51
+      },
+      "Cago": {
+        "kills": 33,
+        "deaths": 84
+      },
+      "candeha": {
+        "kills": 4,
+        "deaths": 10
+      },
+      "daE": {
+        "kills": 41,
+        "deaths": 100
+      },
+      "drb": {
+        "kills": 32,
+        "deaths": 64
+      },
+      "ekl1ps": {
+        "kills": 47,
+        "deaths": 71
+      },
+      "eskisigibi": {
+        "kills": 6,
+        "deaths": 5
+      },
+      "firanzbekenbaver": {
+        "kills": 41,
+        "deaths": 26
+      },
+      "HiLLbili": {
+        "kills": 28,
+        "deaths": 33
+      },
+      "Malawhur": {
+        "kills": 20,
+        "deaths": 49
+      },
+      "mersido": {
+        "kills": 49,
+        "deaths": 67
+      },
+      "Mustasem": {
+        "kills": 8,
+        "deaths": 5
+      },
+      "Nerull": {
+        "kills": 12,
+        "deaths": 18
+      },
+      "regarnur": {
+        "kills": 11,
+        "deaths": 18
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Titus": {
+        "kills": 9,
+        "deaths": 17
+      },
+      "Ugo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "wormik": {
+        "kills": 8,
+        "deaths": 10
+      }
+    },
+    "Uncle Iroh": {
+      "bobinaj": {
+        "kills": 62,
+        "deaths": 58
+      },
+      "Cago": {
+        "kills": 40,
+        "deaths": 97
+      },
+      "candeha": {
+        "kills": 20,
+        "deaths": 29
+      },
+      "daE": {
+        "kills": 62,
+        "deaths": 92
+      },
+      "drb": {
+        "kills": 61,
+        "deaths": 70
+      },
+      "ekl1ps": {
+        "kills": 62,
+        "deaths": 96
+      },
+      "eskisigibi": {
+        "kills": 15,
+        "deaths": 12
+      },
+      "firanzbekenbaver": {
+        "kills": 33,
+        "deaths": 17
+      },
+      "HiLLbili": {
+        "kills": 40,
+        "deaths": 39
+      },
+      "Malawhur": {
+        "kills": 37,
+        "deaths": 37
+      },
+      "mersido": {
+        "kills": 66,
+        "deaths": 46
+      },
+      "Mustasem": {
+        "kills": 22,
+        "deaths": 15
+      },
+      "Nerull": {
+        "kills": 12,
+        "deaths": 21
+      },
+      "regarnur": {
+        "kills": 7,
+        "deaths": 8
+      },
+      "sedo": {
+        "kills": 9,
+        "deaths": 16
+      },
+      "Titus": {
+        "kills": 19,
+        "deaths": 10
+      },
+      "Ugo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "wormik": {
+        "kills": 33,
+        "deaths": 23
+      }
+    },
+    "wormik": {
+      "bobinaj": {
+        "kills": 15,
+        "deaths": 18
+      },
+      "Cago": {
+        "kills": 48,
+        "deaths": 110
+      },
+      "candeha": {
+        "kills": 20,
+        "deaths": 10
+      },
+      "daE": {
+        "kills": 34,
+        "deaths": 60
+      },
+      "drb": {
+        "kills": 24,
+        "deaths": 40
+      },
+      "ekl1ps": {
+        "kills": 5,
+        "deaths": 10
+      },
+      "eskisigibi": {
+        "kills": 25,
+        "deaths": 23
+      },
+      "firanzbekenbaver": {
+        "kills": 25,
+        "deaths": 7
+      },
+      "HiLLbili": {
+        "kills": 16,
+        "deaths": 25
+      },
+      "Malawhur": {
+        "kills": 7,
+        "deaths": 23
+      },
+      "mersido": {
+        "kills": 18,
+        "deaths": 13
+      },
+      "Mustasem": {
+        "kills": 23,
+        "deaths": 13
+      },
+      "Nerull": {
+        "kills": 38,
+        "deaths": 68
+      },
+      "regarnur": {
+        "kills": 5,
+        "deaths": 7
+      },
+      "sedo": {
+        "kills": 37,
+        "deaths": 40
+      },
+      "Titus": {
+        "kills": 8,
+        "deaths": 8
+      },
+      "Ugo": {
+        "kills": 10,
+        "deaths": 8
+      },
+      "Uncle Iroh": {
+        "kills": 23,
+        "deaths": 33
+      },
+      "wormik": {
+        "kills": 0,
+        "deaths": 0
+      }
+    }
+  }
+}
