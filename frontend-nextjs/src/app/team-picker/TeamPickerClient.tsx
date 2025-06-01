@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Player } from '@/types';
 import { db } from '@/lib/firebase';
-import { ref, onValue, off, set } from 'firebase/database';
+import { ref, onValue, off, set, update } from 'firebase/database';
 import KabileSelect from '@/components/KabileSelect';
 import TeamAveragesTable from '@/components/TeamAveragesTable';
 import TeamComparisonRadar from '@/components/TeamComparisonRadar';
@@ -76,6 +76,129 @@ function getTeamAverages(players: Player[]): Record<string, number | null> {
   });
   return avgs;
 }
+
+interface MapSelectionProps {
+  teamAName: string;
+  teamBName: string;
+}
+const MapSelection: React.FC<MapSelectionProps> = ({ teamAName, teamBName }) => {
+  const [mapsList, setMapsList] = useState<{ id: string; name: string }[]>([]);
+  const [mapsState, setMapsState] = useState<any>({});
+  const [loadingMaps, setLoadingMaps] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Fetch maps.json
+  useEffect(() => {
+    const fetchMaps = async () => {
+      try {
+        const res = await fetch('/data/maps.json?_cb=' + Date.now());
+        const data = await res.json();
+        setMapsList(data);
+      } catch {
+        setMapsList([]);
+      }
+    };
+    fetchMaps();
+  }, []);
+
+  // Listen to Firebase for maps selection
+  useEffect(() => {
+    const mapsRef = ref(db, `${TEAM_PICKER_DB_PATH}/maps`);
+    setLoadingMaps(true);
+    const unsub = onValue(mapsRef, (snap) => {
+      setMapsState(snap.val() || {});
+      setLoadingMaps(false);
+    }, () => setLoadingMaps(false));
+    return () => off(mapsRef, 'value', unsub);
+  }, []);
+
+  // Helper to get map state for a given index
+  const getMap = (i: number) => mapsState[`map${i}`] || { mapName: '', t_team: '', ct_team: '' };
+
+  // Write to Firebase with side consistency logic
+  const handleMapChange = async (i: number, mapName: string) => {
+    setSaving(true);
+    const mapNamePath = `${TEAM_PICKER_DB_PATH}/maps/map${i}/mapName`;
+    await update(ref(db), { [mapNamePath]: mapName });
+    setSaving(false);
+  };
+  const handleSideChange = async (i: number, side: 't' | 'ct', value: string) => {
+    setSaving(true);
+    const updates: any = {};
+    const basePath = `${TEAM_PICKER_DB_PATH}/maps/map${i}`;
+    updates[`${basePath}/${side}_team`] = value;
+    // Side consistency: if T is A, CT must be B, etc.
+    const otherSide = side === 't' ? 'ct' : 't';
+    if (value) {
+      const otherTeamShouldBe = value === 'A' ? 'B' : 'A';
+      const otherTeamCurrent = getMap(i)[`${otherSide}_team`];
+      if (!otherTeamCurrent || otherTeamCurrent === value) {
+        updates[`${basePath}/${otherSide}_team`] = otherTeamShouldBe;
+      }
+    } else {
+      updates[`${basePath}/${otherSide}_team`] = '';
+    }
+    await update(ref(db), updates);
+    setSaving(false);
+  };
+
+  // Render
+  return (
+    <div className="mb-6">
+      <h4 className="text-base font-semibold text-gray-700 mb-2">Harita ve Taraf Seçimi</h4>
+      <div className="flex flex-col gap-2">
+        {[1, 2, 3].map((i) => {
+          const map = getMap(i);
+          return (
+            <div
+              key={i}
+              className="flex flex-col md:flex-row md:items-center gap-2 bg-gray-50 rounded p-2 border border-gray-200"
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-600 w-8 md:w-10">{i}.</span>
+                <select
+                  className="border rounded px-2 py-1 text-sm w-full md:w-40"
+                  value={map.mapName}
+                  onChange={e => handleMapChange(i, e.target.value)}
+                  disabled={loadingMaps || saving}
+                >
+                  <option value="">Harita Seç</option>
+                  {mapsList.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">T:</span>
+                <select
+                  className="border rounded px-2 py-1 text-sm w-28"
+                  value={map.t_team || ''}
+                  onChange={e => handleSideChange(i, 't', e.target.value)}
+                  disabled={loadingMaps || saving}
+                >
+                  <option value="">-</option>
+                  <option value="A">{teamAName || 'A'}</option>
+                  <option value="B">{teamBName || 'B'}</option>
+                </select>
+                <span className="text-xs text-gray-500">CT:</span>
+                <select
+                  className="border rounded px-2 py-1 text-sm w-28"
+                  value={map.ct_team || ''}
+                  onChange={e => handleSideChange(i, 'ct', e.target.value)}
+                  disabled={loadingMaps || saving}
+                >
+                  <option value="">-</option>
+                  <option value="A">{teamAName || 'A'}</option>
+                  <option value="B">{teamBName || 'B'}</option>
+                </select>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
   const { user, loading: authLoading } = useAuth();
@@ -163,6 +286,9 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
 
   // Handlers for kabile change
   const handleKabileChange = async (team: 'A' | 'B', kabile: string) => {
+    // Optimistically update local state
+    if (team === 'A') setTeamAKabile(kabile);
+    else setTeamBKabile(kabile);
     const teamPath = team === 'A' ? 'teamA' : 'teamB';
     const kabileRef = ref(db, `${TEAM_PICKER_DB_PATH}/${teamPath}/kabile`);
     await set(kabileRef, kabile);
@@ -459,6 +585,8 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
               <TeamComparisonRadar teamA={teamAAvgs} teamB={teamBAvgs} statLabels={STAT_LABELS} statOrder={STAT_ORDER} fixedRanges={FIXED_RANGES} />
             </div>
           </div>
+          {/* Map selection after the graph comparison */}
+          <MapSelection teamAName={teamAKabile || 'A'} teamBName={teamBKabile || 'B'} />
           <p className="text-sm text-gray-500 mt-4">Stats, Kabile selection, Map selection, and Create Match button will be here.</p>
         </div>
       </div>
