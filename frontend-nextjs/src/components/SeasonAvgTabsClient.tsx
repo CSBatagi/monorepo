@@ -1,7 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import SeasonStatsTable from "@/components/SeasonStatsTable";
+import SeasonStatsTable, { columns } from "@/components/SeasonStatsTable";
 import SeasonAvgRadarGraphs from "@/components/SeasonAvgRadarGraphs";
+import SeasonAvgH2HClient from "@/components/SeasonAvgH2HClient";
 
 export default function SeasonAvgTabsClient({ data }: { data: any[] }) {
   const [activeTab, setActiveTab] = useState<"table" | "graph" | "head2head">("table");
@@ -70,7 +71,7 @@ export default function SeasonAvgTabsClient({ data }: { data: any[] }) {
         {/* Head-to-Head Content */}
         {activeTab === "head2head" && (
           <div id="season-avg-tab-head2head" className="season-avg-tab-pane active" role="tabpanel" aria-labelledby="season-avg-head2head-tab">
-            <p className="text-center p-4">Head-to-Head content loading...</p>
+            <SeasonAvgH2HClient data={data} columns={columns} />
           </div>
         )}
       </div>
