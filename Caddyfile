@@ -15,7 +15,3 @@ csbatagi.com {
 		index index.html 
 	}
 }
-
-db2.csbatagi.com {
-	reverse_proxy backend:3000
-}
