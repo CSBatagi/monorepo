@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
+    unoptimized: true, // Disable image optimization for Docker/standalone builds
     remotePatterns: [
       {
         protocol: 'https',
