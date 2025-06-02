@@ -10,4 +10,9 @@ localhost {
     handle_path /api/* {
         reverse_proxy backend-1:3000
     }
+    
+    handle /test* {
+		reverse_proxy frontend-nextjs:3000
+	}
+    
 }

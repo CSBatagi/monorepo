@@ -50,7 +50,16 @@ services:
     expose:
       - 3000
     depends_on:
-      - postgres  # Ensure the database is started before backend 
+      - postgres  # Ensure the database is started before backend
+
+  frontend-nextjs:
+    restart: unless-stopped 
+    image: ghcr.io/csbatagi/monorepo/frontend-nextjs:latest  # Using the image from GitHub Container Registry
+    pull_policy: always  # Force Docker to pull the latest image every time
+    networks:
+      - db2
+    expose:
+      - 3000 
 
   postgres:
     image: postgres
@@ -74,6 +83,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./frontend:/srv/frontend
+      - caddy_data:/data  # This is the critical one for SSL certificates
     ports:
       - 80:80
       - 443:443
@@ -82,6 +92,7 @@ services:
     
 volumes:
   pgdata:
+  caddy_data:  # Only this volume is essential for SSL certificate persistence
 
 networks:
   db2:
