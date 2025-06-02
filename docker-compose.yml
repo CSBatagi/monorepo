@@ -83,6 +83,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./frontend:/srv/frontend
+      - caddy_data:/data  # This is the critical one for SSL certificates
     ports:
       - 80:80
       - 443:443
@@ -91,6 +92,7 @@ services:
     
 volumes:
   pgdata:
+  caddy_data:  # Only this volume is essential for SSL certificate persistence
 
 networks:
   db2:
