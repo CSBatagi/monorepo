@@ -22,14 +22,22 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 # ENV NEXT_TELEMETRY_DISABLED=1
 
-# Set dummy Firebase environment variables for build
-ENV NEXT_PUBLIC_FIREBASE_API_KEY="AIzaSyBMqX5XVJzgJMByknFGoj713O_WP1643Ks"
-ENV NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="csbatagi-frontend.firebaseapp.com"
-ENV NEXT_PUBLIC_FIREBASE_DATABASE_URL="https://csbatagi-frontend-default-rtdb.europe-west1.firebasedatabase.app"
-ENV NEXT_PUBLIC_FIREBASE_PROJECT_ID="csbatagi-frontend"
-ENV NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="csbatagi-frontend.firebasestorage.app"
-ENV NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="701187279151"
-ENV NEXT_PUBLIC_FIREBASE_APP_ID="1:701187279151:web:680c964e822077c14639da"
+# CSbatagi account 
+# ENV NEXT_PUBLIC_FIREBASE_API_KEY="AIzaSyBMqX5XVJzgJMByknFGoj713O_WP1643Ks"
+# ENV NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="csbatagi-frontend.firebaseapp.com"
+# ENV NEXT_PUBLIC_FIREBASE_DATABASE_URL="https://csbatagi-frontend-default-rtdb.europe-west1.firebasedatabase.app"
+# ENV NEXT_PUBLIC_FIREBASE_PROJECT_ID="csbatagi-frontend"
+# ENV NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="csbatagi-frontend.firebasestorage.app"
+# ENV NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="701187279151"
+# ENV NEXT_PUBLIC_FIREBASE_APP_ID="1:701187279151:web:680c964e822077c14639da"
+# Onur Atak accoung 
+ENV NEXT_PUBLIC_FIREBASE_API_KEY="AIzaSyAJpmATHX2Zugnm4c1WhU5Kg9iMOruiZBU"
+ENV NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="csbatagirealtimedb.firebaseapp.com"
+ENV NEXT_PUBLIC_FIREBASE_DATABASE_URL="https://csbatagirealtimedb-default-rtdb.europe-west1.firebasedatabase.app"
+ENV NEXT_PUBLIC_FIREBASE_PROJECT_ID="csbatagirealtimedb"
+ENV NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="csbatagirealtimedb.firebasestorage.app"
+ENV NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="408840223663"
+ENV NEXT_PUBLIC_FIREBASE_APP_ID="1:408840223663:web:bdcf576d64b3a1fb6c4d5a"
 
 RUN npm run build
 
