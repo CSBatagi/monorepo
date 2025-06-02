@@ -2,12 +2,12 @@ name: Build and Push Frontend Docker Image
 
 on:
   push:
-    branches: [feature/nextjs-frontend-migration]
+    branches: [main]
     paths:
       - 'frontend-nextjs/**'
       - '.github/workflows/build_new_frontend.yml'
   pull_request:
-    branches: [feature/nextjs-frontend-migration]
+    branches: [main]
     paths:
       - 'frontend-nextjs/**'
   workflow_dispatch:
