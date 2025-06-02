@@ -1,21 +1,21 @@
 {
 	email csbatagi@gmail.com
 }
-# Frontend - serve at csbatagi.com
 csbatagi.com {
-	# Serve static files from the frontend directory
-	root * /srv/frontend
-	file_server {
-		index index.html # Set index.html as the default file
+	handle /test* {
+		reverse_proxy frontend-nextjs:3000
 	}
 
-	# Proxy API requests to the backend
 	handle_path /api/* {
 		reverse_proxy backend:3000
 	}
+
+	root * /srv/frontend
+	file_server {
+		index index.html 
+	}
 }
 
-# Backend API - serve at db2.csbatagi.com  
 db2.csbatagi.com {
 	reverse_proxy backend:3000
 }

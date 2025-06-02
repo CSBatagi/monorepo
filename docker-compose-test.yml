@@ -21,6 +21,14 @@ services:
       - postgres
     networks:
       - test-network
+  frontend-nextjs:
+    restart: unless-stopped 
+    build:
+      context: ./frontend-nextjs
+    networks:
+      - test-network
+    ports:
+      - "3000:3000"  # Expose port 3000 to the host
 
   postgres:
     image: postgres
