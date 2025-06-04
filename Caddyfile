@@ -20,6 +20,6 @@ csbatagi.com {
 
 	root * /srv/frontend
 	file_server {
-		index index.html 
+		index index.html
 	}
 }

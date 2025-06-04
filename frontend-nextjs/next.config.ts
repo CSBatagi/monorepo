@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+
 // If LOCAL_DEV is set to "true", use local settings. Otherwise, use server defaults.
 const isLocal = process.env.LOCAL_DEV === "true";
 
@@ -19,6 +20,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
+    unoptimized: true, // Disable image optimization for Docker/standalone builds
     remotePatterns: [
       {
         protocol: 'https',
