@@ -419,7 +419,7 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
         },
       };
       // 4. POST to worker
-      const resp = await fetch('https://misty-snow-cebf.onur1atak.workers.dev/create-match', {
+      const resp = await fetch('/api/create-match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
