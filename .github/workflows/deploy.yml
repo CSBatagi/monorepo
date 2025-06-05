@@ -34,43 +34,29 @@ jobs:
 
       - name: Create .dns_secrets file
         run: |
-          echo "CLOUDFLARE_API_TOKEN=$CLOUDFLARE_TOKEN" > .dns_secrets
-        env:
-          CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          echo "CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}" > .dns_secrets
+
+      - name: Create .frontend_secrets file
+        run: |
+          echo "MATCHMAKING_TOKEN=${{secrets.AUTH_TOKEN}}" > .frontend_secrets
 
       - name: Create .backend_secrets file
         run: |
-          echo "DB_PASSWORD=$DB_PASSWORD" > .backend_secrets
-          echo "AUTH_TOKEN=$AUTH_TOKEN" >> .backend_secrets
-          echo "DB_USER=$DB_USER" >> .backend_secrets
-          echo "RCON_PASSWORD=$RCON_PASSWORD" >> .backend_secrets
-        env:
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
-          DB_USER: ${{ secrets.DB_USER }}
-          RCON_PASSWORD: ${{ secrets.RCON_PASSWORD }}
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" > .backend_secrets
+          echo "AUTH_TOKEN=${{ secrets.AUTH_TOKEN }}" >> .backend_secrets
+          echo "DB_USER=${{ secrets.DB_USER }}" >> .backend_secrets
+          echo "RCON_PASSWORD=${{ secrets.RCON_PASSWORD }}" >> .backend_secrets
 
       - name: Create .my_sql_secrets file
         run: |
-          echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD" > .my_sql_secrets
-          echo "MYSQL_USER=$MYSQL_USER" >> .my_sql_secrets
-          echo "MYSQL_PASSWORD=$MYSQL_PASSWORD" >> .my_sql_secrets
-        env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-          MYSQL_USER: ${{ secrets.MYSQL_USER }}
-          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > .my_sql_secrets
+          echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> .my_sql_secrets
+          echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> .my_sql_secrets
 
       - name: Create .pg_secrets file
         run: |
-          echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" > .pg_secrets
-          echo "POSTGRES_READONLY_PASSWORD=$POSTGRES_READONLY_PASSWORD" >> .pg_secrets
-        env:
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_READONLY_PASSWORD: ${{ secrets.POSTGRES_READONLY_PASSWORD }}
-
-      - name: Create .hayati_secrets file
-        run: |
-          echo "BOT_TOKEN=$DISCORD_BOT_TOKEN" > .hayati_secrets
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > .pg_secrets
+          echo "POSTGRES_READONLY_PASSWORD=${{ secrets.POSTGRES_READONLY_PASSWORD }}" >> .pg_secrets
 
       - name: Create credentials.json file
         run: |
@@ -84,9 +70,9 @@ jobs:
             ./docker-compose.yml \
             ./.dns_secrets \
             ./.backend_secrets \
+            ./.frontend_secrets \
             ./.my_sql_secrets \
             ./.pg_secrets \
-            ./.hayati_secrets \
             ./credentials.json \
             ${{ secrets.GCP_VM_NAME }}:~/ \
             --ssh-key-expire-after=1m  # Short-lived key for security

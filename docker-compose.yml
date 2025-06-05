@@ -60,6 +60,9 @@ services:
       - db2
     expose:
       - 3000 
+    env_file:
+      - path: .frontend_secrets
+        required: true
 
   postgres:
     image: postgres
