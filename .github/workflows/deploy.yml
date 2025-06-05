@@ -94,7 +94,7 @@ jobs:
         run: |
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
             --command="chmod 600 ~/.dns_secrets ~/.backend_secrets ~/.frontend_secrets ~/.my_sql_secrets ~/.pg_secrets"
-            `
+
       - name: Cleanup local secrets (optional)
         run: rm -f .dns_secrets .backend_secrets .my_sql_secrets .pg_secrets
       - name: Login to GitHub Container Registry
