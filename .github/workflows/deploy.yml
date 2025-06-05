@@ -17,52 +17,55 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Use a larger runner for faster execution if available
+    # runs-on: ubuntu-latest-4-cores  # Uncomment if you have access to larger runners
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # Updated to latest version
+        with:
+          fetch-depth: 2  # Needed for git diff
+
+      - name: Check for changes
+        id: changes
+        run: |
+          echo "backend=$(git diff --name-only HEAD~1 HEAD | grep -q '^backend/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "frontend=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "frontend-nextjs=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "docker-compose=$(git diff --name-only HEAD~1 HEAD | grep -q 'docker-compose.yml\|Caddyfile' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
 
       - name: Authenticate to GCP
         id: auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
+
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
           version: '>= 363.0.0'
 
-      - name: Create .dns_secrets file
+      - name: Create all secret files
         run: |
-          echo "CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}" > .dns_secrets
+            echo "CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}" > .dns_secrets
 
-      - name: Create .frontend_secrets file
-        run: |
-          echo "MATCHMAKING_TOKEN=${{secrets.AUTH_TOKEN}}" > .frontend_secrets
+            echo "MATCHMAKING_TOKEN=${{secrets.AUTH_TOKEN}}" > .frontend_secrets
+          
+            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" > .backend_secrets
+            echo "AUTH_TOKEN=${{ secrets.AUTH_TOKEN }}" >> .backend_secrets
+            echo "DB_USER=${{ secrets.DB_USER }}" >> .backend_secrets
+            echo "RCON_PASSWORD=${{ secrets.RCON_PASSWORD }}" >> .backend_secrets
+          
+            echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > .my_sql_secrets
+            echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> .my_sql_secrets
+            echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> .my_sql_secrets
+          
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > .pg_secrets
+            echo "POSTGRES_READONLY_PASSWORD=${{ secrets.POSTGRES_READONLY_PASSWORD }}" >> .pg_secrets
+          
+            echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
 
-      - name: Create .backend_secrets file
-        run: |
-          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" > .backend_secrets
-          echo "AUTH_TOKEN=${{ secrets.AUTH_TOKEN }}" >> .backend_secrets
-          echo "DB_USER=${{ secrets.DB_USER }}" >> .backend_secrets
-          echo "RCON_PASSWORD=${{ secrets.RCON_PASSWORD }}" >> .backend_secrets
-
-      - name: Create .my_sql_secrets file
-        run: |
-          echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > .my_sql_secrets
-          echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> .my_sql_secrets
-          echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> .my_sql_secrets
-
-      - name: Create .pg_secrets file
-        run: |
-          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > .pg_secrets
-          echo "POSTGRES_READONLY_PASSWORD=${{ secrets.POSTGRES_READONLY_PASSWORD }}" >> .pg_secrets
-
-      - name: Create credentials.json file
-        run: |
-          echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
-
-      - name: Copy files to GCP VM
+      - name: Copy config files to GCP VM
         run: |
           gcloud compute scp \
             --zone=${{ secrets.GCP_ZONE }} \
@@ -75,9 +78,10 @@ jobs:
             ./.pg_secrets \
             ./credentials.json \
             ${{ secrets.GCP_VM_NAME }}:~/ \
-            --ssh-key-expire-after=1m  # Short-lived key for security
+            --ssh-key-expire-after=1m
 
       - name: Copy frontend files to GCP VM
+        if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           gcloud compute scp \
             --zone=${{ secrets.GCP_ZONE }} \
@@ -89,7 +93,8 @@ jobs:
       - name: Set strict permissions on VM
         run: |
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="chmod 600 ~/.dns_secrets ~/.backend_secrets ~/.my_sql_secrets ~/.pg_secrets"
+            --command="chmod 600 ~/.dns_secrets ~/.backend_secrets ~/.frontend_secrets ~/.my_sql_secrets ~/.pg_secrets"
+            `
       - name: Cleanup local secrets (optional)
         run: rm -f .dns_secrets .backend_secrets .my_sql_secrets .pg_secrets
       - name: Login to GitHub Container Registry
@@ -122,7 +127,23 @@ jobs:
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
             --command="sudo cp ~/.docker/config.json /root/.docker/config.json"
 
-      - name: Start containers
+      - name: Update and start containers
         run: |
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="sudo docker compose -f ~/docker-compose.yml up -d --force-recreate"
+          SERVICES_TO_UPDATE=""
+          if [[ "${{ steps.changes.outputs.backend }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE backend"
+          fi
+          if [[ "${{ steps.changes.outputs.frontend-nextjs }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE frontend-nextjs"
+          fi
+          if [[ "${{ steps.changes.outputs.docker-compose }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # If docker-compose changed, restart all services
+            gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
+              --command="sudo docker compose -f ~/docker-compose.yml pull && sudo docker compose -f ~/docker-compose.yml up -d"
+          elif [[ -n "$SERVICES_TO_UPDATE" ]]; then
+            # Only update specific services
+            gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
+              --command="sudo docker compose -f ~/docker-compose.yml pull $SERVICES_TO_UPDATE && sudo docker compose -f ~/docker-compose.yml up -d $SERVICES_TO_UPDATE"
+          else
+            echo "No services need to be updated"
+          fi
