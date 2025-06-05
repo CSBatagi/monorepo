@@ -1,12 +1,5 @@
 {
 	email csbatagi@gmail.com
-	# Use Let's Encrypt as primary, ZeroSSL as fallback
-	acme_ca https://acme-v02.api.letsencrypt.org/directory
-	acme_ca_root https://acme.zerossl.com/v2/DV90
-	# Enable certificate storage optimization
-	storage file_system {
-		root /data/caddy
-	}
 }
 
 csbatagi.com {
