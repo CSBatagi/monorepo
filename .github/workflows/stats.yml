@@ -32,6 +32,11 @@ jobs:
           MW_TOKEN: ${{ secrets.MW_TOKEN }}
         run: cd frontend && node scripts/update-stats.js
 
+      - name: Copy stats JSON to Next.js public/data
+        run: |
+          mkdir -p frontend-nextjs/public/data
+          cp frontend/data/*.json frontend-nextjs/public/data/
+
       - name: Commit and push if changes
         run: |
           git config --local user.email "github-actions@github.com"
