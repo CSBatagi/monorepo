@@ -1,12 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, onAuthStateChanged, getRedirectResult, AuthError } from 'firebase/auth';
+import { User, onAuthStateChanged, getRedirectResult, AuthError, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/lib/firebase'; // Assuming your firebase.ts is in lib
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  emailSignUp: (email: string, pass: string) => Promise<any>;
+  emailSignIn: (email: string, pass: string) => Promise<any>;
+  resendVerificationEmail: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -14,6 +17,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const emailSignUp = async (email: string, pass: string) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+    if (userCredential.user) {
+      await sendEmailVerification(userCredential.user);
+      // You can also add actionCodeSettings here if needed
+    }
+    return userCredential;
+  };
+  
+  const emailSignIn = (email: string, pass: string) => {
+    return signInWithEmailAndPassword(auth, email, pass);
+  };
+
+  const resendVerificationEmail = async () => {
+    if (auth.currentUser) {
+      await sendEmailVerification(auth.currentUser);
+      alert('Verification email sent! Please check your inbox.');
+    } else {
+      throw new Error("No user is currently signed in to resend verification email.");
+    }
+  };
 
   useEffect(() => {
     // Check for redirect result first
@@ -47,8 +72,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
   }, []);
 
+  const value = {
+    user,
+    loading,
+    emailSignUp,
+    emailSignIn,
+    resendVerificationEmail,
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
