@@ -54,7 +54,7 @@ const AttendanceControls: React.FC<AttendanceControlsProps> = ({
     } else if (status === 'not_coming') {
       return 'bg-red-100 text-red-700 hover:bg-red-200 border-red-300';
     } else {
-      return 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-300';
+      return 'bg-gray-200 text-gray-700 border-gray-300 hover:bg-gray-300';
     }
   };
 
@@ -72,7 +72,7 @@ const AttendanceControls: React.FC<AttendanceControlsProps> = ({
       </button>
       <span 
         className={`
-          text-xs font-medium cursor-pointer select-none 
+          text-base font-medium cursor-pointer select-none 
           px-2 py-1 rounded text-center transition-colors duration-150 
           border whitespace-nowrap h-6 flex items-center justify-center w-16
           ${getStatusClasses(currentAttendance)}

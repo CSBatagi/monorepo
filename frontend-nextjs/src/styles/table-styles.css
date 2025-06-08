@@ -15,7 +15,6 @@
     border-collapse: collapse;
     margin: 0;
     font-size: 0.9em;
-    min-width: 1000px; /* Prevent excessive wrapping on small screens */
     background-color: #fff;
     box-shadow: none;
     text-align: left; /* Default text alignment for table */
@@ -164,9 +163,9 @@
     border-right: 1px solid #e5e7eb; /* Match border color */
     /* Ensure player names don't wrap unless necessary */
     white-space: nowrap;
-    width: 1%; /* Let content decide width */
-    min-width: 80px; /* Minimum reasonable width */
-    max-width: 90px; /* Make player name cells narrower (from 220px) */
+    /* width: 1%; */ /* Let content decide width */
+    /* min-width: 80px; */ /* Minimum reasonable width */
+    /* max-width: 90px; */ /* Make player name cells narrower (from 220px) */
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -444,8 +443,7 @@ body.dark-theme #header-home-link h1 {
 
 /* --- Table Styles (Desktop Default) --- */
 th, td {
-    /* Default padding for desktop view */
-    padding: 12px 16px; /* Equivalent to py-3 px-4 */
+    padding: 12px 16px;
     text-align: left;
     vertical-align: middle;
     /* border-bottom will be handled by Tailwind on the table/tbody or specific rules */
