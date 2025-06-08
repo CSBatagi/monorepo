@@ -74,7 +74,7 @@ const AttendanceControls: React.FC<AttendanceControlsProps> = ({
         className={`
           text-base font-medium cursor-pointer select-none 
           px-2 py-1 rounded text-center transition-colors duration-150 
-          border whitespace-nowrap h-6 flex items-center justify-center w-16
+          border whitespace-nowrap h-6 flex items-center justify-center w-20
           ${getStatusClasses(currentAttendance)}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         `}
