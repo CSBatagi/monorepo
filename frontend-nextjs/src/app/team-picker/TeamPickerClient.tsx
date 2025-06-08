@@ -200,6 +200,8 @@ const MapSelection: React.FC<MapSelectionProps> = ({ teamAName, teamBName }) => 
   );
 };
 
+const SERVERACPASS = process.env.NEXT_PUBLIC_SERVERACPASS;
+
 const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
   const { user, loading: authLoading } = useAuth();
   const [teamAPlayers, setTeamAPlayers] = useState<TeamPlayerData>({});
@@ -221,6 +223,11 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
   const [mapsState, setMapsState] = useState<any>({});
   const [creatingMatch, setCreatingMatch] = useState(false);
   const [matchMessage, setMatchMessage] = useState<string | null>(null);
+
+  const [serverModalOpen, setServerModalOpen] = useState(false);
+  const [serverPassword, setServerPassword] = useState('');
+  const [serverMessage, setServerMessage] = useState<string | null>(null);
+  const [creatingServer, setCreatingServer] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -435,6 +442,30 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
       setMatchMessage('Bir hata oluştu: ' + (e?.message || e));
     } finally {
       setCreatingMatch(false);
+    }
+  };
+
+  // --- Server Aç handler ---
+  const handleStartServer = async () => {
+    setServerMessage(null);
+    setCreatingServer(true);
+    try {
+      const resp = await fetch('/api/start-vm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: serverPassword }),
+      });
+      if (!resp.ok) {
+        const err = await resp.text();
+        setServerMessage(`Hata: ${resp.status} - ${err}`);
+        setCreatingServer(false);
+        return;
+      }
+      setServerMessage('Server başarıyla başlatıldı!');
+    } catch (e: any) {
+      setServerMessage('Bir hata oluştu: ' + (e?.message || e));
+    } finally {
+      setCreatingServer(false);
     }
   };
 
@@ -672,20 +703,62 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
           </div>
           {/* Map selection after the graph comparison */}
           <MapSelection teamAName={teamAKabile || 'A'} teamBName={teamBKabile || 'B'} />
-          <div className="flex flex-col items-center mt-4">
-            <button
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={handleCreateMatch}
-              disabled={creatingMatch}
-            >
-              {creatingMatch ? 'Oluşturuluyor...' : 'Maç Yarat'}
-            </button>
+          <div className="flex flex-col items-center mt-4 gap-2">
+            <div className="flex flex-row gap-2">
+              <button
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleCreateMatch}
+                disabled={creatingMatch}
+              >
+                {creatingMatch ? 'Oluşturuluyor...' : 'Maç Yarat'}
+              </button>
+              <button
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => setServerModalOpen(true)}
+                disabled={creatingServer}
+              >
+                {creatingServer ? 'Açılıyor...' : 'Server Aç'}
+              </button>
+            </div>
             {matchMessage && (
               <div className={`mt-2 text-sm ${matchMessage.startsWith('Maç') ? 'text-green-600' : 'text-red-600'}`}>{matchMessage}</div>
+            )}
+            {serverMessage && (
+              <div className={`mt-2 text-sm ${serverMessage.startsWith('Server') ? 'text-green-600' : 'text-red-600'}`}>{serverMessage}</div>
             )}
           </div>
         </div>
       </div>
+      {/* Server Aç Modal */}
+      {serverModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-xs">
+            <h2 className="text-lg font-bold mb-4 text-gray-800">Server Açmak için Şifre</h2>
+            <input
+              type="password"
+              className="w-full border px-3 py-2 rounded mb-4 text-black"
+              placeholder="Şifre"
+              value={serverPassword}
+              onChange={e => setServerPassword(e.target.value)}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+                onClick={async () => {
+                  setServerModalOpen(false);
+                  setServerPassword('');
+                  await handleStartServer();
+                }}
+              >Onayla</button>
+              <button
+                className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded"
+                onClick={() => { setServerModalOpen(false); setServerPassword(''); }}
+              >İptal</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
