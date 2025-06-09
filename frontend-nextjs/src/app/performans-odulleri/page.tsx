@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import React from "react";
+import AwardsListClient from "../../components/AwardsListClient";
 
 interface PlayerAward {
   name: string;
@@ -154,47 +155,25 @@ export default async function PerformansOdulleriPage() {
       {awardsByPeriod.length > 0 && (
         <div className="space-y-8">
           {[...awardsByPeriod].reverse().map(({ period, awards }) => (
-            <div key={period.key} className="border rounded-lg bg-gray-50 shadow-sm p-4">
-              <h3 className="text-2xl font-bold text-blue-700 mb-2">
+            <div key={period.key} className="border rounded-lg bg-white shadow-none p-4">
+              <h3 className="text-2xl font-bold text-blue-700 mb-4">
                 Dönem: {period.displayStart} - {period.displayEnd}
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <h4 className="text-xl font-bold text-green-700 mb-2">En İyi Performans Gösterenler (Top 3)</h4>
+                  <h4 className="text-xl font-bold text-green-700 mb-3">En İyi Performans Gösterenler (Top 3)</h4>
                   {awards.top3.length === 0 ? (
                     <p className="text-gray-500">Bu dönem için en iyi performans gösteren oyuncu bulunmuyor.</p>
                   ) : (
-                    <ul className="list-disc pl-5 space-y-2">
-                      {awards.top3.map((player, i) => {
-                        const p = player as typeof player & { avgHltvDiff: number; avgAdrDiff: number };
-                        return (
-                          <li key={p.name} className="flex items-center space-x-2">
-                            <span className="font-bold text-base text-gray-900 mr-2">{i + 1}.</span>
-                            <span className="font-bold text-green-700 text-lg md:text-xl mr-2">{p.name}</span>
-                            <span className="text-gray-700 text-sm md:text-base">Skor <span className="font-semibold">{p.performanceScore.toFixed(2)}</span> (HLTV Diff: {p.avgHltvDiff.toFixed(2)}, ADR Diff: {p.avgAdrDiff.toFixed(2)}, Maç: {p.gameCount})</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    <AwardsListClient players={awards.top3} color="green" />
                   )}
                 </div>
                 <div>
-                  <h4 className="text-xl font-bold text-red-700 mb-2">En Düşük Performans Gösterenler (Bottom 3)</h4>
+                  <h4 className="text-xl font-bold text-red-700 mb-3">En Düşük Performans Gösterenler (Bottom 3)</h4>
                   {awards.bottom3.length === 0 ? (
                     <p className="text-gray-500">Bu dönem için en düşük performans gösteren oyuncu bulunmuyor.</p>
                   ) : (
-                    <ul className="list-disc pl-5 space-y-2">
-                      {awards.bottom3.map((player, i) => {
-                        const p = player as typeof player & { avgHltvDiff: number; avgAdrDiff: number };
-                        return (
-                          <li key={p.name} className="flex items-center space-x-2">
-                            <span className="font-bold text-base text-gray-900 mr-2">{i + 1}.</span>
-                            <span className="font-bold text-red-700 text-lg md:text-xl mr-2">{p.name}</span>
-                            <span className="text-gray-700 text-sm md:text-base">Skor <span className="font-semibold">{p.performanceScore.toFixed(2)}</span> (HLTV Diff: {p.avgHltvDiff.toFixed(2)}, ADR Diff: {p.avgAdrDiff.toFixed(2)}, Maç: {p.gameCount})</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    <AwardsListClient players={awards.bottom3} color="red" />
                   )}
                 </div>
               </div>
