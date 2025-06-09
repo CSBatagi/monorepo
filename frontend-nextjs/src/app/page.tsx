@@ -45,6 +45,10 @@ export default function Home() {
           <h3 className="mb-2 text-2xl font-bold tracking-tight text-blue-700 group-hover:text-blue-800">Performans Ödülleri</h3>
           <p className="font-normal text-gray-600 group-hover:text-gray-800">İki haftalık periyotlarla oyuncuların gelişimini takip edin.</p>
         </Link>
+        <Link href="/mac-sonuclari" data-page-target="mac-sonuclari" className="landing-tile group block flex flex-col h-48 px-6 py-4 bg-gray-50 rounded-lg border border-gray-200 shadow-md hover:shadow-lg hover:bg-gray-100 hover:border-blue-500 transition duration-200 ease-in-out transform hover:-translate-y-1">
+          <h3 className="mb-2 text-2xl font-bold tracking-tight text-blue-700 group-hover:text-blue-800">Maç Sonuçları</h3>
+          <p className="font-normal text-gray-600 group-hover:text-gray-800">Tüm maçların skorlarını ve oyuncu listesini görüntüleyin.</p>
+        </Link>
       </div>
     </div>
   );

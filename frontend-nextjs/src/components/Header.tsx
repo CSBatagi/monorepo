@@ -7,6 +7,7 @@ import { auth, googleProvider } from '@/lib/firebase'; // Firebase auth and prov
 import { signInWithRedirect, signOut, User, signInWithPopup } from 'firebase/auth';
 import { useState, useEffect } from 'react';
 import LoginModal from './LoginModal'; // Import the modal
+import { usePathname } from 'next/navigation';
 
 const navLinks = [
   { href: "/", label: "Anasayfa" },
@@ -20,12 +21,14 @@ const navLinks = [
   { href: "/season-avg", label: "Sezon Ortalaması" },
   { href: "/duello", label: "Düello" },
   { href: "/performance", label: "Performans Grafikleri" },
+  { href: "/mac-sonuclari", label: "Maç Sonuçları" }, // New link added here
 ];
 
 export default function Header() {
   const { user, loading } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false); // State for modal
+  const pathname = usePathname();
 
   console.log('[Header Debug] User:', user, 'Loading:', loading);
 
@@ -72,14 +75,18 @@ export default function Header() {
               <div className="flex items-center space-x-2 flex-wrap">
                 {navLinks.slice(0, Math.ceil(navLinks.length / 2)).map(link => (
                   <Link key={link.href} href={link.href} legacyBehavior>
-                    <a className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors whitespace-nowrap">{link.label}</a>
+                    <a className={`px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors whitespace-nowrap${pathname === link.href ? ' bg-gray-700' : ''}`}>
+                      {link.label}
+                    </a>
                   </Link>
                 ))}
               </div>
               <div className="flex items-center space-x-2 flex-wrap">
                 {navLinks.slice(Math.ceil(navLinks.length / 2)).map(link => (
               <Link key={link.href} href={link.href} legacyBehavior>
-                    <a className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors whitespace-nowrap">{link.label}</a>
+                    <a className={`px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors whitespace-nowrap${pathname === link.href ? ' bg-gray-700' : ''}`}>
+                      {link.label}
+                    </a>
               </Link>
             ))}
               </div>
@@ -136,7 +143,9 @@ export default function Header() {
           <nav className="md:hidden px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {navLinks.map(link => (
               <Link key={link.href} href={link.href} legacyBehavior>
-                <a onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-700 transition-colors">{link.label}</a>
+                <a onClick={() => setIsMenuOpen(false)} className={`block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-700 transition-colors${pathname === link.href ? ' bg-gray-700' : ''}`}>
+                  {link.label}
+                </a>
               </Link>
             ))}
             <hr className="border-gray-700 my-2"/>
@@ -169,4 +178,4 @@ export default function Header() {
       {isLoginModalOpen && <LoginModal onClose={() => setIsLoginModalOpen(false)} />}
     </>
   );
-} 
+}
