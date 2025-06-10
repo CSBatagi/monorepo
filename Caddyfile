@@ -7,7 +7,7 @@ csbatagi.com {
 		reverse_proxy frontend-nextjs:3000
 	}
 
-	handle_path /api/* {
+	handle_path /backend/* {
 		reverse_proxy backend:3000
 	}
 

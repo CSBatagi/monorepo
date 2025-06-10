@@ -7,7 +7,7 @@ localhost {
     }
 
     # Proxy API requests to the backend
-    handle_path /api/* {
+    handle_path /backend/* {
         reverse_proxy backend-1:3000
     }
     

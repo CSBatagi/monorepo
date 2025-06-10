@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. Forward to real API
-  const apiUrl = 'https://csbatagi.com/api/start-match/';
+  const apiUrl = 'https://csbatagi.com/backend/start-match/';
   let apiResp;
   try {
     apiResp = await fetch(apiUrl, {

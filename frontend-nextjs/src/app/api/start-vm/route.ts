@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Forward to real server start endpoint
-  const apiUrl = 'https://csbatagi.com/api/start-vm/';
+  const apiUrl = 'https://csbatagi.com/backend/start-vm/';
   let apiResp;
   try {
     apiResp = await fetch(apiUrl, {
