@@ -34,7 +34,7 @@ const selectClause = `
           `;
 
 // Season start date (can be passed as environment variable or hardcoded)
-const sezonbaslangic = process.env.SEZON_BASLANGIC || '2025-02-10';
+const sezonbaslangic = process.env.SEZON_BASLANGIC || '2025-06-09';
 
 // SQL Queries
 const queries = {
@@ -239,23 +239,23 @@ const queries = {
         AVG(p1.hltv_rating_2) AS hltv_2,
         AVG(p1.average_damage_per_round) AS adr,
         AVG(p1.kill_death_ratio) AS kd,
-        SUM(p1.mvp_count) AS mvp,
-        SUM(p1.kill_count) AS kills,
-        SUM(p1.death_count) AS deaths,
-        SUM(p1.assist_count) AS assists,
-        SUM(p1.headshot_count) AS headshot_kills,
+        AVG(p1.mvp_count) AS mvp,
+        AVG(p1.kill_count) AS kills,
+        AVG(p1.death_count) AS deaths,
+        AVG(p1.assist_count) AS assists,
+        AVG(p1.headshot_count) AS headshot_kills,
         AVG(p1.headshot_percentage) AS headshot_killratio,
-        SUM(p1.first_kill_count) AS first_kill_count,
-        SUM(p1.first_death_count) AS first_death_count,
-        SUM(p1.bomb_planted_count) AS bomb_planted,
-        SUM(p1.bomb_defused_count) AS bomb_defused,
+        AVG(p1.first_kill_count) AS first_kill_count,
+        AVG(p1.first_death_count) AS first_death_count,
+        AVG(p1.bomb_planted_count) AS bomb_planted,
+        AVG(p1.bomb_defused_count) AS bomb_defused,
         AVG(p1.hltv_rating) AS hltv,
         AVG(p1.kast) AS kast,
-        SUM(p1.utility_damage) AS utl_dmg,
-        SUM(p1.two_kill_count) AS two_kills,
-        SUM(p1.three_kill_count) AS three_kills,
-        SUM(p1.four_kill_count) AS four_kills,
-        SUM(p1.five_kill_count) AS five_kills,
+        AVG(p1.utility_damage) AS utl_dmg,
+        AVG(p1.two_kill_count) AS two_kills,
+        AVG(p1.three_kill_count) AS three_kills,
+        AVG(p1.four_kill_count) AS four_kills,
+        AVG(p1.five_kill_count) AS five_kills,
         COUNT(*) AS matches_in_interval
       FROM players p1
       INNER JOIN matches ON p1.match_checksum = matches.checksum
