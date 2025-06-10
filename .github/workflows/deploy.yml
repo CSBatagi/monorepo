@@ -74,6 +74,7 @@ jobs:
             ./docker-compose.yml \
             ./.dns_secrets \
             ./.backend_secrets \
+            ./.frontend_secrets \
             ./.my_sql_secrets \
             ./.pg_secrets \
             ./credentials.json \
