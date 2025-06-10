@@ -49,6 +49,9 @@ jobs:
       
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
+        env:
+          MATCHMAKING_TOKEN: ${{secrets.AUTH_TOKEN}}
+          SERVERACPASS: ${{ secrets.SERVERACPASS }}
         with:
           context: ./frontend-nextjs
           push: ${{ github.event_name != 'pull_request' }}
