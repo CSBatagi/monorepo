@@ -14,22 +14,22 @@ services:
     env_file:
       - path: .dns_secrets
         required: true
-
-  get5db:
-    image: yobasystems/alpine-mariadb
-    container_name: get5db
-    restart: unless-stopped 
-    environment:
-      - MYSQL_DATABASE=get5
-      - MYSQL_CHARSET=utf8mb4
-      - MYSQL_COLLATION=utf8mb4_general_ci
-    env_file:
-      - path: .my_sql_secrets
-        required: true
-    ports:
-      - 3306:3306
-    volumes:
-      - /srv/mysql:/var/lib/mysql
+  #DB for matchzy
+  # get5db:
+  #   image: yobasystems/alpine-mariadb
+  #   container_name: get5db
+  #   restart: unless-stopped 
+  #   environment:
+  #     - MYSQL_DATABASE=get5
+  #     - MYSQL_CHARSET=utf8mb4
+  #     - MYSQL_COLLATION=utf8mb4_general_ci
+  #   env_file:
+  #     - path: .my_sql_secrets
+  #       required: true
+  #   ports:
+  #     - 3306:3306
+  #   volumes:
+  #     - /srv/mysql:/var/lib/mysql
 
   backend:
     restart: unless-stopped 
