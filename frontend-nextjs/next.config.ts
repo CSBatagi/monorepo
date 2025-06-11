@@ -1,12 +1,15 @@
 import type { NextConfig } from "next";
 
-
 // If LOCAL_DEV is set to "true", use local settings. Otherwise, use server defaults.
 const isLocal = process.env.LOCAL_DEV === "true";
+const currentBasePath = isLocal ? '' : '/test';
 
 const nextConfig: NextConfig = {
   output: isLocal ? undefined : 'standalone',
-  basePath: isLocal ? '' : '/test',
+  basePath: currentBasePath,
+  env: {
+    NEXT_PUBLIC_BASE_PATH: currentBasePath, // Expose basePath to the client
+  },
   eslint: {
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
