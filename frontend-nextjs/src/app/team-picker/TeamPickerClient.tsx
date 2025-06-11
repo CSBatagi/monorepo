@@ -426,7 +426,8 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
         },
       };
       // 4. POST to worker
-      const resp = await fetch('/api/create-match', {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''; // Get basePath from env
+      const resp = await fetch(`${basePath}/api/create-match`, { // Prepend basePath
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -450,7 +451,8 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
     setServerMessage(null);
     setCreatingServer(true);
     try {
-      const resp = await fetch('/api/start-vm', {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''; // Get basePath from env
+      const resp = await fetch(`${basePath}/api/start-vm`, { // Prepend basePath
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: serverPassword }),
@@ -763,4 +765,4 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
   );
 };
 
-export default TeamPickerClient; 
+export default TeamPickerClient;
