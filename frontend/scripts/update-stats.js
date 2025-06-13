@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 // API endpoint configuration
-const API_ENDPOINT = 'https://csbatagi.com/api/execute-query';
+const API_ENDPOINT = 'https://csbatagi.com/backend/execute-query';
 const MW_TOKEN = process.env.MW_TOKEN;
 
 // Define the SQL select clause to be used in queries
