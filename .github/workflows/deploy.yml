@@ -128,15 +128,6 @@ jobs:
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
             --command="sudo cp ~/.docker/config.json /root/.docker/config.json"
 
-      - name: Wait for Build Workflows (Backend and New Frontend)
-        uses: lewagon/wait-on-check-action@v1.3.3
-        with:
-          ref: ${{ github.sha }}
-          # Use regex to match both build-and-publish jobs from different workflows
-          check-regexp: '.*build-and-publish.*'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allowed-conclusions: success,skipped,neutral
-
       - name: Update and start containers
         run: |
           SERVICES_TO_UPDATE=""
