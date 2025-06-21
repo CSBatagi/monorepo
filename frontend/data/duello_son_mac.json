@@ -1,26 +1,32 @@
 {
   "playerRows": [
     "Cago",
+    "HiLLbili",
     "Malawhur",
     "Nerull",
     "Uncle Iroh",
     "candeha",
     "daE",
+    "darbe",
     "drb",
     "ekl1ps",
     "eskisigibi",
+    "sedo",
     "wormik"
   ],
   "playerCols": [
     "Cago",
+    "HiLLbili",
     "Malawhur",
     "Nerull",
     "Uncle Iroh",
     "candeha",
     "daE",
+    "darbe",
     "drb",
     "ekl1ps",
     "eskisigibi",
+    "sedo",
     "wormik"
   ],
   "duels": {
@@ -37,15 +43,23 @@
         "kills": 10,
         "deaths": 5
       },
+      "darbe": {
+        "kills": 7,
+        "deaths": 4
+      },
       "drb": {
+        "kills": 7,
+        "deaths": 4
+      },
+      "ekl1ps": {
+        "kills": 14,
+        "deaths": 14
+      },
+      "eskisigibi": {
         "kills": 0,
         "deaths": 0
       },
-      "ekl1ps": {
-        "kills": 8,
-        "deaths": 5
-      },
-      "eskisigibi": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -54,12 +68,16 @@
         "deaths": 0
       },
       "Nerull": {
-        "kills": 7,
+        "kills": 13,
+        "deaths": 13
+      },
+      "sedo": {
+        "kills": 4,
         "deaths": 6
       },
       "Uncle Iroh": {
-        "kills": 7,
-        "deaths": 7
+        "kills": 15,
+        "deaths": 11
       },
       "wormik": {
         "kills": 8,
@@ -79,15 +97,23 @@
         "kills": 4,
         "deaths": 7
       },
+      "darbe": {
+        "kills": 6,
+        "deaths": 8
+      },
       "drb": {
+        "kills": 6,
+        "deaths": 8
+      },
+      "ekl1ps": {
+        "kills": 10,
+        "deaths": 8
+      },
+      "eskisigibi": {
         "kills": 0,
         "deaths": 0
       },
-      "ekl1ps": {
-        "kills": 4,
-        "deaths": 4
-      },
-      "eskisigibi": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -96,12 +122,16 @@
         "deaths": 0
       },
       "Nerull": {
-        "kills": 7,
-        "deaths": 7
+        "kills": 11,
+        "deaths": 15
+      },
+      "sedo": {
+        "kills": 9,
+        "deaths": 4
       },
       "Uncle Iroh": {
-        "kills": 5,
-        "deaths": 6
+        "kills": 11,
+        "deaths": 14
       },
       "wormik": {
         "kills": 12,
@@ -121,6 +151,10 @@
         "kills": 0,
         "deaths": 0
       },
+      "darbe": {
+        "kills": 3,
+        "deaths": 5
+      },
       "drb": {
         "kills": 3,
         "deaths": 5
@@ -133,11 +167,19 @@
         "kills": 7,
         "deaths": 4
       },
+      "HiLLbili": {
+        "kills": 0,
+        "deaths": 0
+      },
       "Malawhur": {
         "kills": 7,
         "deaths": 8
       },
       "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
         "kills": 0,
         "deaths": 0
       },
@@ -150,18 +192,22 @@
         "deaths": 0
       }
     },
-    "drb": {
+    "darbe": {
       "Cago": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 4,
+        "deaths": 7
       },
       "candeha": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 8,
+        "deaths": 6
       },
       "daE": {
         "kills": 5,
         "deaths": 3
+      },
+      "darbe": {
+        "kills": 0,
+        "deaths": 0
       },
       "drb": {
         "kills": 0,
@@ -172,16 +218,78 @@
         "deaths": 4
       },
       "eskisigibi": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 4,
+        "deaths": 5
+      },
+      "HiLLbili": {
+        "kills": 4,
+        "deaths": 5
       },
       "Malawhur": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 5,
+        "deaths": 6
       },
       "Nerull": {
         "kills": 8,
         "deaths": 7
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 9,
+        "deaths": 6
+      },
+      "wormik": {
+        "kills": 8,
+        "deaths": 4
+      }
+    },
+    "drb": {
+      "Cago": {
+        "kills": 4,
+        "deaths": 7
+      },
+      "candeha": {
+        "kills": 8,
+        "deaths": 6
+      },
+      "daE": {
+        "kills": 5,
+        "deaths": 3
+      },
+      "darbe": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "drb": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 9,
+        "deaths": 4
+      },
+      "eskisigibi": {
+        "kills": 4,
+        "deaths": 5
+      },
+      "HiLLbili": {
+        "kills": 4,
+        "deaths": 5
+      },
+      "Malawhur": {
+        "kills": 5,
+        "deaths": 6
+      },
+      "Nerull": {
+        "kills": 8,
+        "deaths": 7
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
       },
       "Uncle Iroh": {
         "kills": 9,
@@ -194,16 +302,20 @@
     },
     "ekl1ps": {
       "Cago": {
-        "kills": 5,
-        "deaths": 8
+        "kills": 14,
+        "deaths": 14
       },
       "candeha": {
-        "kills": 4,
-        "deaths": 4
+        "kills": 8,
+        "deaths": 10
       },
       "daE": {
         "kills": 0,
         "deaths": 0
+      },
+      "darbe": {
+        "kills": 4,
+        "deaths": 9
       },
       "drb": {
         "kills": 4,
@@ -214,14 +326,22 @@
         "deaths": 0
       },
       "eskisigibi": {
-        "kills": 3,
+        "kills": 13,
         "deaths": 5
       },
+      "HiLLbili": {
+        "kills": 12,
+        "deaths": 1
+      },
       "Malawhur": {
-        "kills": 3,
-        "deaths": 8
+        "kills": 14,
+        "deaths": 19
       },
       "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
         "kills": 0,
         "deaths": 0
       },
@@ -247,15 +367,23 @@
         "kills": 4,
         "deaths": 7
       },
+      "darbe": {
+        "kills": 5,
+        "deaths": 4
+      },
       "drb": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 5,
+        "deaths": 4
       },
       "ekl1ps": {
         "kills": 5,
-        "deaths": 3
+        "deaths": 13
       },
       "eskisigibi": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -264,16 +392,74 @@
         "deaths": 0
       },
       "Nerull": {
-        "kills": 5,
-        "deaths": 11
+        "kills": 8,
+        "deaths": 20
+      },
+      "sedo": {
+        "kills": 4,
+        "deaths": 5
       },
       "Uncle Iroh": {
-        "kills": 1,
-        "deaths": 3
+        "kills": 3,
+        "deaths": 8
       },
       "wormik": {
         "kills": 0,
         "deaths": 4
+      }
+    },
+    "HiLLbili": {
+      "Cago": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "candeha": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "daE": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "darbe": {
+        "kills": 5,
+        "deaths": 4
+      },
+      "drb": {
+        "kills": 5,
+        "deaths": 4
+      },
+      "ekl1ps": {
+        "kills": 1,
+        "deaths": 12
+      },
+      "eskisigibi": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLLbili": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 9,
+        "deaths": 7
+      },
+      "sedo": {
+        "kills": 4,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 7,
+        "deaths": 6
+      },
+      "wormik": {
+        "kills": 0,
+        "deaths": 0
       }
     },
     "Malawhur": {
@@ -289,15 +475,23 @@
         "kills": 8,
         "deaths": 7
       },
+      "darbe": {
+        "kills": 6,
+        "deaths": 5
+      },
       "drb": {
+        "kills": 6,
+        "deaths": 5
+      },
+      "ekl1ps": {
+        "kills": 19,
+        "deaths": 14
+      },
+      "eskisigibi": {
         "kills": 0,
         "deaths": 0
       },
-      "ekl1ps": {
-        "kills": 8,
-        "deaths": 3
-      },
-      "eskisigibi": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -306,12 +500,16 @@
         "deaths": 0
       },
       "Nerull": {
-        "kills": 9,
-        "deaths": 5
+        "kills": 18,
+        "deaths": 9
+      },
+      "sedo": {
+        "kills": 3,
+        "deaths": 8
       },
       "Uncle Iroh": {
-        "kills": 9,
-        "deaths": 8
+        "kills": 14,
+        "deaths": 16
       },
       "wormik": {
         "kills": 7,
@@ -320,16 +518,20 @@
     },
     "Nerull": {
       "Cago": {
-        "kills": 6,
-        "deaths": 7
+        "kills": 13,
+        "deaths": 13
       },
       "candeha": {
-        "kills": 7,
-        "deaths": 7
+        "kills": 15,
+        "deaths": 11
       },
       "daE": {
         "kills": 0,
         "deaths": 0
+      },
+      "darbe": {
+        "kills": 7,
+        "deaths": 8
       },
       "drb": {
         "kills": 7,
@@ -340,14 +542,76 @@
         "deaths": 0
       },
       "eskisigibi": {
-        "kills": 11,
-        "deaths": 5
+        "kills": 20,
+        "deaths": 8
       },
-      "Malawhur": {
-        "kills": 5,
+      "HiLLbili": {
+        "kills": 7,
         "deaths": 9
       },
+      "Malawhur": {
+        "kills": 9,
+        "deaths": 18
+      },
       "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "wormik": {
+        "kills": 0,
+        "deaths": 0
+      }
+    },
+    "sedo": {
+      "Cago": {
+        "kills": 6,
+        "deaths": 4
+      },
+      "candeha": {
+        "kills": 4,
+        "deaths": 9
+      },
+      "daE": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "darbe": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "drb": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "eskisigibi": {
+        "kills": 5,
+        "deaths": 4
+      },
+      "HiLLbili": {
+        "kills": 0,
+        "deaths": 4
+      },
+      "Malawhur": {
+        "kills": 8,
+        "deaths": 3
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
         "kills": 0,
         "deaths": 0
       },
@@ -362,16 +626,20 @@
     },
     "Uncle Iroh": {
       "Cago": {
-        "kills": 7,
-        "deaths": 7
+        "kills": 11,
+        "deaths": 15
       },
       "candeha": {
-        "kills": 6,
-        "deaths": 5
+        "kills": 14,
+        "deaths": 11
       },
       "daE": {
         "kills": 0,
         "deaths": 0
+      },
+      "darbe": {
+        "kills": 6,
+        "deaths": 9
       },
       "drb": {
         "kills": 6,
@@ -382,14 +650,22 @@
         "deaths": 0
       },
       "eskisigibi": {
-        "kills": 3,
-        "deaths": 1
+        "kills": 8,
+        "deaths": 3
+      },
+      "HiLLbili": {
+        "kills": 6,
+        "deaths": 7
       },
       "Malawhur": {
-        "kills": 8,
-        "deaths": 9
+        "kills": 16,
+        "deaths": 14
       },
       "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
         "kills": 0,
         "deaths": 0
       },
@@ -415,6 +691,10 @@
         "kills": 0,
         "deaths": 0
       },
+      "darbe": {
+        "kills": 4,
+        "deaths": 8
+      },
       "drb": {
         "kills": 4,
         "deaths": 8
@@ -427,11 +707,19 @@
         "kills": 4,
         "deaths": 0
       },
+      "HiLLbili": {
+        "kills": 0,
+        "deaths": 0
+      },
       "Malawhur": {
         "kills": 2,
         "deaths": 7
       },
       "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
         "kills": 0,
         "deaths": 0
       },
