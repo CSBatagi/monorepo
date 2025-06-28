@@ -237,11 +237,25 @@ export default function AttendancePage() {
   }
 
   const getCombinedPlayerData = () => {
-    return players.map(p => ({
+    const combined = players.map(p => ({
       ...p,
       attendanceStatus: firebaseAttendance[p.steamId]?.status || 'no_response',
       currentEmoji: firebaseEmojis[p.steamId]?.status || 'normal',
     }));
+
+    // Sort players: 'Adam Evde Yok' at the bottom, rest sorted by name
+    combined.sort((a, b) => {
+      const aIsInactive = a.status === 'Adam Evde Yok';
+      const bIsInactive = b.status === 'Adam Evde Yok';
+
+      if (aIsInactive && !bIsInactive) return 1;
+      if (!aIsInactive && bIsInactive) return -1;
+      
+      // Both are active or both are inactive, sort by name
+      return a.name.localeCompare(b.name);
+    });
+
+    return combined;
   };
 
   const combinedPlayers = getCombinedPlayerData();

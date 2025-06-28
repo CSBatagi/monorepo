@@ -395,9 +395,6 @@ body.dark-theme #header-home-link h1 {
     display: none;
 }
 /* Scoped hidden class for page content only - avoid conflict with Tailwind */
-.page-content .hidden {
-   display: none; /* Use important to override potential inline styles if needed - REMOVED !important */
-}
 
 /* Simple spinner (used for button) */
 .spinner {
