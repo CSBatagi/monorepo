@@ -219,18 +219,6 @@ const queries = {
     WITH season_start_info AS (
       SELECT '${sezonbaslangic}'::date AS seasonstart
     ),
-    match_dates AS (
-      SELECT DISTINCT matches.date::date AS match_date
-      FROM matches
-      WHERE matches.date::date >= (SELECT seasonstart FROM season_start_info)
-      ORDER BY match_date ASC
-    ),
-    player_dates AS (
-      SELECT DISTINCT p1.steam_id, matches.date::date AS match_date
-      FROM players p1
-      INNER JOIN matches ON p1.match_checksum = matches.checksum
-      WHERE matches.date::date >= (SELECT seasonstart FROM season_start_info)
-    ),
     player_stats_per_date AS (
       SELECT
         p1.steam_id,
@@ -262,35 +250,44 @@ const queries = {
       WHERE matches.date::date >= (SELECT seasonstart FROM season_start_info)
       GROUP BY p1.steam_id, matches.date::date
     ),
+    all_player_stats_per_date AS (
+      SELECT
+        p1.steam_id,
+        matches.date::date AS match_date,
+        AVG(p1.hltv_rating_2) AS hltv_2,
+        AVG(p1.average_damage_per_round) AS adr
+      FROM players p1
+      INNER JOIN matches ON p1.match_checksum = matches.checksum
+      GROUP BY p1.steam_id, matches.date::date
+    ),
     prev_10_dates AS (
       SELECT
-        ps.steam_id,
-        ps.match_date,
+        psd.steam_id,
+        psd.match_date,
         (
           SELECT array_agg(prev.match_date ORDER BY prev.match_date DESC)
           FROM (
-            SELECT DISTINCT matches.date::date AS match_date
+            SELECT DISTINCT m.date::date AS match_date
             FROM players p
-            INNER JOIN matches ON p.match_checksum = matches.checksum
-            WHERE p.steam_id = ps.steam_id
-              AND matches.date::date < ps.match_date
-            ORDER BY matches.date::date DESC
+            INNER JOIN matches m ON p.match_checksum = m.checksum
+            WHERE p.steam_id = psd.steam_id
+              AND m.date::date < psd.match_date
+            ORDER BY m.date::date DESC
             LIMIT 10
           ) prev
         ) AS prev_dates
-      FROM player_stats_per_date ps
+      FROM player_stats_per_date psd
     ),
     prev_10_agg AS (
       SELECT
-        ps.steam_id,
-        ps.match_date,
-        AVG(prev_stats.hltv_2) AS hltv_2_10,
-        AVG(prev_stats.adr) AS adr_10
-      FROM player_stats_per_date ps
-      JOIN prev_10_dates p10 ON ps.steam_id = p10.steam_id AND ps.match_date = p10.match_date
-      LEFT JOIN player_stats_per_date prev_stats
-        ON prev_stats.steam_id = ps.steam_id AND prev_stats.match_date = ANY(p10.prev_dates)
-      GROUP BY ps.steam_id, ps.match_date
+        p10.steam_id,
+        p10.match_date,
+        AVG(hist.hltv_2) AS hltv_2_10,
+        AVG(hist.adr) AS adr_10
+      FROM prev_10_dates p10
+      LEFT JOIN all_player_stats_per_date hist
+        ON hist.steam_id = p10.steam_id AND hist.match_date = ANY(p10.prev_dates)
+      GROUP BY p10.steam_id, p10.match_date
     ),
     clutches_stats AS (
       SELECT
