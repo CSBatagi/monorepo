@@ -274,7 +274,6 @@ const queries = {
             INNER JOIN matches ON p.match_checksum = matches.checksum
             WHERE p.steam_id = ps.steam_id
               AND matches.date::date < ps.match_date
-              AND matches.date::date >= (SELECT seasonstart FROM season_start_info)
             ORDER BY matches.date::date DESC
             LIMIT 10
           ) prev
