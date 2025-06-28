@@ -17,66 +17,46 @@ interface MacSonuclariClientProps {
   dates: string[];
 }
 
-function getTeamsAndScores(maps: Record<string, MapData>) {
+function getMainLeagueTeams(maps: Record<string, MapData>) {
+  // Collect all unique team names
   const teamNames = new Set<string>();
-  let teamAWins = 0;
-  let teamBWins = 0;
-  let teamA = '';
-  let teamB = '';
-  
-  // First, collect all team names from the maps
   Object.values(maps).forEach((map: any) => {
     if (map.team1?.name) teamNames.add(map.team1.name);
     if (map.team2?.name) teamNames.add(map.team2.name);
   });
-  
-  // Convert Set to Array for easy access
-  const teamNamesArray = Array.from(teamNames);
-  if (teamNamesArray.length >= 2) {
-    teamA = teamNamesArray[0];
-    teamB = teamNamesArray[1];
+  // Remove generic names
+  const GENERIC_NAMES = ["Team A", "Team B"];
+  const leagueTeamNames = Array.from(teamNames).filter(
+    name => !GENERIC_NAMES.includes(name)
+  );
+  // If we have at least two non-generic names, use them; otherwise, fall back to generic
+  if (leagueTeamNames.length >= 2) {
+    return leagueTeamNames.slice(0, 2);
+  } else {
+    // Fallback: use whatever is available (could be only casual games)
+    return Array.from(teamNames).slice(0, 2);
   }
-  
-  // Count wins for each map by comparing scores
-  Object.values(maps).forEach((map: any) => {
-    if (!map.team1 || !map.team2) return;
-    
-    // Get the actual scores from the team objects
-    const team1Score = map.team1.score;
-    const team2Score = map.team2.score;
-    
-    // Determine which team is which
-    const team1IsTeamA = map.team1.name === teamA;
-    const team2IsTeamA = map.team2.name === teamA;
-    const team1IsTeamB = map.team1.name === teamB;
-    const team2IsTeamB = map.team2.name === teamB;
-    
-    // Calculate who won the map
-    if (team1Score > team2Score) {
-      // Team 1 won this map
-      if (team1IsTeamA) teamAWins++;
-      if (team1IsTeamB) teamBWins++;
-    } else if (team2Score > team1Score) {
-      // Team 2 won this map
-      if (team2IsTeamA) teamAWins++;
-      if (team2IsTeamB) teamBWins++;
-    }
-    // If scores are equal (draw), do not increment wins
-  });
-  
-  return {
-    teamA,
-    teamB,
-    teamAWins,
-    teamBWins
-  };
 }
 
 export default function MacSonuclariClient({ allData, dates }: MacSonuclariClientProps) {
   const [selectedDate, setSelectedDate] = useState(dates[0] || "");
   const maps = allData[selectedDate]?.maps || {};
   const mapNames = Object.keys(maps);
-  const { teamA, teamB, teamAWins, teamBWins } = getTeamsAndScores(maps);
+  // Use new logic to get main league teams
+  const [teamA, teamB] = getMainLeagueTeams(maps);
+  // Count wins for main league teams only
+  let teamAWins = 0;
+  let teamBWins = 0;
+  for (const map of Object.values(maps) as MapData[]) {
+    if (!map.team1 || !map.team2) continue;
+    const team1Score = map.team1.score;
+    const team2Score = map.team2.score;
+    if (map.team1.name === teamA && team1Score > team2Score) teamAWins++;
+    if (map.team2.name === teamA && team2Score > team1Score) teamAWins++;
+    if (map.team1.name === teamB && team1Score > team2Score) teamBWins++;
+    if (map.team2.name === teamB && team2Score > team1Score) teamBWins++;
+  }
+  // Get player lists for main league teams
   let teamAPlayers: any[] = [];
   let teamBPlayers: any[] = [];
   for (const map of Object.values(maps) as MapData[]) {
