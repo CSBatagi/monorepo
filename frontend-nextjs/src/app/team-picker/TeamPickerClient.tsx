@@ -594,7 +594,13 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
     if (isLoadingTeam) {
       return <p className="text-sm text-gray-500">Loading {teamName}...</p>;
     }
-    const playerArray = Object.values(players);
+    const playerArray = Object.values(players)
+      .slice() // copy to avoid mutating state
+      .sort((a, b) => {
+        const aHLTV2 = a.stats?.L10_HLTV2 ?? -Infinity;
+        const bHLTV2 = b.stats?.L10_HLTV2 ?? -Infinity;
+        return bHLTV2 - aHLTV2;
+      });
     if (playerArray.length === 0) {
       return <div className={`${bgColor} rounded-lg p-3`}>
         <KabileSelect value={kabileValue} onChange={setKabile} kabileList={kabileList} loading={loadingKabile} label="Kabile" />
