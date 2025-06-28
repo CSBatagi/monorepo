@@ -64,7 +64,7 @@ export default function Header() {
           <Link href="/" legacyBehavior>
             <a className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
               <Image src="/images/BatakLogo.png" alt="CS2 Stats Hub Logo" width={40} height={40} className="rounded-full" />
-              <span className="text-xl font-bold tracking-tight">CS2 Stats Hub</span>
+              <span className="text-xl font-bold tracking-tight">CS Batağı</span>
             </a>
           </Link>
           </div>

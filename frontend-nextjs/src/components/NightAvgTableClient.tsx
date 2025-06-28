@@ -11,6 +11,8 @@ const nightAvgColumns = [
   { key: "HLTV 2", label: "HLTV2", decimals: 2, isBadge: true, heatmap: true },
   { key: "ADR", label: "ADR", decimals: 1, isBadge: true, heatmap: true },
   { key: "K/D", label: "K/D", decimals: 2, isBadge: true, heatmap: true },
+  { key: "HLTV2 DIFF", label: "HLTV2 DIFF", decimals: 2, heatmap: true, isBadge: true },
+  { key: "ADR DIFF", label: "ADR DIFF", decimals: 1, heatmap: true, isBadge: true },
   { key: "MVP", label: "MVP", decimals: 2 },
   { key: "Kills", label: "Kills", decimals: 1 },
   { key: "Deaths", label: "Deaths", decimals: 1 },
@@ -29,8 +31,6 @@ const nightAvgColumns = [
   { key: "4 kills", label: "4 kills", decimals: 1 },
   { key: "5 kills", label: "5 kills", decimals: 1 },
   { key: "Nr of Matches", label: "Nr of Matches", decimals: 0 },
-  { key: "HLTV2 DIFF", label: "HLTV2 DIFF", decimals: 2 },
-  { key: "ADR DIFF", label: "ADR DIFF", decimals: 1 },
   { key: "Clutch Opportunity", label: "Clutch Opportunity", decimals: 0 },
   { key: "Clutches Won", label: "Clutches Won", decimals: 0 },
 ];

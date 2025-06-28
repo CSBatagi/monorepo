@@ -229,6 +229,9 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
   const [serverMessage, setServerMessage] = useState<string | null>(null);
   const [creatingServer, setCreatingServer] = useState(false);
 
+  const [stopServerModalOpen, setStopServerModalOpen] = useState(false);
+  const [stoppingServer, setStoppingServer] = useState(false);
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -468,6 +471,31 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
       setServerMessage('Bir hata oluştu: ' + (e?.message || e));
     } finally {
       setCreatingServer(false);
+    }
+  };
+
+  // --- Stop Server handler ---
+  const handleStopServer = async () => {
+    setServerMessage(null);
+    setStoppingServer(true);
+    try {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+      const resp = await fetch(`${basePath}/api/stop-vm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: serverPassword }),
+      });
+      if (!resp.ok) {
+        const err = await resp.text();
+        setServerMessage(`Hata: ${resp.status} - ${err}`);
+        setStoppingServer(false);
+        return;
+      }
+      setServerMessage('Server başarıyla kapatıldı!');
+    } catch (e: any) {
+      setServerMessage('Bir hata oluştu: ' + (e?.message || e));
+    } finally {
+      setStoppingServer(false);
     }
   };
 
@@ -727,6 +755,13 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
               >
                 {creatingServer ? 'Açılıyor...' : 'Server Aç'}
               </button>
+              <button
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => setStopServerModalOpen(true)}
+                disabled={stoppingServer}
+              >
+                {stoppingServer ? 'Kapatılıyor...' : 'Server Kapat'}
+              </button>
             </div>
             {matchMessage && (
               <div className={`mt-2 text-sm ${matchMessage.startsWith('Maç') ? 'text-green-600' : 'text-red-600'}`}>{matchMessage}</div>
@@ -762,6 +797,36 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
               <button
                 className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded"
                 onClick={() => { setServerModalOpen(false); setServerPassword(''); }}
+              >İptal</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Server Kapat Modal */}
+      {stopServerModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-xs">
+            <h2 className="text-lg font-bold mb-4 text-gray-800">Server Kapatmak için Şifre</h2>
+            <input
+              type="password"
+              className="w-full border px-3 py-2 rounded mb-4 text-black"
+              placeholder="Şifre"
+              value={serverPassword}
+              onChange={e => setServerPassword(e.target.value)}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded"
+                onClick={async () => {
+                  setStopServerModalOpen(false);
+                  setServerPassword('');
+                  await handleStopServer();
+                }}
+              >Onayla</button>
+              <button
+                className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded"
+                onClick={() => { setStopServerModalOpen(false); setServerPassword(''); }}
               >İptal</button>
             </div>
           </div>
