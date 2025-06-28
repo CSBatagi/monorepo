@@ -265,16 +265,15 @@ const queries = {
         psd.steam_id,
         psd.match_date,
         (
-          SELECT array_agg(prev.match_date ORDER BY prev.match_date DESC)
+          SELECT array_agg(dates.match_date ORDER BY dates.match_date DESC)
           FROM (
+            -- Universal last 10 match dates before the current match_date
             SELECT DISTINCT m.date::date AS match_date
-            FROM players p
-            INNER JOIN matches m ON p.match_checksum = m.checksum
-            WHERE p.steam_id = psd.steam_id
-              AND m.date::date < psd.match_date
+            FROM matches m
+            WHERE m.date::date < psd.match_date
             ORDER BY m.date::date DESC
             LIMIT 10
-          ) prev
+          ) dates
         ) AS prev_dates
       FROM player_stats_per_date psd
     ),
