@@ -70,6 +70,11 @@
     "status": "Aktif Oyuncu"
   },
   {
+    "name": "regarnur",
+    "steamId": "76561198155880054",
+    "status": "Aktif Oyuncu"
+  },
+  {
     "name": "sedo",
     "steamId": "76561198995435616",
     "status": "Aktif Oyuncu"
@@ -108,10 +113,5 @@
     "name": "neola",
     "steamId": "76561198253166383",
     "status": "Adam Evde Yok"
-  },
-  {
-    "name": "regarnur",
-    "steamId": "76561198155880054",
-    "status": "Aktif Oyuncu"
   }
 ] 
