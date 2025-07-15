@@ -1,331 +1,131 @@
 {
   "playerRows": [
     "Cago",
-    "HiLLbili",
+    "Malawhur",
     "Nerull",
     "Titus",
-    "bekenbaver",
+    "bobinaj",
     "candeha",
     "darbe",
     "ekl1ps",
-    "regarnur",
-    "sedo"
+    "mersido",
+    "sedo",
+    "wormik"
   ],
   "playerCols": [
     "Cago",
-    "HiLLbili",
+    "Malawhur",
     "Nerull",
     "Titus",
-    "bekenbaver",
+    "bobinaj",
     "candeha",
     "darbe",
     "ekl1ps",
-    "regarnur",
-    "sedo"
+    "mersido",
+    "sedo",
+    "wormik"
   ],
   "duels": {
-    "bekenbaver": {
-      "bekenbaver": {
+    "bobinaj": {
+      "bobinaj": {
         "kills": 0,
         "deaths": 0
       },
       "Cago": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "candeha": {
-        "kills": 1,
-        "deaths": 4
-      },
-      "darbe": {
-        "kills": 1,
-        "deaths": 9
-      },
-      "ekl1ps": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "HiLLbili": {
-        "kills": 1,
-        "deaths": 6
-      },
-      "Nerull": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "regarnur": {
-        "kills": 1,
-        "deaths": 7
-      },
-      "sedo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Titus": {
-        "kills": 2,
-        "deaths": 6
-      }
-    },
-    "Cago": {
-      "bekenbaver": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Cago": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "candeha": {
-        "kills": 6,
-        "deaths": 3
-      },
-      "darbe": {
-        "kills": 6,
-        "deaths": 5
-      },
-      "ekl1ps": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "HiLLbili": {
-        "kills": 11,
-        "deaths": 8
-      },
-      "Nerull": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "regarnur": {
         "kills": 10,
-        "deaths": 3
-      },
-      "sedo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Titus": {
-        "kills": 8,
-        "deaths": 4
-      }
-    },
-    "candeha": {
-      "bekenbaver": {
-        "kills": 4,
-        "deaths": 1
-      },
-      "Cago": {
-        "kills": 3,
-        "deaths": 6
-      },
-      "candeha": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "darbe": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "ekl1ps": {
-        "kills": 4,
-        "deaths": 15
-      },
-      "HiLLbili": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Nerull": {
-        "kills": 4,
-        "deaths": 6
-      },
-      "regarnur": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "sedo": {
-        "kills": 7,
-        "deaths": 8
-      },
-      "Titus": {
-        "kills": 0,
-        "deaths": 0
-      }
-    },
-    "darbe": {
-      "bekenbaver": {
-        "kills": 9,
-        "deaths": 1
-      },
-      "Cago": {
-        "kills": 5,
-        "deaths": 6
-      },
-      "candeha": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "darbe": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "ekl1ps": {
-        "kills": 7,
-        "deaths": 8
-      },
-      "HiLLbili": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Nerull": {
-        "kills": 8,
-        "deaths": 9
-      },
-      "regarnur": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "sedo": {
-        "kills": 5,
-        "deaths": 10
-      },
-      "Titus": {
-        "kills": 0,
-        "deaths": 0
-      }
-    },
-    "ekl1ps": {
-      "bekenbaver": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Cago": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "candeha": {
-        "kills": 15,
-        "deaths": 4
-      },
-      "darbe": {
-        "kills": 8,
-        "deaths": 7
-      },
-      "ekl1ps": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "HiLLbili": {
-        "kills": 8,
-        "deaths": 6
-      },
-      "Nerull": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "regarnur": {
-        "kills": 8,
-        "deaths": 8
-      },
-      "sedo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Titus": {
-        "kills": 6,
-        "deaths": 5
-      }
-    },
-    "HiLLbili": {
-      "bekenbaver": {
-        "kills": 6,
-        "deaths": 1
-      },
-      "Cago": {
-        "kills": 8,
         "deaths": 11
       },
       "candeha": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 6,
+        "deaths": 11
       },
       "darbe": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 7,
+        "deaths": 9
       },
       "ekl1ps": {
-        "kills": 6,
-        "deaths": 8
-      },
-      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
-      "Nerull": {
-        "kills": 5,
-        "deaths": 6
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
       },
-      "regarnur": {
+      "mersido": {
+        "kills": 6,
+        "deaths": 11
+      },
+      "Nerull": {
         "kills": 0,
         "deaths": 0
       },
       "sedo": {
-        "kills": 11,
-        "deaths": 6
+        "kills": 7,
+        "deaths": 11
       },
       "Titus": {
         "kills": 0,
         "deaths": 0
-      }
-    },
-    "Nerull": {
-      "bekenbaver": {
+      },
+      "wormik": {
         "kills": 0,
         "deaths": 0
+      }
+    },
+    "Cago": {
+      "bobinaj": {
+        "kills": 11,
+        "deaths": 10
       },
       "Cago": {
         "kills": 0,
         "deaths": 0
       },
       "candeha": {
-        "kills": 6,
-        "deaths": 4
-      },
-      "darbe": {
-        "kills": 9,
-        "deaths": 8
-      },
-      "ekl1ps": {
         "kills": 0,
         "deaths": 0
       },
-      "HiLLbili": {
+      "darbe": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 11,
+        "deaths": 9
+      },
+      "Malawhur": {
+        "kills": 16,
+        "deaths": 6
+      },
+      "mersido": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 20,
+        "deaths": 7
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Titus": {
         "kills": 6,
         "deaths": 5
       },
-      "Nerull": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "regarnur": {
-        "kills": 4,
-        "deaths": 8
-      },
-      "sedo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Titus": {
-        "kills": 10,
-        "deaths": 4
+      "wormik": {
+        "kills": 8,
+        "deaths": 3
       }
     },
-    "regarnur": {
-      "bekenbaver": {
-        "kills": 7,
-        "deaths": 1
+    "candeha": {
+      "bobinaj": {
+        "kills": 11,
+        "deaths": 6
       },
       "Cago": {
-        "kills": 3,
-        "deaths": 10
+        "kills": 0,
+        "deaths": 0
       },
       "candeha": {
         "kills": 0,
@@ -336,102 +136,386 @@
         "deaths": 0
       },
       "ekl1ps": {
-        "kills": 8,
-        "deaths": 8
+        "kills": 9,
+        "deaths": 16
       },
-      "HiLLbili": {
+      "Malawhur": {
+        "kills": 12,
+        "deaths": 6
+      },
+      "mersido": {
         "kills": 0,
         "deaths": 0
       },
       "Nerull": {
         "kills": 8,
-        "deaths": 4
+        "deaths": 12
       },
-      "regarnur": {
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Titus": {
+        "kills": 5,
+        "deaths": 2
+      },
+      "wormik": {
+        "kills": 9,
+        "deaths": 1
+      }
+    },
+    "darbe": {
+      "bobinaj": {
+        "kills": 9,
+        "deaths": 7
+      },
+      "Cago": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "candeha": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "darbe": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 9,
+        "deaths": 6
+      },
+      "Malawhur": {
+        "kills": 8,
+        "deaths": 12
+      },
+      "mersido": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 11,
+        "deaths": 15
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Titus": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "wormik": {
+        "kills": 4,
+        "deaths": 3
+      }
+    },
+    "ekl1ps": {
+      "bobinaj": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Cago": {
+        "kills": 9,
+        "deaths": 11
+      },
+      "candeha": {
+        "kills": 16,
+        "deaths": 9
+      },
+      "darbe": {
+        "kills": 6,
+        "deaths": 9
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "mersido": {
+        "kills": 12,
+        "deaths": 7
+      },
+      "Nerull": {
         "kills": 0,
         "deaths": 0
       },
       "sedo": {
-        "kills": 3,
-        "deaths": 10
+        "kills": 7,
+        "deaths": 12
       },
       "Titus": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "wormik": {
+        "kills": 0,
+        "deaths": 0
+      }
+    },
+    "Malawhur": {
+      "bobinaj": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Cago": {
+        "kills": 6,
+        "deaths": 16
+      },
+      "candeha": {
+        "kills": 6,
+        "deaths": 12
+      },
+      "darbe": {
+        "kills": 12,
+        "deaths": 8
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "mersido": {
+        "kills": 6,
+        "deaths": 6
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 10,
+        "deaths": 11
+      },
+      "Titus": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "wormik": {
+        "kills": 0,
+        "deaths": 0
+      }
+    },
+    "mersido": {
+      "bobinaj": {
+        "kills": 11,
+        "deaths": 6
+      },
+      "Cago": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "candeha": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "darbe": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 7,
+        "deaths": 12
+      },
+      "Malawhur": {
+        "kills": 6,
+        "deaths": 6
+      },
+      "mersido": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 3,
+        "deaths": 12
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Titus": {
+        "kills": 1,
+        "deaths": 3
+      },
+      "wormik": {
+        "kills": 3,
+        "deaths": 3
+      }
+    },
+    "Nerull": {
+      "bobinaj": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Cago": {
+        "kills": 7,
+        "deaths": 20
+      },
+      "candeha": {
+        "kills": 12,
+        "deaths": 8
+      },
+      "darbe": {
+        "kills": 15,
+        "deaths": 11
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "mersido": {
+        "kills": 12,
+        "deaths": 3
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 10,
+        "deaths": 9
+      },
+      "Titus": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "wormik": {
         "kills": 0,
         "deaths": 0
       }
     },
     "sedo": {
-      "bekenbaver": {
-        "kills": 0,
-        "deaths": 0
+      "bobinaj": {
+        "kills": 11,
+        "deaths": 7
       },
       "Cago": {
         "kills": 0,
         "deaths": 0
       },
       "candeha": {
-        "kills": 8,
-        "deaths": 7
+        "kills": 0,
+        "deaths": 0
       },
       "darbe": {
-        "kills": 10,
-        "deaths": 5
+        "kills": 0,
+        "deaths": 0
       },
       "ekl1ps": {
+        "kills": 12,
+        "deaths": 7
+      },
+      "Malawhur": {
+        "kills": 11,
+        "deaths": 10
+      },
+      "mersido": {
         "kills": 0,
         "deaths": 0
-      },
-      "HiLLbili": {
-        "kills": 6,
-        "deaths": 11
       },
       "Nerull": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "regarnur": {
-        "kills": 10,
-        "deaths": 3
+        "kills": 9,
+        "deaths": 10
       },
       "sedo": {
         "kills": 0,
         "deaths": 0
       },
       "Titus": {
+        "kills": 4,
+        "deaths": 1
+      },
+      "wormik": {
         "kills": 9,
         "deaths": 2
       }
     },
     "Titus": {
-      "bekenbaver": {
-        "kills": 6,
-        "deaths": 2
-      },
-      "Cago": {
-        "kills": 4,
-        "deaths": 8
-      },
-      "candeha": {
+      "bobinaj": {
         "kills": 0,
         "deaths": 0
+      },
+      "Cago": {
+        "kills": 5,
+        "deaths": 6
+      },
+      "candeha": {
+        "kills": 2,
+        "deaths": 5
       },
       "darbe": {
         "kills": 0,
         "deaths": 0
       },
       "ekl1ps": {
-        "kills": 5,
-        "deaths": 6
-      },
-      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
-      "Nerull": {
-        "kills": 4,
-        "deaths": 10
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
       },
-      "regarnur": {
+      "mersido": {
+        "kills": 3,
+        "deaths": 1
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 1,
+        "deaths": 4
+      },
+      "Titus": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "wormik": {
+        "kills": 0,
+        "deaths": 0
+      }
+    },
+    "wormik": {
+      "bobinaj": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Cago": {
+        "kills": 3,
+        "deaths": 8
+      },
+      "candeha": {
+        "kills": 1,
+        "deaths": 9
+      },
+      "darbe": {
+        "kills": 3,
+        "deaths": 4
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "mersido": {
+        "kills": 3,
+        "deaths": 3
+      },
+      "Nerull": {
         "kills": 0,
         "deaths": 0
       },
@@ -440,6 +524,10 @@
         "deaths": 9
       },
       "Titus": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "wormik": {
         "kills": 0,
         "deaths": 0
       }
