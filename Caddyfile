@@ -3,16 +3,11 @@
 }
 
 csbatagi.com {
-	handle /test* {
-		reverse_proxy frontend-nextjs:3000
-	}
-
 	handle_path /backend/* {
 		reverse_proxy backend:3000
 	}
 
-	root * /srv/frontend
-	file_server {
-		index index.html
+	handle {
+		reverse_proxy frontend-nextjs:3000
 	}
 }

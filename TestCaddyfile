@@ -1,17 +1,9 @@
 localhost {
-    # Serve static files from the frontend directory
-    root * /srv/frontend
-    
-    file_server {
-        index index.html
-    }
-
-    # Proxy API requests to the backend
     handle_path /backend/* {
         reverse_proxy backend-1:3000
     }
     
-    handle /test* {
+    handle {
 		reverse_proxy frontend-nextjs:3000
 	}
     
