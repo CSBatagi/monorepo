@@ -3,7 +3,6 @@
 }
 
 csbatagi.com {
-	
 	handle_path /backend/* {
 		reverse_proxy backend:3000
 	}
