@@ -50,7 +50,6 @@ services:
     image: caddy:latest
     container_name: caddy-reverse-proxy
     volumes:
-      - ./frontend:/srv/frontend # Mount frontend files
       - ./TestCaddyfile:/etc/caddy/Caddyfile
 
     ports:
