@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 // If LOCAL_DEV is set to "true", use local settings. Otherwise, use server defaults.
 const isLocal = process.env.LOCAL_DEV === "true";
-const currentBasePath = isLocal ? '' : '/test';
+const currentBasePath = '';
 
 const nextConfig: NextConfig = {
   output: isLocal ? undefined : 'standalone',
