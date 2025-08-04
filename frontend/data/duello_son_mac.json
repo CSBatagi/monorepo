@@ -1,30 +1,26 @@
 {
   "playerRows": [
     "Cago",
+    "Cavid-20",
     "Malawhur",
     "Nerull",
     "Uncle Iroh",
     "bekenbaver",
     "bobinaj",
     "candeha",
-    "daE",
-    "darbe",
-    "ekl1ps",
-    "sedo",
+    "mersido",
     "wormik"
   ],
   "playerCols": [
     "Cago",
+    "Cavid-20",
     "Malawhur",
     "Nerull",
     "Uncle Iroh",
     "bekenbaver",
     "bobinaj",
     "candeha",
-    "daE",
-    "darbe",
-    "ekl1ps",
-    "sedo",
+    "mersido",
     "wormik"
   ],
   "duels": {
@@ -34,144 +30,120 @@
         "deaths": 0
       },
       "bobinaj": {
-        "kills": 0,
-        "deaths": 4
+        "kills": 1,
+        "deaths": 8
       },
       "Cago": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 2,
+        "deaths": 9
       },
       "candeha": {
         "kills": 0,
         "deaths": 0
       },
-      "daE": {
-        "kills": 2,
-        "deaths": 7
+      "Cavid-20": {
+        "kills": 1,
+        "deaths": 5
       },
-      "darbe": {
-        "kills": 2,
-        "deaths": 2
-      },
-      "ekl1ps": {
+      "Malawhur": {
         "kills": 0,
         "deaths": 0
       },
-      "Malawhur": {
-        "kills": 1,
-        "deaths": 5
+      "mersido": {
+        "kills": 0,
+        "deaths": 0
       },
       "Nerull": {
         "kills": 0,
         "deaths": 0
       },
-      "sedo": {
-        "kills": 0,
-        "deaths": 8
-      },
       "Uncle Iroh": {
-        "kills": 2,
-        "deaths": 5
+        "kills": 4,
+        "deaths": 6
       },
       "wormik": {
         "kills": 0,
-        "deaths": 0
+        "deaths": 6
       }
     },
     "bobinaj": {
       "bekenbaver": {
-        "kills": 4,
-        "deaths": 0
+        "kills": 8,
+        "deaths": 1
       },
       "bobinaj": {
         "kills": 0,
         "deaths": 0
       },
       "Cago": {
-        "kills": 4,
-        "deaths": 3
+        "kills": 0,
+        "deaths": 0
       },
       "candeha": {
         "kills": 4,
-        "deaths": 2
+        "deaths": 4
       },
-      "daE": {
+      "Cavid-20": {
         "kills": 0,
         "deaths": 0
-      },
-      "darbe": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "ekl1ps": {
-        "kills": 11,
-        "deaths": 7
       },
       "Malawhur": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 4,
+        "deaths": 4
+      },
+      "mersido": {
+        "kills": 7,
+        "deaths": 6
       },
       "Nerull": {
-        "kills": 4,
-        "deaths": 5
-      },
-      "sedo": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 5,
+        "deaths": 7
       },
       "Uncle Iroh": {
         "kills": 0,
         "deaths": 0
       },
       "wormik": {
-        "kills": 5,
-        "deaths": 4
+        "kills": 0,
+        "deaths": 0
       }
     },
     "Cago": {
       "bekenbaver": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 9,
+        "deaths": 2
       },
       "bobinaj": {
-        "kills": 3,
-        "deaths": 4
+        "kills": 0,
+        "deaths": 0
       },
       "Cago": {
         "kills": 0,
         "deaths": 0
       },
       "candeha": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 11,
+        "deaths": 5
       },
-      "daE": {
-        "kills": 7,
-        "deaths": 6
-      },
-      "darbe": {
-        "kills": 5,
-        "deaths": 4
-      },
-      "ekl1ps": {
+      "Cavid-20": {
         "kills": 0,
         "deaths": 0
       },
       "Malawhur": {
-        "kills": 4,
-        "deaths": 8
+        "kills": 15,
+        "deaths": 3
+      },
+      "mersido": {
+        "kills": 9,
+        "deaths": 7
       },
       "Nerull": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "sedo": {
-        "kills": 3,
-        "deaths": 4
+        "kills": 11,
+        "deaths": 3
       },
       "Uncle Iroh": {
-        "kills": 3,
-        "deaths": 2
+        "kills": 0,
+        "deaths": 0
       },
       "wormik": {
         "kills": 0,
@@ -184,201 +156,43 @@
         "deaths": 0
       },
       "bobinaj": {
-        "kills": 2,
+        "kills": 4,
         "deaths": 4
       },
       "Cago": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "candeha": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "daE": {
-        "kills": 2,
-        "deaths": 8
-      },
-      "darbe": {
-        "kills": 4,
-        "deaths": 9
-      },
-      "ekl1ps": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Malawhur": {
-        "kills": 3,
-        "deaths": 5
-      },
-      "Nerull": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "sedo": {
         "kills": 5,
-        "deaths": 4
-      },
-      "Uncle Iroh": {
-        "kills": 5,
-        "deaths": 4
-      },
-      "wormik": {
-        "kills": 0,
-        "deaths": 0
-      }
-    },
-    "daE": {
-      "bekenbaver": {
-        "kills": 7,
-        "deaths": 2
-      },
-      "bobinaj": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Cago": {
-        "kills": 6,
-        "deaths": 7
-      },
-      "candeha": {
-        "kills": 8,
-        "deaths": 2
-      },
-      "daE": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "darbe": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "ekl1ps": {
-        "kills": 2,
-        "deaths": 5
-      },
-      "Malawhur": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Nerull": {
-        "kills": 4,
-        "deaths": 4
-      },
-      "sedo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Uncle Iroh": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "wormik": {
-        "kills": 9,
-        "deaths": 2
-      }
-    },
-    "darbe": {
-      "bekenbaver": {
-        "kills": 2,
-        "deaths": 2
-      },
-      "bobinaj": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Cago": {
-        "kills": 4,
-        "deaths": 5
-      },
-      "candeha": {
-        "kills": 9,
-        "deaths": 4
-      },
-      "daE": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "darbe": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "ekl1ps": {
-        "kills": 6,
-        "deaths": 3
-      },
-      "Malawhur": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Nerull": {
-        "kills": 2,
-        "deaths": 5
-      },
-      "sedo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Uncle Iroh": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "wormik": {
-        "kills": 4,
-        "deaths": 5
-      }
-    },
-    "ekl1ps": {
-      "bekenbaver": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "bobinaj": {
-        "kills": 7,
         "deaths": 11
       },
-      "Cago": {
-        "kills": 0,
-        "deaths": 0
-      },
       "candeha": {
         "kills": 0,
         "deaths": 0
       },
-      "daE": {
-        "kills": 5,
+      "Cavid-20": {
+        "kills": 6,
         "deaths": 2
       },
-      "darbe": {
-        "kills": 3,
-        "deaths": 6
-      },
-      "ekl1ps": {
+      "Malawhur": {
         "kills": 0,
         "deaths": 0
       },
-      "Malawhur": {
-        "kills": 4,
-        "deaths": 4
+      "mersido": {
+        "kills": 0,
+        "deaths": 0
       },
       "Nerull": {
         "kills": 0,
         "deaths": 0
       },
-      "sedo": {
-        "kills": 3,
-        "deaths": 3
-      },
       "Uncle Iroh": {
-        "kills": 2,
-        "deaths": 5
+        "kills": 7,
+        "deaths": 8
       },
       "wormik": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 7,
+        "deaths": 6
       }
     },
-    "Malawhur": {
+    "Cavid-20": {
       "bekenbaver": {
         "kills": 5,
         "deaths": 1
@@ -388,44 +202,120 @@
         "deaths": 0
       },
       "Cago": {
-        "kills": 8,
-        "deaths": 4
+        "kills": 0,
+        "deaths": 0
       },
       "candeha": {
-        "kills": 5,
-        "deaths": 3
+        "kills": 2,
+        "deaths": 6
       },
-      "daE": {
+      "Cavid-20": {
         "kills": 0,
         "deaths": 0
-      },
-      "darbe": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "ekl1ps": {
-        "kills": 4,
-        "deaths": 4
       },
       "Malawhur": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 3,
+        "deaths": 5
+      },
+      "mersido": {
+        "kills": 9,
+        "deaths": 3
       },
       "Nerull": {
-        "kills": 11,
-        "deaths": 8
-      },
-      "sedo": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 2,
+        "deaths": 9
       },
       "Uncle Iroh": {
         "kills": 0,
         "deaths": 0
       },
       "wormik": {
-        "kills": 5,
+        "kills": 0,
         "deaths": 0
+      }
+    },
+    "Malawhur": {
+      "bekenbaver": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "bobinaj": {
+        "kills": 4,
+        "deaths": 4
+      },
+      "Cago": {
+        "kills": 3,
+        "deaths": 15
+      },
+      "candeha": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Cavid-20": {
+        "kills": 5,
+        "deaths": 3
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "mersido": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 6,
+        "deaths": 11
+      },
+      "wormik": {
+        "kills": 3,
+        "deaths": 1
+      }
+    },
+    "mersido": {
+      "bekenbaver": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "bobinaj": {
+        "kills": 6,
+        "deaths": 7
+      },
+      "Cago": {
+        "kills": 7,
+        "deaths": 9
+      },
+      "candeha": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Cavid-20": {
+        "kills": 3,
+        "deaths": 9
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "mersido": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 5,
+        "deaths": 5
+      },
+      "wormik": {
+        "kills": 4,
+        "deaths": 2
       }
     },
     "Nerull": {
@@ -434,194 +324,120 @@
         "deaths": 0
       },
       "bobinaj": {
-        "kills": 5,
-        "deaths": 4
-      },
-      "Cago": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "candeha": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "daE": {
-        "kills": 4,
-        "deaths": 4
-      },
-      "darbe": {
-        "kills": 5,
-        "deaths": 2
-      },
-      "ekl1ps": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Malawhur": {
-        "kills": 8,
-        "deaths": 11
-      },
-      "Nerull": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "sedo": {
-        "kills": 11,
-        "deaths": 3
-      },
-      "Uncle Iroh": {
-        "kills": 5,
-        "deaths": 3
-      },
-      "wormik": {
-        "kills": 0,
-        "deaths": 0
-      }
-    },
-    "sedo": {
-      "bekenbaver": {
-        "kills": 8,
-        "deaths": 0
-      },
-      "bobinaj": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Cago": {
-        "kills": 4,
-        "deaths": 3
-      },
-      "candeha": {
-        "kills": 4,
+        "kills": 7,
         "deaths": 5
       },
-      "daE": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "darbe": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "ekl1ps": {
+      "Cago": {
         "kills": 3,
-        "deaths": 3
+        "deaths": 11
+      },
+      "candeha": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Cavid-20": {
+        "kills": 9,
+        "deaths": 2
       },
       "Malawhur": {
         "kills": 0,
         "deaths": 0
       },
-      "Nerull": {
-        "kills": 3,
-        "deaths": 11
+      "mersido": {
+        "kills": 0,
+        "deaths": 0
       },
-      "sedo": {
+      "Nerull": {
         "kills": 0,
         "deaths": 0
       },
       "Uncle Iroh": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 5,
+        "deaths": 14
       },
       "wormik": {
-        "kills": 0,
-        "deaths": 3
+        "kills": 8,
+        "deaths": 4
       }
     },
     "Uncle Iroh": {
       "bekenbaver": {
-        "kills": 5,
-        "deaths": 2
+        "kills": 6,
+        "deaths": 4
       },
       "bobinaj": {
         "kills": 0,
         "deaths": 0
       },
       "Cago": {
-        "kills": 2,
-        "deaths": 3
+        "kills": 0,
+        "deaths": 0
       },
       "candeha": {
-        "kills": 4,
-        "deaths": 5
+        "kills": 8,
+        "deaths": 7
       },
-      "daE": {
+      "Cavid-20": {
         "kills": 0,
         "deaths": 0
-      },
-      "darbe": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "ekl1ps": {
-        "kills": 5,
-        "deaths": 2
       },
       "Malawhur": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 11,
+        "deaths": 6
       },
-      "Nerull": {
-        "kills": 3,
+      "mersido": {
+        "kills": 5,
         "deaths": 5
       },
-      "sedo": {
-        "kills": 0,
-        "deaths": 0
+      "Nerull": {
+        "kills": 14,
+        "deaths": 5
       },
       "Uncle Iroh": {
         "kills": 0,
         "deaths": 0
       },
       "wormik": {
-        "kills": 7,
-        "deaths": 3
+        "kills": 0,
+        "deaths": 0
       }
     },
     "wormik": {
       "bekenbaver": {
-        "kills": 0,
+        "kills": 6,
         "deaths": 0
       },
       "bobinaj": {
-        "kills": 4,
-        "deaths": 5
+        "kills": 0,
+        "deaths": 0
       },
       "Cago": {
         "kills": 0,
         "deaths": 0
       },
       "candeha": {
-        "kills": 0,
-        "deaths": 0
+        "kills": 6,
+        "deaths": 7
       },
-      "daE": {
-        "kills": 2,
-        "deaths": 9
-      },
-      "darbe": {
-        "kills": 5,
-        "deaths": 4
-      },
-      "ekl1ps": {
+      "Cavid-20": {
         "kills": 0,
         "deaths": 0
       },
       "Malawhur": {
-        "kills": 0,
-        "deaths": 5
+        "kills": 1,
+        "deaths": 3
+      },
+      "mersido": {
+        "kills": 2,
+        "deaths": 4
       },
       "Nerull": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "sedo": {
-        "kills": 3,
-        "deaths": 0
+        "kills": 4,
+        "deaths": 8
       },
       "Uncle Iroh": {
-        "kills": 3,
-        "deaths": 7
+        "kills": 0,
+        "deaths": 0
       },
       "wormik": {
         "kills": 0,
