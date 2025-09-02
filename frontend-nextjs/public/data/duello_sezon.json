@@ -48,28 +48,28 @@
         "deaths": 0
       },
       "Cago": {
-        "kills": 29,
-        "deaths": 42
+        "kills": 31,
+        "deaths": 55
       },
       "daE": {
         "kills": 13,
         "deaths": 21
       },
       "drb": {
-        "kills": 35,
-        "deaths": 32
+        "kills": 40,
+        "deaths": 38
       },
       "ekl1ps": {
-        "kills": 29,
-        "deaths": 35
+        "kills": 39,
+        "deaths": 40
       },
       "eskisigibi": {
         "kills": 7,
         "deaths": 2
       },
       "firanzbekenbaver": {
-        "kills": 28,
-        "deaths": 6
+        "kills": 32,
+        "deaths": 9
       },
       "HiLLbili": {
         "kills": 22,
@@ -88,8 +88,8 @@
         "deaths": 3
       },
       "Nerull": {
-        "kills": 29,
-        "deaths": 52
+        "kills": 36,
+        "deaths": 66
       },
       "regarnur": {
         "kills": 3,
@@ -112,8 +112,8 @@
         "deaths": 15
       },
       "wormik": {
-        "kills": 13,
-        "deaths": 10
+        "kills": 18,
+        "deaths": 17
       },
       "xandeha": {
         "kills": 31,
@@ -122,8 +122,8 @@
     },
     "Cago": {
       "bobinaj": {
-        "kills": 42,
-        "deaths": 29
+        "kills": 55,
+        "deaths": 31
       },
       "Cago": {
         "kills": 0,
@@ -134,7 +134,7 @@
         "deaths": 18
       },
       "drb": {
-        "kills": 81,
+        "kills": 82,
         "deaths": 56
       },
       "ekl1ps": {
@@ -142,20 +142,20 @@
         "deaths": 71
       },
       "eskisigibi": {
-        "kills": 33,
-        "deaths": 6
+        "kills": 45,
+        "deaths": 13
       },
       "firanzbekenbaver": {
-        "kills": 29,
+        "kills": 30,
         "deaths": 10
       },
       "HiLLbili": {
-        "kills": 24,
-        "deaths": 14
+        "kills": 36,
+        "deaths": 22
       },
       "Malawhur": {
-        "kills": 101,
-        "deaths": 71
+        "kills": 114,
+        "deaths": 78
       },
       "mersido": {
         "kills": 57,
@@ -174,8 +174,8 @@
         "deaths": 23
       },
       "sedo": {
-        "kills": 37,
-        "deaths": 28
+        "kills": 51,
+        "deaths": 34
       },
       "Titus": {
         "kills": 49,
@@ -186,8 +186,8 @@
         "deaths": 0
       },
       "Uncle Iroh": {
-        "kills": 68,
-        "deaths": 52
+        "kills": 77,
+        "deaths": 56
       },
       "wormik": {
         "kills": 49,
@@ -278,12 +278,12 @@
     },
     "drb": {
       "bobinaj": {
-        "kills": 32,
-        "deaths": 35
+        "kills": 38,
+        "deaths": 40
       },
       "Cago": {
         "kills": 56,
-        "deaths": 81
+        "deaths": 82
       },
       "daE": {
         "kills": 7,
@@ -298,20 +298,20 @@
         "deaths": 61
       },
       "eskisigibi": {
-        "kills": 15,
-        "deaths": 9
+        "kills": 27,
+        "deaths": 10
       },
       "firanzbekenbaver": {
         "kills": 37,
-        "deaths": 15
+        "deaths": 16
       },
       "HiLLbili": {
-        "kills": 23,
-        "deaths": 32
+        "kills": 26,
+        "deaths": 45
       },
       "Malawhur": {
-        "kills": 48,
-        "deaths": 69
+        "kills": 54,
+        "deaths": 78
       },
       "mersido": {
         "kills": 35,
@@ -322,7 +322,7 @@
         "deaths": 4
       },
       "Nerull": {
-        "kills": 77,
+        "kills": 78,
         "deaths": 98
       },
       "regarnur": {
@@ -330,8 +330,8 @@
         "deaths": 15
       },
       "sedo": {
-        "kills": 32,
-        "deaths": 29
+        "kills": 38,
+        "deaths": 36
       },
       "Titus": {
         "kills": 10,
@@ -342,8 +342,8 @@
         "deaths": 6
       },
       "Uncle Iroh": {
-        "kills": 32,
-        "deaths": 19
+        "kills": 37,
+        "deaths": 25
       },
       "wormik": {
         "kills": 44,
@@ -356,8 +356,8 @@
     },
     "ekl1ps": {
       "bobinaj": {
-        "kills": 35,
-        "deaths": 29
+        "kills": 40,
+        "deaths": 39
       },
       "Cago": {
         "kills": 71,
@@ -376,7 +376,7 @@
         "deaths": 0
       },
       "eskisigibi": {
-        "kills": 21,
+        "kills": 29,
         "deaths": 8
       },
       "firanzbekenbaver": {
@@ -384,12 +384,12 @@
         "deaths": 1
       },
       "HiLLbili": {
-        "kills": 45,
-        "deaths": 37
+        "kills": 55,
+        "deaths": 45
       },
       "Malawhur": {
-        "kills": 24,
-        "deaths": 28
+        "kills": 31,
+        "deaths": 35
       },
       "mersido": {
         "kills": 59,
@@ -408,8 +408,8 @@
         "deaths": 36
       },
       "sedo": {
-        "kills": 29,
-        "deaths": 51
+        "kills": 38,
+        "deaths": 59
       },
       "Titus": {
         "kills": 40,
@@ -420,8 +420,8 @@
         "deaths": 8
       },
       "Uncle Iroh": {
-        "kills": 29,
-        "deaths": 33
+        "kills": 38,
+        "deaths": 38
       },
       "wormik": {
         "kills": 0,
@@ -438,27 +438,27 @@
         "deaths": 7
       },
       "Cago": {
-        "kills": 6,
-        "deaths": 33
+        "kills": 13,
+        "deaths": 45
       },
       "daE": {
         "kills": 4,
         "deaths": 7
       },
       "drb": {
-        "kills": 9,
-        "deaths": 15
+        "kills": 10,
+        "deaths": 27
       },
       "ekl1ps": {
         "kills": 8,
-        "deaths": 21
+        "deaths": 29
       },
       "eskisigibi": {
         "kills": 0,
         "deaths": 0
       },
       "firanzbekenbaver": {
-        "kills": 11,
+        "kills": 15,
         "deaths": 4
       },
       "HiLLbili": {
@@ -478,8 +478,8 @@
         "deaths": 0
       },
       "Nerull": {
-        "kills": 14,
-        "deaths": 49
+        "kills": 15,
+        "deaths": 63
       },
       "regarnur": {
         "kills": 0,
@@ -502,8 +502,8 @@
         "deaths": 11
       },
       "wormik": {
-        "kills": 3,
-        "deaths": 12
+        "kills": 6,
+        "deaths": 15
       },
       "xandeha": {
         "kills": 12,
@@ -512,19 +512,19 @@
     },
     "firanzbekenbaver": {
       "bobinaj": {
-        "kills": 6,
-        "deaths": 28
+        "kills": 9,
+        "deaths": 32
       },
       "Cago": {
         "kills": 10,
-        "deaths": 29
+        "deaths": 30
       },
       "daE": {
         "kills": 5,
         "deaths": 20
       },
       "drb": {
-        "kills": 15,
+        "kills": 16,
         "deaths": 37
       },
       "ekl1ps": {
@@ -533,19 +533,19 @@
       },
       "eskisigibi": {
         "kills": 4,
-        "deaths": 11
+        "deaths": 15
       },
       "firanzbekenbaver": {
         "kills": 0,
         "deaths": 0
       },
       "HiLLbili": {
-        "kills": 2,
-        "deaths": 18
+        "kills": 9,
+        "deaths": 27
       },
       "Malawhur": {
-        "kills": 4,
-        "deaths": 11
+        "kills": 8,
+        "deaths": 19
       },
       "mersido": {
         "kills": 4,
@@ -564,8 +564,8 @@
         "deaths": 25
       },
       "sedo": {
-        "kills": 2,
-        "deaths": 21
+        "kills": 4,
+        "deaths": 28
       },
       "Titus": {
         "kills": 4,
@@ -576,8 +576,8 @@
         "deaths": 5
       },
       "Uncle Iroh": {
-        "kills": 9,
-        "deaths": 27
+        "kills": 10,
+        "deaths": 35
       },
       "wormik": {
         "kills": 0,
@@ -594,28 +594,28 @@
         "deaths": 22
       },
       "Cago": {
-        "kills": 14,
-        "deaths": 24
+        "kills": 22,
+        "deaths": 36
       },
       "daE": {
         "kills": 2,
         "deaths": 3
       },
       "drb": {
-        "kills": 32,
-        "deaths": 23
+        "kills": 45,
+        "deaths": 26
       },
       "ekl1ps": {
-        "kills": 37,
-        "deaths": 45
+        "kills": 45,
+        "deaths": 55
       },
       "eskisigibi": {
         "kills": 17,
         "deaths": 4
       },
       "firanzbekenbaver": {
-        "kills": 18,
-        "deaths": 2
+        "kills": 27,
+        "deaths": 9
       },
       "HiLLbili": {
         "kills": 0,
@@ -634,8 +634,8 @@
         "deaths": 0
       },
       "Nerull": {
-        "kills": 69,
-        "deaths": 62
+        "kills": 79,
+        "deaths": 70
       },
       "regarnur": {
         "kills": 20,
@@ -658,8 +658,8 @@
         "deaths": 34
       },
       "wormik": {
-        "kills": 30,
-        "deaths": 12
+        "kills": 40,
+        "deaths": 16
       },
       "xandeha": {
         "kills": 35,
@@ -672,28 +672,28 @@
         "deaths": 24
       },
       "Cago": {
-        "kills": 71,
-        "deaths": 101
+        "kills": 78,
+        "deaths": 114
       },
       "daE": {
         "kills": 22,
         "deaths": 13
       },
       "drb": {
-        "kills": 69,
-        "deaths": 48
+        "kills": 78,
+        "deaths": 54
       },
       "ekl1ps": {
-        "kills": 28,
-        "deaths": 24
+        "kills": 35,
+        "deaths": 31
       },
       "eskisigibi": {
         "kills": 10,
         "deaths": 0
       },
       "firanzbekenbaver": {
-        "kills": 11,
-        "deaths": 4
+        "kills": 19,
+        "deaths": 8
       },
       "HiLLbili": {
         "kills": 28,
@@ -712,8 +712,8 @@
         "deaths": 0
       },
       "Nerull": {
-        "kills": 38,
-        "deaths": 35
+        "kills": 47,
+        "deaths": 47
       },
       "regarnur": {
         "kills": 2,
@@ -736,8 +736,8 @@
         "deaths": 40
       },
       "wormik": {
-        "kills": 15,
-        "deaths": 4
+        "kills": 24,
+        "deaths": 7
       },
       "xandeha": {
         "kills": 52,
@@ -902,8 +902,8 @@
     },
     "Nerull": {
       "bobinaj": {
-        "kills": 52,
-        "deaths": 29
+        "kills": 66,
+        "deaths": 36
       },
       "Cago": {
         "kills": 102,
@@ -915,27 +915,27 @@
       },
       "drb": {
         "kills": 98,
-        "deaths": 77
+        "deaths": 78
       },
       "ekl1ps": {
         "kills": 6,
         "deaths": 1
       },
       "eskisigibi": {
-        "kills": 49,
-        "deaths": 14
+        "kills": 63,
+        "deaths": 15
       },
       "firanzbekenbaver": {
         "kills": 0,
         "deaths": 0
       },
       "HiLLbili": {
-        "kills": 62,
-        "deaths": 69
+        "kills": 70,
+        "deaths": 79
       },
       "Malawhur": {
-        "kills": 35,
-        "deaths": 38
+        "kills": 47,
+        "deaths": 47
       },
       "mersido": {
         "kills": 68,
@@ -954,8 +954,8 @@
         "deaths": 45
       },
       "sedo": {
-        "kills": 82,
-        "deaths": 49
+        "kills": 93,
+        "deaths": 57
       },
       "Titus": {
         "kills": 60,
@@ -966,8 +966,8 @@
         "deaths": 8
       },
       "Uncle Iroh": {
-        "kills": 49,
-        "deaths": 43
+        "kills": 60,
+        "deaths": 47
       },
       "wormik": {
         "kills": 8,
@@ -1062,28 +1062,28 @@
         "deaths": 29
       },
       "Cago": {
-        "kills": 28,
-        "deaths": 37
+        "kills": 34,
+        "deaths": 51
       },
       "daE": {
         "kills": 24,
         "deaths": 10
       },
       "drb": {
-        "kills": 29,
-        "deaths": 32
+        "kills": 36,
+        "deaths": 38
       },
       "ekl1ps": {
-        "kills": 51,
-        "deaths": 29
+        "kills": 59,
+        "deaths": 38
       },
       "eskisigibi": {
         "kills": 19,
         "deaths": 14
       },
       "firanzbekenbaver": {
-        "kills": 21,
-        "deaths": 2
+        "kills": 28,
+        "deaths": 4
       },
       "HiLLbili": {
         "kills": 16,
@@ -1102,8 +1102,8 @@
         "deaths": 0
       },
       "Nerull": {
-        "kills": 49,
-        "deaths": 82
+        "kills": 57,
+        "deaths": 93
       },
       "regarnur": {
         "kills": 38,
@@ -1126,8 +1126,8 @@
         "deaths": 22
       },
       "wormik": {
-        "kills": 32,
-        "deaths": 20
+        "kills": 37,
+        "deaths": 24
       },
       "xandeha": {
         "kills": 50,
@@ -1296,28 +1296,28 @@
         "deaths": 17
       },
       "Cago": {
-        "kills": 52,
-        "deaths": 68
+        "kills": 56,
+        "deaths": 77
       },
       "daE": {
         "kills": 1,
         "deaths": 4
       },
       "drb": {
-        "kills": 19,
-        "deaths": 32
+        "kills": 25,
+        "deaths": 37
       },
       "ekl1ps": {
-        "kills": 33,
-        "deaths": 29
+        "kills": 38,
+        "deaths": 38
       },
       "eskisigibi": {
         "kills": 11,
         "deaths": 6
       },
       "firanzbekenbaver": {
-        "kills": 27,
-        "deaths": 9
+        "kills": 35,
+        "deaths": 10
       },
       "HiLLbili": {
         "kills": 34,
@@ -1336,8 +1336,8 @@
         "deaths": 0
       },
       "Nerull": {
-        "kills": 43,
-        "deaths": 49
+        "kills": 47,
+        "deaths": 60
       },
       "regarnur": {
         "kills": 6,
@@ -1360,8 +1360,8 @@
         "deaths": 0
       },
       "wormik": {
-        "kills": 26,
-        "deaths": 15
+        "kills": 37,
+        "deaths": 18
       },
       "xandeha": {
         "kills": 60,
@@ -1370,8 +1370,8 @@
     },
     "wormik": {
       "bobinaj": {
-        "kills": 10,
-        "deaths": 13
+        "kills": 17,
+        "deaths": 18
       },
       "Cago": {
         "kills": 27,
@@ -1390,20 +1390,20 @@
         "deaths": 0
       },
       "eskisigibi": {
-        "kills": 12,
-        "deaths": 3
+        "kills": 15,
+        "deaths": 6
       },
       "firanzbekenbaver": {
         "kills": 6,
         "deaths": 0
       },
       "HiLLbili": {
-        "kills": 12,
-        "deaths": 30
+        "kills": 16,
+        "deaths": 40
       },
       "Malawhur": {
-        "kills": 4,
-        "deaths": 15
+        "kills": 7,
+        "deaths": 24
       },
       "mersido": {
         "kills": 14,
@@ -1422,8 +1422,8 @@
         "deaths": 16
       },
       "sedo": {
-        "kills": 20,
-        "deaths": 32
+        "kills": 24,
+        "deaths": 37
       },
       "Titus": {
         "kills": 15,
@@ -1434,8 +1434,8 @@
         "deaths": 4
       },
       "Uncle Iroh": {
-        "kills": 15,
-        "deaths": 26
+        "kills": 18,
+        "deaths": 37
       },
       "wormik": {
         "kills": 0,
