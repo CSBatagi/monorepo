@@ -213,6 +213,7 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
 
   const [last10Stats, setLast10Stats] = useState<any[]>([]);
   const [seasonStats, setSeasonStats] = useState<any[]>([]);
+  const [loadingStats, setLoadingStats] = useState<boolean>(true);
   const [firebaseAttendance, setFirebaseAttendance] = useState<FirebaseAttendanceData>({});
 
   const [teamAKabile, setTeamAKabile] = useState('');
@@ -233,19 +234,46 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
   const [stoppingServer, setStoppingServer] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchStats = async () => {
+      const cacheBust = Date.now();
       try {
-        const l10 = await fetch('/data/last10.json?_cb=' + Date.now());
-        const l10Data = await l10.json();
-        setLast10Stats(l10Data);
-      } catch (e) { setLast10Stats([]); }
-      try {
-        const season = await fetch('/data/season_avg.json?_cb=' + Date.now());
-        const seasonData = await season.json();
-        setSeasonStats(seasonData);
-      } catch (e) { setSeasonStats([]); }
+        // Fetch runtime-first via API routes that already implement fallback logic
+        const [l10Res, seasonRes] = await Promise.all([
+          fetch(`/api/data/last10?_cb=${cacheBust}`, { cache: 'no-store' }),
+          fetch(`/api/data/season_avg?_cb=${cacheBust}`, { cache: 'no-store' })
+        ]);
+        let l10Data: any[] = [];
+        let seasonData: any[] = [];
+        try { l10Data = await l10Res.json(); } catch { l10Data = []; }
+        try { seasonData = await seasonRes.json(); } catch { seasonData = []; }
+        // If either dataset is empty, attempt an aggregate regeneration then refetch once
+        if ((l10Data?.length ?? 0) === 0 || (seasonData?.length ?? 0) === 0) {
+          try {
+            await fetch(`/api/stats/aggregates?_cb=${Date.now()}`, { method: 'POST', cache: 'no-store' });
+            const [l10Res2, seasonRes2] = await Promise.all([
+              fetch(`/api/data/last10?_cb=${Date.now()}`, { cache: 'no-store' }),
+              fetch(`/api/data/season_avg?_cb=${Date.now()}`, { cache: 'no-store' })
+            ]);
+            try { l10Data = await l10Res2.json(); } catch {}
+            try { seasonData = await seasonRes2.json(); } catch {}
+          } catch {}
+        }
+        if (!cancelled) {
+          setLast10Stats(Array.isArray(l10Data) ? l10Data : []);
+          setSeasonStats(Array.isArray(seasonData) ? seasonData : []);
+          setLoadingStats(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setLast10Stats([]);
+          setSeasonStats([]);
+          setLoadingStats(false);
+        }
+      }
     };
     fetchStats();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -708,6 +736,15 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
 
   return (
     <div className="w-full min-w-0 p-2">
+      {loadingStats && (
+        <div className="mb-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-700 flex items-center gap-2 animate-pulse">
+          <svg className="h-4 w-4 text-blue-500 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+            <path d="M22 12a10 10 0 0 1-10 10" />
+          </svg>
+          İstatistikler yükleniyor / gerekirse yeniden oluşturuluyor...
+        </div>
+      )}
       <h1 className="text-2xl font-semibold text-blue-600 mb-3">Takım Seçme</h1>
       <div className="flex flex-col lg:flex-row gap-3 w-full min-w-0">
         {/* Available Players Section */}
