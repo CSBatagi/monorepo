@@ -34,28 +34,44 @@ interface PlayerPerformance {
   performance: PerformanceEntry[];
 }
 
-const PerformanceGraphs: React.FC = () => {
-    const [performanceData, setPerformanceData] = useState<PlayerPerformance[]>([]);
+interface PerformanceGraphsProps { initialData?: PlayerPerformance[] }
+
+const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] }) => {
+  const [performanceData, setPerformanceData] = useState<PlayerPerformance[]>(initialData);
     const [uniqueDates, setUniqueDates] = useState<string[]>([]);
     const [metric, setMetric] = useState<'hltv_2' | 'adr'>('hltv_2');
     const [visiblePlayers, setVisiblePlayers] = useState<string[]>([]);
     const [playerColors, setPlayerColors] = useState<{ [key: string]: string }>({});
     const [activeTab, setActiveTab] = useState<'graph' | 'table'>('graph');
-    const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(initialData.length === 0);
     const [error, setError] = useState<string | null>(null);
   
     useEffect(() => {
+      // If we already have initial data, we still attempt a background refresh but avoid blocking UI
       const fetchData = async () => {
         try {
-          const response = await fetch('/data/performance_data.json?_cb=' + Date.now());
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+          // Prefer runtime-data via stats proxy: if missing, trigger stats check and then try runtime path
+          let response = await fetch('/api/stats/check?includeAll=1&_cb=' + Date.now(), { cache: 'no-store' });
+          let data: PlayerPerformance[] | null = null;
+          if (response.ok) {
+            try {
+              const payload = await response.json();
+              if (Array.isArray(payload.performance_data)) {
+                data = payload.performance_data;
+              }
+            } catch(_) {}
           }
-          const data: PlayerPerformance[] = await response.json();
-          data.sort((a, b) => a.name.localeCompare(b.name));
+          if (!data) {
+            // fallback try static path (will likely 404 but keeps previous behavior)
+            response = await fetch('/data/performance_data.json?_cb=' + Date.now());
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            data = await response.json();
+          }
+          const perfArray: PlayerPerformance[] = data || [];
+          perfArray.sort((a, b) => a.name.localeCompare(b.name));
   
           const dateSet = new Set<string>();
-          data.forEach(player => {
+          perfArray.forEach(player => {
             player.performance.forEach(entry => {
               dateSet.add(entry.match_date);
             });
@@ -63,13 +79,12 @@ const PerformanceGraphs: React.FC = () => {
           const sortedDates = Array.from(dateSet).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
           
           const colors: { [key: string]: string } = {};
-          data.forEach(player => {
+          perfArray.forEach(player => {
             colors[player.name] = stringToColor(player.name + 'salt');
           });
-
-          setPerformanceData(data);
+          setPerformanceData(perfArray);
           setUniqueDates(sortedDates);
-          setVisiblePlayers(data.map(p => p.name)); // Initially all players are visible
+          setVisiblePlayers(perfArray.map(p => p.name)); // Initially all players are visible
           setPlayerColors(colors);
         } catch (e) {
             if (e instanceof Error) {
@@ -83,6 +98,7 @@ const PerformanceGraphs: React.FC = () => {
       };
   
       fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
   
     const stringToColor = (str: string) => {
@@ -169,7 +185,7 @@ const PerformanceGraphs: React.FC = () => {
         }
     };
   
-    if (loading) return <p>Loading...</p>;
+  if (loading && performanceData.length === 0) return <p>Loading...</p>;
     if (error) return <p>Error loading data: {error}</p>;
 
   return (

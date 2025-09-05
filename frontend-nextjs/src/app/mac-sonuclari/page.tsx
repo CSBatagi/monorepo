@@ -1,24 +1,35 @@
-import path from "path";
-import fs from "fs/promises";
 import MacSonuclariClient from "@/components/MacSonuclariClient";
+import { readJson } from "@/lib/dataReader";
+
+export const dynamic = 'force-dynamic';
+
+async function tryBackend(timeoutMs=1500){
+  const backendBase = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
+  const url = `${backendBase}/stats/incremental?_cb=${Date.now()}`;
+  try {
+    const ac = new AbortController();
+    const t = setTimeout(()=>ac.abort(), timeoutMs);
+    const res = await fetch(url,{cache:'no-store', headers:{'Cache-Control':'no-store','Pragma':'no-cache'}, signal: ac.signal});
+    clearTimeout(t);
+    if(!res.ok) return null;
+    const j = await res.json();
+    if (j && j.sonmac_by_date && typeof j.sonmac_by_date === 'object') return j.sonmac_by_date;
+  } catch(e){
+    console.log('[mac-sonuclari] backend fetch failed', (e as any)?.message);
+  }
+  return null;
+}
 
 export default async function MacSonuclariPage() {
-  // Read the JSON file from the public directory at build/runtime
-  const filePath = path.join(process.cwd(), "frontend-nextjs/public/data/sonmac_by_date.json");
-  let allData: Record<string, any> = {};
-  try {
-    const file = await fs.readFile(filePath, "utf-8");
-    allData = JSON.parse(file);
-  } catch (e) {
-    // fallback: try relative to root (for Vercel/production)
-    try {
-      const file = await fs.readFile(path.join(process.cwd(), "public/data/sonmac_by_date.json"), "utf-8");
-      allData = JSON.parse(file);
-    } catch (e2) {
-      allData = {};
+  let allData: Record<string, any> = (await readJson('sonmac_by_date.json')) || {};
+  if (!allData || Object.keys(allData).length === 0) {
+    const regen = await tryBackend();
+    if (regen) {
+      allData = regen;
+      console.log('[mac-sonuclari] Filled empty dataset from backend');
     }
   }
-  const dates = Object.keys(allData).sort((a, b) => b.localeCompare(a));
+  const dates = Object.keys(allData || {}).sort((a, b) => b.localeCompare(a));
 
   return (
     <div id="page-mac-sonuclari" className="page-content page-content-container">

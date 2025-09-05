@@ -1,7 +1,6 @@
-import fs from "fs/promises";
-import path from "path";
 import React from "react";
 import AwardsListClient from "../../components/AwardsListClient";
+import { readJson } from "@/lib/dataReader";
 
 interface PlayerAward {
   name: string;
@@ -28,23 +27,13 @@ interface Period {
 
 async function getSeasonStartDate(): Promise<Date> {
   try {
-    const filePath = path.join(process.cwd(), "frontend-nextjs/public/data/season_start.json");
-    const file = await fs.readFile(filePath, "utf-8");
-    const json = JSON.parse(file);
+    const json = await readJson('season_start.json');
     if (json && typeof json.season_start === "string") {
       return new Date(json.season_start);
     }
   } catch (e) {
-    // fallback: try relative to root (for Vercel/production)
-    try {
-      const file = await fs.readFile(path.join(process.cwd(), "public/data/season_start.json"), "utf-8");
-      const json = JSON.parse(file);
-      if (json && typeof json.season_start === "string") {
-        return new Date(json.season_start);
-      }
-    } catch (e2) {}
+    // fallback to previous hardcoded date
   }
-  // fallback to previous hardcoded date
   return new Date("2025-02-10T00:00:00Z");
 }
 
@@ -125,19 +114,8 @@ export default async function PerformansOdulleriPage() {
   try {
     seasonStart = await getSeasonStartDate();
   } catch {}
-  try {
-    const filePath = path.join(process.cwd(), "frontend-nextjs/public/data/night_avg.json");
-    const file = await fs.readFile(filePath, "utf-8");
-    data = JSON.parse(file);
-  } catch (e) {
-    // fallback: try relative to root (for Vercel/production)
-    try {
-      const file = await fs.readFile(path.join(process.cwd(), "public/data/night_avg.json"), "utf-8");
-      data = JSON.parse(file);
-    } catch (e2) {
-      data = {};
-    }
-  }
+  
+  data = (await readJson('night_avg.json')) || {};
 
   const now = new Date();
   const periods = getAllTwoWeekPeriods(seasonStart, now);

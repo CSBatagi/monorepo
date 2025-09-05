@@ -1,11 +1,37 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import SeasonStatsTable, { columns } from "@/components/SeasonStatsTable";
 import H2HClient from "@/components/H2HClient";
 import { RadarGraphs } from "./SeasonAvgRadarGraphs";
 
-export default function Last10TabsClient({ data }: { data: any[] }) {
+export default function Last10TabsClient({ data: initialData }: { data: any[] }) {
   const [activeTab, setActiveTab] = useState<"table" | "graph" | "head2head">("table");
+  const [data, setData] = useState<any[]>(initialData || []);
+  const [loading, setLoading] = useState<boolean>(!initialData || initialData.length === 0);
+
+  useEffect(() => {
+    if (data.length > 0) return; // already have
+    let cancelled = false;
+    const fetchFresh = async () => {
+      try {
+        const res = await fetch(`/api/stats/aggregates?_cb=${Date.now()}`, { cache:'no-store' });
+        if (!res.ok) throw new Error('agg fail');
+        const j = await res.json();
+        if (!cancelled && Array.isArray(j.last10) && j.last10.length) {
+          setData(j.last10);
+        }
+      } catch(_) {} finally { if(!cancelled) setLoading(false); }
+    };
+    fetchFresh();
+    return () => { cancelled = true; };
+  }, [data.length]);
+
+  const overlay = loading ? (
+    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 text-sm text-gray-600">
+      <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mb-2" />
+      İstatistikler yükleniyor...
+    </div>
+  ) : null;
   return (
     <>
       {/* Sub Tab Navigation */}
@@ -27,14 +53,19 @@ export default function Last10TabsClient({ data }: { data: any[] }) {
         {activeTab === "table" && (
           <div id="last10-tab-table" className="last10-tab-pane active" role="tabpanel" aria-labelledby="last10-table-tab">
             <div className="overflow-x-auto">
-              <SeasonStatsTable data={data} />
+              <div className="relative">
+                {overlay}
+                <SeasonStatsTable data={data} loading={loading} />
+              </div>
             </div>
           </div>
         )}
         {/* Graph Content */}
         {activeTab === "graph" && (
           <div id="last10-tab-graph" className="last10-tab-pane active" role="tabpanel" aria-labelledby="last10-graph-tab">
-            <RadarGraphs
+            <div className="relative">
+              {overlay}
+              <RadarGraphs
               data={data}
               statConfig={columns.reduce((acc: Record<string, any>, col, i) => {
                 acc[col.key] = { label: col.label, default: i < 5, format: col.isPercentage ? "percent" : undefined };
@@ -42,13 +73,17 @@ export default function Last10TabsClient({ data }: { data: any[] }) {
               }, {})}
               playerFilterKey="matches"
               title="Pentagon İstatistiklerini Özelleştir (Son 10)"
-            />
+              />
+            </div>
           </div>
         )}
         {/* Head-to-Head Content */}
         {activeTab === "head2head" && (
           <div id="last10-tab-head2head" className="last10-tab-pane active" role="tabpanel" aria-labelledby="last10-head2head-tab">
-            <H2HClient data={data} columns={columns} />
+            <div className="relative">
+              {overlay}
+              <H2HClient data={data} columns={columns} />
+            </div>
           </div>
         )}
       </div>

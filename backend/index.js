@@ -23,12 +23,152 @@ const validate = ajv.compile(schema);
 
 // Hardcoded PostgreSQL connection details
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_DATABASE,
-  password: process.env.DB_PASSWORD,
-  port: 5432,
+let pool = null;
+const TEST_MODE = process.env.NODE_ENV === 'test';
+if (!TEST_MODE) {
+  pool = new Pool({
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_DATABASE,
+    password: process.env.DB_PASSWORD,
+    port: 5432,
+  });
+}
+
+// Utility: get last updated date from critical tables (matches & players)
+async function fetchLastDataTimestamp() {
+  // Using greatest of max dates across relevant tables; adjust if you add more tables influencing stats
+  if (TEST_MODE) {
+    // In test mode return a deterministic moving timestamp (increments per call)
+    if (!global.__testLastTs) {
+      global.__testLastTs = new Date(Date.now() - 60000); // 1 min ago
+    } else {
+      // Advance 1 second to emulate potential change
+      global.__testLastTs = new Date(global.__testLastTs.getTime() + 1000);
+    }
+    return global.__testLastTs;
+  }
+  // Simplified: only rely on matches.date (most reliable present column across environments).
+  // If you later add reliable per-row timestamps in other tables, extend this query.
+  const query = `
+    SELECT COALESCE(MAX(m.date), '1970-01-01'::timestamp) AS last_change
+    FROM matches m;`;
+  try {
+    const r = await pool.query(query);
+    return r.rows[0]?.last_change || null;
+  } catch (e) {
+    console.error('Error fetching last data timestamp', e);
+    return null;
+  }
+}
+
+// Lazy load & reuse the update-stats logic by spawning node process (decoupled from backend container codebase path)
+const { generateAll, generateAggregates } = require('./statsGenerator');
+
+// Resolve season start date: prefer file season_start.json if exists and has season_start field
+function resolveSeasonStart() {
+  const explicitEnvDate = process.env.SEZON_BASLANGIC; // legacy fallback option
+  const explicitFile = process.env.SEASON_START_FILE;  // preferred override path
+  const candidateFiles = [];
+  if (explicitFile) candidateFiles.push(explicitFile);
+  // Support mounting the file beside backend (e.g. - ./frontend-nextjs/public/data/season_start.json:/app/season_start.json:ro)
+  candidateFiles.push(path.join(process.cwd(), 'season_start.json'));
+  // Original monorepo relative path (works in dev when both folders present)
+  candidateFiles.push(path.join(__dirname, '..', 'frontend-nextjs', 'public', 'data', 'season_start.json'));
+  for (const fp of candidateFiles) {
+    try {
+      const raw = fs.readFileSync(fp, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.season_start) {
+        return parsed.season_start.split('T')[0];
+      }
+    } catch (_) { /* try next */ }
+  }
+  return explicitEnvDate || '2025-06-09';
+}
+let cachedSeasonStart = resolveSeasonStart();
+async function runStatsUpdateScript() {
+  if (TEST_MODE) {
+    return { stdout: 'test-mode skip', data: { night_avg: {} } };
+  }
+  // Re-resolve season start each generation in case file changed
+  cachedSeasonStart = resolveSeasonStart();
+  const datasets = await generateAll(pool, { seasonStart: cachedSeasonStart });
+  return { stdout: 'ok', data: datasets };
+}
+
+// Concurrency lock so only one generation runs at a time
+let statsGenerationPromise = null;
+let lastGeneratedServerTimestamp = null; // tracks last successful generation based on server data timestamp
+let lastGeneratedData = null; // cache of last generated datasets so we can resend when not updated (for volume backfill)
+
+
+// Aggregates endpoint: ALWAYS recompute season_avg & last10 (lightweight compared to full set)
+app.get('/stats/aggregates', async (req, res) => {
+  try {
+    cachedSeasonStart = resolveSeasonStart();
+    const agg = await generateAggregates(pool, { seasonStart: cachedSeasonStart });
+    res.set('Cache-Control','no-store');
+    res.json({ updated: true, serverTimestamp: new Date().toISOString(), ...agg });
+  } catch (e) {
+    console.error('Error in /stats/aggregates', e);
+    res.status(500).json({ error: 'aggregates_failed', details: e.message });
+  }
+});
+
+// Incremental endpoint: supply lastKnownTs; if no new base data, respond updated:false + serverTimestamp only.
+// If new data, regenerate only FULL set once and respond with changed datasets (same behavior as check-and-update without includeAll).
+app.get('/stats/incremental', async (req, res) => {
+  try {
+    const clientTs = req.query.lastKnownTs ? new Date(req.query.lastKnownTs) : null;
+    const serverLastTs = await fetchLastDataTimestamp();
+    if (!serverLastTs) return res.status(500).json({ error: 'timestamp_unavailable' });
+    const serverDate = new Date(serverLastTs);
+    const needs = !clientTs || serverDate > clientTs;
+    let payload = { updated: false, serverTimestamp: serverDate.toISOString() };
+    if (needs) {
+      if (!statsGenerationPromise) {
+        statsGenerationPromise = runStatsUpdateScript().finally(()=>{ statsGenerationPromise=null; });
+      }
+      try {
+        const result = await statsGenerationPromise;
+        lastGeneratedServerTimestamp = serverDate;
+        lastGeneratedData = result.data;
+        payload = { updated: true, serverTimestamp: serverDate.toISOString(), ...result.data };
+      } catch (e) {
+        console.error('Incremental generation failed', e);
+        return res.status(500).json({ error: 'incremental_failed', details: e.message });
+      }
+    }
+    res.set('Cache-Control','no-store');
+    res.json(payload);
+  } catch (e) {
+    console.error('Error in /stats/incremental', e);
+    res.status(500).json({ error: 'internal', details: e.message });
+  }
+});
+
+// Lightweight diagnostics endpoint to help debug missing data
+app.get('/stats/diagnostics', async (req, res) => {
+  try {
+    const seasonStart = cachedSeasonStart;
+    let counts = {};
+    if (lastGeneratedData) {
+      counts = {
+        season_avg: Array.isArray(lastGeneratedData.season_avg)? lastGeneratedData.season_avg.length : 0,
+        night_avg_dates: lastGeneratedData.night_avg ? Object.keys(lastGeneratedData.night_avg).length : 0,
+        last10: Array.isArray(lastGeneratedData.last10)? lastGeneratedData.last10.length : 0,
+        sonmac_dates: lastGeneratedData.sonmac_by_date ? Object.keys(lastGeneratedData.sonmac_by_date).length : 0,
+        duello_son_mac_rows: lastGeneratedData.duello_son_mac ? lastGeneratedData.duello_son_mac.playerRows?.length : 0,
+        duello_sezon_rows: lastGeneratedData.duello_sezon ? lastGeneratedData.duello_sezon.playerRows?.length : 0,
+        performance_players: Array.isArray(lastGeneratedData.performance_data)? lastGeneratedData.performance_data.length : 0,
+        errors: lastGeneratedData.__errors || []
+      };
+    }
+    res.json({ seasonStart, lastGeneratedServerTimestamp, counts });
+  } catch (e) {
+    res.status(500).json({ error: 'diagnostics_failed', details: e.message });
+  }
 });
 
 app.use((req, res, next) => {
@@ -146,7 +286,11 @@ app.post('/stop-vm', async (req, res) => {
 });
 
 // Start the server
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Middleware is running on port ${port}`);
-});
+if (!TEST_MODE) {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`Middleware is running on port ${port}`);
+  });
+}
+
+module.exports = app;
