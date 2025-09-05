@@ -241,4 +241,4 @@ const SELECTABLE_STATS: Record<string, { label: string; default: boolean; format
 
 export default function SeasonAvgRadarGraphs({ data }: { data: any[] }) {
   return <RadarGraphs data={data} statConfig={SELECTABLE_STATS} playerFilterKey="matches" title="Pentagon İstatistiklerini Özelleştir" />;
-} 
+}

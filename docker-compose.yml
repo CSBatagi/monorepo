@@ -63,6 +63,11 @@ services:
     env_file:
       - path: .frontend_secrets
         required: true
+    environment:
+      - STATS_DATA_DIR=/app/runtime-data
+      - BACKEND_INTERNAL_URL=http://backend:3000
+    volumes:
+      - nextjs_data:/app/runtime-data
 
   postgres:
     image: postgres
@@ -95,6 +100,7 @@ services:
 volumes:
   pgdata:
   caddy_data:  # Only this volume is essential for SSL certificate persistence
+  nextjs_data:
 
 networks:
   db2:

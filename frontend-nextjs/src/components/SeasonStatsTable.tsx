@@ -66,19 +66,32 @@ function getHeatmapColor(value: number, min: number, max: number): string {
   }
 }
 
-export default function SeasonStatsTable({ data, columns: customColumns, tableClassName }: { data: any[] | null, columns?: any[], tableClassName?: string }) {
+export default function SeasonStatsTable({ data, columns: customColumns, tableClassName, loading }: { data: any[] | null | Record<string, any>, columns?: any[], tableClassName?: string, loading?: boolean }) {
   const cols = customColumns || columns;
   const [sortKey, setSortKey] = useState<string>(cols[1]?.key || "hltv_2");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
+  // If data accidentally arrives as an object (map) convert to array heuristically
+  let normalized: any[] | null = data as any[] | null;
+  if (data && !Array.isArray(data) && typeof data === 'object') {
+    const values = Object.values(data);
+    if (values.length && Array.isArray(values[0])) {
+      // Flatten first level arrays (choose first set) – caller should pass correct slice, but avoid crash
+      normalized = values[0] as any[];
+    } else {
+      normalized = values as any[];
+    }
+  }
+  data = normalized;
+
   // Compute min/max for heatmap columns
   const heatmapStats = useMemo(() => {
     const stats: Record<string, { min: number; max: number }> = {};
-    if (!data || data.length === 0) return stats;
+  if (!Array.isArray(data) || data.length === 0) return stats;
     cols.forEach((col) => {
       if (col.heatmap) {
         let min = Infinity, max = -Infinity;
-        for (const row of data) {
+  for (const row of data as any[]) {
           const v = Number(row[col.key]);
           if (!isNaN(v)) {
             if (v < min) min = v;
@@ -91,6 +104,15 @@ export default function SeasonStatsTable({ data, columns: customColumns, tableCl
     return stats;
   }, [data, cols]);
 
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-2">
+        {Array.from({ length: 6 }).map((_,i) => (
+          <div key={i} className="h-4 bg-gray-200 rounded w-full" />
+        ))}
+      </div>
+    );
+  }
   if (!data) {
     return <table className="styled-table min-w-full text-sm"><tbody><tr><td colSpan={cols.length} className="text-center p-4 text-red-600">Veri yüklenemedi</td></tr></tbody></table>;
   }
@@ -98,7 +120,8 @@ export default function SeasonStatsTable({ data, columns: customColumns, tableCl
     return <table className="styled-table min-w-full text-sm"><tbody><tr><td colSpan={cols.length} className="text-center p-4 text-gray-500">Veri yok.</td></tr></tbody></table>;
   }
 
-  const sorted = [...data].sort((a, b) => {
+  const arr = Array.isArray(data) ? data : [];
+  const sorted = [...arr].sort((a, b) => {
     const type = getSortType(sortKey);
     let aVal = a[sortKey];
     let bVal = b[sortKey];

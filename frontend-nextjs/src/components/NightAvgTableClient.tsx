@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SeasonStatsTable from "./SeasonStatsTable";
 import H2HClient from "./H2HClient";
 import React from "react";
@@ -35,10 +35,35 @@ const nightAvgColumns = [
   { key: "Clutches Won", label: "Clutches Won", decimals: 0 },
 ];
 
-export default function NightAvgTableClient({ allData, dates }: { allData: Record<string, any[]>; dates: string[] }) {
-  const [selectedDate, setSelectedDate] = useState(dates[0] || "");
+export default function NightAvgTableClient({ allData: initialData, dates: initialDates }: { allData: Record<string, any[]>; dates: string[] }) {
+  const [dataMap, setDataMap] = useState<Record<string, any[]>>(initialData);
+  const [dates, setDates] = useState<string[]>(initialDates);
+  const [selectedDate, setSelectedDate] = useState(initialDates[0] || "");
   const [activeTab, setActiveTab] = useState<"table" | "graph" | "head2head">("table");
-  const data = allData[selectedDate] || [];
+  const data = dataMap[selectedDate] || [];
+  const [loading, setLoading] = useState<boolean>(Object.keys(initialData || {}).length === 0);
+
+  useEffect(() => {
+    const lastKnownTs = typeof window !== 'undefined' ? localStorage.getItem('stats_last_ts') : null;
+  const cacheBust = Date.now();
+  fetch(`/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : '?'}_cb=${cacheBust}`, {cache:'no-store', headers:{'Cache-Control':'no-store'}})
+      .then(r => r.json())
+      .then(j => {
+        if (j.updated && j.night_avg) {
+          setDataMap(j.night_avg);
+          const newDates = Object.keys(j.night_avg).sort((a,b)=>b.localeCompare(a));
+            setDates(newDates);
+            if (!newDates.includes(selectedDate)) {
+              setSelectedDate(newDates[0] || '');
+            }
+        }
+        if (j.serverTimestamp) {
+          localStorage.setItem('stats_last_ts', j.serverTimestamp);
+        }
+        setLoading(false);
+      }).catch(()=>{});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Tab state should reset when date changes
   React.useEffect(() => {
@@ -76,11 +101,17 @@ export default function NightAvgTableClient({ allData, dates }: { allData: Recor
           </li>
         </ul>
       </div>
-      <div className="mt-6">
+      <div className="mt-6 relative">
+        {loading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 text-sm text-gray-600 z-10">
+            <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mb-2" />
+            Yükleniyor...
+          </div>
+        )}
         {activeTab === "table" && (
           <div id="night-avg-tab-table" className="night-avg-tab-pane active" role="tabpanel" aria-labelledby="night-avg-table-tab">
             <div className="overflow-x-auto w-full">
-              <SeasonStatsTable data={data} columns={nightAvgColumns} tableClassName="min-w-[1200px] w-full" />
+              <SeasonStatsTable data={data} columns={nightAvgColumns} tableClassName="min-w-[1200px] w-full" loading={loading} />
             </div>
           </div>
         )}

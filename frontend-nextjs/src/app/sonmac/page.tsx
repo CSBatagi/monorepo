@@ -1,23 +1,11 @@
 import SonMacClient from "@/components/SonMacClient";
-import path from "path";
-import fs from "fs/promises";
+import { readJson } from "@/lib/dataReader";
+
+// Force dynamic so we always re-evaluate filesystem each request
+export const dynamic = 'force-dynamic';
 
 export default async function SonMacPage() {
-  // Read the JSON file from the public directory at build/runtime
-  const filePath = path.join(process.cwd(), "frontend-nextjs/public/data/sonmac_by_date.json");
-  let allData: Record<string, any> = {};
-  try {
-    const file = await fs.readFile(filePath, "utf-8");
-    allData = JSON.parse(file);
-  } catch (e) {
-    // fallback: try relative to root (for Vercel/production)
-    try {
-      const file = await fs.readFile(path.join(process.cwd(), "public/data/sonmac_by_date.json"), "utf-8");
-      allData = JSON.parse(file);
-    } catch (e2) {
-      allData = {};
-    }
-  }
+  const allData: Record<string, any> = (await readJson('sonmac_by_date.json')) || {};
   const dates = Object.keys(allData).sort((a, b) => b.localeCompare(a));
 
   return (
@@ -26,4 +14,4 @@ export default async function SonMacPage() {
       <SonMacClient allData={allData} dates={dates} />
     </div>
   );
-} 
+}

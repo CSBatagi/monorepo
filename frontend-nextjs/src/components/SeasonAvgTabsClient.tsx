@@ -1,11 +1,44 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import SeasonStatsTable, { columns } from "@/components/SeasonStatsTable";
 import { RadarGraphs } from "@/components/SeasonAvgRadarGraphs";
 import H2HClient from "@/components/H2HClient";
 
-export default function SeasonAvgTabsClient({ data }: { data: any[] }) {
+export default function SeasonAvgTabsClient({ data: initialData }: { data: any[] }) {
   const [activeTab, setActiveTab] = useState<"table" | "graph" | "head2head">("table");
+  const [data, setData] = useState<any[]>(initialData || []);
+  const [perfData, setPerfData] = useState<any[] | null>(null); // keep placeholder if later needed
+  const loadError = null;
+  const [loading, setLoading] = useState<boolean>(!initialData || initialData.length === 0);
+
+  useEffect(() => {
+    if (data.length > 0) { setLoading(false); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/stats/aggregates?_cb=${Date.now()}`, { cache:'no-store' });
+        if (res.ok) {
+          const j = await res.json();
+          if (!cancelled && Array.isArray(j.season_avg) && j.season_avg.length) { setData(j.season_avg); }
+        }
+      } catch(_) {} finally { if(!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [data.length]);
+
+  const overlay = loading ? (
+    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 text-sm text-gray-600">
+      <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mb-2" />
+      İstatistikler yükleniyor...
+    </div>
+  ) : null;
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[SeasonAvgTabsClient] data length', data?.length);
+      if (data && data.length) console.log('[SeasonAvg sample]', data[0]);
+    }
+  }, [data]);
 
   return (
     <>
@@ -58,14 +91,23 @@ export default function SeasonAvgTabsClient({ data }: { data: any[] }) {
         {activeTab === "table" && (
           <div id="season-avg-tab-table" className="season-avg-tab-pane active" role="tabpanel" aria-labelledby="season-avg-table-tab">
             <div className="overflow-x-auto">
-              <SeasonStatsTable data={data} />
+              {loadError && data.length === 0 ? (
+                <div className="p-4 text-sm text-red-600">{loadError} – Önbellekte veri yok.</div>
+              ) : (
+                <div className="relative">
+                  {overlay}
+                  <SeasonStatsTable data={data} loading={loading} />
+                </div>
+              )}
             </div>
           </div>
         )}
         {/* Graph Content */}
         {activeTab === "graph" && (
           <div id="season-avg-tab-graph" className="season-avg-tab-pane active" role="tabpanel" aria-labelledby="season-avg-graph-tab">
-            <RadarGraphs
+              <div className="relative">
+                {overlay}
+                <RadarGraphs
               data={data}
               statConfig={columns.reduce((acc: Record<string, any>, col, i) => {
                 acc[col.key] = { label: col.label, default: i < 5, format: col.isPercentage ? "percent" : undefined };
@@ -73,13 +115,17 @@ export default function SeasonAvgTabsClient({ data }: { data: any[] }) {
               }, {})}
               playerFilterKey="matches"
               title="Pentagon İstatistiklerini Özelleştir (Sezon Ortalaması)"
-            />
+                />
+              </div>
           </div>
         )}
         {/* Head-to-Head Content */}
         {activeTab === "head2head" && (
           <div id="season-avg-tab-head2head" className="season-avg-tab-pane active" role="tabpanel" aria-labelledby="season-avg-head2head-tab">
-            <H2HClient data={data} columns={columns} />
+            <div className="relative">
+              {overlay}
+              <H2HClient data={data} columns={columns} />
+            </div>
           </div>
         )}
       </div>

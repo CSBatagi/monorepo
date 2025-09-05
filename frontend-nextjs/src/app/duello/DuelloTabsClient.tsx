@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 function DuelloGrid({ data }: { data: any }) {
   if (!data || !data.playerRows || !data.playerCols || !data.duels) {
@@ -127,8 +127,39 @@ function DuelloGrid({ data }: { data: any }) {
   );
 }
 
-export default function DuelloTabsClient({ sonmacData, sezonData }: { sonmacData: any, sezonData: any }) {
+export default function DuelloTabsClient({ sonmacData: initialSonmac, sezonData: initialSezon }: { sonmacData: any, sezonData: any }) {
   const [tab, setTab] = useState<'sonmac' | 'sezon'>('sonmac');
+  const [sonmacData, setSonmacData] = useState(initialSonmac);
+  const [sezonData, setSezonData] = useState(initialSezon);
+  const [loading, setLoading] = useState<boolean>(!initialSonmac?.playerRows?.length && !initialSezon?.playerRows?.length);
+
+  // Fetch potential fresher data (incl. first load if files missing)
+  useEffect(() => {
+    const lastKnownTs = typeof window !== 'undefined' ? localStorage.getItem('stats_last_ts') : null;
+    const url = `/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : '?'}_cb=${Date.now()}`;
+    fetch(url, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(j => {
+        if (j.duello_son_mac && j.duello_son_mac.playerRows) {
+          setSonmacData(j.duello_son_mac);
+        }
+        if (j.duello_sezon && j.duello_sezon.playerRows) {
+          setSezonData(j.duello_sezon);
+        }
+        if (j.serverTimestamp) {
+          try { localStorage.setItem('stats_last_ts', j.serverTimestamp); } catch {}
+        }
+        setLoading(false);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[DuelloTabsClient] sonmacData', sonmacData);
+      console.log('[DuelloTabsClient] sezonData', sezonData);
+    }
+  }, [sonmacData, sezonData]);
   return (
     <div id="page-duello" className="page-content page-content-container">
       <h2 className="text-2xl font-semibold text-blue-600 mb-4">Düello</h2>
@@ -144,7 +175,13 @@ export default function DuelloTabsClient({ sonmacData, sezonData }: { sonmacData
         </ul>
       </div>
       {/* Tab Content */}
-      <div id="duello-tab-content">
+      <div id="duello-tab-content" className="relative">
+        {loading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 text-sm text-gray-600 z-10">
+            <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mb-2" />
+            Düello verileri yükleniyor...
+          </div>
+        )}
         {tab === 'sonmac' && <DuelloGrid data={sonmacData} />}
         {tab === 'sezon' && <DuelloGrid data={sezonData} />}
       </div>

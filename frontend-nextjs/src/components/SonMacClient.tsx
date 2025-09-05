@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import SeasonStatsTable from "./SeasonStatsTable";
 
 const sonmacColumns = [
@@ -29,17 +29,21 @@ const sonmacColumns = [
   { key: "clutches_won", label: "Clutches Won", decimals: 0 },
 ];
 
-export default function SonMacClient({ allData, dates }: { allData: Record<string, any>; dates: string[] }) {
-  const [selectedDate, setSelectedDate] = useState(dates[0] || "");
-  const maps = allData[selectedDate]?.maps || {};
+export default function SonMacClient({ allData: initialData, dates: initialDates }: { allData: Record<string, any>; dates: string[] }) {
+  const [data, setData] = useState<Record<string, any>>(initialData);
+  const [dates, setDates] = useState<string[]>(initialDates);
+  const [selectedDate, setSelectedDate] = useState(initialDates[0] || "");
+  const maps = data[selectedDate]?.maps || {};
   const mapNames = Object.keys(maps);
   const [selectedMap, setSelectedMap] = useState(mapNames[0] || "");
 
+  // Client no longer triggers refresh; server layout ensures up-to-date data per request.
+
   // Update selectedMap if date changes
   React.useEffect(() => {
-    const newMapNames = Object.keys(allData[selectedDate]?.maps || {});
+    const newMapNames = Object.keys(data[selectedDate]?.maps || {});
     setSelectedMap(newMapNames[0] || "");
-  }, [selectedDate, allData]);
+  }, [selectedDate, data]);
 
   const mapData = maps[selectedMap] || {};
   const team1 = mapData.team1;
