@@ -30,7 +30,6 @@ jobs:
         id: changes
         run: |
           echo "backend=$(git diff --name-only HEAD~1 HEAD | grep -q '^backend/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          echo "frontend=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "frontend-nextjs=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "docker-compose=$(git diff --name-only HEAD~1 HEAD | grep -q 'docker-compose.yml\|Caddyfile' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
 
@@ -79,16 +78,6 @@ jobs:
             ./.pg_secrets \
             ./credentials.json \
             ${{ secrets.GCP_VM_NAME }}:~/ \
-            --ssh-key-expire-after=1m
-
-      - name: Copy frontend files to GCP VM
-        if: steps.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
-        run: |
-          gcloud compute scp \
-            --zone=${{ secrets.GCP_ZONE }} \
-            ./frontend \
-            ${{ secrets.GCP_VM_NAME }}:~/ \
-            --recurse \
             --ssh-key-expire-after=1m
 
       - name: Set strict permissions on VM
