@@ -16,7 +16,7 @@ const TEAM_PICKER_DB_PATH = 'teamPickerState'; // For clearing
 const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || "osirikler"; // Default if not in env
 
-const ATTENDANCE_STATES = ["not_coming", "no_response", "coming"];
+const ATTENDANCE_STATES = ["no_response", "uncertain", "coming", "not_coming"];
 const EMOJI_STATES = [
     "normal", "tired", "sick", "feeling_good", "waffle",
     "cocuk_bende", "evde_degil", "sonrakine", "kafa_izni",
@@ -260,6 +260,7 @@ export default function AttendancePage() {
 
   const combinedPlayers = getCombinedPlayerData();
   const comingCount = combinedPlayers.filter(p => p.attendanceStatus === 'coming').length;
+  const uncertainCount = combinedPlayers.filter(p => p.attendanceStatus === 'uncertain').length;
   const noResponseCount = combinedPlayers.filter(p => p.attendanceStatus === 'no_response').length;
   const tekerDondu = comingCount >= TEKER_DONDU_THRESHOLD;
 
@@ -275,7 +276,9 @@ export default function AttendancePage() {
             <p className="font-medium">
               Gelen Oyuncu: <span className={`font-bold ${tekerDondu ? 'text-green-700' : comingCount < TEKER_DONDU_THRESHOLD ? 'text-red-700' : 'text-orange-600'}`}>{comingCount}</span>
               <span className="mx-2">|</span>
-              Belirsiz: <span className="font-bold text-orange-600">{noResponseCount}</span>
+              Belirsiz: <span className="font-bold text-yellow-600">{uncertainCount}</span>
+              <span className="mx-2">|</span>
+              Cevap Yok: <span className="font-bold text-gray-600">{noResponseCount}</span>
             </p>
             {tekerDondu && (
               <p id="teker-dondu-indicator" className="text-sm font-semibold text-green-700 mt-1 flex items-center">

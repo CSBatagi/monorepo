@@ -41,9 +41,10 @@ const AttendanceControls: React.FC<AttendanceControlsProps> = ({
   const displayStatus = (status: string) => {
     // Turkish labels matching the original design
     const turkishLabels: { [key: string]: string } = {
+      'no_response': 'Cevap yok',
+      'uncertain': 'Belirsiz',
       'coming': 'Geliyor',
-      'not_coming': 'Gelmiyor', 
-      'no_response': 'Belirsiz'
+      'not_coming': 'Gelmiyor'
     };
     return turkishLabels[status] || status.replace("_", " ").toUpperCase();
   }
@@ -53,6 +54,8 @@ const AttendanceControls: React.FC<AttendanceControlsProps> = ({
       return 'bg-green-100 text-green-700 hover:bg-green-200 border-green-300';
     } else if (status === 'not_coming') {
       return 'bg-red-100 text-red-700 hover:bg-red-200 border-red-300';
+    } else if (status === 'uncertain') {
+      return 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-300';
     } else {
       return 'bg-gray-200 text-gray-700 border-gray-300 hover:bg-gray-300';
     }
