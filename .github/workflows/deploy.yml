@@ -67,9 +67,9 @@ jobs:
 
       - name: Copy config files to GCP VM
         run: |
-          # Create directory structure first
+          # Create directory structure first and clean up any directory-mounted files
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="mkdir -p ~/frontend-nextjs/public/data ~/config" \
+            --command="mkdir -p ~/frontend-nextjs/public/data ~/config && sudo rm -rf ~/frontend-nextjs/public/data/players.json" \
             --ssh-key-expire-after=1m
           
           # Copy main config files
