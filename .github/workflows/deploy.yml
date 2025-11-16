@@ -155,11 +155,11 @@ jobs:
           if [[ "${{ steps.changes.outputs.docker-compose }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             # If docker-compose changed, restart all services
             gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-              --command="sudo docker compose -f ~/docker-compose.yml pull && sudo docker compose -f ~/docker-compose.yml up -d"
+              --command="echo '${{ secrets.GITHUB_TOKEN }}' | sudo -S docker login ghcr.io -u ${{ github.actor }} --password-stdin && sudo docker compose -f ~/docker-compose.yml pull && sudo docker compose -f ~/docker-compose.yml up -d"
           elif [[ -n "$SERVICES_TO_UPDATE" ]]; then
             # Only update specific services
             gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-              --command="sudo docker compose -f ~/docker-compose.yml pull $SERVICES_TO_UPDATE && sudo docker compose -f ~/docker-compose.yml up -d $SERVICES_TO_UPDATE"
+              --command="echo '${{ secrets.GITHUB_TOKEN }}' | sudo -S docker login ghcr.io -u ${{ github.actor }} --password-stdin && sudo docker compose -f ~/docker-compose.yml pull $SERVICES_TO_UPDATE && sudo docker compose -f ~/docker-compose.yml up -d $SERVICES_TO_UPDATE"
           else
             echo "No services need to be updated"
           fi
