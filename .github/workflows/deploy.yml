@@ -67,9 +67,9 @@ jobs:
 
       - name: Copy config files to GCP VM
         run: |
-          # Create directory structure first and clean up any directory-mounted files
+          # Stop backend, remove mistaken players.json directory, recreate structure, pre-create empty file, fix ownership
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="mkdir -p ~/frontend-nextjs/public/data ~/config && sudo rm -rf ~/frontend-nextjs/public/data/players.json" \
+            --command="cd ~ && sudo docker compose stop backend && sudo rm -rf ~/frontend-nextjs/public/data/players.json && mkdir -p ~/frontend-nextjs/public/data ~/config && touch ~/frontend-nextjs/public/data/players.json && sudo chown runner:runner ~/frontend-nextjs/public/data/players.json && sudo chown -R runner:runner ~/frontend-nextjs/public/data ~/config" \
             --ssh-key-expire-after=1m
           
           # Copy main config files
