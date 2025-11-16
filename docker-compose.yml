@@ -34,20 +34,22 @@ services:
   backend:
     restart: unless-stopped 
     image: ghcr.io/csbatagi/monorepo/backend:latest  # Using the image from GitHub Container Registry with main branch tag
-    pull_policy: always  # Force Docker to pull the latest image every time
+    pull_policy: never  # Avoid forced pulls (auth issues); rely on workflow to update image
     environment:
       DB_HOST: postgres # Hostname matches the service name below
       DB_DATABASE: csdm
       VM_NAME: cs2-server
       GCP_ZONE: europe-west3-c
       SEASON_START_FILE: /app/config/season_start.json
+      PLAYERS_FILE: /app/players.json
     env_file:
       - path: .backend_secrets
         required: true
     volumes:
       - ./credentials.json:/app/../credentials.json
       - ./config/season_start.json:/app/config/season_start.json:ro
-      - ./frontend-nextjs/public/data/players.json:/app/config/players.json:ro
+      # Mount players.json to a distinct path to avoid legacy directory conflicts
+      - ./frontend-nextjs/public/data/players.json:/app/players.json:ro
     networks:
       - db2
     expose:

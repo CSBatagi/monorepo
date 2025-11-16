@@ -99,6 +99,12 @@ jobs:
             ${{ secrets.GCP_VM_NAME }}:~/config/ \
             --ssh-key-expire-after=1m
 
+      - name: Ensure backend running (if only data changed)
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
+            --command="cd ~ && (sudo docker compose ps backend | grep -q Up || sudo docker compose up -d backend)" \
+            --ssh-key-expire-after=1m
+
       - name: Set strict permissions on VM
         run: |
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
