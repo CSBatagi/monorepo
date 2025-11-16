@@ -67,6 +67,12 @@ jobs:
 
       - name: Copy config files to GCP VM
         run: |
+          # Create directory structure first
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
+            --command="mkdir -p ~/frontend-nextjs/public/data ~/config" \
+            --ssh-key-expire-after=1m
+          
+          # Copy main config files
           gcloud compute scp \
             --zone=${{ secrets.GCP_ZONE }} \
             ./Caddyfile \
@@ -78,6 +84,19 @@ jobs:
             ./.pg_secrets \
             ./credentials.json \
             ${{ secrets.GCP_VM_NAME }}:~/ \
+            --ssh-key-expire-after=1m
+          
+          # Copy data files
+          gcloud compute scp \
+            --zone=${{ secrets.GCP_ZONE }} \
+            ./frontend-nextjs/public/data/players.json \
+            ${{ secrets.GCP_VM_NAME }}:~/frontend-nextjs/public/data/ \
+            --ssh-key-expire-after=1m
+          
+          gcloud compute scp \
+            --zone=${{ secrets.GCP_ZONE }} \
+            ./config/season_start.json \
+            ${{ secrets.GCP_VM_NAME }}:~/config/ \
             --ssh-key-expire-after=1m
 
       - name: Set strict permissions on VM
