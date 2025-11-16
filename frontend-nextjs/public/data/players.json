@@ -72,7 +72,7 @@
   {
     "name": "regarnur",
     "steamId": "76561198155880054",
-    "status": "Aktif Oyuncu"
+    "status": "Adam Evde Yok"
   },
   {
     "name": "sedo",
@@ -102,7 +102,7 @@
   {
     "name": "foz",
     "steamId": "76561198845901878",
-    "status": "Adam Evde Yok"
+    "status": "Aktif Oyuncu"
   },
   {
     "name": "mrButters",
@@ -113,5 +113,10 @@
     "name": "neola",
     "steamId": "76561198253166383",
     "status": "Adam Evde Yok"
-  }
+  },
+    {
+    "name": "AfterFart",
+    "steamId": "76561198805132512",
+    "status": "Aktif Oyuncu"
+  },
 ] 
