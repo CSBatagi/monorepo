@@ -32,6 +32,7 @@ jobs:
           echo "backend=$(git diff --name-only HEAD~1 HEAD | grep -q '^backend/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "frontend-nextjs=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "docker-compose=$(git diff --name-only HEAD~1 HEAD | grep -q 'docker-compose.yml\|Caddyfile' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "players_data=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/public/data/players.json$' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
 
       - name: Authenticate to GCP
         id: auth
@@ -162,3 +163,10 @@ jobs:
           else
             echo "No services need to be updated"
           fi
+
+      - name: Invalidate stats timestamp if players.json changed
+        if: steps.changes.outputs.players_data == 'true'
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
+            --command="sudo docker compose -f ~/docker-compose.yml exec backend bash -c 'rm -f /app/last_timestamp.txt || true' || true && sudo docker compose -f ~/docker-compose.yml restart backend" \
+            --ssh-key-expire-after=1m

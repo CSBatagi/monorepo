@@ -75,7 +75,7 @@ services:
       - nextjs_data:/app/runtime-data
 
   postgres:
-    image: postgres
+    image: postgres:17  # Match existing data format (was auto-upgraded)
     restart: unless-stopped 
     ports:
       - 5432:5432
