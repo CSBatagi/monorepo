@@ -34,7 +34,7 @@ services:
   backend:
     restart: unless-stopped 
     image: ghcr.io/csbatagi/monorepo/backend:latest  # Using the image from GitHub Container Registry with main branch tag
-    pull_policy: never  # Avoid forced pulls (auth issues); rely on workflow to update image
+    pull_policy: always  # Force Docker to pull the latest image every time
     environment:
       DB_HOST: postgres # Hostname matches the service name below
       DB_DATABASE: csdm
