@@ -21,15 +21,34 @@ const productionPool = new Pool({
   port: 5432,
 });
 
-// Get season start date
+// Get season start date - uses same resolution logic as backend index.js
 function getSeasonStart() {
-  const seasonStartFile = path.join(__dirname, '..', 'frontend-nextjs', 'public', 'data', 'season_start.json');
-  try {
-    const data = JSON.parse(require('fs').readFileSync(seasonStartFile, 'utf-8'));
-    return data.season_start?.split('T')[0] || '2025-06-09';
-  } catch {
-    return '2025-06-09';
+  const explicitFile = process.env.SEASON_START_FILE;
+  const candidateFiles = [];
+  
+  if (explicitFile) candidateFiles.push(explicitFile);
+  
+  // Support mounting the file beside backend
+  candidateFiles.push(path.join(__dirname, 'season_start.json'));
+  
+  // Original monorepo relative path (works in dev when both folders present)
+  candidateFiles.push(path.join(__dirname, '..', 'frontend-nextjs', 'public', 'data', 'season_start.json'));
+  
+  // Production config path
+  candidateFiles.push(path.join(__dirname, '..', 'config', 'season_start.json'));
+  
+  for (const fp of candidateFiles) {
+    try {
+      const raw = require('fs').readFileSync(fp, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.season_start) {
+        return parsed.season_start.split('T')[0];
+      }
+    } catch (_) { /* try next */ }
   }
+  
+  // Fallback to env var or hardcoded default
+  return process.env.SEZON_BASLANGIC || '2025-06-09';
 }
 
 async function generateStatsFromProduction() {

@@ -124,14 +124,15 @@ Incremental regeneration guarded by a single in-memory promise on backend to avo
 Restore removed workflow `stats.yml` from git history and reintroduce a pre-generation script if a static deployment model is desired again.
 
 ### Season Start Resolution (Production Ready)
-Resolution order for season start date (first match wins):
+The backend resolves the season start date using this priority order (first match wins):
 1. `SEASON_START_FILE` env var pointing to a JSON file path (inside container) containing `{ "season_start": "YYYY-MM-DD" }`.
 2. A file named `season_start.json` present in backend working directory (e.g. mounted via volume).
-3. Monorepo dev path `frontend-nextjs/public/data/season_start.json`.
-4. `SEZON_BASLANGIC` env var (legacy fallback).
-5. Default `2025-06-09`.
+3. Production config path `config/season_start.json`.
+4. Monorepo dev path `frontend-nextjs/public/data/season_start.json`.
+5. `SEZON_BASLANGIC` env var (legacy fallback).
+6. Default `2025-06-09`.
 
-Recommended production pattern:
+**Production setup (recommended):**
 ```yaml
   backend:
     environment:
@@ -139,6 +140,11 @@ Recommended production pattern:
     volumes:
       - ./config/season_start.json:/app/config/season_start.json:ro
 ```
+
+**Managing season start date:**
+- Edit `config/season_start.json` with the new season start date in `YYYY-MM-DD` format
+- The backend will automatically reload the date on next stats generation
+- No container restart needed - changes take effect on next stats request
 
 ### Environment Variables Relevant to Stats
 | Variable | Purpose | Required | Default |

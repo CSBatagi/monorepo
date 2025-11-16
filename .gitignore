@@ -38,6 +38,9 @@ Thumbs.db
 credentials.json
 .github/copilot-instructions.md
 
+# Allow season_start.json in config directory (not sensitive)
+!config/season_start.json
+
 # Database dumps
 production_dump_*.sql
 *.sql
