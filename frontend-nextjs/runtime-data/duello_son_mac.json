@@ -1,0 +1,448 @@
+{
+  "playerRows": [
+    "AfterFart",
+    "HiLL",
+    "Malawhur",
+    "Nerull",
+    "Taytos Efendi",
+    "Uncle Iroh",
+    "daE",
+    "drb",
+    "ekl1ps",
+    "sedo"
+  ],
+  "playerCols": [
+    "AfterFart",
+    "HiLL",
+    "Malawhur",
+    "Nerull",
+    "Taytos Efendi",
+    "Uncle Iroh",
+    "daE",
+    "drb",
+    "ekl1ps",
+    "sedo"
+  ],
+  "duels": {
+    "AfterFart": {
+      "AfterFart": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "daE": {
+        "kills": 6,
+        "deaths": 11
+      },
+      "drb": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLL": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 2,
+        "deaths": 4
+      },
+      "sedo": {
+        "kills": 5,
+        "deaths": 9
+      },
+      "Taytos Efendi": {
+        "kills": 1,
+        "deaths": 13
+      },
+      "Uncle Iroh": {
+        "kills": 5,
+        "deaths": 8
+      }
+    },
+    "daE": {
+      "AfterFart": {
+        "kills": 11,
+        "deaths": 6
+      },
+      "daE": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "drb": {
+        "kills": 7,
+        "deaths": 8
+      },
+      "ekl1ps": {
+        "kills": 13,
+        "deaths": 3
+      },
+      "HiLL": {
+        "kills": 11,
+        "deaths": 10
+      },
+      "Malawhur": {
+        "kills": 8,
+        "deaths": 5
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Taytos Efendi": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 0,
+        "deaths": 0
+      }
+    },
+    "drb": {
+      "AfterFart": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "daE": {
+        "kills": 8,
+        "deaths": 7
+      },
+      "drb": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLL": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 6,
+        "deaths": 16
+      },
+      "sedo": {
+        "kills": 8,
+        "deaths": 8
+      },
+      "Taytos Efendi": {
+        "kills": 10,
+        "deaths": 10
+      },
+      "Uncle Iroh": {
+        "kills": 7,
+        "deaths": 6
+      }
+    },
+    "ekl1ps": {
+      "AfterFart": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "daE": {
+        "kills": 3,
+        "deaths": 13
+      },
+      "drb": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLL": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 5,
+        "deaths": 11
+      },
+      "sedo": {
+        "kills": 6,
+        "deaths": 9
+      },
+      "Taytos Efendi": {
+        "kills": 9,
+        "deaths": 8
+      },
+      "Uncle Iroh": {
+        "kills": 4,
+        "deaths": 11
+      }
+    },
+    "HiLL": {
+      "AfterFart": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "daE": {
+        "kills": 10,
+        "deaths": 11
+      },
+      "drb": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLL": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 5,
+        "deaths": 10
+      },
+      "sedo": {
+        "kills": 8,
+        "deaths": 11
+      },
+      "Taytos Efendi": {
+        "kills": 4,
+        "deaths": 8
+      },
+      "Uncle Iroh": {
+        "kills": 10,
+        "deaths": 7
+      }
+    },
+    "Malawhur": {
+      "AfterFart": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "daE": {
+        "kills": 5,
+        "deaths": 8
+      },
+      "drb": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLL": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Malawhur": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 13,
+        "deaths": 13
+      },
+      "sedo": {
+        "kills": 6,
+        "deaths": 7
+      },
+      "Taytos Efendi": {
+        "kills": 17,
+        "deaths": 11
+      },
+      "Uncle Iroh": {
+        "kills": 8,
+        "deaths": 7
+      }
+    },
+    "Nerull": {
+      "AfterFart": {
+        "kills": 4,
+        "deaths": 2
+      },
+      "daE": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "drb": {
+        "kills": 16,
+        "deaths": 6
+      },
+      "ekl1ps": {
+        "kills": 11,
+        "deaths": 5
+      },
+      "HiLL": {
+        "kills": 10,
+        "deaths": 5
+      },
+      "Malawhur": {
+        "kills": 13,
+        "deaths": 13
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Taytos Efendi": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 0,
+        "deaths": 0
+      }
+    },
+    "sedo": {
+      "AfterFart": {
+        "kills": 9,
+        "deaths": 5
+      },
+      "daE": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "drb": {
+        "kills": 8,
+        "deaths": 8
+      },
+      "ekl1ps": {
+        "kills": 9,
+        "deaths": 6
+      },
+      "HiLL": {
+        "kills": 11,
+        "deaths": 8
+      },
+      "Malawhur": {
+        "kills": 7,
+        "deaths": 6
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Taytos Efendi": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 0,
+        "deaths": 0
+      }
+    },
+    "Taytos Efendi": {
+      "AfterFart": {
+        "kills": 13,
+        "deaths": 1
+      },
+      "daE": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "drb": {
+        "kills": 10,
+        "deaths": 10
+      },
+      "ekl1ps": {
+        "kills": 8,
+        "deaths": 9
+      },
+      "HiLL": {
+        "kills": 8,
+        "deaths": 4
+      },
+      "Malawhur": {
+        "kills": 11,
+        "deaths": 17
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Taytos Efendi": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 0,
+        "deaths": 0
+      }
+    },
+    "Uncle Iroh": {
+      "AfterFart": {
+        "kills": 8,
+        "deaths": 5
+      },
+      "daE": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "drb": {
+        "kills": 6,
+        "deaths": 7
+      },
+      "ekl1ps": {
+        "kills": 11,
+        "deaths": 4
+      },
+      "HiLL": {
+        "kills": 7,
+        "deaths": 10
+      },
+      "Malawhur": {
+        "kills": 7,
+        "deaths": 8
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Taytos Efendi": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Uncle Iroh": {
+        "kills": 0,
+        "deaths": 0
+      }
+    }
+  }
+}

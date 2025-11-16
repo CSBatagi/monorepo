@@ -10,6 +10,9 @@ yarn-error.log*
 # Environment variables
 .env
 .env*.local
+.env.local
+backend/.env
+frontend-nextjs/.env.local
 
 # VS Code settings
 .vscode/
@@ -30,6 +33,11 @@ Thumbs.db
 
 #Secrets
 *_secrets
+*_secrets.local
 .gcp_parameters
 credentials.json
 .github/copilot-instructions.md
+
+# Database dumps
+production_dump_*.sql
+*.sql

@@ -7,6 +7,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "jest --runInBand --verbose",
   "test:integration": "INTEGRATION_BACKEND_URL=http://localhost:3001 jest --runInBand --verbose test/integration"
   },

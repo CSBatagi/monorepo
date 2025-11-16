@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: csbatagi-postgres-local
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    # Using same env file format as production for consistency
+    env_file:
+      - path: .pg_secrets.local
+        required: false  # Optional for local dev
+    environment:
+      # Fallback to standard postgres vars if .pg_secrets.local doesn't exist
+      POSTGRES_DB: ${POSTGRES_DB:-csdm}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_local_data:
+    name: csbatagi_postgres_local

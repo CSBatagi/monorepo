@@ -1,6 +1,34 @@
-# CS Batağı Monorepo
+# CS Batağı Stats Platform
 
-This repository is a monorepo containing multiple components of the CS Batağı project.
+A full-stack CS:GO/CS2 statistics tracking and visualization platform.
+
+## 🚀 Quick Start (Stats Viewing Only)
+
+**Just want to view stats locally?** No database needed:
+
+```powershell
+# 1. Clone and install
+git clone https://github.com/CSBatagi/monorepo.git
+cd monorepo/frontend-nextjs
+npm install
+
+# 2. Generate stats from production (requires readonly credentials)
+cd ../backend
+$env:PROD_DB_HOST = "db2.csbatagi.com"
+$env:PROD_DB_USER = "readonly"
+$env:PROD_DB_PASSWORD = "your_readonly_password"
+node generate-stats-from-prod.js
+
+# 3. Run frontend
+cd ../frontend-nextjs
+npm run dev
+```
+
+Visit http://localhost:3000 to view stats!
+
+**Full setup guide:** [DEVELOPMENT.md](DEVELOPMENT.md)
+
+---
 
 ## Structure
 
