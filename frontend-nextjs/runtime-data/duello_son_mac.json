@@ -1,25 +1,25 @@
 {
   "playerRows": [
     "AfterFart",
-    "HiLL",
+    "HiLLbili",
     "Malawhur",
     "Nerull",
-    "Taytos Efendi",
-    "Uncle Iroh",
+    "Seyit Onbaşı",
+    "bobinaj",
     "daE",
-    "drb",
+    "darbe",
     "ekl1ps",
     "sedo"
   ],
   "playerCols": [
     "AfterFart",
-    "HiLL",
+    "HiLLbili",
     "Malawhur",
     "Nerull",
-    "Taytos Efendi",
-    "Uncle Iroh",
+    "Seyit Onbaşı",
+    "bobinaj",
     "daE",
-    "drb",
+    "darbe",
     "ekl1ps",
     "sedo"
   ],
@@ -33,7 +33,7 @@
         "kills": 6,
         "deaths": 11
       },
-      "drb": {
+      "darbe": {
         "kills": 0,
         "deaths": 0
       },
@@ -41,7 +41,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -57,11 +57,11 @@
         "kills": 5,
         "deaths": 9
       },
-      "Taytos Efendi": {
+      "bobinaj": {
         "kills": 1,
         "deaths": 13
       },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 5,
         "deaths": 8
       }
@@ -75,7 +75,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "drb": {
+      "darbe": {
         "kills": 7,
         "deaths": 8
       },
@@ -83,7 +83,7 @@
         "kills": 13,
         "deaths": 3
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 11,
         "deaths": 10
       },
@@ -99,16 +99,16 @@
         "kills": 0,
         "deaths": 0
       },
-      "Taytos Efendi": {
+      "bobinaj": {
         "kills": 0,
         "deaths": 0
       },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 0,
         "deaths": 0
       }
     },
-    "drb": {
+    "darbe": {
       "AfterFart": {
         "kills": 0,
         "deaths": 0
@@ -117,7 +117,7 @@
         "kills": 8,
         "deaths": 7
       },
-      "drb": {
+      "darbe": {
         "kills": 0,
         "deaths": 0
       },
@@ -125,7 +125,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -141,11 +141,11 @@
         "kills": 8,
         "deaths": 8
       },
-      "Taytos Efendi": {
+      "bobinaj": {
         "kills": 10,
         "deaths": 10
       },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 7,
         "deaths": 6
       }
@@ -159,7 +159,7 @@
         "kills": 3,
         "deaths": 13
       },
-      "drb": {
+      "darbe": {
         "kills": 0,
         "deaths": 0
       },
@@ -167,7 +167,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -183,16 +183,16 @@
         "kills": 6,
         "deaths": 9
       },
-      "Taytos Efendi": {
+      "bobinaj": {
         "kills": 9,
         "deaths": 8
       },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 4,
         "deaths": 11
       }
     },
-    "HiLL": {
+    "HiLLbili": {
       "AfterFart": {
         "kills": 0,
         "deaths": 0
@@ -201,7 +201,7 @@
         "kills": 10,
         "deaths": 11
       },
-      "drb": {
+      "darbe": {
         "kills": 0,
         "deaths": 0
       },
@@ -209,7 +209,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -225,11 +225,11 @@
         "kills": 8,
         "deaths": 11
       },
-      "Taytos Efendi": {
+      "bobinaj": {
         "kills": 4,
         "deaths": 8
       },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 10,
         "deaths": 7
       }
@@ -243,7 +243,7 @@
         "kills": 5,
         "deaths": 8
       },
-      "drb": {
+      "darbe": {
         "kills": 0,
         "deaths": 0
       },
@@ -251,7 +251,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -267,11 +267,11 @@
         "kills": 6,
         "deaths": 7
       },
-      "Taytos Efendi": {
+      "bobinaj": {
         "kills": 17,
         "deaths": 11
       },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 8,
         "deaths": 7
       }
@@ -285,7 +285,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "drb": {
+      "darbe": {
         "kills": 16,
         "deaths": 6
       },
@@ -293,7 +293,7 @@
         "kills": 11,
         "deaths": 5
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 10,
         "deaths": 5
       },
@@ -309,11 +309,11 @@
         "kills": 0,
         "deaths": 0
       },
-      "Taytos Efendi": {
+      "bobinaj": {
         "kills": 0,
         "deaths": 0
       },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 0,
         "deaths": 0
       }
@@ -327,7 +327,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "drb": {
+      "darbe": {
         "kills": 8,
         "deaths": 8
       },
@@ -335,7 +335,7 @@
         "kills": 9,
         "deaths": 6
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 11,
         "deaths": 8
       },
@@ -351,16 +351,16 @@
         "kills": 0,
         "deaths": 0
       },
-      "Taytos Efendi": {
+      "bobinaj": {
         "kills": 0,
         "deaths": 0
       },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 0,
         "deaths": 0
       }
     },
-    "Taytos Efendi": {
+    "bobinaj": {
       "AfterFart": {
         "kills": 13,
         "deaths": 1
@@ -369,7 +369,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "drb": {
+      "darbe": {
         "kills": 10,
         "deaths": 10
       },
@@ -377,7 +377,7 @@
         "kills": 8,
         "deaths": 9
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 8,
         "deaths": 4
       },
@@ -393,16 +393,16 @@
         "kills": 0,
         "deaths": 0
       },
-      "Taytos Efendi": {
+      "bobinaj": {
         "kills": 0,
         "deaths": 0
       },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 0,
         "deaths": 0
       }
     },
-    "Uncle Iroh": {
+    "Seyit Onbaşı": {
       "AfterFart": {
         "kills": 8,
         "deaths": 5
@@ -411,7 +411,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "drb": {
+      "darbe": {
         "kills": 6,
         "deaths": 7
       },
@@ -419,7 +419,7 @@
         "kills": 11,
         "deaths": 4
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 7,
         "deaths": 10
       },
@@ -435,11 +435,11 @@
         "kills": 0,
         "deaths": 0
       },
-      "Taytos Efendi": {
+      "bobinaj": {
         "kills": 0,
         "deaths": 0
       },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 0,
         "deaths": 0
       }

@@ -3,19 +3,16 @@
     "AfterFart",
     "Cago",
     "Cavid-20",
-    "HiLL",
+    "HiLLbili",
     "Malawhur",
     "Nerull",
-    "Taytos Efendi",
+    "Seyit Onbaşı",
     "Titus",
-    "Ugo",
-    "Uncle Iroh",
     "bekenbaver",
     "bobinaj",
     "candeha",
     "daE",
     "darbe",
-    "drb",
     "ekl1ps",
     "eskisigibi",
     "foz",
@@ -27,19 +24,16 @@
     "AfterFart",
     "Cago",
     "Cavid-20",
-    "HiLL",
+    "HiLLbili",
     "Malawhur",
     "Nerull",
-    "Taytos Efendi",
+    "Seyit Onbaşı",
     "Titus",
-    "Ugo",
-    "Uncle Iroh",
     "bekenbaver",
     "bobinaj",
     "candeha",
     "daE",
     "darbe",
-    "drb",
     "ekl1ps",
     "eskisigibi",
     "foz",
@@ -81,10 +75,6 @@
         "kills": 0,
         "deaths": 0
       },
-      "drb": {
-        "kills": 0,
-        "deaths": 0
-      },
       "ekl1ps": {
         "kills": 0,
         "deaths": 0
@@ -97,7 +87,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -117,19 +107,11 @@
         "kills": 5,
         "deaths": 9
       },
-      "Taytos Efendi": {
-        "kills": 1,
-        "deaths": 13
-      },
       "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Ugo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 5,
         "deaths": 8
       },
@@ -171,10 +153,6 @@
         "kills": 1,
         "deaths": 1
       },
-      "drb": {
-        "kills": 1,
-        "deaths": 1
-      },
       "ekl1ps": {
         "kills": 0,
         "deaths": 0
@@ -187,7 +165,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -207,19 +185,11 @@
         "kills": 0,
         "deaths": 0
       },
-      "Taytos Efendi": {
-        "kills": 0,
-        "deaths": 0
-      },
       "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Ugo": {
-        "kills": 0,
-        "deaths": 5
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 0,
         "deaths": 0
       },
@@ -261,10 +231,6 @@
         "kills": 13,
         "deaths": 15
       },
-      "drb": {
-        "kills": 13,
-        "deaths": 15
-      },
       "ekl1ps": {
         "kills": 8,
         "deaths": 9
@@ -277,7 +243,7 @@
         "kills": 9,
         "deaths": 8
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 8,
         "deaths": 4
       },
@@ -297,19 +263,11 @@
         "kills": 9,
         "deaths": 9
       },
-      "Taytos Efendi": {
-        "kills": 0,
-        "deaths": 0
-      },
       "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Ugo": {
-        "kills": 3,
-        "deaths": 8
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 0,
         "deaths": 0
       },
@@ -351,10 +309,6 @@
         "kills": 33,
         "deaths": 27
       },
-      "drb": {
-        "kills": 33,
-        "deaths": 27
-      },
       "ekl1ps": {
         "kills": 14,
         "deaths": 15
@@ -367,7 +321,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 5,
         "deaths": 2
       },
@@ -387,19 +341,11 @@
         "kills": 45,
         "deaths": 33
       },
-      "Taytos Efendi": {
-        "kills": 25,
-        "deaths": 13
-      },
       "Titus": {
         "kills": 14,
         "deaths": 5
       },
-      "Ugo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 12,
         "deaths": 3
       },
@@ -441,10 +387,6 @@
         "kills": 8,
         "deaths": 9
       },
-      "drb": {
-        "kills": 8,
-        "deaths": 9
-      },
       "ekl1ps": {
         "kills": 0,
         "deaths": 0
@@ -457,7 +399,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -477,19 +419,11 @@
         "kills": 11,
         "deaths": 6
       },
-      "Taytos Efendi": {
-        "kills": 0,
-        "deaths": 0
-      },
       "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Ugo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 3,
         "deaths": 4
       },
@@ -531,10 +465,6 @@
         "kills": 7,
         "deaths": 14
       },
-      "drb": {
-        "kills": 7,
-        "deaths": 14
-      },
       "ekl1ps": {
         "kills": 6,
         "deaths": 15
@@ -547,7 +477,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 6,
         "deaths": 8
       },
@@ -567,19 +497,11 @@
         "kills": 8,
         "deaths": 10
       },
-      "Taytos Efendi": {
-        "kills": 8,
-        "deaths": 3
-      },
       "Titus": {
         "kills": 9,
         "deaths": 5
       },
-      "Ugo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 4,
         "deaths": 2
       },
@@ -621,10 +543,6 @@
         "kills": 7,
         "deaths": 8
       },
-      "drb": {
-        "kills": 7,
-        "deaths": 8
-      },
       "ekl1ps": {
         "kills": 13,
         "deaths": 3
@@ -637,7 +555,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 11,
         "deaths": 10
       },
@@ -657,19 +575,11 @@
         "kills": 0,
         "deaths": 0
       },
-      "Taytos Efendi": {
-        "kills": 0,
-        "deaths": 0
-      },
       "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Ugo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 0,
         "deaths": 0
       },
@@ -711,10 +621,6 @@
         "kills": 0,
         "deaths": 0
       },
-      "drb": {
-        "kills": 0,
-        "deaths": 0
-      },
       "ekl1ps": {
         "kills": 16,
         "deaths": 16
@@ -727,7 +633,7 @@
         "kills": 23,
         "deaths": 13
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -747,109 +653,11 @@
         "kills": 18,
         "deaths": 17
       },
-      "Taytos Efendi": {
-        "kills": 15,
-        "deaths": 13
-      },
       "Titus": {
         "kills": 7,
         "deaths": 4
       },
-      "Ugo": {
-        "kills": 14,
-        "deaths": 7
-      },
-      "Uncle Iroh": {
-        "kills": 14,
-        "deaths": 9
-      },
-      "wormik": {
-        "kills": 21,
-        "deaths": 3
-      }
-    },
-    "drb": {
-      "AfterFart": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "bekenbaver": {
-        "kills": 1,
-        "deaths": 1
-      },
-      "bobinaj": {
-        "kills": 15,
-        "deaths": 13
-      },
-      "Cago": {
-        "kills": 27,
-        "deaths": 33
-      },
-      "candeha": {
-        "kills": 9,
-        "deaths": 8
-      },
-      "Cavid-20": {
-        "kills": 14,
-        "deaths": 7
-      },
-      "daE": {
-        "kills": 8,
-        "deaths": 7
-      },
-      "darbe": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "drb": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "ekl1ps": {
-        "kills": 16,
-        "deaths": 16
-      },
-      "eskisigibi": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "foz": {
-        "kills": 23,
-        "deaths": 13
-      },
-      "HiLL": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Malawhur": {
-        "kills": 18,
-        "deaths": 19
-      },
-      "mersido": {
-        "kills": 19,
-        "deaths": 10
-      },
-      "Nerull": {
-        "kills": 11,
-        "deaths": 25
-      },
-      "sedo": {
-        "kills": 18,
-        "deaths": 17
-      },
-      "Taytos Efendi": {
-        "kills": 15,
-        "deaths": 13
-      },
-      "Titus": {
-        "kills": 7,
-        "deaths": 4
-      },
-      "Ugo": {
-        "kills": 14,
-        "deaths": 7
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 14,
         "deaths": 9
       },
@@ -891,10 +699,6 @@
         "kills": 16,
         "deaths": 16
       },
-      "drb": {
-        "kills": 16,
-        "deaths": 16
-      },
       "ekl1ps": {
         "kills": 0,
         "deaths": 0
@@ -907,7 +711,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -927,19 +731,11 @@
         "kills": 22,
         "deaths": 28
       },
-      "Taytos Efendi": {
-        "kills": 9,
-        "deaths": 8
-      },
       "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Ugo": {
-        "kills": 15,
-        "deaths": 6
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 22,
         "deaths": 23
       },
@@ -981,10 +777,6 @@
         "kills": 0,
         "deaths": 0
       },
-      "drb": {
-        "kills": 0,
-        "deaths": 0
-      },
       "ekl1ps": {
         "kills": 0,
         "deaths": 0
@@ -997,7 +789,7 @@
         "kills": 7,
         "deaths": 12
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -1017,19 +809,11 @@
         "kills": 6,
         "deaths": 8
       },
-      "Taytos Efendi": {
-        "kills": 0,
-        "deaths": 0
-      },
       "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Ugo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 0,
         "deaths": 0
       },
@@ -1071,10 +855,6 @@
         "kills": 13,
         "deaths": 23
       },
-      "drb": {
-        "kills": 13,
-        "deaths": 23
-      },
       "ekl1ps": {
         "kills": 0,
         "deaths": 0
@@ -1087,7 +867,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -1107,19 +887,11 @@
         "kills": 8,
         "deaths": 22
       },
-      "Taytos Efendi": {
-        "kills": 8,
-        "deaths": 9
-      },
       "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Ugo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 4,
         "deaths": 6
       },
@@ -1128,7 +900,7 @@
         "deaths": 0
       }
     },
-    "HiLL": {
+    "HiLLbili": {
       "AfterFart": {
         "kills": 0,
         "deaths": 0
@@ -1161,10 +933,6 @@
         "kills": 0,
         "deaths": 0
       },
-      "drb": {
-        "kills": 0,
-        "deaths": 0
-      },
       "ekl1ps": {
         "kills": 0,
         "deaths": 0
@@ -1177,7 +945,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -1197,19 +965,11 @@
         "kills": 13,
         "deaths": 15
       },
-      "Taytos Efendi": {
-        "kills": 4,
-        "deaths": 8
-      },
       "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Ugo": {
-        "kills": 8,
-        "deaths": 6
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 16,
         "deaths": 12
       },
@@ -1251,10 +1011,6 @@
         "kills": 19,
         "deaths": 18
       },
-      "drb": {
-        "kills": 19,
-        "deaths": 18
-      },
       "ekl1ps": {
         "kills": 22,
         "deaths": 17
@@ -1267,7 +1023,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 3,
         "deaths": 10
       },
@@ -1287,19 +1043,11 @@
         "kills": 27,
         "deaths": 31
       },
-      "Taytos Efendi": {
-        "kills": 38,
-        "deaths": 33
-      },
       "Titus": {
         "kills": 8,
         "deaths": 9
       },
-      "Ugo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 17,
         "deaths": 16
       },
@@ -1341,10 +1089,6 @@
         "kills": 10,
         "deaths": 19
       },
-      "drb": {
-        "kills": 10,
-        "deaths": 19
-      },
       "ekl1ps": {
         "kills": 19,
         "deaths": 29
@@ -1357,7 +1101,7 @@
         "kills": 5,
         "deaths": 1
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 4,
         "deaths": 5
       },
@@ -1377,19 +1121,11 @@
         "kills": 16,
         "deaths": 17
       },
-      "Taytos Efendi": {
-        "kills": 12,
-        "deaths": 19
-      },
       "Titus": {
         "kills": 10,
         "deaths": 10
       },
-      "Ugo": {
-        "kills": 2,
-        "deaths": 3
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 6,
         "deaths": 13
       },
@@ -1431,10 +1167,6 @@
         "kills": 25,
         "deaths": 11
       },
-      "drb": {
-        "kills": 25,
-        "deaths": 11
-      },
       "ekl1ps": {
         "kills": 37,
         "deaths": 14
@@ -1447,7 +1179,7 @@
         "kills": 25,
         "deaths": 18
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 10,
         "deaths": 5
       },
@@ -1467,19 +1199,11 @@
         "kills": 6,
         "deaths": 6
       },
-      "Taytos Efendi": {
-        "kills": 17,
-        "deaths": 9
-      },
       "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Ugo": {
-        "kills": 28,
-        "deaths": 10
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 14,
         "deaths": 12
       },
@@ -1521,10 +1245,6 @@
         "kills": 17,
         "deaths": 18
       },
-      "drb": {
-        "kills": 17,
-        "deaths": 18
-      },
       "ekl1ps": {
         "kills": 28,
         "deaths": 22
@@ -1537,7 +1257,7 @@
         "kills": 22,
         "deaths": 8
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 15,
         "deaths": 13
       },
@@ -1557,115 +1277,17 @@
         "kills": 0,
         "deaths": 0
       },
-      "Taytos Efendi": {
-        "kills": 9,
-        "deaths": 9
-      },
       "Titus": {
         "kills": 10,
         "deaths": 1
       },
-      "Ugo": {
-        "kills": 10,
-        "deaths": 8
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 11,
         "deaths": 8
       },
       "wormik": {
         "kills": 20,
         "deaths": 15
-      }
-    },
-    "Taytos Efendi": {
-      "AfterFart": {
-        "kills": 13,
-        "deaths": 1
-      },
-      "bekenbaver": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "bobinaj": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Cago": {
-        "kills": 13,
-        "deaths": 25
-      },
-      "candeha": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Cavid-20": {
-        "kills": 3,
-        "deaths": 8
-      },
-      "daE": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "darbe": {
-        "kills": 13,
-        "deaths": 15
-      },
-      "drb": {
-        "kills": 13,
-        "deaths": 15
-      },
-      "ekl1ps": {
-        "kills": 8,
-        "deaths": 9
-      },
-      "eskisigibi": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "foz": {
-        "kills": 9,
-        "deaths": 8
-      },
-      "HiLL": {
-        "kills": 8,
-        "deaths": 4
-      },
-      "Malawhur": {
-        "kills": 33,
-        "deaths": 38
-      },
-      "mersido": {
-        "kills": 19,
-        "deaths": 12
-      },
-      "Nerull": {
-        "kills": 9,
-        "deaths": 17
-      },
-      "sedo": {
-        "kills": 9,
-        "deaths": 9
-      },
-      "Taytos Efendi": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Titus": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Ugo": {
-        "kills": 3,
-        "deaths": 8
-      },
-      "Uncle Iroh": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "wormik": {
-        "kills": 26,
-        "deaths": 19
       }
     },
     "Titus": {
@@ -1701,10 +1323,6 @@
         "kills": 4,
         "deaths": 7
       },
-      "drb": {
-        "kills": 4,
-        "deaths": 7
-      },
       "ekl1ps": {
         "kills": 0,
         "deaths": 0
@@ -1717,7 +1335,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -1737,19 +1355,11 @@
         "kills": 1,
         "deaths": 10
       },
-      "Taytos Efendi": {
-        "kills": 0,
-        "deaths": 0
-      },
       "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Ugo": {
-        "kills": 5,
-        "deaths": 9
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 4,
         "deaths": 4
       },
@@ -1758,97 +1368,7 @@
         "deaths": 7
       }
     },
-    "Ugo": {
-      "AfterFart": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "bekenbaver": {
-        "kills": 5,
-        "deaths": 0
-      },
-      "bobinaj": {
-        "kills": 8,
-        "deaths": 3
-      },
-      "Cago": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "candeha": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Cavid-20": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "daE": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "darbe": {
-        "kills": 7,
-        "deaths": 14
-      },
-      "drb": {
-        "kills": 7,
-        "deaths": 14
-      },
-      "ekl1ps": {
-        "kills": 6,
-        "deaths": 15
-      },
-      "eskisigibi": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "foz": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "HiLL": {
-        "kills": 6,
-        "deaths": 8
-      },
-      "Malawhur": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "mersido": {
-        "kills": 3,
-        "deaths": 2
-      },
-      "Nerull": {
-        "kills": 10,
-        "deaths": 28
-      },
-      "sedo": {
-        "kills": 8,
-        "deaths": 10
-      },
-      "Taytos Efendi": {
-        "kills": 8,
-        "deaths": 3
-      },
-      "Titus": {
-        "kills": 9,
-        "deaths": 5
-      },
-      "Ugo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Uncle Iroh": {
-        "kills": 4,
-        "deaths": 2
-      },
-      "wormik": {
-        "kills": 0,
-        "deaths": 3
-      }
-    },
-    "Uncle Iroh": {
+    "Seyit Onbaşı": {
       "AfterFart": {
         "kills": 8,
         "deaths": 5
@@ -1881,10 +1401,6 @@
         "kills": 9,
         "deaths": 14
       },
-      "drb": {
-        "kills": 9,
-        "deaths": 14
-      },
       "ekl1ps": {
         "kills": 23,
         "deaths": 22
@@ -1897,7 +1413,7 @@
         "kills": 6,
         "deaths": 4
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 12,
         "deaths": 16
       },
@@ -1917,19 +1433,11 @@
         "kills": 8,
         "deaths": 11
       },
-      "Taytos Efendi": {
-        "kills": 0,
-        "deaths": 0
-      },
       "Titus": {
         "kills": 4,
         "deaths": 4
       },
-      "Ugo": {
-        "kills": 2,
-        "deaths": 4
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 0,
         "deaths": 0
       },
@@ -1971,10 +1479,6 @@
         "kills": 3,
         "deaths": 21
       },
-      "drb": {
-        "kills": 3,
-        "deaths": 21
-      },
       "ekl1ps": {
         "kills": 8,
         "deaths": 22
@@ -1987,7 +1491,7 @@
         "kills": 0,
         "deaths": 0
       },
-      "HiLL": {
+      "HiLLbili": {
         "kills": 0,
         "deaths": 0
       },
@@ -2007,19 +1511,11 @@
         "kills": 15,
         "deaths": 20
       },
-      "Taytos Efendi": {
-        "kills": 19,
-        "deaths": 26
-      },
       "Titus": {
         "kills": 7,
         "deaths": 2
       },
-      "Ugo": {
-        "kills": 3,
-        "deaths": 0
-      },
-      "Uncle Iroh": {
+      "Seyit Onbaşı": {
         "kills": 4,
         "deaths": 7
       },

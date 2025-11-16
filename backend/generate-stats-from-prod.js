@@ -1,6 +1,8 @@
 // Script to generate stats JSONs from production database
 // This queries the production DB and creates local JSON files in runtime-data
 
+require('dotenv').config();
+
 const { Pool } = require('pg');
 const fs = require('fs').promises;
 const path = require('path');

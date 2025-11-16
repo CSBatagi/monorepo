@@ -9,15 +9,16 @@
   "scripts": {
     "start": "node index.js",
     "test": "jest --runInBand --verbose",
-  "test:integration": "INTEGRATION_BACKEND_URL=http://localhost:3001 jest --runInBand --verbose test/integration"
+    "test:integration": "INTEGRATION_BACKEND_URL=http://localhost:3001 jest --runInBand --verbose test/integration"
   },
   "dependencies": {
+    "@google-cloud/compute": "^4.1.0",
     "ajv": "^8.17.1",
+    "dotenv": "^17.2.3",
     "express": "^4.21.2",
-    "pg": "^8.13.1",
-    "rcon": "^1.1.0",
     "node-fetch": "^2.7.0",
-    "@google-cloud/compute": "^4.1.0"
+    "pg": "^8.13.1",
+    "rcon": "^1.1.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
@@ -25,10 +26,18 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "roots": ["<rootDir>/test"],
-    "moduleFileExtensions": ["js", "json"],
+    "roots": [
+      "<rootDir>/test"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "json"
+    ],
     "verbose": false,
-    "testPathIgnorePatterns": ["/node_modules/", "<rootDir>/test/integration/"],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/test/integration/"
+    ],
     "collectCoverage": false
   }
 }

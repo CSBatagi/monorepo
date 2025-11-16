@@ -47,6 +47,7 @@ services:
     volumes:
       - ./credentials.json:/app/../credentials.json
       - ./config/season_start.json:/app/config/season_start.json:ro
+      - ./frontend-nextjs/public/data/players.json:/app/config/players.json:ro
     networks:
       - db2
     expose:
