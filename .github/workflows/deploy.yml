@@ -32,7 +32,7 @@ jobs:
           echo "backend=$(git diff --name-only HEAD~1 HEAD | grep -q '^backend/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "frontend-nextjs=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "docker-compose=$(git diff --name-only HEAD~1 HEAD | grep -q 'docker-compose.yml\|Caddyfile' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          echo "players_data=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/public/data/players.json$' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "config_data=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/public/data/players.json$\|^config/season_start.json$' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
 
       - name: Authenticate to GCP
         id: auth
@@ -87,17 +87,17 @@ jobs:
             ${{ secrets.GCP_VM_NAME }}:~/ \
             --ssh-key-expire-after=1m
           
-          # Copy data files
+          # Copy data files together
           gcloud compute scp \
             --zone=${{ secrets.GCP_ZONE }} \
             ./frontend-nextjs/public/data/players.json \
-            ${{ secrets.GCP_VM_NAME }}:~/frontend-nextjs/public/data/ \
+            ./config/season_start.json \
+            ${{ secrets.GCP_VM_NAME }}:~/ \
             --ssh-key-expire-after=1m
           
-          gcloud compute scp \
-            --zone=${{ secrets.GCP_ZONE }} \
-            ./config/season_start.json \
-            ${{ secrets.GCP_VM_NAME }}:~/config/ \
+          # Move files to correct locations
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
+            --command="mv ~/players.json ~/frontend-nextjs/public/data/ && mv ~/season_start.json ~/config/" \
             --ssh-key-expire-after=1m
 
       - name: Ensure backend running (if only data changed)
@@ -109,39 +109,11 @@ jobs:
       - name: Set strict permissions on VM
         run: |
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="chmod 600 ~/.dns_secrets ~/.backend_secrets ~/.frontend_secrets ~/.my_sql_secrets ~/.pg_secrets"
-
-      - name: Cleanup local secrets (optional)
-        run: rm -f .dns_secrets .backend_secrets .my_sql_secrets .pg_secrets
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create Docker config for GitHub Container Registry
-        run: |
-          mkdir -p ~/.docker
-          echo '{"auths":{"ghcr.io":{"auth":"'$(echo -n "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" | base64)'"}}}' > ~/.docker/config.json
-
-      - name: Create .docker directories on VM
-        run: |
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="mkdir -p ~/.docker && sudo mkdir -p /root/.docker"
-
-      - name: Copy Docker config to VM
-        run: |
-          gcloud compute scp \
-            --zone=${{ secrets.GCP_ZONE }} \
-            ~/.docker/config.json \
-            ${{ secrets.GCP_VM_NAME }}:~/.docker/config.json \
+            --command="chmod 600 ~/.dns_secrets ~/.backend_secrets ~/.frontend_secrets ~/.my_sql_secrets ~/.pg_secrets" \
             --ssh-key-expire-after=1m
 
-      - name: Copy Docker config to root user on VM
-        run: |
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="sudo cp ~/.docker/config.json /root/.docker/config.json"
+      - name: Cleanup local secrets
+        run: rm -f .dns_secrets .backend_secrets .frontend_secrets .my_sql_secrets .pg_secrets credentials.json
 
       - name: Update and start containers
         run: |
@@ -164,9 +136,9 @@ jobs:
             echo "No services need to be updated"
           fi
 
-      - name: Invalidate stats timestamp if players.json changed
-        if: steps.changes.outputs.players_data == 'true'
+      - name: Invalidate stats timestamp if config data changed
+        if: steps.changes.outputs.config_data == 'true'
         run: |
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="sudo docker compose -f ~/docker-compose.yml exec backend bash -c 'rm -f /app/last_timestamp.txt || true' || true && sudo docker compose -f ~/docker-compose.yml restart backend" \
+            --command="sudo docker compose -f ~/docker-compose.yml exec backend bash -c 'rm -f /app/last_timestamp.txt' && sudo docker compose -f ~/docker-compose.yml restart backend" \
             --ssh-key-expire-after=1m
