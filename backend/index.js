@@ -288,6 +288,18 @@ app.post('/stop-vm', async (req, res) => {
 // Start the server
 if (!TEST_MODE) {
   const port = process.env.PORT || 3000;
+  // Warm startup generation to ensure canonical names load & early visibility.
+  async function warmStartup() {
+    try {
+      cachedSeasonStart = resolveSeasonStart();
+      console.log('[startup] triggering initial aggregates generation');
+      await generateAggregates(pool, { seasonStart: cachedSeasonStart });
+      console.log('[startup] initial aggregates generation complete');
+    } catch (e) {
+      console.warn('[startup] initial aggregates generation failed', e.message);
+    }
+  }
+  warmStartup();
   app.listen(port, () => {
     console.log(`Middleware is running on port ${port}`);
   });
