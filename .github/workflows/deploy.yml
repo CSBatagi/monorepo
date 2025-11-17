@@ -66,14 +66,14 @@ jobs:
           
             echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
 
-      - name: Copy config files to GCP VM
+      - name: Prepare VM directories and copy files
         run: |
-          # Stop backend, remove mistaken players.json directory, recreate structure with sudo, fix ownership (no pre-touch)
+          # Create directory structure on VM
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="cd ~ && sudo docker compose stop backend && sudo rm -rf ~/frontend-nextjs/public/data/players.json && sudo mkdir -p ~/frontend-nextjs/public/data ~/config && sudo chown -R runner:runner ~/frontend-nextjs/public/data ~/config" \
+            --command="mkdir -p ~/frontend-nextjs/public/data ~/config" \
             --ssh-key-expire-after=1m
           
-          # Copy main config files
+          # Copy all config and secret files
           gcloud compute scp \
             --zone=${{ secrets.GCP_ZONE }} \
             ./Caddyfile \
@@ -87,7 +87,7 @@ jobs:
             ${{ secrets.GCP_VM_NAME }}:~/ \
             --ssh-key-expire-after=1m
           
-          # Copy data files together
+          # Copy data files
           gcloud compute scp \
             --zone=${{ secrets.GCP_ZONE }} \
             ./frontend-nextjs/public/data/players.json \
@@ -95,18 +95,12 @@ jobs:
             ${{ secrets.GCP_VM_NAME }}:~/ \
             --ssh-key-expire-after=1m
           
-          # Move files to correct locations
+          # Move data files to correct locations
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
             --command="mv ~/players.json ~/frontend-nextjs/public/data/ && mv ~/season_start.json ~/config/" \
             --ssh-key-expire-after=1m
 
-      - name: Ensure backend running (if only data changed)
-        run: |
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="cd ~ && (sudo docker compose ps backend | grep -q Up || DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 sudo -E docker compose up -d --no-pull backend)" \
-            --ssh-key-expire-after=1m
-
-      - name: Set strict permissions on VM
+      - name: Set file permissions on VM
         run: |
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
             --command="chmod 600 ~/.dns_secrets ~/.backend_secrets ~/.frontend_secrets ~/.my_sql_secrets ~/.pg_secrets" \
@@ -140,5 +134,5 @@ jobs:
         if: steps.changes.outputs.config_data == 'true'
         run: |
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="sudo docker compose -f ~/docker-compose.yml exec backend bash -c 'rm -f /app/last_timestamp.txt' && sudo docker compose -f ~/docker-compose.yml restart backend" \
+            --command="sudo docker compose -f ~/docker-compose.yml exec -T backend bash -c 'rm -f /app/last_timestamp.txt' && sudo docker compose -f ~/docker-compose.yml restart backend" \
             --ssh-key-expire-after=1m
