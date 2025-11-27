@@ -224,6 +224,7 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
   const [mapsState, setMapsState] = useState<any>({});
   const [creatingMatch, setCreatingMatch] = useState(false);
   const [matchMessage, setMatchMessage] = useState<string | null>(null);
+  const [pluginsMessage, setPluginsMessage] = useState<string | null>(null);
 
   const [serverModalOpen, setServerModalOpen] = useState(false);
   const [serverPassword, setServerPassword] = useState('');
@@ -499,6 +500,27 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
       setServerMessage('Bir hata oluştu: ' + (e?.message || e));
     } finally {
       setCreatingServer(false);
+    }
+  };
+
+  // --- Hidden Load Plugins handler ---
+  const handleLoadPlugins = async () => {
+    setPluginsMessage(null);
+    try {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+      const resp = await fetch(`${basePath}/api/load-plugins`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trigger: true }),
+      });
+      if (!resp.ok) {
+        const err = await resp.text();
+        setPluginsMessage(`Hata: ${resp.status} - ${err}`);
+        return;
+      }
+      setPluginsMessage('Plugin komutu gönderildi.');
+    } catch (e: any) {
+      setPluginsMessage('Bir hata oluştu: ' + (e?.message || e));
     }
   };
 
@@ -867,6 +889,18 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
               >İptal</button>
             </div>
           </div>
+        </div>
+      )}
+      {/* Tiny hidden plugins trigger */}
+      <button
+        aria-label="Load plugins"
+        title="Load plugins"
+        onClick={handleLoadPlugins}
+        className="fixed bottom-1 right-1 w-6 h-6 text-[10px] opacity-40 hover:opacity-80 bg-gray-200 text-gray-700 rounded-full shadow-sm flex items-center justify-center"
+      >PL</button>
+      {pluginsMessage && (
+        <div className="fixed bottom-8 right-2 text-[11px] bg-white border rounded px-2 py-1 shadow text-gray-700">
+          {pluginsMessage}
         </div>
       )}
     </div>

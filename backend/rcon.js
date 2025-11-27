@@ -4,16 +4,26 @@ module.exports = class RconConnection {
 
   constructor() {
     this.matchCommand = 'exec load_match.cfg';
+    this.pluginsCommand = 'exec load_all.cfg';
     this.conn = null;  // Will be initialized when needed
     this.isConnected = false;  // Track connection state
 
   }
+
   async startMatch() {
     if (this.isConnected) {
       console.log('Already connected to RCON server.');
       return;
     }
     await this.executeCommand(this.matchCommand);
+  }
+
+  async loadAllPlugins() {
+    if (this.isConnected) {
+      console.log('Already connected to RCON server.');
+      return;
+    }
+    await this.executeCommand(this.pluginsCommand);
   }
 
   async executeCommand(command) {
@@ -38,7 +48,7 @@ module.exports = class RconConnection {
       console.error('Error:', err);
     });
 
-    this.conn.connect();  // Establ
+    this.conn.connect();  // Establish connection
   }
 
 }

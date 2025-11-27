@@ -240,6 +240,17 @@ app.post('/start-match', async (req, res) => {
   }
 });
 
+// POST endpoint to load all plugins on the RCON server
+app.post('/load-plugins', async (req, res) => {
+  try {
+    await rconConnection.loadAllPlugins();
+    res.json({ message: 'Plugins load command executed' });
+  } catch (err) {
+    console.error('Error loading plugins via RCON:', err);
+    res.status(500).json({ error: 'Failed to load plugins', details: err.message });
+  }
+});
+
 // GET endpoint to retrieve the stored match json
 app.get('/get-match', async (req, res) => {
   try {
