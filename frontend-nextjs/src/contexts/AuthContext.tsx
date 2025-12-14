@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, onAuthStateChanged, getRedirectResult, AuthError, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { User, onAuthStateChanged, getRedirectResult, AuthError, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase'; // Assuming your firebase.ts is in lib
 
 interface AuthContextType {
@@ -10,6 +10,8 @@ interface AuthContextType {
   emailSignUp: (email: string, pass: string) => Promise<any>;
   emailSignIn: (email: string, pass: string) => Promise<any>;
   resendVerificationEmail: () => Promise<void>;
+  signInWithGoogle: () => Promise<any>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,6 +31,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   
   const emailSignIn = (email: string, pass: string) => {
     return signInWithEmailAndPassword(auth, email, pass);
+  };
+
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    return signInWithPopup(auth, provider);
+  };
+
+  const logout = async () => {
+    await signOut(auth);
   };
 
   const resendVerificationEmail = async () => {
@@ -78,6 +90,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     emailSignUp,
     emailSignIn,
     resendVerificationEmail,
+    signInWithGoogle,
+    logout,
   };
 
   return (

@@ -3,11 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import { auth, googleProvider } from '@/lib/firebase'; // Firebase auth and provider
-import { signInWithRedirect, signOut, User, signInWithPopup } from 'firebase/auth';
 import { useState, useEffect } from 'react';
-import LoginModal from './LoginModal'; // Import the modal
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 const navLinks = [
   { href: "/", label: "Anasayfa" },
@@ -25,26 +22,19 @@ const navLinks = [
 ];
 
 export default function Header() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false); // State for modal
   const pathname = usePathname();
+  const router = useRouter();
 
-  console.log('[Header Debug] User:', user, 'Loading:', loading);
-
-  const handleGoogleSignIn = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      console.log("[Header] Google Sign-In successful:", result.user?.displayName);
-    } catch (error) {
-      console.error("[Header] Error during Google Sign-In:", error);
-    }
+  const handleSignInClick = () => {
+    router.push('/login');
   };
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
-      console.log("User signed out");
+      await logout();
+      router.push('/login');
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -106,14 +96,9 @@ export default function Header() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center space-x-2">
-                <button onClick={() => setIsLoginModalOpen(true)} className="px-3 py-2 rounded-md text-sm font-medium bg-gray-600 hover:bg-gray-700 transition-colors">
-                  Sign In with Email
-                </button>
-                <button onClick={handleGoogleSignIn} className="px-3 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-700 transition-colors">
-                  Sign In with Google
-                </button>
-              </div>
+              <button onClick={handleSignInClick} className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-700 transition-colors">
+                Giriş Yap
+              </button>
             )}
           </div>
 
@@ -162,20 +147,14 @@ export default function Header() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-2">
-                  <button onClick={() => { setIsLoginModalOpen(true); setIsMenuOpen(false); }} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium bg-gray-600 hover:bg-gray-700 transition-colors">
-                      Sign In with Email
-                  </button>
-                  <button onClick={() => { handleGoogleSignIn(); setIsMenuOpen(false); }} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium bg-blue-600 hover:bg-blue-700 transition-colors">
-                      Sign In with Google
-                  </button>
-              </div>
+              <button onClick={() => { handleSignInClick(); setIsMenuOpen(false); }} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium bg-blue-600 hover:bg-blue-700 transition-colors">
+                Giriş Yap
+              </button>
             )}
           </nav>
         )}
       </header>
 
-      {isLoginModalOpen && <LoginModal onClose={() => setIsLoginModalOpen(false)} />}
     </>
   );
 }

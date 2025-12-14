@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "@/styles/table-styles.css";
 import Layout from "@/components/Layout";
+import AuthGate from "@/components/AuthGate";
 import fs from 'fs/promises';
 import path from 'path';
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -80,11 +81,13 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <Layout>
-            <main className="container mx-auto max-w-7xl p-4 md:p-8">
-              {children}
-            </main>
-          </Layout>
+          <AuthGate>
+            <Layout>
+              <main className="container mx-auto max-w-7xl p-4 md:p-8">
+                {children}
+              </main>
+            </Layout>
+          </AuthGate>
         </AuthProvider>
       </body>
     </html>
