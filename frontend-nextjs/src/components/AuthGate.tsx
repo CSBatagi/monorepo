@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
@@ -8,9 +8,7 @@ interface AuthGateProps {
   children: React.ReactNode;
 }
 
-// Client-side gate: blocks rendering until user is authenticated.
-// Shows the existing LoginModal to sign in/sign up.
-export default function AuthGate({ children }: AuthGateProps) {
+function AuthGateInner({ children }: AuthGateProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
@@ -28,8 +26,13 @@ export default function AuthGate({ children }: AuthGateProps) {
     }
     // If user is logged in and on /login, send to home or desired next
     if (pathname === "/login") {
-      const next = params.get("next") || "/";
-      router.replace(next);
+      const next = params.get("next");
+      // Only redirect if there's a next param and it's not /login itself
+      if (next && next !== "/login" && !next.includes("%2Flogin")) {
+        router.replace(decodeURIComponent(next));
+      } else if (!next || next === "/login") {
+        router.replace("/");
+      }
     }
   }, [user, loading, router, params, pathname]);
 
@@ -49,4 +52,13 @@ export default function AuthGate({ children }: AuthGateProps) {
   }
 
   return <>{children}</>;
+}
+
+// Wrap with Suspense to handle useSearchParams during SSR
+export default function AuthGate({ children }: AuthGateProps) {
+  return (
+    <Suspense fallback={<div className="text-center py-10">Loading...</div>}>
+      <AuthGateInner>{children}</AuthGateInner>
+    </Suspense>
+  );
 }
