@@ -555,13 +555,6 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
   if (authLoading) {
     return <div className="text-center py-10">Authenticating...</div>;
   }
-  if (!user) {
-    return (
-      <div className="text-center py-10">
-        <p className="text-xl font-semibold text-gray-700">Please sign in to view the team selection page.</p>
-      </div>
-    );
-  }
 
   // Table for available players
   const renderAvailablePlayersList = () => {

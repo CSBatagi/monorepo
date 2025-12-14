@@ -228,14 +228,6 @@ export default function AttendancePage() {
     return <div className="text-center py-10">Loading page data...</div>;
   }
 
-  if (!user) {
-    return (
-      <div className="text-center py-10">
-        <p className="text-xl font-semibold text-gray-700">Please sign in to view attendance.</p>
-      </div>
-    );
-  }
-
   const getCombinedPlayerData = () => {
     const combined = players.map(p => ({
       ...p,
