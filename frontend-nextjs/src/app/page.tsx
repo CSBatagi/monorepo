@@ -17,6 +17,10 @@ export default function Home() {
           <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Batak Domination</h3>
           <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Domination haritasını kontrol edin.</p>
         </Link>
+        <Link href="/batak-allstars" data-page-target="batak_allstars" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
+          <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Batak All-Stars</h3>
+          <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Lig puanları, kaptanlar ve token sistemi.</p>
+        </Link>
         <Link href="/sonmac" data-page-target="sonmac" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
           <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Son Maç</h3>
           <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Son maçın detaylı istatistikleri.</p>
