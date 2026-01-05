@@ -17,6 +17,8 @@ import {
   type CaptainRecord,
 } from '@/lib/batakAllStars';
 
+const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || 'osirikler';
+
 type TeamKey = 'team1' | 'team2';
 
 function sortDatesDesc(dates: string[]): string[] {
@@ -209,6 +211,13 @@ export default function BatakAllStarsClient({
     if (saved?.steamId && saved.steamId !== chosenSteamId) {
       const ok = window.confirm(`${teamName} için zaten bir kaptan seçilmiş. Değiştirilsin mi?`);
       if (!ok) return;
+    }
+
+    const password = window.prompt('Kaptanı kaydetmek için şifre girin:');
+    if (password === null) return;
+    if (password !== CLEAR_ATTENDANCE_PASSWORD) {
+      setMessage('Hatalı şifre.');
+      return;
     }
 
     const captainName = roster.find((p) => p.steamId === chosenSteamId)?.name;
