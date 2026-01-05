@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Player } from '@/types';
 import { db } from '@/lib/firebase';
 import { ref, onValue, off, set, update } from 'firebase/database';
-import KabileSelect from '@/components/KabileSelect';
 import TeamAveragesTable from '@/components/TeamAveragesTable';
 import TeamComparisonRadar from '@/components/TeamComparisonRadar';
 
@@ -45,9 +44,7 @@ const FIXED_RANGES: Record<string, { min: number; max: number }> = {
   S_KD: { min: 0.70, max: 1.40 },
 };
 
-interface TeamPickerClientProps {
-  kabileList: string[];
-}
+type TeamNameMode = 'generic' | 'captain';
 
 function formatStat(value: number | null | undefined, decimals: number = 2) {
   if (value === null || value === undefined || isNaN(value)) return '-';
@@ -202,7 +199,7 @@ const MapSelection: React.FC<MapSelectionProps> = ({ teamAName, teamBName }) => 
 
 const SERVERACPASS = process.env.NEXT_PUBLIC_SERVERACPASS;
 
-const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
+const TeamPickerClient: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const [teamAPlayers, setTeamAPlayers] = useState<TeamPlayerData>({});
   const [teamBPlayers, setTeamBPlayers] = useState<TeamPlayerData>({});
@@ -216,9 +213,10 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
   const [loadingStats, setLoadingStats] = useState<boolean>(true);
   const [firebaseAttendance, setFirebaseAttendance] = useState<FirebaseAttendanceData>({});
 
-  const [teamAKabile, setTeamAKabile] = useState('');
-  const [teamBKabile, setTeamBKabile] = useState('');
-  const [loadingKabile, setLoadingKabile] = useState(false);
+  const [teamANameMode, setTeamANameMode] = useState<TeamNameMode>('generic');
+  const [teamBNameMode, setTeamBNameMode] = useState<TeamNameMode>('generic');
+  const [teamACaptainSteamId, setTeamACaptainSteamId] = useState<string>('');
+  const [teamBCaptainSteamId, setTeamBCaptainSteamId] = useState<string>('');
 
   // --- Maps state for match creation ---
   const [mapsState, setMapsState] = useState<any>({});
@@ -318,15 +316,47 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
   // Listen for kabile changes from Firebase
   useEffect(() => {
     if (!user) return;
-    const teamARef = ref(db, `${TEAM_PICKER_DB_PATH}/teamA/kabile`);
-    const teamBRef = ref(db, `${TEAM_PICKER_DB_PATH}/teamB/kabile`);
-    const onA = onValue(teamARef, (snap) => setTeamAKabile(snap.val() || ''));
-    const onB = onValue(teamBRef, (snap) => setTeamBKabile(snap.val() || ''));
+    const aModeRef = ref(db, `${TEAM_PICKER_DB_PATH}/teamA/nameMode`);
+    const bModeRef = ref(db, `${TEAM_PICKER_DB_PATH}/teamB/nameMode`);
+    const aCaptainRef = ref(db, `${TEAM_PICKER_DB_PATH}/teamA/captainSteamId`);
+    const bCaptainRef = ref(db, `${TEAM_PICKER_DB_PATH}/teamB/captainSteamId`);
+
+    const onAMode = onValue(aModeRef, (snap) => {
+      const v = snap.val();
+      setTeamANameMode(v === 'captain' ? 'captain' : 'generic');
+    });
+    const onBMode = onValue(bModeRef, (snap) => {
+      const v = snap.val();
+      setTeamBNameMode(v === 'captain' ? 'captain' : 'generic');
+    });
+    const onACaptain = onValue(aCaptainRef, (snap) => setTeamACaptainSteamId(snap.val() || ''));
+    const onBCaptain = onValue(bCaptainRef, (snap) => setTeamBCaptainSteamId(snap.val() || ''));
     return () => {
-      off(teamARef, 'value', onA);
-      off(teamBRef, 'value', onB);
+      off(aModeRef, 'value', onAMode);
+      off(bModeRef, 'value', onBMode);
+      off(aCaptainRef, 'value', onACaptain);
+      off(bCaptainRef, 'value', onBCaptain);
     };
   }, [user]);
+
+  const getDisplayNameBySteamId = useCallback((steamId: string, fallback: string) => {
+    const inA = teamAPlayers?.[steamId]?.name;
+    const inB = teamBPlayers?.[steamId]?.name;
+    const inAttendance = firebaseAttendance?.[steamId]?.name;
+    return (inA || inB || inAttendance || fallback).trim();
+  }, [firebaseAttendance, teamAPlayers, teamBPlayers]);
+
+  const teamAName = useMemo(() => {
+    if (teamANameMode !== 'captain' || !teamACaptainSteamId) return 'Team A';
+    const captainName = getDisplayNameBySteamId(teamACaptainSteamId, teamACaptainSteamId);
+    return `Team ${captainName}`;
+  }, [getDisplayNameBySteamId, teamACaptainSteamId, teamANameMode]);
+
+  const teamBName = useMemo(() => {
+    if (teamBNameMode !== 'captain' || !teamBCaptainSteamId) return 'Team B';
+    const captainName = getDisplayNameBySteamId(teamBCaptainSteamId, teamBCaptainSteamId);
+    return `Team ${captainName}`;
+  }, [getDisplayNameBySteamId, teamBCaptainSteamId, teamBNameMode]);
 
   // Listen to Firebase for maps selection (for match creation)
   useEffect(() => {
@@ -337,15 +367,19 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
     return () => off(mapsRef, 'value', unsub);
   }, []);
 
-  // Handlers for kabile change
-  const handleKabileChange = async (team: 'A' | 'B', kabile: string) => {
-    // Optimistically update local state
-    if (team === 'A') setTeamAKabile(kabile);
-    else setTeamBKabile(kabile);
+  const handleTeamNameModeChange = useCallback(async (team: 'A' | 'B', mode: TeamNameMode) => {
+    if (team === 'A') setTeamANameMode(mode);
+    else setTeamBNameMode(mode);
     const teamPath = team === 'A' ? 'teamA' : 'teamB';
-    const kabileRef = ref(db, `${TEAM_PICKER_DB_PATH}/${teamPath}/kabile`);
-    await set(kabileRef, kabile);
-  };
+    await set(ref(db, `${TEAM_PICKER_DB_PATH}/${teamPath}/nameMode`), mode);
+  }, []);
+
+  const handleCaptainChange = useCallback(async (team: 'A' | 'B', captainSteamId: string) => {
+    if (team === 'A') setTeamACaptainSteamId(captainSteamId);
+    else setTeamBCaptainSteamId(captainSteamId);
+    const teamPath = team === 'A' ? 'teamA' : 'teamB';
+    await set(ref(db, `${TEAM_PICKER_DB_PATH}/${teamPath}/captainSteamId`), captainSteamId);
+  }, []);
 
   const getStatsBySteamId = useCallback((steamId: string) => {
     const l10 = last10Stats.find((p) => p.steam_id === steamId);
@@ -412,15 +446,15 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
     setMatchMessage(null);
     try {
       // 1. Gather teams
-      const getTeamObj = (team: 'A' | 'B', players: TeamPlayerData, kabile: string) => {
+      const getTeamObj = (team: 'A' | 'B', players: TeamPlayerData, name: string) => {
         const playerEntries = Object.entries(players).filter(([_, p]) => p && p.steamId && p.name);
         if (playerEntries.length === 0) return null;
         const playersObj: Record<string, string> = {};
         playerEntries.forEach(([_, p]) => { playersObj[p.steamId] = p.name; });
-        return { name: kabile || (team === 'A' ? 'Team A' : 'Team B'), players: playersObj };
+        return { name: name || (team === 'A' ? 'Team A' : 'Team B'), players: playersObj };
       };
-      const team1 = getTeamObj('A', teamAPlayers, teamAKabile);
-      const team2 = getTeamObj('B', teamBPlayers, teamBKabile);
+      const team1 = getTeamObj('A', teamAPlayers, teamAName);
+      const team2 = getTeamObj('B', teamBPlayers, teamBName);
       if (!team1 || !team2) {
         setMatchMessage('Her iki takımda da en az bir oyuncu olmalı.');
         setCreatingMatch(false);
@@ -654,13 +688,15 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
 
   // Table for team lists
   const renderTeamList = (team: 'A' | 'B', players: TeamPlayerData, isLoadingTeam: boolean) => {
-    const teamName = team === 'A' ? (teamAKabile || 'Team A') : (teamBKabile || 'Team B');
+    const teamName = team === 'A' ? teamAName : teamBName;
     const teamColor = team === 'A' ? 'blue' : 'green';
     const bgColor = team === 'A' ? 'bg-blue-100' : 'bg-green-100';
     const avgBgColor = team === 'A' ? 'bg-blue-200' : 'bg-green-200';
     const avgTextColor = team === 'A' ? 'text-blue-800' : 'text-green-800';
-    const kabileValue = team === 'A' ? teamAKabile : teamBKabile;
-    const setKabile = (kabile: string) => handleKabileChange(team, kabile);
+    const nameMode = team === 'A' ? teamANameMode : teamBNameMode;
+    const captainSteamId = team === 'A' ? teamACaptainSteamId : teamBCaptainSteamId;
+    const setMode = (mode: TeamNameMode) => handleTeamNameModeChange(team, mode);
+    const setCaptain = (steamId: string) => handleCaptainChange(team, steamId);
 
     if (isLoadingTeam) {
       return <p className="text-sm text-gray-500">Loading {teamName}...</p>;
@@ -674,14 +710,62 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
       });
     if (playerArray.length === 0) {
       return <div className={`${bgColor} rounded-lg p-3`}>
-        <KabileSelect value={kabileValue} onChange={setKabile} kabileList={kabileList} loading={loadingKabile} label="Kabile" />
+        <div className="mb-2">
+          <div className="text-xs text-gray-600 mb-1">Takım adı</div>
+          <select
+            className="border rounded px-2 py-1 text-sm w-full"
+            value={nameMode}
+            onChange={(e) => setMode(e.target.value === 'captain' ? 'captain' : 'generic')}
+          >
+            <option value="generic">{team === 'A' ? 'Team A' : 'Team B'}</option>
+            <option value="captain">Kaptan adıyla (Team &lt;Kaptan&gt;)</option>
+          </select>
+        </div>
+        <div className="mb-2">
+          <div className="text-xs text-gray-600 mb-1">Kaptan</div>
+          <select className="border rounded px-2 py-1 text-sm w-full" value={captainSteamId} onChange={(e) => setCaptain(e.target.value)} disabled>
+            <option value="">Önce oyuncu ekleyin</option>
+          </select>
+        </div>
         <p className="text-center text-gray-500 text-sm py-2">No players assigned.</p>
       </div>;
     }
     const avgs = getTeamAverages(playerArray);
+
+    const teamMemberIds = new Set(playerArray.map((p) => p.steamId));
+    const effectiveCaptain = teamMemberIds.has(captainSteamId) ? captainSteamId : '';
+
     return (
       <div className={`${bgColor} rounded-lg p-2 w-full`}>
-        <KabileSelect value={kabileValue} onChange={setKabile} kabileList={kabileList} loading={loadingKabile} label="Kabile" />
+        <div className="mb-2 flex flex-col md:flex-row gap-2">
+          <div className="flex-1">
+            <div className="text-xs text-gray-600 mb-1">Takım adı</div>
+            <select
+              className="border rounded px-2 py-1 text-sm w-full"
+              value={nameMode}
+              onChange={(e) => setMode(e.target.value === 'captain' ? 'captain' : 'generic')}
+            >
+              <option value="generic">{team === 'A' ? 'Team A' : 'Team B'}</option>
+              <option value="captain">Kaptan adıyla (Team &lt;Kaptan&gt;)</option>
+            </select>
+          </div>
+          <div className="flex-1">
+            <div className="text-xs text-gray-600 mb-1">Kaptan</div>
+            <select
+              className="border rounded px-2 py-1 text-sm w-full"
+              value={effectiveCaptain}
+              onChange={(e) => setCaptain(e.target.value)}
+              disabled={nameMode !== 'captain'}
+            >
+              <option value="">Kaptan seç</option>
+              {playerArray.map((p) => (
+                <option key={p.steamId} value={p.steamId}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
         <div className="w-full">
           <table className="w-full border-collapse text-xs min-w-0">
             <colgroup>
@@ -790,7 +874,7 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({ kabileList }) => {
             </div>
           </div>
           {/* Map selection after the graph comparison */}
-          <MapSelection teamAName={teamAKabile || 'A'} teamBName={teamBKabile || 'B'} />
+          <MapSelection teamAName={teamAName || 'A'} teamBName={teamBName || 'B'} />
           <div className="flex flex-col items-center mt-4 gap-2">
             <div className="flex flex-row gap-2">
               <button
