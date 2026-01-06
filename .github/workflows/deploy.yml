@@ -32,7 +32,7 @@ jobs:
           echo "backend=$(git diff --name-only HEAD~1 HEAD | grep -q '^backend/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "frontend-nextjs=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "docker-compose=$(git diff --name-only HEAD~1 HEAD | grep -q 'docker-compose.yml\|Caddyfile' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          echo "config_data=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/public/data/players.json$\|^config/season_start.json$' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "config_data=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/public/data/players.json$\|^frontend-nextjs/public/data/season_start.json$' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
 
       - name: Authenticate to GCP
         id: auth
@@ -70,7 +70,7 @@ jobs:
         run: |
           # Create directory structure on VM
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="mkdir -p ~/frontend-nextjs/public/data ~/config" \
+            --command="mkdir -p ~/frontend-nextjs/public/data" \
             --ssh-key-expire-after=1m
           
           # Copy all config and secret files
@@ -91,13 +91,13 @@ jobs:
           gcloud compute scp \
             --zone=${{ secrets.GCP_ZONE }} \
             ./frontend-nextjs/public/data/players.json \
-            ./config/season_start.json \
+            ./frontend-nextjs/public/data/season_start.json \
             ${{ secrets.GCP_VM_NAME }}:~/ \
             --ssh-key-expire-after=1m
           
           # Move data files to correct locations
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="mv ~/players.json ~/frontend-nextjs/public/data/ && mv ~/season_start.json ~/config/" \
+            --command="mv ~/players.json ~/season_start.json ~/frontend-nextjs/public/data/" \
             --ssh-key-expire-after=1m
 
       - name: Set file permissions on VM
