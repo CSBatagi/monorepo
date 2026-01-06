@@ -512,6 +512,7 @@ export default function BatakAllStarsClient({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(['team1', 'team2'] as TeamKey[]).map((teamKey) => {
             const teamName = teamKey === 'team1' ? teams.team1Name : teams.team2Name;
+            const teamScore = teamKey === 'team1' ? teams.mapWinsTeam1 : teams.mapWinsTeam2;
             const roster = teamKey === 'team1' ? teams.team1Players : teams.team2Players;
             const saved = savedCaptains[teamKey];
             const selectedCaptainSteamId = captainSteamIds[teamKey];
@@ -534,7 +535,10 @@ export default function BatakAllStarsClient({
                 <div className="flex items-end justify-between gap-3 mb-3">
                   <div>
                     <div className="text-sm text-gray-500">Takım</div>
-                    <div className="text-lg font-semibold text-gray-800">{teamName}</div>
+                    <div className="text-lg font-semibold text-gray-800">
+                      {teamName} -{' '}
+                      <span className={teamKey === 'team1' ? 'text-blue-600' : 'text-red-600'}>{teamScore}</span>
+                    </div>
                     {saved?.steamId ? (
                       <div className="text-xs text-gray-600 mt-1">
                         Kaydedilen kaptan: <span className="font-medium">{saved.steamName || saved.steamId}</span>
