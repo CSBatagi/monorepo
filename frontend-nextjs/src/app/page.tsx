@@ -47,7 +47,7 @@ export default function Home() {
         </Link>
         <Link href="/performans-odulleri" data-page-target="performans-odulleri" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
           <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Performans Ödülleri</h3>
-          <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">İki haftalık periyotlarla oyuncuların gelişimini takip edin.</p>
+          <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Aylık periyotlarla oyuncuların gelişimini takip edin.</p>
         </Link>
         <Link href="/gecenin-mvpsi" data-page-target="gecenin-mvpsi" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
           <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Gecenin MVP'si</h3>

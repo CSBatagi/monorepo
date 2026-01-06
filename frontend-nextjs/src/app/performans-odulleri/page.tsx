@@ -39,19 +39,57 @@ async function getSeasonStartDate(): Promise<Date> {
 
 function getAllFourWeekPeriods(seasonStart: Date, untilDate: Date): Period[] {
   const periods: Period[] = [];
-  let startDate = new Date(seasonStart);
-  const formatDate = (date: Date) => date.toISOString().split("T")[0];
-  while (startDate <= untilDate) {
-    const endDate = new Date(startDate.getTime() + 28 * 24 * 60 * 60 * 1000 - 1);
-    periods.push({
-      start: new Date(startDate),
-      end: endDate,
-      displayStart: formatDate(startDate),
-      displayEnd: formatDate(endDate),
-      key: `${formatDate(startDate)}_${formatDate(endDate)}`,
-    });
-    startDate.setDate(startDate.getDate() + 28);
+  const monthsTr = [
+    'Ocak',
+    'Şubat',
+    'Mart',
+    'Nisan',
+    'Mayıs',
+    'Haziran',
+    'Temmuz',
+    'Ağustos',
+    'Eylül',
+    'Ekim',
+    'Kasım',
+    'Aralık',
+  ];
+
+  // Collect only months that actually have games.
+  const monthKeys = new Set<string>();
+
+  // Note: allData keys are YYYY-MM-DD.
+  // We filter by seasonStart/untilDate, then group by YYYY-MM.
+  // Only those months will be displayed.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: any = (globalThis as any).__performans_odulleri_data;
+  if (data && typeof data === 'object') {
+    for (const dateStr of Object.keys(data)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) continue;
+      const d = new Date(dateStr + 'T00:00:00Z');
+      if (d < seasonStart || d > untilDate) continue;
+      monthKeys.add(dateStr.slice(0, 7));
+    }
   }
+
+  const sortedMonthKeys = [...monthKeys].sort();
+  for (const mk of sortedMonthKeys) {
+    const [yStr, mStr] = mk.split('-');
+    const year = Number(yStr);
+    const monthIndex = Number(mStr) - 1;
+    if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) continue;
+
+    const start = new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0, 0));
+    const end = new Date(Date.UTC(year, monthIndex + 1, 1, 0, 0, 0, 0) - 1);
+    const label = `${monthsTr[monthIndex]} ${year}`;
+    periods.push({
+      start,
+      end,
+      displayStart: label,
+      displayEnd: '',
+      key: mk,
+    });
+  }
+
   return periods;
 }
 
@@ -117,6 +155,11 @@ export default async function PerformansOdulleriPage() {
   
   data = (await readJson('night_avg.json')) || {};
 
+  // Make data available to the month period builder without changing its signature too much.
+  // This keeps edits minimal in the existing file structure.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).__performans_odulleri_data = data;
+
   const now = new Date();
   const periods = getAllFourWeekPeriods(seasonStart, now);
   const awardsByPeriod = periods.map((period) => ({
@@ -135,7 +178,7 @@ export default async function PerformansOdulleriPage() {
           {[...awardsByPeriod].reverse().map(({ period, awards }) => (
             <div key={period.key} className="border rounded-lg bg-white shadow-none p-4">
               <h3 className="text-2xl font-bold text-blue-700 mb-4">
-                Dönem: {period.displayStart} - {period.displayEnd}
+                Dönem: {period.displayEnd ? `${period.displayStart} - ${period.displayEnd}` : period.displayStart}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
