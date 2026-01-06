@@ -14,12 +14,13 @@ const navLinks = [
   { href: "/batak-allstars", label: "Batak All-Stars" },
   { href: "/sonmac", label: "Son Maç" },
   { href: "/performans-odulleri", label: "Performans Ödülleri" },
+  { href: "/gecenin-mvpsi", label: "Gecenin MVP'si" },
   { href: "/gece-ortalama", label: "Gece Ortalaması" },
   { href: "/last10", label: "Son 10 Ortalaması" },
   { href: "/season-avg", label: "Sezon Ortalaması" },
   { href: "/duello", label: "Düello" },
   { href: "/performance", label: "Performans Grafikleri" },
-  { href: "/mac-sonuclari", label: "Maç Sonuçları" }, // New link added here
+  { href: "/mac-sonuclari", label: "Maç Sonuçları" },
 ];
 
 export default function Header() {
