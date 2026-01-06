@@ -37,12 +37,12 @@ async function getSeasonStartDate(): Promise<Date> {
   return new Date("2025-02-10T00:00:00Z");
 }
 
-function getAllTwoWeekPeriods(seasonStart: Date, untilDate: Date): Period[] {
+function getAllFourWeekPeriods(seasonStart: Date, untilDate: Date): Period[] {
   const periods: Period[] = [];
   let startDate = new Date(seasonStart);
   const formatDate = (date: Date) => date.toISOString().split("T")[0];
   while (startDate <= untilDate) {
-    const endDate = new Date(startDate.getTime() + 14 * 24 * 60 * 60 * 1000 - 1);
+    const endDate = new Date(startDate.getTime() + 28 * 24 * 60 * 60 * 1000 - 1);
     periods.push({
       start: new Date(startDate),
       end: endDate,
@@ -50,7 +50,7 @@ function getAllTwoWeekPeriods(seasonStart: Date, untilDate: Date): Period[] {
       displayEnd: formatDate(endDate),
       key: `${formatDate(startDate)}_${formatDate(endDate)}`,
     });
-    startDate.setDate(startDate.getDate() + 14);
+    startDate.setDate(startDate.getDate() + 28);
   }
   return periods;
 }
@@ -118,7 +118,7 @@ export default async function PerformansOdulleriPage() {
   data = (await readJson('night_avg.json')) || {};
 
   const now = new Date();
-  const periods = getAllTwoWeekPeriods(seasonStart, now);
+  const periods = getAllFourWeekPeriods(seasonStart, now);
   const awardsByPeriod = periods.map((period) => ({
     period,
     awards: calculateAwards(data, period),
