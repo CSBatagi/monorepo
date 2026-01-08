@@ -44,3 +44,4 @@ credentials.json
 # Database dumps
 production_dump_*.sql
 *.sql
+backend/secrets/firebase-service-account.json
