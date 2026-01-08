@@ -8,7 +8,9 @@ import { off, onValue, ref, set } from 'firebase/database';
 import {
   buildPlayersIndex,
   computeStandings,
+  computeCaptainTokens,
   deriveTeamsForDate,
+  displayNameForSteamId,
   type AllStarsConfig,
   type CaptainsByDateSnapshot,
   type NightAvgData,
@@ -18,6 +20,8 @@ import {
 } from '@/lib/batakAllStars';
 
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || 'osirikler';
+
+const KAPTANLIK_DB_PATH = 'kaptanlikState';
 
 type TeamKey = 'team1' | 'team2';
 
@@ -30,6 +34,13 @@ function formatNumber(value: unknown, decimals = 2): string {
   const n = typeof value === 'number' ? value : Number(value);
   if (Number.isNaN(n)) return '-';
   return n.toFixed(decimals);
+}
+
+interface KaptanlikVolunteer {
+  steamId: string;
+  name?: string;
+  isKaptan: boolean;
+  timestamp?: number;
 }
 
 export default function BatakAllStarsClient({
@@ -71,6 +82,7 @@ export default function BatakAllStarsClient({
   const [selectedDate, setSelectedDate] = useState<string>('');
 
   const [captainsByDate, setCaptainsByDate] = useState<CaptainsByDateSnapshot | null>(null);
+  const [kaptanlikVolunteers, setKaptanlikVolunteers] = useState<Record<string, KaptanlikVolunteer>>({});
 
   const nightRows = useMemo(() => {
     const rows = (selectedDate && nightAvg?.[selectedDate]) ? nightAvg[selectedDate] : [];
@@ -101,7 +113,7 @@ export default function BatakAllStarsClient({
   const [captainSteamIds, setCaptainSteamIds] = useState<Record<TeamKey, string>>({ team1: '', team2: '' });
   const [savingTeam, setSavingTeam] = useState<Record<TeamKey, boolean>>({ team1: false, team2: false });
   const [message, setMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'standings' | 'raw'>('standings');
+  const [activeTab, setActiveTab] = useState<'standings' | 'raw' | 'kaptanlik'>('standings');
 
   // Load all captains once for standings/tokens.
   useEffect(() => {
@@ -119,6 +131,22 @@ export default function BatakAllStarsClient({
     return () => off(baseRef, 'value', unsub);
   }, []);
 
+  // Load kaptanlik volunteers from attendance page
+  useEffect(() => {
+    const kaptanlikRef = ref(db, KAPTANLIK_DB_PATH);
+    const unsub = onValue(
+      kaptanlikRef,
+      (snap) => {
+        const val = (snap.val() || {}) as Record<string, KaptanlikVolunteer>;
+        setKaptanlikVolunteers(val);
+      },
+      () => {
+        // ignore
+      }
+    );
+    return () => off(kaptanlikRef, 'value', unsub);
+  }, []);
+
   const standingsData = useMemo(() => {
     if (!effectiveConfig) return null;
     return computeStandings({
@@ -130,6 +158,25 @@ export default function BatakAllStarsClient({
       playersIndex,
     });
   }, [captainsByDate, effectiveConfig, nightAvg, playersIndex, seasonStart, sonmacByDate]);
+
+  // Compute sorted kaptanlik volunteers with captain tokens
+  const sortedKaptanlikVolunteers = useMemo(() => {
+    const datesIncludedSet = new Set<string>(standingsData?.datesIncluded || []);
+    const captainTokensBySteamId = computeCaptainTokens(captainsByDate, datesIncludedSet);
+    
+    // Get all volunteers who said yes, sorted by timestamp
+    const volunteers = Object.entries(kaptanlikVolunteers)
+      .filter(([, v]) => v.isKaptan && v.timestamp)
+      .map(([steamId, v]) => ({
+        steamId,
+        name: displayNameForSteamId(steamId, playersIndex) || v.name || steamId,
+        timestamp: v.timestamp!,
+        tokens: captainTokensBySteamId[steamId] || 0,
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp); // Sort by timestamp ascending (first to volunteer first)
+    
+    return volunteers;
+  }, [kaptanlikVolunteers, captainsByDate, standingsData?.datesIncluded, playersIndex]);
 
   // Default date selection
   useEffect(() => {
@@ -281,6 +328,19 @@ export default function BatakAllStarsClient({
                 Ham Veri
               </button>
             </li>
+            <li className="mr-2" role="presentation">
+              <button
+                className={`map-tab-button tab-nav-item inline-block border-b-2 rounded-t-lg ${activeTab === 'kaptanlik' ? 'active border-blue-600 text-blue-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
+                id="batak-allstars-kaptanlik-tab"
+                type="button"
+                role="tab"
+                aria-controls="batak-allstars-tab-kaptanlik"
+                aria-selected={activeTab === 'kaptanlik'}
+                onClick={() => setActiveTab('kaptanlik')}
+              >
+                Kaptanlık Durumu
+              </button>
+            </li>
           </ul>
         </div>
 
@@ -400,7 +460,7 @@ export default function BatakAllStarsClient({
               )}
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'raw' ? (
           <div id="batak-allstars-tab-raw" role="tabpanel" aria-labelledby="batak-allstars-raw-tab">
             <div className="border rounded p-3">
               <div className="flex flex-col gap-1 mb-3">
@@ -474,7 +534,62 @@ export default function BatakAllStarsClient({
               )}
             </div>
           </div>
-        )}
+        ) : activeTab === 'kaptanlik' ? (
+          <div id="batak-allstars-tab-kaptanlik" role="tabpanel" aria-labelledby="batak-allstars-kaptanlik-tab">
+            <div className="border rounded p-3">
+              <div className="flex flex-col gap-1 mb-3">
+                <div className="text-lg font-semibold text-gray-800">Kaptanlık Durumu</div>
+                <div className="text-xs text-gray-600">
+                  Katılım sayfasından &quot;Kaptanlık Yapar mısın?&quot; seçeneğini işaretleyen oyuncular, sıraya giriş zamanına göre listelenir.
+                </div>
+              </div>
+
+              {sortedKaptanlikVolunteers.length === 0 ? (
+                <div className="text-sm text-gray-700 py-4">
+                  Henüz kaptanlık yapmak isteyen kimse yok. Katılım sayfasından &quot;Gelirim&quot; dedikten sonra kaptanlık kutusunu işaretleyebilirsiniz.
+                </div>
+              ) : (
+                <div className="overflow-x-auto border rounded">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-200">
+                      <tr>
+                        <th className="text-center px-3 py-2 font-semibold text-gray-800 w-16">Sıra</th>
+                        <th className="text-left px-3 py-2 font-semibold text-gray-800">Oyuncu</th>
+                        <th className="text-center px-3 py-2 font-semibold text-gray-800">Kayıt Zamanı</th>
+                        <th className="text-center px-3 py-2 font-semibold text-gray-800" title="Şu ana kadar kaç kez kaptan oldu">Kpt. Token</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedKaptanlikVolunteers.map((volunteer, idx) => (
+                        <tr key={volunteer.steamId} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-3 py-2 text-center font-bold text-gray-700">{idx + 1}</td>
+                          <td className="px-3 py-2 font-medium">{volunteer.name}</td>
+                          <td className="px-3 py-2 text-center text-gray-600">
+                            {new Date(volunteer.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`px-2 py-1 rounded ${volunteer.tokens > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                              {volunteer.tokens}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="mt-4 text-xs text-gray-500">
+                <div className="font-medium mb-1">Not:</div>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Sıra, kaptanlık için başvuru zamanına göre belirlenir (ilk gelen ilk sırada).</li>
+                  <li>Kpt. Token, bu sezon içinde All-Stars gecelerinde kaç kez kaptan olduğunuzu gösterir.</li>
+                  <li>Token sayısı, lig sıralamasında en kötü gecelerinizin çıkarılması için kullanılır.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-col md:flex-row md:items-end gap-3">
