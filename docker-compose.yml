@@ -47,8 +47,8 @@ services:
         required: true
     volumes:
       - ./credentials.json:/app/../credentials.json
-      - ./config/season_start.json:/app/config/season_start.json:ro
-      # Mount players.json to a distinct path to avoid legacy directory conflicts
+      # Mount static config files from public/data (single source of truth)
+      - ./frontend-nextjs/public/data/season_start.json:/app/config/season_start.json:ro
       - ./frontend-nextjs/public/data/players.json:/app/players.json:ro
     networks:
       - db2

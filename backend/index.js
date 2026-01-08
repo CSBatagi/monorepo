@@ -73,7 +73,7 @@ function resolveSeasonStart() {
   if (explicitFile) candidateFiles.push(explicitFile);
   // Support mounting the file beside backend (e.g. - ./frontend-nextjs/public/data/season_start.json:/app/season_start.json:ro)
   candidateFiles.push(path.join(process.cwd(), 'season_start.json'));
-  // Original monorepo relative path (works in dev when both folders present)
+  // Monorepo relative path (works in dev when both folders present)
   candidateFiles.push(path.join(__dirname, '..', 'frontend-nextjs', 'public', 'data', 'season_start.json'));
   for (const fp of candidateFiles) {
     try {
