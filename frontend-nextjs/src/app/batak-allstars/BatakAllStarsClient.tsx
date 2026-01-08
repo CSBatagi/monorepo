@@ -164,7 +164,7 @@ export default function BatakAllStarsClient({
     const datesIncludedSet = new Set<string>(standingsData?.datesIncluded || []);
     const captainTokensBySteamId = computeCaptainTokens(captainsByDate, datesIncludedSet);
     
-    // Get all volunteers who said yes, sorted by timestamp
+    // Get all volunteers who said yes, sorted by tokens (ascending), then by timestamp (ascending)
     const volunteers = Object.entries(kaptanlikVolunteers)
       .filter(([, v]) => v.isKaptan && v.timestamp)
       .map(([steamId, v]) => ({
@@ -173,7 +173,12 @@ export default function BatakAllStarsClient({
         timestamp: v.timestamp!,
         tokens: captainTokensBySteamId[steamId] || 0,
       }))
-      .sort((a, b) => a.timestamp - b.timestamp); // Sort by timestamp ascending (first to volunteer first)
+      .sort((a, b) => {
+        // First sort by tokens (ascending - least tokens first)
+        if (a.tokens !== b.tokens) return a.tokens - b.tokens;
+        // If tokens are equal, sort by timestamp (ascending - first to register first)
+        return a.timestamp - b.timestamp;
+      });
     
     return volunteers;
   }, [kaptanlikVolunteers, captainsByDate, standingsData?.datesIncluded, playersIndex]);
@@ -549,8 +554,8 @@ export default function BatakAllStarsClient({
                   Henüz kaptanlık yapmak isteyen kimse yok. Katılım sayfasından &quot;Gelirim&quot; dedikten sonra kaptanlık kutusunu işaretleyebilirsiniz.
                 </div>
               ) : (
-                <div className="overflow-x-auto border rounded">
-                  <table className="min-w-full text-sm">
+                <div className="overflow-x-auto border rounded bg-white">
+                  <table className="min-w-full text-sm bg-white">
                     <thead className="bg-gray-200">
                       <tr>
                         <th className="text-center px-3 py-2 font-semibold text-gray-800 w-16">Sıra</th>
@@ -560,20 +565,24 @@ export default function BatakAllStarsClient({
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedKaptanlikVolunteers.map((volunteer, idx) => (
-                        <tr key={volunteer.steamId} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="px-3 py-2 text-center font-bold text-gray-700">{idx + 1}</td>
-                          <td className="px-3 py-2 font-medium">{volunteer.name}</td>
-                          <td className="px-3 py-2 text-center text-gray-600">
-                            {new Date(volunteer.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            <span className={`px-2 py-1 rounded ${volunteer.tokens > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
-                              {volunteer.tokens}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {sortedKaptanlikVolunteers.map((volunteer, idx) => {
+                        const isTop2 = idx < 2;
+                        const rowClass = isTop2 ? 'bg-green-50' : 'bg-white';
+                        return (
+                          <tr key={volunteer.steamId} className={rowClass}>
+                            <td className="px-3 py-2 text-center font-bold text-gray-700">{idx + 1}</td>
+                            <td className="px-3 py-2 font-medium">{volunteer.name}</td>
+                            <td className="px-3 py-2 text-center text-gray-600">
+                              {new Date(volunteer.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span className={`px-2 py-1 rounded ${volunteer.tokens > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                                {volunteer.tokens}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -582,7 +591,8 @@ export default function BatakAllStarsClient({
               <div className="mt-4 text-xs text-gray-500">
                 <div className="font-medium mb-1">Not:</div>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>Sıra, kaptanlık için başvuru zamanına göre belirlenir (ilk gelen ilk sırada).</li>
+                  <li>Sıra, en az token sayısına göre belirlenir. Aynı token sayısında olanlar arasında ilk başvuran önce gelir.</li>
+                  <li>İlk 2 sıradaki oyuncular yeşil ile vurgulanır.</li>
                   <li>Kpt. Token, bu sezon içinde All-Stars gecelerinde kaç kez kaptan olduğunuzu gösterir.</li>
                   <li>Token sayısı, lig sıralamasında en kötü gecelerinizin çıkarılması için kullanılır.</li>
                 </ul>
