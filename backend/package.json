@@ -16,9 +16,11 @@
     "ajv": "^8.17.1",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "firebase-admin": "^13.6.0",
     "node-fetch": "^2.7.0",
     "pg": "^8.13.1",
-    "rcon": "^1.1.0"
+    "rcon": "^1.1.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "jest": "^29.7.0",

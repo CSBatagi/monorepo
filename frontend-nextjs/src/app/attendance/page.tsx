@@ -8,12 +8,14 @@ import { ref, onValue, off, update, set } from 'firebase/database';
 import EmojiControls from '@/components/Attendance/EmojiControls';
 import AttendanceControls from '@/components/Attendance/AttendanceControls';
 import InfoPanel from '@/components/Attendance/InfoPanel';
+import NotificationSettings from '@/components/NotificationSettings';
 
 // Constants from original attendance.js
 const ATTENDANCE_DB_PATH = 'attendanceState';
 const EMOJI_DB_PATH = 'emojiState';
 const TEAM_PICKER_DB_PATH = 'teamPickerState'; // For clearing
 const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || "osirikler"; // Default if not in env
 
 const ATTENDANCE_STATES = ["no_response", "uncertain", "coming", "not_coming"];
@@ -142,6 +144,20 @@ export default function AttendancePage() {
     try {
       const attendanceUpdatePath = `${ATTENDANCE_DB_PATH}/${player.steamId}`;
       await set(ref(db, attendanceUpdatePath), { name: player.name, status: newAttendance });
+      
+      // Check if we just crossed teker threshold (10 coming)
+      if (newAttendance === 'coming') {
+        const currentComing = Object.values(firebaseAttendance).filter(a => a.status === 'coming').length;
+        // After this change, there will be currentComing + 1 (if player wasn't already coming)
+        const wasAlreadyComing = firebaseAttendance[player.steamId]?.status === 'coming';
+        const newComingCount = wasAlreadyComing ? currentComing : currentComing + 1;
+        
+        if (newComingCount === TEKER_DONDU_THRESHOLD) {
+          // Trigger teker döndü notification via backend (auth-required)
+          triggerTekerNotification(newComingCount);
+        }
+      }
+      
       if (APPS_SCRIPT_URL) {
         fetch(APPS_SCRIPT_URL, {
           method: 'POST',
@@ -155,6 +171,29 @@ export default function AttendancePage() {
       alert("Failed to update attendance. Please try again.");
     } finally {
       setIsSubmitting(prev => ({ ...prev, [player.steamId]: false }));
+    }
+  };
+
+  // Helper to trigger teker döndü notification (fire and forget)
+  const triggerTekerNotification = async (goingCount: number) => {
+    if (!BACKEND_URL) return;
+    try {
+      const token = await firebaseAuth.currentUser?.getIdToken();
+      if (!token) return;
+
+      await fetch(`${BACKEND_URL}/push/trigger/teker-dondu`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          goingCount
+        })
+      });
+      console.log('Teker döndü notification triggered');
+    } catch (err) {
+      console.error('Failed to trigger teker notification:', err);
     }
   };
 
@@ -418,7 +457,8 @@ export default function AttendancePage() {
             </div>
           )}
         </div>
-        <div className="lg:col-span-1 min-w-[320px]">
+        <div className="lg:col-span-1 min-w-[320px] space-y-4">
+          <NotificationSettings />
           <InfoPanel />
         </div>
       </div>

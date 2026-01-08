@@ -47,6 +47,8 @@ services:
         required: true
     volumes:
       - ./credentials.json:/app/../credentials.json
+      # Firebase Admin service account (Web Push subscriptions + prefs + token verification)
+      - ./firebase-service-account.json:/app/secrets/firebase-service-account.json:ro
       - ./config/season_start.json:/app/config/season_start.json:ro
       # Mount players.json to a distinct path to avoid legacy directory conflicts
       - ./frontend-nextjs/public/data/players.json:/app/players.json:ro

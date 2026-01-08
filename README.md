@@ -71,7 +71,9 @@ The backend is deployed to a Google Cloud Platform (GCP) virtual machine using G
 2. Pushes the image to GitHub Container Registry (ghcr.io)
 3. Deploys the image to a GCP VM using docker-compose
 
-For setting up GCP credentials, refer to the [instructions.md](instructions.md) file.
+For local setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
+
+For Web Push (VAPID) + Firebase Admin push notifications setup and deployment requirements, see [docs/PUSH_NOTIFICATIONS.md](docs/PUSH_NOTIFICATIONS.md).
 
 ### Required Secrets
 
@@ -90,6 +92,14 @@ The following GitHub repository secrets are required for deployment:
 - `POSTGRES_PASSWORD`: PostgreSQL password
 - `POSTGRES_READONLY_PASSWORD`: PostgreSQL read-only user password
 - `RCON_PASSWORD`: RCON password for game server communication
+
+Additional secrets required for Web Push notifications (see [docs/PUSH_NOTIFICATIONS.md](docs/PUSH_NOTIFICATIONS.md)):
+- `VAPID_PUBLIC_KEY`: Web Push VAPID public key
+- `VAPID_PRIVATE_KEY`: Web Push VAPID private key
+- `VAPID_SUBJECT`: VAPID subject (e.g., mailto:...)
+- `FIREBASE_DATABASE_URL`: Firebase Realtime Database URL
+- `FIREBASE_SERVICE_ACCOUNT_JSON`: Firebase Admin service account JSON (private key JSON content)
+- `PUSH_ADMIN_UIDS`: Comma-separated Firebase Auth UIDs allowed to trigger admin-only in-app notifications
 
 ## GitHub Workflows
 

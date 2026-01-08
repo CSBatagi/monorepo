@@ -7,6 +7,7 @@ module.exports = class GcpManager {
   constructor() {
     // Path to the credentials file
     const credentialsPath = path.join(__dirname, '..', 'credentials.json');
+    this.enabled = false;
 
     // Use environment variables if available, otherwise read from .gcp_parameters file
     if (process.env.VM_NAME && process.env.GCP_ZONE) {
@@ -15,30 +16,46 @@ module.exports = class GcpManager {
       console.log(`Using environment variables: VM_NAME=${this.vmName}, GCP_ZONE=${this.zone}`);
     } else {
       // Read GCP parameters from file as fallback
-      const gcpParamsPath = path.join(__dirname, '..', '.gcp_parameters');
-      const gcpParams = fs.readFileSync(gcpParamsPath, 'utf8')
-        .split('\n')
-        .filter(line => line.trim() !== '')
-        .reduce((params, line) => {
-          const [key, value] = line.split('=');
-          params[key] = value;
-          return params;
-        }, {});
+      try {
+        const gcpParamsPath = path.join(__dirname, '..', '.gcp_parameters');
+        const gcpParams = fs.readFileSync(gcpParamsPath, 'utf8')
+          .split('\n')
+          .filter(line => line.trim() !== '')
+          .reduce((params, line) => {
+            const [key, value] = line.split('=');
+            params[key] = value;
+            return params;
+          }, {});
 
-      this.vmName = gcpParams.GCP_VM_NAME;
-      this.zone = gcpParams.GCP_ZONE;
-      console.log(`Using .gcp_parameters file: VM_NAME=${this.vmName}, GCP_ZONE=${this.zone}`);
+        this.vmName = gcpParams.GCP_VM_NAME;
+        this.zone = gcpParams.GCP_ZONE;
+        console.log(`Using .gcp_parameters file: VM_NAME=${this.vmName}, GCP_ZONE=${this.zone}`);
+      } catch (err) {
+        console.warn('[GcpManager] .gcp_parameters file not found, GCP features disabled');
+        return;
+      }
     }
 
-    // Initialize the Compute client
-    const projectId = JSON.parse(fs.readFileSync(credentialsPath, 'utf8')).project_id;
-    this.compute = new computeEngine.InstancesClient({
-      projectId: projectId,
-      keyFilename: credentialsPath
-    });
+    // Initialize the Compute client (only if credentials exist)
+    try {
+      const projectId = JSON.parse(fs.readFileSync(credentialsPath, 'utf8')).project_id;
+      this.compute = new computeEngine.InstancesClient({
+        projectId: projectId,
+        keyFilename: credentialsPath
+      });
+      this.enabled = true;
+      console.log('[GcpManager] Initialized with credentials');
+    } catch (err) {
+      console.warn('[GcpManager] credentials.json not found, GCP features disabled');
+    }
   }
 
   async performVmOperation(operationType) {
+    if (!this.enabled) {
+      console.warn(`[GcpManager] Cannot ${operationType} VM - GCP not configured`);
+      return { success: false, error: 'GCP not configured' };
+    }
+
     try {
       const action = operationType === 'start' ? 'Starting' : 'Stopping';
       console.log(`${action} VM: ${this.vmName} in zone: ${this.zone}`);

@@ -4,6 +4,7 @@ import "./globals.css";
 import "@/styles/table-styles.css";
 import Layout from "@/components/Layout";
 import AuthGate from "@/components/AuthGate";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import fs from 'fs/promises';
 import path from 'path';
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -80,6 +81,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <ServiceWorkerRegistration />
         <AuthProvider>
           <AuthGate>
             <Layout>

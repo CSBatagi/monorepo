@@ -1,17 +1,40 @@
+require('dotenv').config();
+
 const express = require('express');
 const { Pool } = require('pg');
 const { json } = require('body-parser');
 const Ajv = require('ajv');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const RconConnection = require('./rcon.js');
 const GcpManager = require('./gcp.js');
+const pushService = require('./pushService.js');
+const firebaseAdmin = require('./firebaseAdmin');
 
 
 const rconConnection = new RconConnection();
 const gcpManager = new GcpManager();
 
 const app = express();
+
+// CORS middleware for local development
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  // Allow any localhost dev server port (Next.js may use 3001/3002/... if 3000 is taken)
+  if (origin && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 app.use(json()); // Parse JSON request bodies
 let matchData = {};
@@ -171,9 +194,173 @@ app.get('/stats/diagnostics', async (req, res) => {
   }
 });
 
+// ============ Push Notification Endpoints ============
+
+function getBearerToken(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  return authHeader.slice('Bearer '.length);
+}
+
+async function requireFirebaseUid(req) {
+  const idToken = getBearerToken(req);
+  if (!idToken) {
+    const err = new Error('Missing or invalid authorization header');
+    err.statusCode = 401;
+    throw err;
+  }
+  const decoded = await firebaseAdmin.verifyIdToken(idToken);
+  return decoded.uid;
+}
+
+// GET VAPID public key (no auth required)
+app.get('/push/vapid-public-key', (req, res) => {
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  if (!publicKey) {
+    return res.status(503).json({ error: 'Push notifications not configured' });
+  }
+  res.json({ publicKey });
+});
+
+// POST subscribe to push notifications (requires Firebase Auth token)
+app.post('/push/subscribe', async (req, res) => {
+  try {
+    const { subscription, deviceId, metadata } = req.body;
+    const uid = await requireFirebaseUid(req);
+    
+    if (!subscription || !subscription.endpoint || !subscription.keys) {
+      return res.status(400).json({ error: 'Invalid subscription object' });
+    }
+    
+    // Generate deviceId from endpoint if not provided
+    const finalDeviceId = deviceId || crypto.createHash('sha256').update(subscription.endpoint).digest('hex').slice(0, 16);
+    
+    await pushService.saveSubscription(uid, finalDeviceId, subscription, metadata || {});
+    res.json({ success: true, deviceId: finalDeviceId });
+  } catch (err) {
+    console.error('Error in /push/subscribe:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to save subscription' });
+  }
+});
+
+// POST unsubscribe from push notifications
+app.post('/push/unsubscribe', async (req, res) => {
+  try {
+    const { deviceId } = req.body;
+
+    const uid = await requireFirebaseUid(req);
+    if (!deviceId) {
+      return res.status(400).json({ error: 'Missing deviceId' });
+    }
+    
+    await pushService.removeSubscription(uid, deviceId);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error in /push/unsubscribe:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to remove subscription' });
+  }
+});
+
+// GET notification preferences
+app.get('/push/preferences', async (req, res) => {
+  try {
+    const uid = await requireFirebaseUid(req);
+    const prefs = await pushService.getNotificationPrefs(uid);
+    res.json(prefs);
+  } catch (err) {
+    console.error('Error in /push/preferences GET:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to get preferences' });
+  }
+});
+
+// POST update notification preferences
+app.post('/push/preferences', async (req, res) => {
+  try {
+    const uid = await requireFirebaseUid(req);
+    const { matchDay, stats, awards, tekerDondu } = req.body;
+    await pushService.updateNotificationPrefs(uid, { matchDay, stats, awards, tekerDondu });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error in /push/preferences POST:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to update preferences' });
+  }
+});
+
+// Trigger teker döndü from the app without exposing AUTH_TOKEN.
+// Requires a verified Firebase user and that uid is in PUSH_ADMIN_UIDS.
+app.post('/push/trigger/teker-dondu', async (req, res) => {
+  try {
+    const uid = await requireFirebaseUid(req);
+    const allow = (process.env.PUSH_ADMIN_UIDS || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+    if (allow.length === 0 || !allow.includes(uid)) {
+      return res.status(403).json({ error: 'Not allowed to trigger notifications' });
+    }
+
+    const goingCount = Number(req.body?.goingCount || 0);
+    if (!Number.isFinite(goingCount) || goingCount < 10) {
+      return res.status(400).json({ error: 'Invalid goingCount' });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const matchId = `match_${today}`;
+    const result = await pushService.notifyTekerDondu(matchId, goingCount);
+    res.json(result);
+  } catch (err) {
+    console.error('Error in /push/trigger/teker-dondu:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to trigger tekerDondu' });
+  }
+});
+
+// POST trigger notification (admin only - requires AUTH_TOKEN)
+app.post('/push/send', async (req, res) => {
+  try {
+    if (!process.env.AUTH_TOKEN) {
+      return res.status(503).json({ error: 'AUTH_TOKEN not configured' });
+    }
+    const authHeader = req.headers.authorization;
+    if (!authHeader || authHeader !== `Bearer ${process.env.AUTH_TOKEN}`) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    
+    const { type, payload, eventId } = req.body;
+    let result;
+    
+    switch (type) {
+      case 'stats':
+        result = await pushService.notifyNewStats(payload?.timestamp || Date.now());
+        break;
+      case 'award':
+        result = await pushService.notifyAward(payload?.awardType, payload?.awardPeriod, payload);
+        break;
+      case 'tekerDondu':
+        result = await pushService.notifyTekerDondu(payload?.matchId, payload?.goingCount);
+        break;
+      case 'custom':
+        result = await pushService.sendEventNotification(eventId || `custom:${Date.now()}`, payload);
+        break;
+      default:
+        return res.status(400).json({ error: 'Unknown notification type' });
+    }
+    
+    res.json(result);
+  } catch (err) {
+    console.error('Error in /push/send:', err);
+    res.status(500).json({ error: 'Failed to send notification', details: err.message });
+  }
+});
+
+// ============ End Push Notification Endpoints ============
+
 app.use((req, res, next) => {
   if (req.method === 'GET') {
     return next();
+  }
+
+  if (!process.env.AUTH_TOKEN) {
+    return res.status(503).json({ error: 'AUTH_TOKEN not configured' });
   }
 
   const apiKey = req.headers['authorization'];

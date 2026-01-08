@@ -51,11 +51,21 @@ jobs:
 
             echo "MATCHMAKING_TOKEN=${{secrets.AUTH_TOKEN}}" > .frontend_secrets
             echo "SERVERACPASS=${{ secrets.SERVERACPASS }}" >> .frontend_secrets
+            # Frontend must call backend via Caddy prefix in production
+            echo "NEXT_PUBLIC_BACKEND_URL=/backend" >> .frontend_secrets
           
             echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" > .backend_secrets
             echo "AUTH_TOKEN=${{ secrets.AUTH_TOKEN }}" >> .backend_secrets
             echo "DB_USER=${{ secrets.DB_USER }}" >> .backend_secrets
             echo "RCON_PASSWORD=${{ secrets.RCON_PASSWORD }}" >> .backend_secrets
+
+            # ============ Push Notifications (Web Push / VAPID) ============
+            echo "VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" >> .backend_secrets
+            echo "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" >> .backend_secrets
+            echo "VAPID_SUBJECT=${{ secrets.VAPID_SUBJECT }}" >> .backend_secrets
+            echo "FIREBASE_DATABASE_URL=${{ secrets.FIREBASE_DATABASE_URL }}" >> .backend_secrets
+            echo "FIREBASE_SERVICE_ACCOUNT_PATH=./secrets/firebase-service-account.json" >> .backend_secrets
+            echo "PUSH_ADMIN_UIDS=${{ secrets.PUSH_ADMIN_UIDS }}" >> .backend_secrets
           
             echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > .my_sql_secrets
             echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> .my_sql_secrets
@@ -65,6 +75,11 @@ jobs:
             echo "POSTGRES_READONLY_PASSWORD=${{ secrets.POSTGRES_READONLY_PASSWORD }}" >> .pg_secrets
           
             echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
+
+            # Firebase Admin service account JSON (DO NOT COMMIT)
+            cat > firebase-service-account.json <<'EOF'
+            ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+            EOF
 
       - name: Prepare VM directories and copy files
         run: |
@@ -84,6 +99,7 @@ jobs:
             ./.my_sql_secrets \
             ./.pg_secrets \
             ./credentials.json \
+            ./firebase-service-account.json \
             ${{ secrets.GCP_VM_NAME }}:~/ \
             --ssh-key-expire-after=1m
           
@@ -103,11 +119,11 @@ jobs:
       - name: Set file permissions on VM
         run: |
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="chmod 600 ~/.dns_secrets ~/.backend_secrets ~/.frontend_secrets ~/.my_sql_secrets ~/.pg_secrets" \
+            --command="chmod 600 ~/.dns_secrets ~/.backend_secrets ~/.frontend_secrets ~/.my_sql_secrets ~/.pg_secrets ~/credentials.json ~/firebase-service-account.json" \
             --ssh-key-expire-after=1m
 
       - name: Cleanup local secrets
-        run: rm -f .dns_secrets .backend_secrets .frontend_secrets .my_sql_secrets .pg_secrets credentials.json
+        run: rm -f .dns_secrets .backend_secrets .frontend_secrets .my_sql_secrets .pg_secrets credentials.json firebase-service-account.json
 
       - name: Update and start containers
         run: |

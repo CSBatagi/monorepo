@@ -36,6 +36,7 @@ Thumbs.db
 *_secrets.local
 .gcp_parameters
 credentials.json
+backend/secrets/
 .github/copilot-instructions.md
 
 # Allow season_start.json in config directory (not sensitive)
