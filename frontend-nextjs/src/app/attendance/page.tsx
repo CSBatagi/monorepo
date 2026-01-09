@@ -7,11 +7,13 @@ import { db, auth as firebaseAuth } from '@/lib/firebase'; // Firebase db and au
 import { ref, onValue, off, update, set } from 'firebase/database';
 import EmojiControls from '@/components/Attendance/EmojiControls';
 import AttendanceControls from '@/components/Attendance/AttendanceControls';
+import KaptanlikControl from '@/components/Attendance/KaptanlikControl';
 import InfoPanel from '@/components/Attendance/InfoPanel';
 
 // Constants from original attendance.js
 const ATTENDANCE_DB_PATH = 'attendanceState';
 const EMOJI_DB_PATH = 'emojiState';
+const KAPTANLIK_DB_PATH = 'kaptanlikState'; // For captain volunteering
 const TEAM_PICKER_DB_PATH = 'teamPickerState'; // For clearing
 const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || "osirikler"; // Default if not in env
@@ -42,12 +44,16 @@ interface FirebaseAttendanceData {
 interface FirebaseEmojiData {
   [steamId: string]: { name?: string; status: string; };
 }
+interface FirebaseKaptanlikData {
+  [steamId: string]: { name?: string; isKaptan: boolean; timestamp?: number; };
+}
 
 export default function AttendancePage() {
   const { user, loading: authLoading } = useAuth();
   const [players, setPlayers] = useState<Player[]>([]);
   const [firebaseAttendance, setFirebaseAttendance] = useState<FirebaseAttendanceData>({});
   const [firebaseEmojis, setFirebaseEmojis] = useState<FirebaseEmojiData>({});
+  const [firebaseKaptanlik, setFirebaseKaptanlik] = useState<FirebaseKaptanlikData>({});
   const [loadingPlayers, setLoadingPlayers] = useState(true);
   const [loadingFirebaseData, setLoadingFirebaseData] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState<{[key: string]: boolean}>({}); // For individual player updates
@@ -80,6 +86,7 @@ export default function AttendancePage() {
 
     const attendanceRef = ref(db, ATTENDANCE_DB_PATH);
     const emojiRef = ref(db, EMOJI_DB_PATH);
+    const kaptanlikRef = ref(db, KAPTANLIK_DB_PATH);
 
     const onAttendanceValue = onValue(attendanceRef, (snapshot) => {
       setFirebaseAttendance(snapshot.val() || {});
@@ -96,9 +103,16 @@ export default function AttendancePage() {
       console.error("Firebase emoji listener error:", error);
     });
 
+    const onKaptanlikValue = onValue(kaptanlikRef, (snapshot) => {
+      setFirebaseKaptanlik(snapshot.val() || {});
+    }, (error) => {
+      console.error("Firebase kaptanlik listener error:", error);
+    });
+
     return () => {
       off(attendanceRef, 'value', onAttendanceValue);
       off(emojiRef, 'value', onEmojiValue);
+      off(kaptanlikRef, 'value', onKaptanlikValue);
     };
   }, [user, players.length, authLoading]); // Depend on user and players list
 
@@ -142,6 +156,13 @@ export default function AttendancePage() {
     try {
       const attendanceUpdatePath = `${ATTENDANCE_DB_PATH}/${player.steamId}`;
       await set(ref(db, attendanceUpdatePath), { name: player.name, status: newAttendance });
+      
+      // If changing away from "coming", reset kaptanlik status
+      if (newAttendance !== 'coming') {
+        const kaptanlikUpdatePath = `${KAPTANLIK_DB_PATH}/${player.steamId}`;
+        await set(ref(db, kaptanlikUpdatePath), { name: player.name, isKaptan: false, timestamp: null });
+      }
+      
       if (APPS_SCRIPT_URL) {
         fetch(APPS_SCRIPT_URL, {
           method: 'POST',
@@ -153,6 +174,26 @@ export default function AttendancePage() {
     } catch (error) {
       console.error("Error syncing attendance:", error);
       alert("Failed to update attendance. Please try again.");
+    } finally {
+      setIsSubmitting(prev => ({ ...prev, [player.steamId]: false }));
+    }
+  };
+
+  const handleKaptanlikChange = async (player: Player, isKaptan: boolean) => {
+    if (!firebaseAuth.currentUser) {
+      alert("You must be logged in to change status."); return;
+    }
+    setIsSubmitting(prev => ({ ...prev, [player.steamId]: true }));
+    try {
+      const kaptanlikUpdatePath = `${KAPTANLIK_DB_PATH}/${player.steamId}`;
+      await set(ref(db, kaptanlikUpdatePath), { 
+        name: player.name, 
+        isKaptan: isKaptan,
+        timestamp: isKaptan ? Date.now() : null // Record timestamp when checking yes
+      });
+    } catch (error) {
+      console.error("Error syncing kaptanlik:", error);
+      alert("Failed to update kaptanlik status. Please try again.");
     } finally {
       setIsSubmitting(prev => ({ ...prev, [player.steamId]: false }));
     }
@@ -194,6 +235,7 @@ export default function AttendancePage() {
         const targetAttendance = (player.status || '').trim().toLowerCase() === 'adam evde yok' ? 'not_coming' : 'no_response';
         firebaseTotalUpdates[`${ATTENDANCE_DB_PATH}/${player.steamId}`] = { name: player.name, status: targetAttendance };
         firebaseTotalUpdates[`${EMOJI_DB_PATH}/${player.steamId}`] = { name: player.name, status: 'normal' };
+        firebaseTotalUpdates[`${KAPTANLIK_DB_PATH}/${player.steamId}`] = { name: player.name, isKaptan: false, timestamp: null };
         if (APPS_SCRIPT_URL && firebaseAttendance[player.steamId]?.status !== targetAttendance) {
           sheetUpdatePromises.push(
             fetch(APPS_SCRIPT_URL, {
@@ -233,6 +275,8 @@ export default function AttendancePage() {
       ...p,
       attendanceStatus: firebaseAttendance[p.steamId]?.status || 'no_response',
       currentEmoji: firebaseEmojis[p.steamId]?.status || 'normal',
+      isKaptan: firebaseKaptanlik[p.steamId]?.isKaptan || false,
+      kaptanlikTimestamp: firebaseKaptanlik[p.steamId]?.timestamp || null,
     }));
 
     // Sort players: 'Adam Evde Yok' at the bottom, rest sorted by name
@@ -254,6 +298,7 @@ export default function AttendancePage() {
   const comingCount = combinedPlayers.filter(p => p.attendanceStatus === 'coming').length;
   const uncertainCount = combinedPlayers.filter(p => p.attendanceStatus === 'uncertain').length;
   const noResponseCount = combinedPlayers.filter(p => p.attendanceStatus === 'no_response').length;
+  const kaptanCount = combinedPlayers.filter(p => p.isKaptan).length;
   const tekerDondu = comingCount >= TEKER_DONDU_THRESHOLD;
 
   // TODO: Implement Clear Attendance functionality
@@ -271,6 +316,8 @@ export default function AttendancePage() {
               Belirsiz: <span className="font-bold text-yellow-600">{uncertainCount}</span>
               <span className="mx-2">|</span>
               Cevap Yok: <span className="font-bold text-gray-600">{noResponseCount}</span>
+              <span className="mx-2">|</span>
+              Kaptan: <span className="font-bold text-blue-700">{kaptanCount}</span>
             </p>
             {tekerDondu && (
               <p id="teker-dondu-indicator" className="text-sm font-semibold text-green-700 mt-1 flex items-center">
@@ -316,6 +363,14 @@ export default function AttendancePage() {
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                   <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
                     <h3 className="text-sm font-semibold text-gray-700">Oyuncu Durumu</h3>
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-gray-500">
+                      <div className="flex-1 min-w-0">Oyuncu</div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="w-[92px] text-center">Durum</div>
+                        <div className="w-[140px] text-center">Katılım</div>
+                        <div className="w-8 text-center">Kpt</div>
+                      </div>
+                    </div>
                   </div>
                   <div className="divide-y divide-gray-100">
                     {combinedPlayers.map((player) => (
@@ -328,8 +383,8 @@ export default function AttendancePage() {
                             )}
                           </div>
                           
-                          <div className="flex items-center space-x-2 flex-shrink-0 h-10">
-                            <div className="flex items-center justify-center h-full">
+                          <div className="flex items-center gap-2 flex-shrink-0 h-10">
+                            <div className="flex items-center justify-center h-full w-[92px]">
                               <EmojiControls 
                                 player={player} 
                                 currentEmoji={player.currentEmoji}
@@ -340,12 +395,21 @@ export default function AttendancePage() {
                                 disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
                               />
                             </div>
-                            <div className="flex items-center justify-center h-full">
+                            <div className="flex items-center justify-center h-full w-[140px]">
                               <AttendanceControls 
                                 player={player}
                                 currentAttendance={player.attendanceStatus}
                                 attendanceStates={ATTENDANCE_STATES}
                                 onAttendanceChange={handleAttendanceChange}
+                                disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
+                              />
+                            </div>
+                            <div className="flex items-center justify-center h-full w-8" title="Kaptanlık Yapar mısın?">
+                              <KaptanlikControl
+                                player={player}
+                                isKaptan={player.isKaptan}
+                                attendanceStatus={player.attendanceStatus}
+                                onKaptanlikChange={handleKaptanlikChange}
                                 disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
                               />
                             </div>
@@ -358,19 +422,20 @@ export default function AttendancePage() {
               </div>
 
               {/* Desktop: Table Layout */}
-              <div className="hidden md:block shadow-md rounded-lg w-full max-w-[800px] mx-auto overflow-x-auto">
+              <div className="hidden md:block shadow-md rounded-lg w-full max-w-[900px] mx-auto overflow-x-auto">
                 <table className="w-full text-base text-left text-gray-500 styled-table table-fixed">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th scope="col" className="px-2 py-1 text-left w-[33%]">Oyuncu</th>
-                      <th scope="col" className="px-2 py-1 text-center whitespace-nowrap w-[33%]">Durum</th>
-                      <th scope="col" className="px-2 py-1 text-center whitespace-nowrap w-[33%]">Katılım</th>
+                      <th scope="col" className="px-2 py-1 text-left w-[25%]">Oyuncu</th>
+                      <th scope="col" className="px-2 py-1 text-center whitespace-nowrap w-[25%]">Durum</th>
+                      <th scope="col" className="px-2 py-1 text-center whitespace-nowrap w-[25%]">Katılım</th>
+                      <th scope="col" className="px-2 py-1 text-center whitespace-nowrap w-[25%]" title="Kaptanlık Yapar mısın?">Kaptanlık?</th>
                     </tr>
                   </thead>
                   <tbody id="player-list">
                     {combinedPlayers.map((player) => (
                       <tr key={player.steamId} className={`border-b ${player.status === 'Adam Evde Yok' ? 'bg-red-50 opacity-70' : 'bg-white'} hover:bg-gray-50`}>
-                        <td className="px-2 py-1 w-[33%]">
+                        <td className="px-2 py-1 w-[25%]">
                           {player.status === 'Adam Evde Yok' ? (
                             <div className="flex flex-col">
                               <span className="font-medium text-base text-gray-900 truncate">
@@ -386,7 +451,7 @@ export default function AttendancePage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-2 py-1 text-center w-[33%]">
+                        <td className="px-2 py-1 text-center w-[25%]">
                           <div className="flex items-center justify-center gap-1">
                             <EmojiControls 
                               player={player} 
@@ -399,13 +464,24 @@ export default function AttendancePage() {
                             />
                           </div>
                         </td>
-                        <td className="px-2 py-1 text-center w-[33%]">
+                        <td className="px-2 py-1 text-center w-[25%]">
                           <div className="flex items-center justify-center gap-1">
                             <AttendanceControls 
                               player={player}
                               currentAttendance={player.attendanceStatus}
                               attendanceStates={ATTENDANCE_STATES}
                               onAttendanceChange={handleAttendanceChange}
+                              disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-2 py-1 text-center w-[25%]">
+                          <div className="flex items-center justify-center gap-1">
+                            <KaptanlikControl
+                              player={player}
+                              isKaptan={player.isKaptan}
+                              attendanceStatus={player.attendanceStatus}
+                              onKaptanlikChange={handleKaptanlikChange}
                               disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
                             />
                           </div>
