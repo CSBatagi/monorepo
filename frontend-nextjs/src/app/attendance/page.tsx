@@ -298,6 +298,7 @@ export default function AttendancePage() {
   const comingCount = combinedPlayers.filter(p => p.attendanceStatus === 'coming').length;
   const uncertainCount = combinedPlayers.filter(p => p.attendanceStatus === 'uncertain').length;
   const noResponseCount = combinedPlayers.filter(p => p.attendanceStatus === 'no_response').length;
+  const kaptanCount = combinedPlayers.filter(p => p.isKaptan).length;
   const tekerDondu = comingCount >= TEKER_DONDU_THRESHOLD;
 
   // TODO: Implement Clear Attendance functionality
@@ -315,6 +316,8 @@ export default function AttendancePage() {
               Belirsiz: <span className="font-bold text-yellow-600">{uncertainCount}</span>
               <span className="mx-2">|</span>
               Cevap Yok: <span className="font-bold text-gray-600">{noResponseCount}</span>
+              <span className="mx-2">|</span>
+              Kaptan: <span className="font-bold text-blue-700">{kaptanCount}</span>
             </p>
             {tekerDondu && (
               <p id="teker-dondu-indicator" className="text-sm font-semibold text-green-700 mt-1 flex items-center">
