@@ -12,6 +12,7 @@ interface EmojiControlsProps {
   emojiExplanations: { [key: string]: string };
   onEmojiChange: (player: Player, newEmoji: string) => void;
   disabled: boolean;
+  compact?: boolean; // For mobile compact view
 }
 
 const EmojiControls: React.FC<EmojiControlsProps> = ({
@@ -21,7 +22,8 @@ const EmojiControls: React.FC<EmojiControlsProps> = ({
   emojiMapping,
   emojiExplanations,
   onEmojiChange,
-  disabled
+  disabled,
+  compact = false
 }) => {
 
   const handleInteraction = (direction: 'left' | 'right') => {
@@ -46,9 +48,9 @@ const EmojiControls: React.FC<EmojiControlsProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-center space-x-1 h-8">
+    <div className={`flex items-center justify-center h-8 ${compact ? 'space-x-0.5' : 'space-x-1'}`}>
       <button 
-        className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-transparent transition-colors w-6 h-6 flex items-center justify-center"
+        className={`flex-shrink-0 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-transparent transition-colors flex items-center justify-center ${compact ? 'w-5 h-5 p-0.5' : 'w-6 h-6 p-1'}`}
         aria-label={`Previous emoji for ${player.name}`}
         data-direction="left"
         onClick={() => handleInteraction('left')}
@@ -59,7 +61,7 @@ const EmojiControls: React.FC<EmojiControlsProps> = ({
         </svg>
       </button>
       <span 
-        className="flex-shrink-0 text-lg cursor-pointer select-none px-1 py-1 rounded hover:bg-gray-100 transition-colors w-8 h-8 flex items-center justify-center"
+        className={`flex-shrink-0 cursor-pointer select-none rounded hover:bg-gray-100 transition-colors flex items-center justify-center ${compact ? 'w-7 h-7 text-base px-0.5 py-0.5' : 'w-8 h-8 text-lg px-1 py-1'}`}
         title={emojiExplanations[currentEmoji] || currentEmoji}
         data-state={currentEmoji}
         onClick={handleClickLabel}
@@ -67,7 +69,7 @@ const EmojiControls: React.FC<EmojiControlsProps> = ({
         {emojiMapping[currentEmoji] || currentEmoji}
       </span>
       <button 
-        className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-transparent transition-colors w-6 h-6 flex items-center justify-center"
+        className={`flex-shrink-0 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-transparent transition-colors flex items-center justify-center ${compact ? 'w-5 h-5 p-0.5' : 'w-6 h-6 p-1'}`}
         aria-label={`Next emoji for ${player.name}`}
         data-direction="right"
         onClick={() => handleInteraction('right')}

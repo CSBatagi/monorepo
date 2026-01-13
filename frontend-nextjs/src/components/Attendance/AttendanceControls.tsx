@@ -7,6 +7,7 @@ interface AttendanceControlsProps {
   attendanceStates: string[];
   onAttendanceChange: (player: Player, newAttendance: string) => void;
   disabled: boolean;
+  compact?: boolean; // For mobile compact view
 }
 
 const AttendanceControls: React.FC<AttendanceControlsProps> = ({
@@ -14,7 +15,8 @@ const AttendanceControls: React.FC<AttendanceControlsProps> = ({
   currentAttendance,
   attendanceStates,
   onAttendanceChange,
-  disabled
+  disabled,
+  compact = false
 }) => {
 
   const handleInteraction = (direction: 'left' | 'right') => {
@@ -62,22 +64,23 @@ const AttendanceControls: React.FC<AttendanceControlsProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-center space-x-1 h-8">
+    <div className={`flex items-center justify-center h-8 ${compact ? 'space-x-0.5' : 'space-x-1'}`}>
       <button 
-        className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-transparent transition-colors w-6 h-6 flex items-center justify-center"
+        className={`flex-shrink-0 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-transparent transition-colors flex items-center justify-center ${compact ? 'w-5 h-5 p-0.5' : 'w-6 h-6 p-1'}`}
         aria-label={`Previous status for ${player.name}`}
         onClick={() => handleInteraction('left')}
         disabled={disabled}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3 h-3">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className={compact ? 'w-3 h-3' : 'w-3 h-3'}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
       </button>
       <span 
         className={`
-          text-base font-medium cursor-pointer select-none 
-          px-2 py-1 rounded text-center transition-colors duration-150 
+          font-medium cursor-pointer select-none 
+          rounded text-center transition-colors duration-150 
           border whitespace-nowrap h-6 flex items-center justify-center w-20
+          ${compact ? 'text-sm px-1.5 py-0.5' : 'text-base px-2 py-1'}
           ${getStatusClasses(currentAttendance)}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         `}
@@ -88,12 +91,12 @@ const AttendanceControls: React.FC<AttendanceControlsProps> = ({
         {displayStatus(currentAttendance)}
       </span>
       <button 
-        className="flex-shrink-0 p-1 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-transparent transition-colors w-6 h-6 flex items-center justify-center"
+        className={`flex-shrink-0 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-transparent transition-colors flex items-center justify-center ${compact ? 'w-5 h-5 p-0.5' : 'w-6 h-6 p-1'}`}
         aria-label={`Next status for ${player.name}`}
         onClick={() => handleInteraction('right')}
         disabled={disabled}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3 h-3">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className={compact ? 'w-3 h-3' : 'w-3 h-3'}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
         </svg>
       </button>

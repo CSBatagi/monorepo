@@ -366,8 +366,8 @@ export default function AttendancePage() {
                     <div className="mt-2 flex items-center justify-between text-[11px] text-gray-500">
                       <div className="flex-1 min-w-0">Oyuncu</div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <div className="w-[92px] text-center">Durum</div>
-                        <div className="w-[140px] text-center">Katılım</div>
+                        <div className="w-[80px] text-center">Durum</div>
+                        <div className="w-[128px] text-center">Katılım</div>
                         <div className="w-8 text-center">Kpt</div>
                       </div>
                     </div>
@@ -383,8 +383,8 @@ export default function AttendancePage() {
                             )}
                           </div>
                           
-                          <div className="flex items-center gap-2 flex-shrink-0 h-10">
-                            <div className="flex items-center justify-center h-full w-[92px]">
+                          <div className="flex items-center gap-1 flex-shrink-0 h-10">
+                            <div className="flex items-center justify-center h-full w-[80px]">
                               <EmojiControls 
                                 player={player} 
                                 currentEmoji={player.currentEmoji}
@@ -393,15 +393,17 @@ export default function AttendancePage() {
                                 emojiExplanations={EMOJI_EXPLANATIONS}
                                 onEmojiChange={handleEmojiChange}
                                 disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
+                                compact={true}
                               />
                             </div>
-                            <div className="flex items-center justify-center h-full w-[140px]">
+                            <div className="flex items-center justify-center h-full w-[128px]">
                               <AttendanceControls 
                                 player={player}
                                 currentAttendance={player.attendanceStatus}
                                 attendanceStates={ATTENDANCE_STATES}
                                 onAttendanceChange={handleAttendanceChange}
                                 disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
+                                compact={true}
                               />
                             </div>
                             <div className="flex items-center justify-center h-full w-8" title="Kaptanlık Yapar mısın?">
