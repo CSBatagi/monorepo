@@ -4,6 +4,7 @@ import "./globals.css";
 import "@/styles/table-styles.css";
 import Layout from "@/components/Layout";
 import AuthGate from "@/components/AuthGate";
+import AdminStatsButton from "@/components/AdminStatsButton";
 import fs from 'fs/promises';
 import path from 'path';
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -87,6 +88,7 @@ export default async function RootLayout({
                 {children}
               </main>
             </Layout>
+            <AdminStatsButton />
           </AuthGate>
         </AuthProvider>
       </body>

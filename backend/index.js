@@ -162,6 +162,34 @@ app.get('/stats/incremental', async (req, res) => {
   }
 });
 
+// Force regeneration endpoint (for admin use)
+app.post('/stats/force-regenerate', async (req, res) => {
+  try {
+    console.log('[force-regenerate] Manual regeneration triggered');
+    // Clear cached timestamp to force regeneration
+    lastGeneratedServerTimestamp = null;
+    // Run stats generation
+    if (!statsGenerationPromise) {
+      statsGenerationPromise = runStatsUpdateScript().finally(()=>{ statsGenerationPromise=null; });
+    }
+    const result = await statsGenerationPromise;
+    const serverLastTs = await fetchLastDataTimestamp();
+    if (serverLastTs) {
+      lastGeneratedServerTimestamp = new Date(serverLastTs);
+      lastGeneratedData = result.data;
+    }
+    res.json({ 
+      success: true, 
+      message: 'Stats regenerated successfully',
+      serverTimestamp: lastGeneratedServerTimestamp,
+      datasets: Object.keys(result.data || {})
+    });
+  } catch (e) {
+    console.error('Error in force regenerate', e);
+    res.status(500).json({ error: 'regeneration_failed', details: e.message });
+  }
+});
+
 // Lightweight diagnostics endpoint to help debug missing data
 app.get('/stats/diagnostics', async (req, res) => {
   try {
