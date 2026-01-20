@@ -48,17 +48,31 @@ async function fetchLastDataTimestamp() {
     }
     return global.__testLastTs;
   }
-  // Simplified: only rely on matches.date (most reliable present column across environments).
-  // If you later add reliable per-row timestamps in other tables, extend this query.
+  // Check both matches.date (for new entries) and updated_at columns (for modifications).
+  // Uses GREATEST to pick the most recent change across all tracked tables.
+  // Falls back gracefully if updated_at columns don't exist yet.
   const query = `
-    SELECT COALESCE(MAX(m.date), '1970-01-01'::timestamp) AS last_change
-    FROM matches m;`;
+    SELECT GREATEST(
+      COALESCE(MAX(m.date), '1970-01-01'::timestamp),
+      COALESCE(MAX(m.updated_at), '1970-01-01'::timestamp),
+      COALESCE(MAX(p.updated_at), '1970-01-01'::timestamp)
+    ) AS last_change
+    FROM matches m
+    LEFT JOIN players p ON TRUE
+    LIMIT 1;`;
   try {
     const r = await pool.query(query);
     return r.rows[0]?.last_change || null;
   } catch (e) {
-    console.error('Error fetching last data timestamp', e);
-    return null;
+    // Fallback query if updated_at columns don't exist yet
+    console.warn('Extended timestamp query failed, falling back to matches.date only:', e.message);
+    try {
+      const fallback = await pool.query(`SELECT COALESCE(MAX(date), '1970-01-01'::timestamp) AS last_change FROM matches;`);
+      return fallback.rows[0]?.last_change || null;
+    } catch (e2) {
+      console.error('Error fetching last data timestamp', e2);
+      return null;
+    }
   }
 }
 

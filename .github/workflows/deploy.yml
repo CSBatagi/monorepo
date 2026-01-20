@@ -33,6 +33,7 @@ jobs:
           echo "frontend-nextjs=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "docker-compose=$(git diff --name-only HEAD~1 HEAD | grep -q 'docker-compose.yml\|Caddyfile' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "config_data=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/public/data/players.json$\|^frontend-nextjs/public/data/season_start.json$' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "migrations=$(git diff --name-only HEAD~1 HEAD | grep -q '^backend/migrations/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
 
       - name: Authenticate to GCP
         id: auth
@@ -135,4 +136,25 @@ jobs:
         run: |
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
             --command="sudo docker compose -f ~/docker-compose.yml exec -T backend bash -c 'rm -f /app/last_timestamp.txt' && sudo docker compose -f ~/docker-compose.yml restart backend" \
+            --ssh-key-expire-after=1m
+
+      - name: Run database migrations if changed
+        if: steps.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          # Copy migration files to VM
+          gcloud compute scp \
+            --zone=${{ secrets.GCP_ZONE }} \
+            --recurse \
+            ./backend/migrations \
+            ${{ secrets.GCP_VM_NAME }}:~/ \
+            --ssh-key-expire-after=1m
+          
+          # Run all SQL migrations
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
+            --command="for f in ~/migrations/*.sql; do echo \"Running migration: \$f\"; sudo docker compose -f ~/docker-compose.yml exec -T postgres psql -U \$(sudo docker compose -f ~/docker-compose.yml exec -T postgres printenv POSTGRES_USER | tr -d '\\r') -d csdm -f - < \"\$f\" 2>&1 || true; done" \
+            --ssh-key-expire-after=2m
+          
+          # Cleanup migration files
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
+            --command="rm -rf ~/migrations" \
             --ssh-key-expire-after=1m
