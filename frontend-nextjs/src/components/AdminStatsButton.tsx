@@ -46,7 +46,7 @@ export default function AdminStatsButton() {
     }
 
     setLoading(true);
-    setMessage('');
+    setMessage('⏳ Veritabanından istatistikler çekiliyor...');
 
     try {
       const response = await fetch('/api/admin/regenerate-stats', {
@@ -59,16 +59,17 @@ export default function AdminStatsButton() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage('✅ İstatistikler başarıyla yenilendi!');
+        const filesWritten = data.filesWritten?.length || 0;
+        setMessage(`✅ ${filesWritten} dosya güncellendi! Sayfa yenileniyor...`);
         // Reload page after 2 seconds to show updated stats
         setTimeout(() => {
           window.location.reload();
         }, 2000);
       } else {
-        setMessage(`❌ Hata: ${data.error || 'Bilinmeyen hata'}`);
+        setMessage(`❌ Hata: ${data.error || 'Bilinmeyen hata'}\n${data.details || ''}`);
       }
     } catch (error) {
-      setMessage('❌ Bağlantı hatası');
+      setMessage('❌ Bağlantı hatası - backend çalışıyor mu?');
       console.error('Stats regeneration error:', error);
     } finally {
       setLoading(false);

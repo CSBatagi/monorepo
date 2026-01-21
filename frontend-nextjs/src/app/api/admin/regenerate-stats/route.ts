@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs/promises';
+import path from 'path';
 
-// Note: Server-side admin validation should ideally use Firebase Admin SDK
-// For now, we rely on client-side validation + the fact that this endpoint
-// only regenerates stats (not destructive). For stricter security, add:
-// 1. Firebase Admin SDK token verification
-// 2. Rate limiting
+// Stat files that need to be written
+const STAT_FILES = [
+  'season_avg.json',
+  'night_avg.json',
+  'last10.json',
+  'sonmac_by_date.json',
+  'duello_son_mac.json',
+  'duello_sezon.json',
+  'performance_data.json'
+];
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,21 +34,46 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
-
-    // Delete the timestamp file to ensure next page load picks up the changes
-    const fs = require('fs/promises');
-    const path = require('path');
-    const timestampPath = path.join(process.cwd(), 'runtime-data', 'last_timestamp.txt');
+    
+    // Write all JSON files to runtime-data directory
+    const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
+    await fs.mkdir(runtimeDir, { recursive: true });
+    
+    let filesWritten = [];
+    let filesSkipped = [];
+    
+    for (const filename of STAT_FILES) {
+      const key = filename.replace(/\.json$/, '');
+      if (data[key] !== undefined) {
+        try {
+          await fs.writeFile(
+            path.join(runtimeDir, filename),
+            JSON.stringify(data[key], null, 2),
+            'utf-8'
+          );
+          filesWritten.push(filename);
+        } catch (writeErr: any) {
+          console.error(`Failed to write ${filename}:`, writeErr.message);
+        }
+      } else {
+        filesSkipped.push(filename);
+      }
+    }
+    
+    // Update the timestamp file with current time
+    const timestampPath = path.join(runtimeDir, 'last_timestamp.txt');
     try {
-      await fs.unlink(timestampPath);
+      await fs.writeFile(timestampPath, data.serverTimestamp || new Date().toISOString(), 'utf-8');
     } catch (e) {
-      // File might not exist, that's ok
+      // Non-critical
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Stats regenerated successfully',
-      data,
+      message: 'Stats regenerated and files written successfully',
+      filesWritten,
+      filesSkipped,
+      serverTimestamp: data.serverTimestamp,
     });
   } catch (error: any) {
     console.error('Error regenerating stats:', error);

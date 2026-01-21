@@ -163,26 +163,31 @@ app.get('/stats/incremental', async (req, res) => {
 });
 
 // Force regeneration endpoint (for admin use)
+// This bypasses timestamp checks and always regenerates + returns full data
 app.post('/stats/force-regenerate', async (req, res) => {
   try {
     console.log('[force-regenerate] Manual regeneration triggered');
     // Clear cached timestamp to force regeneration
     lastGeneratedServerTimestamp = null;
-    // Run stats generation
-    if (!statsGenerationPromise) {
-      statsGenerationPromise = runStatsUpdateScript().finally(()=>{ statsGenerationPromise=null; });
-    }
-    const result = await statsGenerationPromise;
+    
+    // Always run fresh generation (bypass any in-progress promise)
+    cachedSeasonStart = resolveSeasonStart();
+    const result = await runStatsUpdateScript();
+    
     const serverLastTs = await fetchLastDataTimestamp();
     if (serverLastTs) {
       lastGeneratedServerTimestamp = new Date(serverLastTs);
       lastGeneratedData = result.data;
     }
+    
+    // Return FULL data so frontend can write JSON files
     res.json({ 
       success: true, 
+      updated: true,  // Always true for force regenerate
       message: 'Stats regenerated successfully',
-      serverTimestamp: lastGeneratedServerTimestamp,
-      datasets: Object.keys(result.data || {})
+      serverTimestamp: new Date().toISOString(),  // Use current time, not DB time
+      // Include all datasets
+      ...result.data
     });
   } catch (e) {
     console.error('Error in force regenerate', e);
