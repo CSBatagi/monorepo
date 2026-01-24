@@ -21,6 +21,7 @@ const navLinks = [
   { href: "/duello", label: "Düello" },
   { href: "/performance", label: "Performans Grafikleri" },
   { href: "/mac-sonuclari", label: "Maç Sonuçları" },
+  { href: "/mac-videolari", label: "Maç Videoları" },
 ];
 
 export default function Header() {
