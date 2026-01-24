@@ -45,7 +45,7 @@ export default function Header() {
 
   // Close menu on navigation (for mobile)
   useEffect(() => {
-    setIsMenuOpen(false); 
+    setIsMenuOpen(false);
   }, [user]); // Also close if auth state changes, or use router events if more fine-grained control is needed
 
   return (
@@ -54,12 +54,10 @@ export default function Header() {
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           {/* Left: Logo and Title */}
           <div className="flex-shrink-0">
-          <Link href="/" legacyBehavior>
-            <a className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+            <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
               <Image src="/images/BatakLogo.png" alt="CS2 Stats Hub Logo" width={40} height={40} className="rounded-full" />
               <span className="text-xl font-bold tracking-tight">CS Batağı</span>
-            </a>
-          </Link>
+            </Link>
           </div>
 
           {/* Center: Desktop Navigation Links (two rows) */}
@@ -67,32 +65,36 @@ export default function Header() {
             <nav className="flex flex-col items-center space-y-1">
               <div className="flex items-center space-x-2 flex-wrap">
                 {navLinks.slice(0, Math.ceil(navLinks.length / 2)).map(link => (
-                  <Link key={link.href} href={link.href} legacyBehavior>
-                    <a className={`px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors whitespace-nowrap${pathname === link.href ? ' bg-gray-700' : ''}`}>
-                      {link.label}
-                    </a>
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors whitespace-nowrap${pathname === link.href ? ' bg-gray-700' : ''}`}
+                  >
+                    {link.label}
                   </Link>
                 ))}
               </div>
               <div className="flex items-center space-x-2 flex-wrap">
                 {navLinks.slice(Math.ceil(navLinks.length / 2)).map(link => (
-              <Link key={link.href} href={link.href} legacyBehavior>
-                    <a className={`px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors whitespace-nowrap${pathname === link.href ? ' bg-gray-700' : ''}`}>
-                      {link.label}
-                    </a>
-              </Link>
-            ))}
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors whitespace-nowrap${pathname === link.href ? ' bg-gray-700' : ''}`}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
               </div>
             </nav>
           </div>
-            
+
           {/* Right: Auth Buttons (desktop) and Mobile Menu/Avatar (mobile) */}
           <div className="hidden md:flex items-center space-x-3 flex-shrink-0">
             {loading ? (
               <div className="px-3 py-2 text-sm">Loading...</div>
             ) : user ? (
               <div className="flex items-center space-x-3">
-                {user.photoURL && <Image src={user.photoURL} alt={user.displayName || 'User'} width={32} height={32} className="rounded-full" />} 
+                {user.photoURL && <Image src={user.photoURL} alt={user.displayName || 'User'} width={32} height={32} className="rounded-full" />}
                 <span className="text-sm font-medium">{user.displayName || user.email}</span>
                 <button onClick={handleSignOut} className="px-3 py-2 rounded-md text-sm font-medium bg-red-600 hover:bg-red-700 transition-colors">
                   Sign Out
@@ -108,12 +110,12 @@ export default function Header() {
           {/* Mobile Menu Button and Avatar (right-aligned) */}
           <div className="md:hidden flex items-center">
             {loading ? (
-               <div className="px-3 py-2 text-sm">...</div>
+              <div className="px-3 py-2 text-sm">...</div>
             ) : user ? (
               <div className="flex items-center space-x-2 mr-2">
-                  {user.photoURL && <Image src={user.photoURL} alt="User" width={28} height={28} className="rounded-full" />}
+                {user.photoURL && <Image src={user.photoURL} alt="User" width={28} height={28} className="rounded-full" />}
               </div>
-            ) : null } 
+            ) : null}
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu" className="p-2 rounded-md hover:bg-gray-700">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 {isMenuOpen ? (
@@ -130,21 +132,24 @@ export default function Header() {
         {isMenuOpen && (
           <nav className="md:hidden px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {navLinks.map(link => (
-              <Link key={link.href} href={link.href} legacyBehavior>
-                <a onClick={() => setIsMenuOpen(false)} className={`block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-700 transition-colors${pathname === link.href ? ' bg-gray-700' : ''}`}>
-                  {link.label}
-                </a>
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-700 transition-colors${pathname === link.href ? ' bg-gray-700' : ''}`}
+              >
+                {link.label}
               </Link>
             ))}
-            <hr className="border-gray-700 my-2"/>
+            <hr className="border-gray-700 my-2" />
             {loading ? (
               <div className="px-3 py-2 text-base font-medium">Loading...</div>
             ) : user ? (
               <div className="px-3 py-2">
-                  <div className="flex items-center space-x-2 mb-2">
-                      {user.photoURL && <Image src={user.photoURL} alt={user.displayName || 'User'} width={32} height={32} className="rounded-full" />}
-                      <span className="text-base font-medium">{user.displayName || user.email}</span>
-                  </div>
+                <div className="flex items-center space-x-2 mb-2">
+                  {user.photoURL && <Image src={user.photoURL} alt={user.displayName || 'User'} width={32} height={32} className="rounded-full" />}
+                  <span className="text-base font-medium">{user.displayName || user.email}</span>
+                </div>
                 <button onClick={() => { handleSignOut(); setIsMenuOpen(false); }} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium bg-red-600 hover:bg-red-700 transition-colors">
                   Sign Out
                 </button>
@@ -157,7 +162,6 @@ export default function Header() {
           </nav>
         )}
       </header>
-
     </>
   );
 }
