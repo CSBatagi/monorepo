@@ -222,12 +222,13 @@ export function computeStandings(params: {
   seasonStart: string | null;
   playersIndex: PlayersIndex;
   excludeLastNight?: boolean; // if true, exclude the most recent night for position comparison
+  upToNight?: number; // if provided, only include nights up to this index (1-based)
 }): {
   byLeague: Record<string, { id: string; name: string; standings: PlayerStanding[] }>;
   datesIncluded: string[];
   warnings: string[];
 } {
-  const { config, nightAvg, sonmacByDate, captainsByDate, seasonStart, playersIndex, excludeLastNight } = params;
+  const { config, nightAvg, sonmacByDate, captainsByDate, seasonStart, playersIndex, excludeLastNight, upToNight } = params;
 
   // All-Stars nights are inferred from captain tagging: if captains were assigned for a date
   // (both teams) and the date is within the season, it counts as an All-Stars night.
@@ -249,6 +250,11 @@ export function computeStandings(params: {
   // If excludeLastNight is true, remove the most recent date
   if (excludeLastNight && datesIncluded.length > 0) {
     datesIncluded = datesIncluded.slice(0, -1);
+  }
+
+  // If upToNight is provided, only include nights up to that index (1-based)
+  if (upToNight !== undefined && upToNight > 0) {
+    datesIncluded = datesIncluded.slice(0, upToNight);
   }
 
   const datesIncludedSet = new Set<string>(datesIncluded);

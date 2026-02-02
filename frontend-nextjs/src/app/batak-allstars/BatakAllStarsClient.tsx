@@ -39,34 +39,121 @@ function formatNumber(value: unknown, decimals = 2): string {
   return n.toFixed(decimals);
 }
 
-// Season Progress Bar Component
-function SeasonProgressBar({ played, total }: { played: number; total: number }) {
+// Season Progress Bar Component - Interactive
+function SeasonProgressBar({ 
+  played, 
+  total, 
+  selectedIndex, 
+  onSelectIndex,
+  dates 
+}: { 
+  played: number; 
+  total: number; 
+  selectedIndex: number | null; // null means "show all" (latest)
+  onSelectIndex: (index: number | null) => void;
+  dates: string[]; // array of dates for tooltips
+}) {
+  // Effective selected index (if null or beyond played, use played)
+  const effectiveIndex = selectedIndex === null ? played : Math.min(selectedIndex, played);
+  
   const squares = [];
   for (let i = 0; i < total; i++) {
-    if (i < played) {
-      // Played matches - filled square
-      squares.push(
-        <span key={i} className="text-blue-600" title={`Maç ${i + 1} (oynandı)`}>
-          ◼️
-        </span>
-      );
+    const matchNum = i + 1;
+    const isPlayed = i < played;
+    const isSelected = effectiveIndex === matchNum;
+    const isBeforeSelected = matchNum <= effectiveIndex;
+    const dateForBox = dates[i] || null;
+    
+    // Determine styling
+    let bgClass = '';
+    let textClass = '';
+    let borderClass = '';
+    
+    if (isPlayed) {
+      if (isSelected) {
+        // Currently selected - full color with border
+        bgClass = 'bg-blue-600';
+        textClass = 'text-white';
+        borderClass = 'ring-2 ring-blue-800 ring-offset-1';
+      } else if (isBeforeSelected) {
+        // Before selected - medium shade
+        bgClass = 'bg-blue-400';
+        textClass = 'text-white';
+      } else {
+        // After selected but played - lighter shade to show it's played
+        bgClass = 'bg-blue-200';
+        textClass = 'text-blue-600';
+      }
     } else {
-      // Not yet played - empty square
-      squares.push(
-        <span key={i} className="text-gray-300" title={`Maç ${i + 1} (oynanmadı)`}>
-          ◻️
-        </span>
-      );
+      // Not yet played - gray
+      bgClass = 'bg-gray-200';
+      textClass = 'text-gray-400';
     }
+    
+    const tooltip = isPlayed 
+      ? `Maç ${matchNum}: ${dateForBox || 'oynandı'}${isSelected ? ' (seçili)' : ''}`
+      : `Maç ${matchNum} (oynanmadı)`;
+    
+    squares.push(
+      <button
+        key={i}
+        type="button"
+        onClick={() => {
+          if (isPlayed) {
+            // If clicking the same one that's already selected, go back to "all"
+            if (selectedIndex === matchNum) {
+              onSelectIndex(null);
+            } else {
+              onSelectIndex(matchNum);
+            }
+          } else {
+            // Clicking unplayed box shows latest
+            onSelectIndex(null);
+          }
+        }}
+        className={`
+          w-7 h-7 sm:w-8 sm:h-8 md:w-6 md:h-6
+          rounded-sm
+          flex items-center justify-center
+          text-xs font-medium
+          transition-all duration-150
+          ${bgClass} ${textClass} ${borderClass}
+          ${isPlayed ? 'cursor-pointer hover:scale-110 active:scale-95' : 'cursor-default opacity-60'}
+          touch-manipulation
+        `}
+        title={tooltip}
+        aria-label={tooltip}
+      >
+        {matchNum}
+      </button>
+    );
   }
   
+  const viewingText = selectedIndex === null || selectedIndex >= played
+    ? `Güncel (${played} maç)`
+    : `Maç ${selectedIndex} sonrası`;
+  
   return (
-    <div className="flex flex-col items-center gap-1 py-3">
-      <div className="flex flex-wrap justify-center gap-0.5 text-lg md:text-xl">
+    <div className="flex flex-col items-center gap-2 py-3">
+      <div className="flex flex-wrap justify-center gap-1 sm:gap-1.5">
         {squares}
       </div>
-      <div className="text-xs text-gray-500">
-        {played} / {total} maç oynandı
+      <div className="flex flex-col items-center gap-0.5">
+        <div className="text-xs text-gray-500">
+          {played} / {total} maç oynandı
+        </div>
+        <div className="text-xs font-medium text-blue-600">
+          Görüntülenen: {viewingText}
+        </div>
+        {selectedIndex !== null && selectedIndex < played && (
+          <button
+            type="button"
+            onClick={() => onSelectIndex(null)}
+            className="text-xs text-blue-500 hover:text-blue-700 underline mt-1"
+          >
+            Güncel duruma dön
+          </button>
+        )}
       </div>
     </div>
   );
@@ -174,6 +261,9 @@ export default function BatakAllStarsClient({
   const [savingTeam, setSavingTeam] = useState<Record<TeamKey, boolean>>({ team1: false, team2: false });
   const [message, setMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'standings' | 'raw' | 'kaptanlik'>('standings');
+  
+  // Selected progress bar index (null = show all/latest, 1-based number = show standings up to that match)
+  const [selectedProgressIndex, setSelectedProgressIndex] = useState<number | null>(null);
 
   // Load all captains once for standings/tokens.
   useEffect(() => {
@@ -219,9 +309,22 @@ export default function BatakAllStarsClient({
     });
   }, [captainsByDate, effectiveConfig, nightAvg, playersIndex, seasonStart, sonmacByDate]);
 
-  // Compute standings from the previous night (excluding the most recent night) for position change comparison
-  const previousStandingsData = useMemo(() => {
+  // Total played nights count (for progress bar)
+  const totalPlayedNights = standingsData?.datesIncluded?.length ?? 0;
+  
+  // Effective selected index for filtering (clamp to played nights)
+  const effectiveProgressIndex = selectedProgressIndex === null 
+    ? null 
+    : Math.min(selectedProgressIndex, totalPlayedNights);
+
+  // Compute filtered standings based on selected progress index (client-side only)
+  const filteredStandingsData = useMemo(() => {
     if (!effectiveConfig) return null;
+    // If no filter selected or filter is at max, use full standings
+    if (effectiveProgressIndex === null || effectiveProgressIndex >= totalPlayedNights) {
+      return standingsData;
+    }
+    // Otherwise compute standings up to that night
     return computeStandings({
       config: effectiveConfig,
       nightAvg,
@@ -229,17 +332,37 @@ export default function BatakAllStarsClient({
       captainsByDate,
       seasonStart,
       playersIndex,
-      excludeLastNight: true,
+      upToNight: effectiveProgressIndex,
     });
-  }, [captainsByDate, effectiveConfig, nightAvg, playersIndex, seasonStart, sonmacByDate]);
+  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, nightAvg, playersIndex, seasonStart, sonmacByDate, standingsData, totalPlayedNights]);
 
-  // Compute standings with position change info
+  // Compute standings from the previous night for position change comparison
+  // When filtering, "previous" means one night before the selected filter
+  const previousStandingsData = useMemo(() => {
+    if (!effectiveConfig) return null;
+    
+    // Determine which night to compare against
+    const currentNightCount = effectiveProgressIndex ?? totalPlayedNights;
+    if (currentNightCount <= 1) return null; // No previous to compare
+    
+    return computeStandings({
+      config: effectiveConfig,
+      nightAvg,
+      sonmacByDate,
+      captainsByDate,
+      seasonStart,
+      playersIndex,
+      upToNight: currentNightCount - 1,
+    });
+  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, nightAvg, playersIndex, seasonStart, sonmacByDate, totalPlayedNights]);
+
+  // Compute standings with position change info (uses filtered data for display)
   const standingsWithPositionChange = useMemo(() => {
-    if (!standingsData?.byLeague) return null;
+    if (!filteredStandingsData?.byLeague) return null;
     
     const result: Record<string, { id: string; name: string; standings: PlayerStanding[] }> = {};
     
-    for (const [leagueId, leagueData] of Object.entries(standingsData.byLeague)) {
+    for (const [leagueId, leagueData] of Object.entries(filteredStandingsData.byLeague)) {
       const previousLeague = previousStandingsData?.byLeague?.[leagueId];
       const previousPositionMap = new Map<string, number>();
       
@@ -278,7 +401,7 @@ export default function BatakAllStarsClient({
     }
     
     return result;
-  }, [standingsData, previousStandingsData]);
+  }, [filteredStandingsData, previousStandingsData]);
 
   // Compute sorted kaptanlik volunteers with captain tokens
   const sortedKaptanlikVolunteers = useMemo(() => {
@@ -421,6 +544,7 @@ export default function BatakAllStarsClient({
   const seriesPoints = effectiveConfig?.scoring?.seriesPoints;
   const includedNightsCount = standingsData?.datesIncluded?.length ?? 0;
   const includedDates = standingsData?.datesIncluded ?? [];
+  const filteredNightsCount = filteredStandingsData?.datesIncluded?.length ?? 0;
 
   return (
     <div className="space-y-4">
@@ -535,13 +659,28 @@ export default function BatakAllStarsClient({
                     <span className="font-medium">Sezon puanı</span> = oynanan gecelerin puan ortalaması, en düşük <span className="font-mono">Kpt.</span> kadar gece çıkarılarak hesaplanır (en az 1 gece kalır).
                   </div>
                   <div>
-                    <span className="font-medium">Dahil edilen geceler</span>: Sezon başlangıcından sonra, iki takım kaptanı da girilmiş geceler. Şu an <span className="font-mono">{includedNightsCount}</span> gece dahil.
+                    <span className="font-medium">Dahil edilen geceler</span>: Sezon başlangıcından sonra, iki takım kaptanı da girilmiş geceler. 
+                    {selectedProgressIndex !== null && selectedProgressIndex < includedNightsCount ? (
+                      <span>
+                        {' '}Görüntülenen: <span className="font-mono">{filteredNightsCount}</span> / <span className="font-mono">{includedNightsCount}</span> gece.
+                      </span>
+                    ) : (
+                      <span>
+                        {' '}Şu an <span className="font-mono">{includedNightsCount}</span> gece dahil.
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Season Progress Bar */}
-              <SeasonProgressBar played={includedNightsCount} total={SEASON_LENGTH} />
+              <SeasonProgressBar 
+                played={includedNightsCount} 
+                total={SEASON_LENGTH} 
+                selectedIndex={selectedProgressIndex}
+                onSelectIndex={setSelectedProgressIndex}
+                dates={includedDates}
+              />
 
               {(effectiveConfig.leagues || []).length === 0 ? (
                 <div className="text-sm text-gray-700">
