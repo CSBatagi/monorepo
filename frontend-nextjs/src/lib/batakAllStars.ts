@@ -84,6 +84,8 @@ export type PlayerStanding = {
   puanRaw: number; // avg over all played nights
   puanAdj: number; // avg after dropping worst kpt nights
   nightBreakdown?: Array<{ date: string; hltv2: number; bonus: number; points: number; dropped: boolean }>;
+  meetsKriteria?: boolean; // true if 5+ matches and 1+ captaincy
+  positionChange?: 'up' | 'down' | 'same' | 'new'; // Position change compared to previous night
 };
 
 export function buildPlayersIndex(playersJson: unknown): PlayersIndex {
@@ -219,18 +221,19 @@ export function computeStandings(params: {
   captainsByDate: CaptainsByDateSnapshot | null;
   seasonStart: string | null;
   playersIndex: PlayersIndex;
+  excludeLastNight?: boolean; // if true, exclude the most recent night for position comparison
 }): {
   byLeague: Record<string, { id: string; name: string; standings: PlayerStanding[] }>;
   datesIncluded: string[];
   warnings: string[];
 } {
-  const { config, nightAvg, sonmacByDate, captainsByDate, seasonStart, playersIndex } = params;
+  const { config, nightAvg, sonmacByDate, captainsByDate, seasonStart, playersIndex, excludeLastNight } = params;
 
   // All-Stars nights are inferred from captain tagging: if captains were assigned for a date
   // (both teams) and the date is within the season, it counts as an All-Stars night.
   const start = seasonStart || null;
   const captainDates = Object.keys(captainsByDate || {});
-  const datesIncluded = captainDates
+  let datesIncluded = captainDates
     .filter((d) => {
       if (start && d < start) return false;
       const rec = captainsByDate?.[d];
@@ -242,6 +245,11 @@ export function computeStandings(params: {
       return true;
     })
     .sort();
+
+  // If excludeLastNight is true, remove the most recent date
+  if (excludeLastNight && datesIncluded.length > 0) {
+    datesIncluded = datesIncluded.slice(0, -1);
+  }
 
   const datesIncludedSet = new Set<string>(datesIncluded);
 
@@ -323,6 +331,9 @@ export function computeStandings(params: {
         .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
         .map((n) => ({ date: n.date, hltv2: n.hltv2, bonus: n.bonus, points: n.points, dropped: droppedDates.has(n.date) }));
 
+      // Player meets criteria if they have 5+ matches and 1+ captaincy
+      const meetsKriteria = oyn >= 5 && kpt >= 1;
+
       standings.push({
         steamId,
         name: displayName,
@@ -331,6 +342,7 @@ export function computeStandings(params: {
         puanRaw,
         puanAdj,
         nightBreakdown,
+        meetsKriteria,
       });
     }
 

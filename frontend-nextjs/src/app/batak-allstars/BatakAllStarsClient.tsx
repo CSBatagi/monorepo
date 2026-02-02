@@ -17,11 +17,14 @@ import {
   type NightAvgRow,
   type SonmacByDate,
   type CaptainRecord,
+  type PlayerStanding,
 } from '@/lib/batakAllStars';
 
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || 'osirikler';
 
 const KAPTANLIK_DB_PATH = 'kaptanlikState';
+
+const SEASON_LENGTH = 15; // Number of matches in a season
 
 type TeamKey = 'team1' | 'team2';
 
@@ -34,6 +37,63 @@ function formatNumber(value: unknown, decimals = 2): string {
   const n = typeof value === 'number' ? value : Number(value);
   if (Number.isNaN(n)) return '-';
   return n.toFixed(decimals);
+}
+
+// Season Progress Bar Component
+function SeasonProgressBar({ played, total }: { played: number; total: number }) {
+  const squares = [];
+  for (let i = 0; i < total; i++) {
+    if (i < played) {
+      // Played matches - filled square
+      squares.push(
+        <span key={i} className="text-blue-600" title={`Maç ${i + 1} (oynandı)`}>
+          ◼️
+        </span>
+      );
+    } else {
+      // Not yet played - empty square
+      squares.push(
+        <span key={i} className="text-gray-300" title={`Maç ${i + 1} (oynanmadı)`}>
+          ◻️
+        </span>
+      );
+    }
+  }
+  
+  return (
+    <div className="flex flex-col items-center gap-1 py-3">
+      <div className="flex flex-wrap justify-center gap-0.5 text-lg md:text-xl">
+        {squares}
+      </div>
+      <div className="text-xs text-gray-500">
+        {played} / {total} maç oynandı
+      </div>
+    </div>
+  );
+}
+
+// Position Change Indicator Component
+function PositionChangeIndicator({ change }: { change?: 'up' | 'down' | 'same' | 'new' }) {
+  switch (change) {
+    case 'up':
+      return <span title="Yükseldi" className="text-green-600">🔼</span>;
+    case 'down':
+      return <span title="Düştü" className="text-red-600">🔽</span>;
+    case 'same':
+      return <span title="Aynı" className="text-gray-400">⏺️</span>;
+    case 'new':
+      return <span title="Yeni" className="text-blue-400">🆕</span>;
+    default:
+      return <span className="text-gray-300">-</span>;
+  }
+}
+
+// Criteria Met Indicator Component
+function KriteriaMet({ met }: { met?: boolean }) {
+  if (met) {
+    return <span title="5 maç + 1 kaptanlık kriterlerini tamamladı" className="text-green-600">✅</span>;
+  }
+  return <span className="text-gray-300">-</span>;
 }
 
 interface KaptanlikVolunteer {
@@ -158,6 +218,67 @@ export default function BatakAllStarsClient({
       playersIndex,
     });
   }, [captainsByDate, effectiveConfig, nightAvg, playersIndex, seasonStart, sonmacByDate]);
+
+  // Compute standings from the previous night (excluding the most recent night) for position change comparison
+  const previousStandingsData = useMemo(() => {
+    if (!effectiveConfig) return null;
+    return computeStandings({
+      config: effectiveConfig,
+      nightAvg,
+      sonmacByDate,
+      captainsByDate,
+      seasonStart,
+      playersIndex,
+      excludeLastNight: true,
+    });
+  }, [captainsByDate, effectiveConfig, nightAvg, playersIndex, seasonStart, sonmacByDate]);
+
+  // Compute standings with position change info
+  const standingsWithPositionChange = useMemo(() => {
+    if (!standingsData?.byLeague) return null;
+    
+    const result: Record<string, { id: string; name: string; standings: PlayerStanding[] }> = {};
+    
+    for (const [leagueId, leagueData] of Object.entries(standingsData.byLeague)) {
+      const previousLeague = previousStandingsData?.byLeague?.[leagueId];
+      const previousPositionMap = new Map<string, number>();
+      
+      // Build map of previous positions
+      if (previousLeague?.standings) {
+        previousLeague.standings.forEach((player, idx) => {
+          previousPositionMap.set(player.steamId, idx);
+        });
+      }
+      
+      // Add position change to each player
+      const standingsWithChange: PlayerStanding[] = leagueData.standings.map((player, currentIdx) => {
+        const previousIdx = previousPositionMap.get(player.steamId);
+        let positionChange: PlayerStanding['positionChange'] = 'new';
+        
+        if (previousIdx !== undefined) {
+          if (currentIdx < previousIdx) {
+            positionChange = 'up';
+          } else if (currentIdx > previousIdx) {
+            positionChange = 'down';
+          } else {
+            positionChange = 'same';
+          }
+        }
+        
+        return {
+          ...player,
+          positionChange,
+        };
+      });
+      
+      result[leagueId] = {
+        ...leagueData,
+        standings: standingsWithChange,
+      };
+    }
+    
+    return result;
+  }, [standingsData, previousStandingsData]);
 
   // Compute sorted kaptanlik volunteers with captain tokens
   const sortedKaptanlikVolunteers = useMemo(() => {
@@ -419,6 +540,9 @@ export default function BatakAllStarsClient({
                 </div>
               </div>
 
+              {/* Season Progress Bar */}
+              <SeasonProgressBar played={includedNightsCount} total={SEASON_LENGTH} />
+
               {(effectiveConfig.leagues || []).length === 0 ? (
                 <div className="text-sm text-gray-700">
                   Ligler tanımlı değil. <span className="font-mono">/data/batak_allstars_config.json</span> dosyasını düzenleyin.
@@ -426,7 +550,7 @@ export default function BatakAllStarsClient({
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {effectiveConfig.leagues.map((league) => {
-                    const block = standingsData?.byLeague?.[league.id];
+                    const block = standingsWithPositionChange?.[league.id];
                     const rows = block?.standings || [];
                     return (
                       <div key={league.id} className="border rounded p-3">
@@ -435,10 +559,15 @@ export default function BatakAllStarsClient({
                           <table className="min-w-full text-sm">
                             <thead className="bg-gray-200">
                               <tr>
-                                <th className="text-left px-3 py-2 font-semibold text-gray-800">Oyuncu</th>
-                                <th className="text-right px-3 py-2 font-semibold text-gray-800">Oyn.</th>
-                                <th className="text-right px-3 py-2 font-semibold text-gray-800">Kpt.</th>
-                                <th className="text-right px-3 py-2 font-semibold text-gray-800">Puan</th>
+                                <th className="text-center px-1 py-2 font-semibold text-gray-800 w-8" title="Pozisyon değişimi">📊</th>
+                                <th className="text-left px-2 py-2 font-semibold text-gray-800">Oyuncu</th>
+                                <th className="text-center px-1 py-2 font-semibold text-gray-800 hidden sm:table-cell" title="5 maç + 1 kaptanlık">
+                                  <span className="hidden md:inline">5m/1k</span>
+                                  <span className="md:hidden">✓</span>
+                                </th>
+                                <th className="text-right px-2 py-2 font-semibold text-gray-800">Oyn.</th>
+                                <th className="text-right px-2 py-2 font-semibold text-gray-800">Kpt.</th>
+                                <th className="text-right px-2 py-2 font-semibold text-gray-800">Puan</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -448,10 +577,16 @@ export default function BatakAllStarsClient({
                                 const rowClass = isTop ? 'bg-green-50' : isBottom ? 'bg-red-50' : '';
                                 return (
                                   <tr key={r.steamId || r.name} className={rowClass}>
-                                    <td className="px-3 py-2 font-medium">{r.name}</td>
-                                    <td className="px-3 py-2 text-right">{r.oyn}</td>
-                                    <td className="px-3 py-2 text-right">{r.kpt}</td>
-                                    <td className="px-3 py-2 text-right">{r.puanAdj.toFixed(3)}</td>
+                                    <td className="px-1 py-2 text-center">
+                                      <PositionChangeIndicator change={r.positionChange} />
+                                    </td>
+                                    <td className="px-2 py-2 font-medium text-sm truncate max-w-[100px] sm:max-w-none">{r.name}</td>
+                                    <td className="px-1 py-2 text-center hidden sm:table-cell">
+                                      <KriteriaMet met={r.meetsKriteria} />
+                                    </td>
+                                    <td className="px-2 py-2 text-right">{r.oyn}</td>
+                                    <td className="px-2 py-2 text-right">{r.kpt}</td>
+                                    <td className="px-2 py-2 text-right font-mono text-xs">{r.puanAdj.toFixed(3)}</td>
                                   </tr>
                                 );
                               })}
