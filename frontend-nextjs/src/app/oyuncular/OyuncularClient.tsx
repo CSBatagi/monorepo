@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import SteamAvatar from "@/components/SteamAvatar";
 
 type PlayerListItem = {
   name: string;
@@ -224,7 +225,6 @@ export default function OyuncularClient({
   const activeTab = tabs.find((tab) => tab.steamId === activeSteamId) || tabs[0];
   const selectedStats = activeTab ? statsById.get(activeTab.steamId) : null;
   const displayName = activeTab?.name || selectedStats?.name || "Oyuncu";
-  const initials = displayName ? displayName.charAt(0).toUpperCase() : "?";
 
   const weapons = Array.isArray(selectedStats?.weapons) ? selectedStats.weapons : [];
   const clutches = selectedStats?.clutches || { overall: {}, by_type: {} };
@@ -257,11 +257,18 @@ export default function OyuncularClient({
             {row.map((tab) => (
               <button
                 key={tab.steamId}
-                className={`map-tab-button tab-nav-item ${tab.steamId === activeSteamId ? "active" : ""}`}
+                className={`map-tab-button tab-nav-item ${tab.steamId === activeSteamId ? "active" : ""} flex items-center gap-2`}
                 onClick={() => setActiveSteamId(tab.steamId)}
                 type="button"
               >
-                {tab.name}
+                <SteamAvatar 
+                  steamId={tab.steamId} 
+                  playerName={tab.name} 
+                  size="small" 
+                  showLink={false}
+                  className="flex-shrink-0"
+                />
+                <span>{tab.name}</span>
               </button>
             ))}
           </div>
@@ -285,9 +292,12 @@ export default function OyuncularClient({
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
               <div className="xl:col-span-2">
                 <div className="bg-gradient-to-br from-white to-blue-50 border border-slate-200 rounded-lg shadow-sm p-4 flex flex-col items-center text-center">
-                  <div className="h-24 w-24 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-3xl font-semibold">
-                    {initials}
-                  </div>
+                  <SteamAvatar 
+                    steamId={activeTab?.steamId || ""} 
+                    playerName={displayName} 
+                    size="large"
+                    showLink={true}
+                  />
                   <div className="mt-3 text-lg font-semibold text-gray-800">{displayName}</div>
                   {activeTab?.status && (
                     <div className="mt-1 text-xs text-gray-500">{activeTab.status}</div>

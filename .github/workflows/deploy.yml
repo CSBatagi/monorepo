@@ -52,6 +52,7 @@ jobs:
 
             echo "MATCHMAKING_TOKEN=${{secrets.AUTH_TOKEN}}" > .frontend_secrets
             echo "SERVERACPASS=${{ secrets.SERVERACPASS }}" >> .frontend_secrets
+            echo "STEAM_API_KEY=${{ secrets.STEAM_API_KEY }}" >> .frontend_secrets
           
             echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" > .backend_secrets
             echo "AUTH_TOKEN=${{ secrets.AUTH_TOKEN }}" >> .backend_secrets
