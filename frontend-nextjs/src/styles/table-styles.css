@@ -1670,6 +1670,53 @@ body.dark-theme #page-sonmac .bg-gray-100 {
     border: 1px solid #4b5563; /* Add a subtle border */
 }
 
+/* Sonmac Rounds Table */
+#page-sonmac .sonmac-rounds-table th,
+#page-sonmac .sonmac-rounds-table td {
+    background-color: #ffffff;
+}
+
+#page-sonmac .sonmac-rounds-table thead th {
+    background-color: #f3f4f6;
+}
+
+#page-sonmac .sonmac-rounds-table .sonmac-rounds-sticky {
+    background-color: #ffffff;
+}
+
+#page-sonmac .sonmac-rounds-table thead .sonmac-rounds-sticky {
+    background-color: #f3f4f6;
+}
+
+body.dark-theme #page-sonmac .sonmac-rounds-table th,
+body.dark-theme #page-sonmac .sonmac-rounds-table td {
+    border-color: #374151;
+}
+
+body.dark-theme #page-sonmac .sonmac-rounds-table thead th {
+    background-color: #2b3748;
+    color: #e5e7eb;
+}
+
+body.dark-theme #page-sonmac .sonmac-rounds-table tbody td {
+    background-color: #1f2937;
+    color: #d1d5db;
+}
+
+body.dark-theme #page-sonmac .sonmac-rounds-table tbody .sonmac-rounds-sticky {
+    background-color: #1f2937;
+}
+
+body.dark-theme #page-sonmac .sonmac-rounds-table thead .sonmac-rounds-sticky {
+    background-color: #2b3748;
+}
+
+body.dark-theme #page-sonmac .sonmac-rounds-switch {
+    background-color: #1f2937;
+    border-color: #4b5563;
+    color: #cbd5e1;
+}
+
 body.dark-theme #page-sonmac .bg-gray-100 .text-gray-500 {
     color: #9ca3af; /* Adjust 'vs' text color */
 }

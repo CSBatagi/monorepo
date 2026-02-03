@@ -1,27 +1,27 @@
 {
   "playerRows": [
     "AfterFart",
+    "Cago",
     "HiLLbili",
-    "Malawhur",
     "Nerull",
-    "Seyit Onbaşı",
-    "bobinaj",
+    "Titus",
     "daE",
     "darbe",
     "ekl1ps",
-    "sedo"
+    "sedo",
+    "wormik"
   ],
   "playerCols": [
     "AfterFart",
+    "Cago",
     "HiLLbili",
-    "Malawhur",
     "Nerull",
-    "Seyit Onbaşı",
-    "bobinaj",
+    "Titus",
     "daE",
     "darbe",
     "ekl1ps",
-    "sedo"
+    "sedo",
+    "wormik"
   ],
   "duels": {
     "AfterFart": {
@@ -29,9 +29,55 @@
         "kills": 0,
         "deaths": 0
       },
+      "Cago": {
+        "kills": 9,
+        "deaths": 16
+      },
       "daE": {
-        "kills": 6,
+        "kills": 0,
+        "deaths": 0
+      },
+      "darbe": {
+        "kills": 3,
         "deaths": 11
+      },
+      "ekl1ps": {
+        "kills": 8,
+        "deaths": 14
+      },
+      "HiLLbili": {
+        "kills": 3,
+        "deaths": 6
+      },
+      "Nerull": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "sedo": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Titus": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "wormik": {
+        "kills": 4,
+        "deaths": 9
+      }
+    },
+    "Cago": {
+      "AfterFart": {
+        "kills": 16,
+        "deaths": 9
+      },
+      "Cago": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "daE": {
+        "kills": 14,
+        "deaths": 10
       },
       "darbe": {
         "kills": 0,
@@ -45,51 +91,47 @@
         "kills": 0,
         "deaths": 0
       },
-      "Malawhur": {
-        "kills": 0,
-        "deaths": 0
-      },
       "Nerull": {
-        "kills": 2,
-        "deaths": 4
+        "kills": 19,
+        "deaths": 14
       },
       "sedo": {
-        "kills": 5,
-        "deaths": 9
+        "kills": 15,
+        "deaths": 6
       },
-      "bobinaj": {
-        "kills": 1,
-        "deaths": 13
+      "Titus": {
+        "kills": 10,
+        "deaths": 7
       },
-      "Seyit Onbaşı": {
-        "kills": 5,
-        "deaths": 8
+      "wormik": {
+        "kills": 0,
+        "deaths": 0
       }
     },
     "daE": {
       "AfterFart": {
-        "kills": 11,
-        "deaths": 6
+        "kills": 0,
+        "deaths": 0
+      },
+      "Cago": {
+        "kills": 10,
+        "deaths": 14
       },
       "daE": {
         "kills": 0,
         "deaths": 0
       },
       "darbe": {
-        "kills": 7,
+        "kills": 13,
         "deaths": 8
       },
       "ekl1ps": {
-        "kills": 13,
-        "deaths": 3
-      },
-      "HiLLbili": {
-        "kills": 11,
+        "kills": 14,
         "deaths": 10
       },
-      "Malawhur": {
-        "kills": 8,
-        "deaths": 5
+      "HiLLbili": {
+        "kills": 14,
+        "deaths": 10
       },
       "Nerull": {
         "kills": 0,
@@ -99,23 +141,27 @@
         "kills": 0,
         "deaths": 0
       },
-      "bobinaj": {
+      "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Seyit Onbaşı": {
-        "kills": 0,
-        "deaths": 0
+      "wormik": {
+        "kills": 14,
+        "deaths": 4
       }
     },
     "darbe": {
       "AfterFart": {
+        "kills": 11,
+        "deaths": 3
+      },
+      "Cago": {
         "kills": 0,
         "deaths": 0
       },
       "daE": {
         "kills": 8,
-        "deaths": 7
+        "deaths": 13
       },
       "darbe": {
         "kills": 0,
@@ -129,35 +175,35 @@
         "kills": 0,
         "deaths": 0
       },
-      "Malawhur": {
-        "kills": 0,
-        "deaths": 0
-      },
       "Nerull": {
-        "kills": 6,
-        "deaths": 16
+        "kills": 9,
+        "deaths": 11
       },
       "sedo": {
+        "kills": 9,
+        "deaths": 7
+      },
+      "Titus": {
         "kills": 8,
-        "deaths": 8
+        "deaths": 12
       },
-      "bobinaj": {
-        "kills": 10,
-        "deaths": 10
-      },
-      "Seyit Onbaşı": {
-        "kills": 7,
-        "deaths": 6
+      "wormik": {
+        "kills": 0,
+        "deaths": 0
       }
     },
     "ekl1ps": {
       "AfterFart": {
+        "kills": 14,
+        "deaths": 8
+      },
+      "Cago": {
         "kills": 0,
         "deaths": 0
       },
       "daE": {
-        "kills": 3,
-        "deaths": 13
+        "kills": 10,
+        "deaths": 14
       },
       "darbe": {
         "kills": 0,
@@ -171,135 +217,89 @@
         "kills": 0,
         "deaths": 0
       },
-      "Malawhur": {
-        "kills": 0,
-        "deaths": 0
-      },
       "Nerull": {
-        "kills": 5,
-        "deaths": 11
-      },
-      "sedo": {
-        "kills": 6,
-        "deaths": 9
-      },
-      "bobinaj": {
-        "kills": 9,
+        "kills": 10,
         "deaths": 8
       },
-      "Seyit Onbaşı": {
-        "kills": 4,
+      "sedo": {
+        "kills": 10,
         "deaths": 11
+      },
+      "Titus": {
+        "kills": 7,
+        "deaths": 15
+      },
+      "wormik": {
+        "kills": 0,
+        "deaths": 0
       }
     },
     "HiLLbili": {
       "AfterFart": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "daE": {
-        "kills": 10,
-        "deaths": 11
-      },
-      "darbe": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "ekl1ps": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "HiLLbili": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Malawhur": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Nerull": {
-        "kills": 5,
-        "deaths": 10
-      },
-      "sedo": {
-        "kills": 8,
-        "deaths": 11
-      },
-      "bobinaj": {
-        "kills": 4,
-        "deaths": 8
-      },
-      "Seyit Onbaşı": {
-        "kills": 10,
-        "deaths": 7
-      }
-    },
-    "Malawhur": {
-      "AfterFart": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "daE": {
-        "kills": 5,
-        "deaths": 8
-      },
-      "darbe": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "ekl1ps": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "HiLLbili": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Malawhur": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Nerull": {
-        "kills": 13,
-        "deaths": 13
-      },
-      "sedo": {
         "kills": 6,
-        "deaths": 7
+        "deaths": 3
       },
-      "bobinaj": {
-        "kills": 17,
-        "deaths": 11
+      "Cago": {
+        "kills": 0,
+        "deaths": 0
       },
-      "Seyit Onbaşı": {
-        "kills": 8,
-        "deaths": 7
+      "daE": {
+        "kills": 10,
+        "deaths": 14
+      },
+      "darbe": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLLbili": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 7,
+        "deaths": 14
+      },
+      "sedo": {
+        "kills": 11,
+        "deaths": 6
+      },
+      "Titus": {
+        "kills": 14,
+        "deaths": 15
+      },
+      "wormik": {
+        "kills": 0,
+        "deaths": 0
       }
     },
     "Nerull": {
       "AfterFart": {
-        "kills": 4,
-        "deaths": 2
+        "kills": 0,
+        "deaths": 0
+      },
+      "Cago": {
+        "kills": 14,
+        "deaths": 19
       },
       "daE": {
         "kills": 0,
         "deaths": 0
       },
       "darbe": {
-        "kills": 16,
-        "deaths": 6
+        "kills": 11,
+        "deaths": 9
       },
       "ekl1ps": {
-        "kills": 11,
-        "deaths": 5
+        "kills": 8,
+        "deaths": 10
       },
       "HiLLbili": {
-        "kills": 10,
-        "deaths": 5
-      },
-      "Malawhur": {
-        "kills": 13,
-        "deaths": 13
+        "kills": 14,
+        "deaths": 7
       },
       "Nerull": {
         "kills": 0,
@@ -309,81 +309,39 @@
         "kills": 0,
         "deaths": 0
       },
-      "bobinaj": {
+      "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Seyit Onbaşı": {
-        "kills": 0,
-        "deaths": 0
+      "wormik": {
+        "kills": 15,
+        "deaths": 10
       }
     },
     "sedo": {
       "AfterFart": {
-        "kills": 9,
-        "deaths": 5
+        "kills": 0,
+        "deaths": 0
+      },
+      "Cago": {
+        "kills": 6,
+        "deaths": 15
       },
       "daE": {
         "kills": 0,
         "deaths": 0
       },
       "darbe": {
-        "kills": 8,
-        "deaths": 8
-      },
-      "ekl1ps": {
-        "kills": 9,
-        "deaths": 6
-      },
-      "HiLLbili": {
-        "kills": 11,
-        "deaths": 8
-      },
-      "Malawhur": {
         "kills": 7,
-        "deaths": 6
-      },
-      "Nerull": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "sedo": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "bobinaj": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "Seyit Onbaşı": {
-        "kills": 0,
-        "deaths": 0
-      }
-    },
-    "bobinaj": {
-      "AfterFart": {
-        "kills": 13,
-        "deaths": 1
-      },
-      "daE": {
-        "kills": 0,
-        "deaths": 0
-      },
-      "darbe": {
-        "kills": 10,
-        "deaths": 10
-      },
-      "ekl1ps": {
-        "kills": 8,
         "deaths": 9
       },
-      "HiLLbili": {
-        "kills": 8,
-        "deaths": 4
-      },
-      "Malawhur": {
+      "ekl1ps": {
         "kills": 11,
-        "deaths": 17
+        "deaths": 10
+      },
+      "HiLLbili": {
+        "kills": 6,
+        "deaths": 11
       },
       "Nerull": {
         "kills": 0,
@@ -393,39 +351,39 @@
         "kills": 0,
         "deaths": 0
       },
-      "bobinaj": {
+      "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Seyit Onbaşı": {
-        "kills": 0,
-        "deaths": 0
+      "wormik": {
+        "kills": 13,
+        "deaths": 7
       }
     },
-    "Seyit Onbaşı": {
+    "Titus": {
       "AfterFart": {
-        "kills": 8,
-        "deaths": 5
+        "kills": 0,
+        "deaths": 0
+      },
+      "Cago": {
+        "kills": 7,
+        "deaths": 10
       },
       "daE": {
         "kills": 0,
         "deaths": 0
       },
       "darbe": {
-        "kills": 6,
-        "deaths": 7
+        "kills": 12,
+        "deaths": 8
       },
       "ekl1ps": {
-        "kills": 11,
-        "deaths": 4
+        "kills": 15,
+        "deaths": 7
       },
       "HiLLbili": {
-        "kills": 7,
-        "deaths": 10
-      },
-      "Malawhur": {
-        "kills": 7,
-        "deaths": 8
+        "kills": 15,
+        "deaths": 14
       },
       "Nerull": {
         "kills": 0,
@@ -435,11 +393,53 @@
         "kills": 0,
         "deaths": 0
       },
-      "bobinaj": {
+      "Titus": {
         "kills": 0,
         "deaths": 0
       },
-      "Seyit Onbaşı": {
+      "wormik": {
+        "kills": 11,
+        "deaths": 9
+      }
+    },
+    "wormik": {
+      "AfterFart": {
+        "kills": 9,
+        "deaths": 4
+      },
+      "Cago": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "daE": {
+        "kills": 4,
+        "deaths": 14
+      },
+      "darbe": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "ekl1ps": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "HiLLbili": {
+        "kills": 0,
+        "deaths": 0
+      },
+      "Nerull": {
+        "kills": 10,
+        "deaths": 15
+      },
+      "sedo": {
+        "kills": 7,
+        "deaths": 13
+      },
+      "Titus": {
+        "kills": 9,
+        "deaths": 11
+      },
+      "wormik": {
         "kills": 0,
         "deaths": 0
       }
