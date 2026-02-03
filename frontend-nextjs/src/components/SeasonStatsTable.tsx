@@ -1,5 +1,6 @@
 "use client";
 import { useState, useMemo } from "react";
+import SteamAvatar from "@/components/SteamAvatar";
 
 export const columns = [
   { key: "name", label: "Oyuncu" },
@@ -190,7 +191,19 @@ export default function SeasonStatsTable({ data, columns: customColumns, tableCl
                     col.isBadge ? "stat-badge-cell" : "",
                   ].join(" ")
                 }>
-                  {col.isBadge ? (
+                  {col.key === "name" && row.steam_id ? (
+                    <div className="flex items-center gap-2">
+                      <div className="hidden sm:block flex-shrink-0">
+                        <SteamAvatar 
+                          steamId={String(row.steam_id)} 
+                          playerName={String(row.name)} 
+                          size="small" 
+                          showLink={false}
+                        />
+                      </div>
+                      <span>{formatValue(row[col.key], col)}</span>
+                    </div>
+                  ) : col.isBadge ? (
                     <span className="stat-badge" style={badgeStyle}>{formatValue(row[col.key], col)}</span>
                   ) : (
                     formatValue(row[col.key], col)

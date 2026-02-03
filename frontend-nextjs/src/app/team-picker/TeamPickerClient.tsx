@@ -51,6 +51,11 @@ function formatStat(value: number | null | undefined, decimals: number = 2) {
   return decimals === 0 ? Math.round(value) : value.toFixed(decimals);
 }
 
+function formatPercent(value: number | null | undefined, decimals: number = 1) {
+  if (value === null || value === undefined || isNaN(value)) return '-';
+  return `${value.toFixed(decimals)}%`;
+}
+
 function getTeamAverages(players: Player[]): Record<string, number | null> {
   const statsKeys = [
     'L10_HLTV2', 'L10_ADR', 'L10_KD', 'S_HLTV2', 'S_ADR', 'S_KD'
@@ -211,6 +216,9 @@ const TeamPickerClient: React.FC = () => {
   const [last10Stats, setLast10Stats] = useState<any[]>([]);
   const [seasonStats, setSeasonStats] = useState<any[]>([]);
   const [loadingStats, setLoadingStats] = useState<boolean>(true);
+  const [mapStats, setMapStats] = useState<any[]>([]);
+  const [loadingMapStats, setLoadingMapStats] = useState<boolean>(true);
+  const [mapNameLookup, setMapNameLookup] = useState<Record<string, string>>({});
   const [firebaseAttendance, setFirebaseAttendance] = useState<FirebaseAttendanceData>({});
 
   const [teamANameMode, setTeamANameMode] = useState<TeamNameMode>('generic');
@@ -272,6 +280,62 @@ const TeamPickerClient: React.FC = () => {
       }
     };
     fetchStats();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchMapNames = async () => {
+      try {
+        const res = await fetch(`/data/maps.json?_cb=${Date.now()}`);
+        const data = await res.json();
+        if (cancelled) return;
+        const lookup: Record<string, string> = {};
+        if (Array.isArray(data)) {
+          data.forEach((entry) => {
+            if (entry?.id) {
+              lookup[String(entry.id)] = entry.name || entry.id;
+            }
+          });
+        }
+        setMapNameLookup(lookup);
+      } catch {
+        if (!cancelled) setMapNameLookup({});
+      }
+    };
+    fetchMapNames();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchMapStats = async () => {
+      setLoadingMapStats(true);
+      try {
+        const res = await fetch(`/api/data/map_stats?_cb=${Date.now()}`, { cache: 'no-store' });
+        let data: any = null;
+        try { data = await res.json(); } catch { data = null; }
+        let list: any[] = Array.isArray(data) ? data : Array.isArray(data?.map_stats) ? data.map_stats : [];
+        if (!list || list.length === 0) {
+          try {
+            const checkRes = await fetch(`/api/stats/check?_cb=${Date.now()}`, { cache: 'no-store' });
+            const checkData = await checkRes.json().catch(() => null);
+            if (Array.isArray(checkData?.map_stats)) {
+              list = checkData.map_stats;
+            }
+            if (checkData?.serverTimestamp) {
+              try { localStorage.setItem('stats_last_ts', checkData.serverTimestamp); } catch {}
+            }
+          } catch {}
+        }
+        if (!cancelled) setMapStats(Array.isArray(list) ? list : []);
+      } catch {
+        if (!cancelled) setMapStats([]);
+      } finally {
+        if (!cancelled) setLoadingMapStats(false);
+      }
+    };
+    fetchMapStats();
     return () => { cancelled = true; };
   }, []);
 
@@ -686,6 +750,67 @@ const TeamPickerClient: React.FC = () => {
     );
   };
 
+  const renderMapStats = () => {
+    if (loadingMapStats) {
+      return <p className="text-sm text-gray-500">Harita istatistikleri yükleniyor...</p>;
+    }
+    if (!mapStats || mapStats.length === 0) {
+      return <p className="text-sm text-gray-500">Bu sezon için harita verisi bulunamadı.</p>;
+    }
+    const sorted = [...mapStats].sort((a, b) => {
+      const aMatches = Number(a?.matches_played) || 0;
+      const bMatches = Number(b?.matches_played) || 0;
+      return bMatches - aMatches || String(a?.map_name || '').localeCompare(String(b?.map_name || ''));
+    });
+
+    const formatBucket = (entry: any, bucket: string) => {
+      const data = entry?.by_player_count?.[bucket];
+      if (!data) return '-';
+      const ct = formatPercent(Number(data.ct_win_pct) || 0, 0);
+      const t = formatPercent(Number(data.t_win_pct) || 0, 0);
+      const matches = formatStat(Number(data.matches_played) || 0, 0);
+      return `${ct} / ${t} (${matches})`;
+    };
+
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-xs min-w-[520px]">
+          <thead>
+            <tr className="bg-gray-100 text-xs font-medium text-gray-600 uppercase">
+              <th className="px-2 py-1 text-left">Harita</th>
+              <th className="px-2 py-1 text-center">Maç</th>
+              <th className="px-2 py-1 text-center">CT/T</th>
+              <th className="px-2 py-1 text-center">5v5</th>
+              <th className="px-2 py-1 text-center">6v6</th>
+              <th className="px-2 py-1 text-center">7v7+</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((entry) => {
+              const mapName = String(entry?.map_name || '');
+              const displayName = mapNameLookup[mapName] || mapName || '-';
+              const ctPct = formatPercent(Number(entry?.ct_win_pct) || 0, 0);
+              const tPct = formatPercent(Number(entry?.t_win_pct) || 0, 0);
+              return (
+                <tr key={mapName} className="border-b border-gray-200">
+                  <td className="px-2 py-1 font-medium text-gray-900">{displayName}</td>
+                  <td className="px-2 py-1 text-center">{formatStat(Number(entry?.matches_played) || 0, 0)}</td>
+                  <td className="px-2 py-1 text-center">{`${ctPct} / ${tPct}`}</td>
+                  <td className="px-2 py-1 text-center">{formatBucket(entry, '5')}</td>
+                  <td className="px-2 py-1 text-center">{formatBucket(entry, '6')}</td>
+                  <td className="px-2 py-1 text-center">{formatBucket(entry, '7')}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <div className="mt-2 text-[11px] text-gray-500">
+          CT/T oranları raund kazanç yüzdesine göredir. Parantez içi maç sayısıdır.
+        </div>
+      </div>
+    );
+  };
+
   // Table for team lists
   const renderTeamList = (team: 'A' | 'B', players: TeamPlayerData, isLoadingTeam: boolean) => {
     const teamName = team === 'A' ? teamAName : teamBName;
@@ -850,6 +975,10 @@ const TeamPickerClient: React.FC = () => {
         <div className="lg:w-2/5 bg-white p-3 rounded-lg shadow border min-w-0">
           <h2 className="text-lg font-semibold mb-2 text-gray-700">Gelen Oyuncular ({availablePlayers.length})</h2>
           {renderAvailablePlayersList()}
+          <div className="mt-4">
+            <h2 className="text-lg font-semibold mb-2 text-gray-700">Harita İstatistikleri</h2>
+            {renderMapStats()}
+          </div>
         </div>
 
         {/* Team Selection Section */}

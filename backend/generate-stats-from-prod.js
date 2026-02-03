@@ -87,6 +87,7 @@ async function generateStatsFromProduction() {
       'duello_sezon.json': incremental.duello_sezon,
       'performance_data.json': incremental.performance_data,
       'players_stats.json': incremental.players_stats,
+      'map_stats.json': incremental.map_stats,
     };
     
     for (const [filename, data] of Object.entries(incrementalFiles)) {
@@ -121,6 +122,7 @@ async function generateStatsFromProduction() {
     console.log(`  Match dates: ${Object.keys(incremental.sonmac_by_date || {}).length}`);
     console.log(`  Performance players: ${incremental.performance_data?.length || 0}`);
     console.log(`  Players stats: ${incremental.players_stats?.length || 0}`);
+    console.log(`  Map stats: ${incremental.map_stats?.length || 0}`);
     console.log(`\nFiles written to: ${runtimeDir}`);
     console.log('\nYou can now use these files with your local backend/frontend!');
     

@@ -9,6 +9,7 @@ import EmojiControls from '@/components/Attendance/EmojiControls';
 import AttendanceControls from '@/components/Attendance/AttendanceControls';
 import KaptanlikControl from '@/components/Attendance/KaptanlikControl';
 import InfoPanel from '@/components/Attendance/InfoPanel';
+import SteamAvatar from '@/components/SteamAvatar';
 
 // Constants from original attendance.js
 const ATTENDANCE_DB_PATH = 'attendanceState';
@@ -377,10 +378,22 @@ export default function AttendancePage() {
                       <div key={player.steamId} className={`px-3 py-3 ${player.status === 'Adam Evde Yok' ? 'bg-red-50 opacity-70' : 'bg-white'}`}>
                         <div className="flex items-start justify-between min-h-[40px]">
                           <div className="flex-1 min-w-0 mr-3 py-1">
-                            <span className="font-medium text-sm text-gray-900 block truncate leading-tight">{player.name}</span>
-                            {player.status === 'Adam Evde Yok' && (
-                              <span className="text-xs text-red-600 bg-red-100 px-1.5 py-0.5 rounded mt-1 inline-block">Evde Yok</span>
-                            )}
+                            <div className="flex items-center gap-2">
+                              <div className="hidden md:block flex-shrink-0">
+                                <SteamAvatar 
+                                  steamId={player.steamId} 
+                                  playerName={player.name} 
+                                  size="small" 
+                                  showLink={false}
+                                />
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-medium text-sm text-gray-900 block truncate leading-tight">{player.name}</span>
+                                {player.status === 'Adam Evde Yok' && (
+                                  <span className="text-xs text-red-600 bg-red-100 px-1.5 py-0.5 rounded mt-1 inline-block">Evde Yok</span>
+                                )}
+                              </div>
+                            </div>
                           </div>
                           
                           <div className="flex items-center gap-1 flex-shrink-0 h-10">
@@ -439,18 +452,34 @@ export default function AttendancePage() {
                       <tr key={player.steamId} className={`border-b ${player.status === 'Adam Evde Yok' ? 'bg-red-50 opacity-70' : 'bg-white'} hover:bg-gray-50`}>
                         <td className="px-2 py-1 w-[25%]">
                           {player.status === 'Adam Evde Yok' ? (
-                            <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <SteamAvatar 
+                                steamId={player.steamId} 
+                                playerName={player.name} 
+                                size="small" 
+                                showLink={false}
+                              />
+                              <div className="flex flex-col">
+                                <span className="font-medium text-base text-gray-900 truncate">
+                                  {player.name}
+                                </span>
+                                <span className="text-xs text-red-600 bg-red-200 px-1 py-0.5 rounded-full whitespace-nowrap font-medium mt-1 self-start">
+                                  Evde Yok
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <SteamAvatar 
+                                steamId={player.steamId} 
+                                playerName={player.name} 
+                                size="small" 
+                                showLink={false}
+                              />
                               <span className="font-medium text-base text-gray-900 truncate">
                                 {player.name}
                               </span>
-                              <span className="text-xs text-red-600 bg-red-200 px-1 py-0.5 rounded-full whitespace-nowrap font-medium mt-1 self-start">
-                                Evde Yok
-                              </span>
                             </div>
-                          ) : (
-                            <span className="font-medium text-base text-gray-900 truncate">
-                              {player.name}
-                            </span>
                           )}
                         </td>
                         <td className="px-2 py-1 text-center w-[25%]">

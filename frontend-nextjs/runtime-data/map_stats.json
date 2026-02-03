@@ -1,0 +1,251 @@
+[
+  {
+    "map_name": "de_ancient",
+    "matches_played": 1,
+    "ct_round_wins": 7,
+    "t_round_wins": 10,
+    "ct_win_pct": 41.18,
+    "t_win_pct": 58.82,
+    "by_player_count": {
+      "7": {
+        "matches_played": 1,
+        "ct_round_wins": 7,
+        "t_round_wins": 10,
+        "ct_win_pct": 41.18,
+        "t_win_pct": 58.82
+      }
+    }
+  },
+  {
+    "map_name": "de_anubis",
+    "matches_played": 3,
+    "ct_round_wins": 24,
+    "t_round_wins": 36,
+    "ct_win_pct": 40,
+    "t_win_pct": 60,
+    "by_player_count": {
+      "5": {
+        "matches_played": 3,
+        "ct_round_wins": 24,
+        "t_round_wins": 36,
+        "ct_win_pct": 40,
+        "t_win_pct": 60
+      }
+    }
+  },
+  {
+    "map_name": "de_biome",
+    "matches_played": 1,
+    "ct_round_wins": 11,
+    "t_round_wins": 7,
+    "ct_win_pct": 61.11,
+    "t_win_pct": 38.89,
+    "by_player_count": {
+      "5": {
+        "matches_played": 1,
+        "ct_round_wins": 11,
+        "t_round_wins": 7,
+        "ct_win_pct": 61.11,
+        "t_win_pct": 38.89
+      }
+    }
+  },
+  {
+    "map_name": "de_breach",
+    "matches_played": 1,
+    "ct_round_wins": 14,
+    "t_round_wins": 9,
+    "ct_win_pct": 60.87,
+    "t_win_pct": 39.13,
+    "by_player_count": {
+      "5": {
+        "matches_played": 1,
+        "ct_round_wins": 14,
+        "t_round_wins": 9,
+        "ct_win_pct": 60.87,
+        "t_win_pct": 39.13
+      }
+    }
+  },
+  {
+    "map_name": "de_cbble_d",
+    "matches_played": 1,
+    "ct_round_wins": 17,
+    "t_round_wins": 25,
+    "ct_win_pct": 40.48,
+    "t_win_pct": 59.52,
+    "by_player_count": {
+      "5": {
+        "matches_played": 1,
+        "ct_round_wins": 17,
+        "t_round_wins": 25,
+        "ct_win_pct": 40.48,
+        "t_win_pct": 59.52
+      }
+    }
+  },
+  {
+    "map_name": "de_dust2",
+    "matches_played": 4,
+    "ct_round_wins": 41,
+    "t_round_wins": 35,
+    "ct_win_pct": 53.95,
+    "t_win_pct": 46.05,
+    "by_player_count": {
+      "5": {
+        "matches_played": 2,
+        "ct_round_wins": 23,
+        "t_round_wins": 19,
+        "ct_win_pct": 54.76,
+        "t_win_pct": 45.24
+      },
+      "6": {
+        "matches_played": 1,
+        "ct_round_wins": 11,
+        "t_round_wins": 3,
+        "ct_win_pct": 78.57,
+        "t_win_pct": 21.43
+      },
+      "7": {
+        "matches_played": 1,
+        "ct_round_wins": 7,
+        "t_round_wins": 13,
+        "ct_win_pct": 35,
+        "t_win_pct": 65
+      }
+    }
+  },
+  {
+    "map_name": "de_inferno",
+    "matches_played": 1,
+    "ct_round_wins": 5,
+    "t_round_wins": 11,
+    "ct_win_pct": 31.25,
+    "t_win_pct": 68.75,
+    "by_player_count": {
+      "5": {
+        "matches_played": 1,
+        "ct_round_wins": 5,
+        "t_round_wins": 11,
+        "ct_win_pct": 31.25,
+        "t_win_pct": 68.75
+      }
+    }
+  },
+  {
+    "map_name": "de_mirage",
+    "matches_played": 2,
+    "ct_round_wins": 23,
+    "t_round_wins": 41,
+    "ct_win_pct": 35.94,
+    "t_win_pct": 64.06,
+    "by_player_count": {
+      "5": {
+        "matches_played": 1,
+        "ct_round_wins": 7,
+        "t_round_wins": 22,
+        "ct_win_pct": 24.14,
+        "t_win_pct": 75.86
+      },
+      "7": {
+        "matches_played": 1,
+        "ct_round_wins": 16,
+        "t_round_wins": 19,
+        "ct_win_pct": 45.71,
+        "t_win_pct": 54.29
+      }
+    }
+  },
+  {
+    "map_name": "de_nuke",
+    "matches_played": 1,
+    "ct_round_wins": 10,
+    "t_round_wins": 11,
+    "ct_win_pct": 47.62,
+    "t_win_pct": 52.38,
+    "by_player_count": {
+      "7": {
+        "matches_played": 1,
+        "ct_round_wins": 10,
+        "t_round_wins": 11,
+        "ct_win_pct": 47.62,
+        "t_win_pct": 52.38
+      }
+    }
+  },
+  {
+    "map_name": "de_overpass",
+    "matches_played": 2,
+    "ct_round_wins": 29,
+    "t_round_wins": 20,
+    "ct_win_pct": 59.18,
+    "t_win_pct": 40.82,
+    "by_player_count": {
+      "5": {
+        "matches_played": 1,
+        "ct_round_wins": 15,
+        "t_round_wins": 13,
+        "ct_win_pct": 53.57,
+        "t_win_pct": 46.43
+      },
+      "6": {
+        "matches_played": 1,
+        "ct_round_wins": 14,
+        "t_round_wins": 7,
+        "ct_win_pct": 66.67,
+        "t_win_pct": 33.33
+      }
+    }
+  },
+  {
+    "map_name": "de_train",
+    "matches_played": 1,
+    "ct_round_wins": 11,
+    "t_round_wins": 13,
+    "ct_win_pct": 45.83,
+    "t_win_pct": 54.17,
+    "by_player_count": {
+      "5": {
+        "matches_played": 1,
+        "ct_round_wins": 11,
+        "t_round_wins": 13,
+        "ct_win_pct": 45.83,
+        "t_win_pct": 54.17
+      }
+    }
+  },
+  {
+    "map_name": "de_tuscan_d",
+    "matches_played": 1,
+    "ct_round_wins": 9,
+    "t_round_wins": 15,
+    "ct_win_pct": 37.5,
+    "t_win_pct": 62.5,
+    "by_player_count": {
+      "5": {
+        "matches_played": 1,
+        "ct_round_wins": 9,
+        "t_round_wins": 15,
+        "ct_win_pct": 37.5,
+        "t_win_pct": 62.5
+      }
+    }
+  },
+  {
+    "map_name": "de_vertigo",
+    "matches_played": 1,
+    "ct_round_wins": 10,
+    "t_round_wins": 25,
+    "ct_win_pct": 28.57,
+    "t_win_pct": 71.43,
+    "by_player_count": {
+      "5": {
+        "matches_played": 1,
+        "ct_round_wins": 10,
+        "t_round_wins": 25,
+        "ct_win_pct": 28.57,
+        "t_win_pct": 71.43
+      }
+    }
+  }
+]

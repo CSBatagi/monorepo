@@ -11,7 +11,8 @@ const STAT_FILES = [
   'duello_son_mac.json',
   'duello_sezon.json',
   'performance_data.json',
-  'players_stats.json'
+  'players_stats.json',
+  'map_stats.json'
 ];
 
 export async function GET(req: NextRequest) {
