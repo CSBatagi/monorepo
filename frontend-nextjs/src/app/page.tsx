@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 
 export default function Home() {
   return (
@@ -7,7 +7,7 @@ export default function Home() {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Link href="/attendance" data-page-target="attendance" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
           <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Katılım</h3>
-          <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Oyuncu katılım durumunu görüntüleyin ve güncelleyin.</p>
+          <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Oyuncu Katılım durumunu görüntüleyin ve güncelleyin.</p>
         </Link>
         <Link href="/team-picker" data-page-target="team_picker" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
           <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Takım Seçme</h3>
@@ -23,11 +23,11 @@ export default function Home() {
         </Link>
         <Link href="/sonmac" data-page-target="sonmac" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
           <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Son Maç</h3>
-          <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Son maçın detaylı istatistikleri.</p>
+          <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Son Maçın detaylı istatistikleri.</p>
         </Link>
         <Link href="/duello" data-page-target="duello" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
           <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Düello</h3>
-          <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Oyuncu vs Oyuncu düello istatistikleri.</p>
+          <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Oyuncu vs Oyuncu Düello istatistikleri.</p>
         </Link>
         <Link href="/gece-ortalama" data-page-target="gece_ortalama" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
           <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Gece Ortalaması</h3>
@@ -40,6 +40,10 @@ export default function Home() {
         <Link href="/season-avg" data-page-target="season_avg" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
           <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Sezon Ortalaması</h3>
           <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Genel sezon ortalama istatistikleri.</p>
+        </Link>
+        <Link href="/oyuncular" data-page-target="oyuncular" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
+          <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Oyuncular</h3>
+          <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Oyuncu bazlı detaylı istatistikler.</p>
         </Link>
         <Link href="/performance" data-page-target="performance" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
           <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Performans Grafikleri</h3>
@@ -59,9 +63,12 @@ export default function Home() {
         </Link>
         <Link href="/mac-videolari" data-page-target="mac-videolari" className="landing-tile group block flex flex-col justify-center items-center text-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:bg-gray-100 hover:border-blue-500 transition-all duration-200 ease-in-out">
           <h3 className="mb-1 text-lg font-bold text-blue-700 group-hover:text-blue-800">Maç Videoları</h3>
-          <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Maç videolarını izleyin.</p>
+          <p className="hidden sm:inline text-sm font-normal text-gray-600 group-hover:text-gray-800">Maç Videolarını izleyin.</p>
         </Link>
       </div>
     </div>
   );
 }
+
+
+

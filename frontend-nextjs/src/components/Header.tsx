@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -18,6 +18,7 @@ const navLinks = [
   { href: "/gece-ortalama", label: "Gece Ortalaması" },
   { href: "/last10", label: "Son 10 Ortalaması" },
   { href: "/season-avg", label: "Sezon Ortalaması" },
+  { href: "/oyuncular", label: "Oyuncular" },
   { href: "/duello", label: "Düello" },
   { href: "/performance", label: "Performans Grafikleri" },
   { href: "/mac-sonuclari", label: "Maç Sonuçları" },
@@ -165,3 +166,6 @@ export default function Header() {
     </>
   );
 }
+
+
+

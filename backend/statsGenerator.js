@@ -50,7 +50,16 @@ function buildQueries(seasonStart){
     sonmacRounds: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ) SELECT matches.date::date AS match_date, matches.map_name, matches.checksum AS match_checksum, matches.max_rounds, rounds.number AS round_number, rounds.end_reason, rounds.winner_name, rounds.winner_side, rounds.team_a_name, rounds.team_b_name, rounds.team_a_side, rounds.team_b_side, rounds.team_a_score, rounds.team_b_score, rounds.overtime_number FROM rounds INNER JOIN matches ON rounds.match_checksum = matches.checksum WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ORDER BY matches.date::date DESC, matches.map_name, rounds.number ASC`),
     duello_son_mac: q(`WITH last_x_dates AS ( SELECT DISTINCT matches.date::date AS unique_date FROM matches ORDER BY unique_date DESC LIMIT 1 ), last_date_matches AS ( SELECT checksum FROM matches WHERE date::date = (SELECT MAX(unique_date) FROM last_x_dates) ), player_kills_deaths AS ( SELECT p1.steam_id AS killerSteamId, MIN(p1.name) AS killerName, p2.steam_id AS victimSteamId, MIN(p2.name) AS victimName, ( SELECT COUNT(*) FROM kills k WHERE k.killer_steam_id = p1.steam_id AND k.victim_steam_id = p2.steam_id AND k.match_checksum IN (SELECT checksum FROM last_date_matches) ) AS killCount, ( SELECT COUNT(*) FROM kills k2 WHERE k2.killer_steam_id = p2.steam_id AND k2.victim_steam_id = p1.steam_id AND k2.match_checksum IN (SELECT checksum FROM last_date_matches) ) AS deathCount FROM players p1 INNER JOIN players p2 ON p1.match_checksum = p2.match_checksum WHERE p1.match_checksum IN (SELECT checksum FROM last_date_matches) AND p2.match_checksum IN (SELECT checksum FROM last_date_matches) AND p1.team_name <> p2.team_name GROUP BY p1.steam_id, p2.steam_id ), distinct_players AS ( SELECT DISTINCT killerSteamId AS playerSteamId, killerName AS playerName FROM player_kills_deaths UNION SELECT DISTINCT victimSteamId, victimName FROM player_kills_deaths ) SELECT dp1.playerSteamId AS PlayerRowSteamId, dp1.playerName AS PlayerRow, dp2.playerSteamId AS PlayerColumnSteamId, dp2.playerName AS PlayerColumn, COALESCE(pkd.killCount,0)||'/'||COALESCE(pkd.deathCount,0) AS KillDeathRatio FROM distinct_players dp1 CROSS JOIN distinct_players dp2 LEFT JOIN player_kills_deaths pkd ON dp1.playerSteamId=pkd.killerSteamId AND dp2.playerSteamId=pkd.victimSteamId ORDER BY dp1.playerName, dp2.playerName`),
     duello_sezon: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT checksum FROM matches WHERE date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), player_kills_deaths AS ( SELECT p1.steam_id AS killerSteamId, MAX(p1.name) AS killerName, p2.steam_id AS victimSteamId, MAX(p2.name) AS victimName, ( SELECT COUNT(*) FROM kills k WHERE k.killer_steam_id = p1.steam_id AND k.victim_steam_id = p2.steam_id AND k.match_checksum IN (SELECT checksum FROM season_matches) ) AS killCount, ( SELECT COUNT(*) FROM kills k2 WHERE k2.killer_steam_id = p2.steam_id AND k2.victim_steam_id = p1.steam_id AND k2.match_checksum IN (SELECT checksum FROM season_matches) ) AS deathCount FROM players p1 INNER JOIN players p2 ON p1.match_checksum = p2.match_checksum WHERE p1.match_checksum IN (SELECT checksum FROM season_matches) AND p2.match_checksum IN (SELECT checksum FROM season_matches) AND p1.team_name <> p2.team_name GROUP BY p1.steam_id, p2.steam_id ), distinct_players AS ( SELECT DISTINCT killerSteamId AS playerSteamId, killerName AS playerName FROM player_kills_deaths UNION SELECT DISTINCT victimSteamId, victimName FROM player_kills_deaths ) SELECT dp1.playerSteamId AS PlayerRowSteamId, dp1.playerName AS PlayerRow, dp2.playerSteamId AS PlayerColumnSteamId, dp2.playerName AS PlayerColumn, COALESCE(pkd.killCount,0)||'/'||COALESCE(pkd.deathCount,0) AS KillDeathRatio FROM distinct_players dp1 CROSS JOIN distinct_players dp2 LEFT JOIN player_kills_deaths pkd ON dp1.playerSteamId=pkd.killerSteamId AND dp2.playerSteamId=pkd.victimSteamId ORDER BY dp1.playerName, dp2.playerName`),
-    performanceGraphs: q(`WITH season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), match_date_info AS ( SELECT MAX(date::date) AS latest_match_date FROM matches ), match_dates AS ( SELECT DISTINCT date::date AS match_date FROM matches WHERE date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), distinct_players AS ( SELECT steam_id, MAX(name) AS name FROM players GROUP BY steam_id ), performance_data AS ( SELECT p.steam_id, m.date::date AS match_date, AVG(p.hltv_rating_2) AS hltv_2, AVG(p.average_damage_per_round) AS adr FROM players p INNER JOIN matches m ON p.match_checksum = m.checksum WHERE m.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) GROUP BY p.steam_id, m.date::date ) SELECT dp.steam_id, dp.name, md.match_date::date, pd.hltv_2, pd.adr FROM distinct_players dp CROSS JOIN match_dates md LEFT JOIN performance_data pd ON pd.steam_id=dp.steam_id AND pd.match_date=md.match_date ORDER BY dp.name, md.match_date`)
+    performanceGraphs: q(`WITH season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), match_date_info AS ( SELECT MAX(date::date) AS latest_match_date FROM matches ), match_dates AS ( SELECT DISTINCT date::date AS match_date FROM matches WHERE date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), distinct_players AS ( SELECT steam_id, MAX(name) AS name FROM players GROUP BY steam_id ), performance_data AS ( SELECT p.steam_id, m.date::date AS match_date, AVG(p.hltv_rating_2) AS hltv_2, AVG(p.average_damage_per_round) AS adr FROM players p INNER JOIN matches m ON p.match_checksum = m.checksum WHERE m.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) GROUP BY p.steam_id, m.date::date ) SELECT dp.steam_id, dp.name, md.match_date::date, pd.hltv_2, pd.adr FROM distinct_players dp CROSS JOIN match_dates md LEFT JOIN performance_data pd ON pd.steam_id=dp.steam_id AND pd.match_date=md.match_date ORDER BY dp.name, md.match_date`),
+    playerOverview: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum, matches.winner_name, matches.date::date AS match_date FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), player_match_stats AS ( SELECT p.steam_id, MAX(p.name) AS name, COUNT(*) AS matches_played, COUNT(CASE WHEN season_matches.winner_name = p.team_name THEN 1 END) AS wins, COUNT(CASE WHEN season_matches.winner_name IS NULL OR season_matches.winner_name = '' THEN 1 END) AS ties, SUM(p.kill_count) AS kills, SUM(p.death_count) AS deaths, SUM(p.assist_count) AS assists, SUM(p.headshot_count) AS headshots, AVG(p.hltv_rating_2) AS hltv_2, AVG(p.hltv_rating) AS hltv, AVG(p.average_damage_per_round) AS adr, AVG(p.kast) AS kast, SUM(p.first_kill_count) AS first_kills, SUM(p.first_death_count) AS first_deaths, SUM(p.first_trade_kill_count) AS first_trade_kills, SUM(p.first_trade_death_count) AS first_trade_deaths, SUM(p.bomb_planted_count) AS bomb_planted, SUM(p.bomb_defused_count) AS bomb_defused, SUM(p.hostage_rescued_count) AS hostage_rescued, SUM(p.one_kill_count) AS one_kill_count, SUM(p.two_kill_count) AS two_kill_count, SUM(p.three_kill_count) AS three_kill_count, SUM(p.four_kill_count) AS four_kill_count, SUM(p.five_kill_count) AS five_kill_count, SUM(p.inspect_weapon_count) AS inspect_weapon_count FROM players p INNER JOIN season_matches ON p.match_checksum = season_matches.checksum GROUP BY p.steam_id ) SELECT *, CASE WHEN matches_played > 0 THEN ROUND((wins::numeric / matches_played) * 100, 2) ELSE 0 END AS win_rate FROM player_match_stats`),
+    playerRounds: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), player_match_teams AS ( SELECT p.steam_id, p.team_name, p.match_checksum FROM players p INNER JOIN season_matches ON p.match_checksum = season_matches.checksum ), rounds_team_sides AS ( SELECT r.match_checksum, r.team_a_name, r.team_b_name, r.team_a_side, r.team_b_side FROM rounds r INNER JOIN season_matches ON r.match_checksum = season_matches.checksum ) SELECT pmt.steam_id, COUNT(*) AS rounds_total, COUNT(*) FILTER (WHERE (rts.team_a_name = pmt.team_name AND rts.team_a_side = 2) OR (rts.team_b_name = pmt.team_name AND rts.team_b_side = 2)) AS rounds_ct, COUNT(*) FILTER (WHERE (rts.team_a_name = pmt.team_name AND rts.team_a_side = 3) OR (rts.team_b_name = pmt.team_name AND rts.team_b_side = 3)) AS rounds_t FROM player_match_teams pmt INNER JOIN rounds_team_sides rts ON rts.match_checksum = pmt.match_checksum GROUP BY pmt.steam_id`),
+    playerWeaponKills: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ) SELECT k.killer_steam_id AS steam_id, k.weapon_name, COUNT(*) AS kills, SUM(CASE WHEN k.is_headshot THEN 1 ELSE 0 END) AS headshots FROM kills k INNER JOIN season_matches ON k.match_checksum = season_matches.checksum WHERE k.killer_steam_id IS NOT NULL GROUP BY k.killer_steam_id, k.weapon_name`),
+    playerWeaponShots: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ) SELECT s.player_steam_id AS steam_id, s.weapon_name, COUNT(*) AS shots FROM shots s INNER JOIN season_matches ON s.match_checksum = season_matches.checksum WHERE s.player_steam_id IS NOT NULL GROUP BY s.player_steam_id, s.weapon_name`),
+    playerWeaponDamage: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ) SELECT d.attacker_steam_id AS steam_id, d.weapon_name, COUNT(*) AS hits, SUM(d.health_damage + d.armor_damage) AS damage FROM damages d INNER JOIN season_matches ON d.match_checksum = season_matches.checksum WHERE d.attacker_steam_id IS NOT NULL GROUP BY d.attacker_steam_id, d.weapon_name`),
+    playerUtilities: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), flashes AS ( SELECT pb.flasher_steam_id AS steam_id, COUNT(*) FILTER (WHERE pb.flasher_side <> pb.flashed_side) AS enemy_flashes, AVG(CASE WHEN pb.flasher_side <> pb.flashed_side THEN pb.duration END) AS avg_blind_time FROM player_blinds pb INNER JOIN season_matches ON pb.match_checksum = season_matches.checksum GROUP BY pb.flasher_steam_id ), smokes AS ( SELECT ss.thrower_steam_id AS steam_id, COUNT(*) AS smokes_thrown FROM smokes_start ss INNER JOIN season_matches ON ss.match_checksum = season_matches.checksum GROUP BY ss.thrower_steam_id ), he_damage AS ( SELECT d.attacker_steam_id AS steam_id, SUM(d.health_damage + d.armor_damage) AS he_damage FROM damages d INNER JOIN season_matches ON d.match_checksum = season_matches.checksum WHERE d.attacker_steam_id IS NOT NULL AND ( LOWER(d.weapon_name) IN ('hegrenade','he_grenade','he grenade','he grenade projectile','hegrenade_projectile') OR LOWER(d.weapon_name) LIKE 'he%' ) GROUP BY d.attacker_steam_id ) SELECT COALESCE(f.steam_id, s.steam_id, h.steam_id) AS steam_id, COALESCE(f.enemy_flashes, 0) AS enemy_flashes, COALESCE(f.avg_blind_time, 0) AS avg_blind_time, COALESCE(s.smokes_thrown, 0) AS smokes_thrown, COALESCE(h.he_damage, 0) AS he_damage FROM flashes f FULL OUTER JOIN smokes s ON f.steam_id = s.steam_id FULL OUTER JOIN he_damage h ON COALESCE(f.steam_id, s.steam_id) = h.steam_id`),
+    playerInspectionDeaths: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ) SELECT k.victim_steam_id AS steam_id, COUNT(*) AS deaths_while_inspecting FROM kills k INNER JOIN season_matches ON k.match_checksum = season_matches.checksum WHERE k.is_victim_inspecting_weapon = true GROUP BY k.victim_steam_id`),
+    playerWallbangCollateral: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), wallbangs AS ( SELECT k.killer_steam_id AS steam_id, COUNT(*) AS wallbang_kills FROM kills k INNER JOIN season_matches ON k.match_checksum = season_matches.checksum WHERE k.killer_steam_id IS NOT NULL AND k.penetrated_objects > 0 GROUP BY k.killer_steam_id ), collaterals AS ( SELECT k.killer_steam_id AS steam_id, SUM(k.kill_count - 1) AS collateral_kills FROM ( SELECT killer_steam_id, match_checksum, round_number, tick, COUNT(*) AS kill_count FROM kills k INNER JOIN season_matches ON k.match_checksum = season_matches.checksum WHERE k.killer_steam_id IS NOT NULL GROUP BY killer_steam_id, match_checksum, round_number, tick HAVING COUNT(*) > 1 ) k GROUP BY k.killer_steam_id ) SELECT COALESCE(w.steam_id, c.steam_id) AS steam_id, COALESCE(w.wallbang_kills, 0) AS wallbang_kills, COALESCE(c.collateral_kills, 0) AS collateral_kills FROM wallbangs w FULL OUTER JOIN collaterals c ON w.steam_id = c.steam_id`),
+    playerClutches: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ) SELECT c.clutcher_steam_id AS steam_id, c.opponent_count, COUNT(*) AS total, COUNT(*) FILTER (WHERE c.won) AS won, COUNT(*) FILTER (WHERE NOT c.won) AS lost, AVG(c.clutcher_kill_count) AS avg_kills, COUNT(*) FILTER (WHERE c.has_clutcher_survived AND NOT c.won) AS saved FROM clutches c INNER JOIN season_matches ON c.match_checksum = season_matches.checksum GROUP BY c.clutcher_steam_id, c.opponent_count`)
   };
 }
 
@@ -151,6 +160,261 @@ async function generateAll(pool, opts={}){
     perfGrouped[name].performance.push({ match_date: r.match_date ? new Date(r.match_date).toISOString() : null, hltv_2: numOrNull(r.hltv_2), adr: numOrNull(r.adr) });
   }
   results.performance_data = Object.values(perfGrouped).sort((a,b)=>a.name.localeCompare(b.name));
+  // Players stats (Oyuncular page)
+  let playerOverviewRows = [];
+  let playerRoundsRows = [];
+  let weaponKillsRows = [];
+  let weaponShotsRows = [];
+  let weaponDamageRows = [];
+  let utilitiesRows = [];
+  let inspectionDeathRows = [];
+  let wallbangCollateralRows = [];
+  let clutchRows = [];
+  try { playerOverviewRows = (await pool.query(qset.playerOverview)).rows; } catch(e){ console.error('[statsGenerator] playerOverview query failed', e.message); errors.push({ dataset:'player_overview', error:e.message }); }
+  try { playerRoundsRows = (await pool.query(qset.playerRounds)).rows; } catch(e){ console.error('[statsGenerator] playerRounds query failed', e.message); errors.push({ dataset:'player_rounds', error:e.message }); }
+  try { weaponKillsRows = (await pool.query(qset.playerWeaponKills)).rows; } catch(e){ console.error('[statsGenerator] playerWeaponKills query failed', e.message); errors.push({ dataset:'player_weapon_kills', error:e.message }); }
+  try { weaponShotsRows = (await pool.query(qset.playerWeaponShots)).rows; } catch(e){ console.error('[statsGenerator] playerWeaponShots query failed', e.message); errors.push({ dataset:'player_weapon_shots', error:e.message }); }
+  try { weaponDamageRows = (await pool.query(qset.playerWeaponDamage)).rows; } catch(e){ console.error('[statsGenerator] playerWeaponDamage query failed', e.message); errors.push({ dataset:'player_weapon_damage', error:e.message }); }
+  try { utilitiesRows = (await pool.query(qset.playerUtilities)).rows; } catch(e){ console.error('[statsGenerator] playerUtilities query failed', e.message); errors.push({ dataset:'player_utilities', error:e.message }); }
+  try { inspectionDeathRows = (await pool.query(qset.playerInspectionDeaths)).rows; } catch(e){ console.error('[statsGenerator] playerInspectionDeaths query failed', e.message); errors.push({ dataset:'player_inspection_deaths', error:e.message }); }
+  try { wallbangCollateralRows = (await pool.query(qset.playerWallbangCollateral)).rows; } catch(e){ console.error('[statsGenerator] playerWallbangCollateral query failed', e.message); errors.push({ dataset:'player_wallbang_collateral', error:e.message }); }
+  try { clutchRows = (await pool.query(qset.playerClutches)).rows; } catch(e){ console.error('[statsGenerator] playerClutches query failed', e.message); errors.push({ dataset:'player_clutches', error:e.message }); }
+
+  const playersById = {};
+  const weaponsByPlayer = {};
+  const clutchAggByPlayer = {};
+  const roundValue = (value, decimals = 2) => {
+    const n = num(value);
+    return parseFloat(n.toFixed(decimals));
+  };
+  const ensurePlayer = (steamId, fallbackName) => {
+    if (!steamId) return null;
+    const name = normalizedName(steamId, fallbackName);
+    if (!playersById[steamId]) {
+      playersById[steamId] = {
+        steam_id: steamId,
+        name,
+        matches_played: 0,
+        wins: 0,
+        ties: 0,
+        losses: 0,
+        win_rate: 0,
+        hltv_2: 0,
+        hltv: 0,
+        kast: 0,
+        adr: 0,
+        kd: 0,
+        avg_kills_per_round: 0,
+        avg_deaths_per_round: 0,
+        hs_pct: 0,
+        kills: 0,
+        deaths: 0,
+        assists: 0,
+        headshots: 0,
+        wallbang_kills: 0,
+        collateral_kills: 0,
+        opening_duels: { success_pct: 0, traded_pct: 0, first_kills: 0, first_deaths: 0, best_weapon: null },
+        rounds: { total: 0, ct: 0, t: 0 },
+        multi_kills: { k1: 0, k2: 0, k3: 0, k4: 0, k5: 0 },
+        inspections: { total: 0, deaths_while_inspecting: 0 },
+        objectives: { bomb_planted: 0, bomb_defused: 0, hostage_rescued: 0 },
+        utilities: { avg_blind_time: 0, enemies_flashed: 0, avg_he_damage: 0, avg_smokes_thrown: 0 },
+        weapons: [],
+        clutches: { overall: { total: 0, won: 0, lost: 0, avg_kills: 0, win_rate: 0, save_rate: 0 }, by_type: {} }
+      };
+    } else if (name && playersById[steamId].name !== name) {
+      playersById[steamId].name = name;
+    }
+    return playersById[steamId];
+  };
+  const ensureWeapon = (steamId, weaponName) => {
+    if (!steamId || !weaponName) return null;
+    if (!weaponsByPlayer[steamId]) weaponsByPlayer[steamId] = {};
+    if (!weaponsByPlayer[steamId][weaponName]) {
+      weaponsByPlayer[steamId][weaponName] = { name: weaponName, kills: 0, headshots: 0, shots: 0, hits: 0, damage: 0 };
+    }
+    return weaponsByPlayer[steamId][weaponName];
+  };
+
+  for (const r of playerOverviewRows) {
+    const player = ensurePlayer(r.steam_id, r.name);
+    if (!player) continue;
+    const matchesPlayed = num(r.matches_played);
+    const wins = num(r.wins);
+    const ties = num(r.ties);
+    const kills = num(r.kills);
+    const deaths = num(r.deaths);
+    const headshots = num(r.headshots);
+    player.matches_played = matchesPlayed;
+    player.wins = wins;
+    player.ties = ties;
+    player.losses = Math.max(0, matchesPlayed - wins - ties);
+    player.win_rate = num(r.win_rate);
+    player.hltv_2 = num(r.hltv_2);
+    player.hltv = num(r.hltv);
+    player.kast = num(r.kast);
+    player.adr = num(r.adr);
+    player.kills = kills;
+    player.deaths = deaths;
+    player.assists = num(r.assists);
+    player.headshots = headshots;
+    player.kd = deaths > 0 ? roundValue(kills / deaths, 2) : kills;
+    player.hs_pct = pct(headshots, kills);
+    const firstKills = num(r.first_kills);
+    const firstDeaths = num(r.first_deaths);
+    const firstTrades = num(r.first_trade_kills) + num(r.first_trade_deaths);
+    const firstTotal = firstKills + firstDeaths;
+    player.opening_duels = {
+      success_pct: pct(firstKills, firstTotal),
+      traded_pct: pct(firstTrades, firstTotal),
+      first_kills: firstKills,
+      first_deaths: firstDeaths,
+      best_weapon: player.opening_duels?.best_weapon || null
+    };
+    player.multi_kills = {
+      k1: num(r.one_kill_count),
+      k2: num(r.two_kill_count),
+      k3: num(r.three_kill_count),
+      k4: num(r.four_kill_count),
+      k5: num(r.five_kill_count)
+    };
+    player.inspections.total = num(r.inspect_weapon_count);
+    player.objectives = {
+      bomb_planted: num(r.bomb_planted),
+      bomb_defused: num(r.bomb_defused),
+      hostage_rescued: num(r.hostage_rescued)
+    };
+  }
+
+  for (const r of playerRoundsRows) {
+    const player = ensurePlayer(r.steam_id, r.name);
+    if (!player) continue;
+    player.rounds = {
+      total: num(r.rounds_total),
+      ct: num(r.rounds_ct),
+      t: num(r.rounds_t)
+    };
+  }
+
+  for (const r of utilitiesRows) {
+    const player = ensurePlayer(r.steam_id, r.name);
+    if (!player) continue;
+    const matchesPlayed = player.matches_played || 0;
+    player.utilities = {
+      avg_blind_time: roundValue(num(r.avg_blind_time), 1),
+      enemies_flashed: matchesPlayed ? roundValue(num(r.enemy_flashes) / matchesPlayed, 1) : 0,
+      avg_he_damage: matchesPlayed ? roundValue(num(r.he_damage) / matchesPlayed, 1) : 0,
+      avg_smokes_thrown: matchesPlayed ? roundValue(num(r.smokes_thrown) / matchesPlayed, 1) : 0
+    };
+  }
+
+  for (const r of inspectionDeathRows) {
+    const player = ensurePlayer(r.steam_id, r.name);
+    if (!player) continue;
+    player.inspections.deaths_while_inspecting = num(r.deaths_while_inspecting);
+  }
+
+  for (const r of wallbangCollateralRows) {
+    const player = ensurePlayer(r.steam_id, r.name);
+    if (!player) continue;
+    player.wallbang_kills = num(r.wallbang_kills);
+    player.collateral_kills = num(r.collateral_kills);
+  }
+
+  for (const r of weaponKillsRows) {
+    const weapon = ensureWeapon(r.steam_id, r.weapon_name);
+    if (!weapon) continue;
+    weapon.kills += num(r.kills);
+    weapon.headshots += num(r.headshots);
+  }
+  for (const r of weaponShotsRows) {
+    const weapon = ensureWeapon(r.steam_id, r.weapon_name);
+    if (!weapon) continue;
+    weapon.shots += num(r.shots);
+  }
+  for (const r of weaponDamageRows) {
+    const weapon = ensureWeapon(r.steam_id, r.weapon_name);
+    if (!weapon) continue;
+    weapon.hits += num(r.hits);
+    weapon.damage += num(r.damage);
+  }
+
+  for (const r of clutchRows) {
+    const player = ensurePlayer(r.steam_id, r.name);
+    if (!player) continue;
+    const total = num(r.total);
+    const won = num(r.won);
+    const lost = num(r.lost);
+    const avgKills = num(r.avg_kills);
+    const saved = num(r.saved);
+    const typeKey = `1v${num(r.opponent_count)}`;
+    player.clutches.by_type[typeKey] = {
+      total,
+      won,
+      lost,
+      avg_kills: roundValue(avgKills, 2),
+      win_rate: pct(won, total),
+      save_rate: pct(saved, total)
+    };
+    if (!clutchAggByPlayer[player.steam_id]) {
+      clutchAggByPlayer[player.steam_id] = { total: 0, won: 0, lost: 0, saved: 0, killSum: 0 };
+    }
+    const agg = clutchAggByPlayer[player.steam_id];
+    agg.total += total;
+    agg.won += won;
+    agg.lost += lost;
+    agg.saved += saved;
+    agg.killSum += avgKills * total;
+  }
+
+  for (const [steamId, weapons] of Object.entries(weaponsByPlayer)) {
+    const player = ensurePlayer(steamId, null);
+    if (!player) continue;
+    const list = Object.values(weapons).map((w) => ({
+      name: w.name,
+      kills: num(w.kills),
+      hs_pct: pct(num(w.headshots), num(w.kills)),
+      damage: num(w.damage),
+      shots: num(w.shots),
+      hits: num(w.hits),
+      accuracy: pct(num(w.hits), num(w.shots))
+    }));
+    list.sort((a, b) => (b.kills - a.kills) || (b.damage - a.damage) || a.name.localeCompare(b.name));
+    player.weapons = list.slice(0, 10);
+    if (list[0]) {
+      player.opening_duels.best_weapon = list[0].name;
+    }
+  }
+
+  for (const player of Object.values(playersById)) {
+    if (player.rounds.total > 0) {
+      player.avg_kills_per_round = roundValue(player.kills / player.rounds.total, 2);
+      player.avg_deaths_per_round = roundValue(player.deaths / player.rounds.total, 2);
+    }
+    const agg = clutchAggByPlayer[player.steam_id];
+    if (agg && agg.total > 0) {
+      player.clutches.overall = {
+        total: agg.total,
+        won: agg.won,
+        lost: agg.lost,
+        avg_kills: roundValue(agg.killSum / agg.total, 2),
+        win_rate: pct(agg.won, agg.total),
+        save_rate: pct(agg.saved, agg.total)
+      };
+    }
+    const clutchSlots = [1, 2, 3, 4, 5];
+    clutchSlots.forEach((slot) => {
+      const key = `1v${slot}`;
+      if (!player.clutches.by_type[key]) {
+        player.clutches.by_type[key] = { total: 0, won: 0, lost: 0, avg_kills: 0, win_rate: 0, save_rate: 0 };
+      }
+    });
+  }
+
+  for (const [steamId, name] of Object.entries(canonicalNames)) {
+    ensurePlayer(steamId, name);
+  }
+  results.players_stats = Object.values(playersById).sort((a, b) => a.name.localeCompare(b.name));
   if(errors.length) results.__errors = errors;
   return results;
 }
