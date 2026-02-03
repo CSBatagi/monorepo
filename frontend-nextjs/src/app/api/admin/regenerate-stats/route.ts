@@ -10,7 +10,8 @@ const STAT_FILES = [
   'sonmac_by_date.json',
   'duello_son_mac.json',
   'duello_sezon.json',
-  'performance_data.json'
+  'performance_data.json',
+  'players_stats.json'
 ];
 
 export async function POST(req: NextRequest) {
