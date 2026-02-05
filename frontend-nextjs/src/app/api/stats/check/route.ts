@@ -5,9 +5,11 @@ import fs from 'fs/promises';
 // Files we care about (same list as backend generates)
 const STAT_FILES = [
   'season_avg.json',
+  'season_avg_periods.json',
   'night_avg.json',
   'last10.json',
   'sonmac_by_date.json',
+  'sonmac_by_date_all.json',
   'duello_son_mac.json',
   'duello_sezon.json',
   'performance_data.json',

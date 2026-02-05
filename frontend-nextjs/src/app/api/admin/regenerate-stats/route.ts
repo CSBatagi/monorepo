@@ -5,9 +5,11 @@ import path from 'path';
 // Stat files that need to be written
 const STAT_FILES = [
   'season_avg.json',
+  'season_avg_periods.json',
   'night_avg.json',
   'last10.json',
   'sonmac_by_date.json',
+  'sonmac_by_date_all.json',
   'duello_son_mac.json',
   'duello_sezon.json',
   'performance_data.json',

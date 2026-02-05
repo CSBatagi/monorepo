@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const RconConnection = require('./rcon.js');
 const GcpManager = require('./gcp.js');
+const { resolveSeasonConfig } = require('./seasonConfig');
 
 
 const rconConnection = new RconConnection();
@@ -79,35 +80,18 @@ async function fetchLastDataTimestamp() {
 // Lazy load & reuse the update-stats logic by spawning node process (decoupled from backend container codebase path)
 const { generateAll, generateAggregates } = require('./statsGenerator');
 
-// Resolve season start date: prefer file season_start.json if exists and has season_start field
-function resolveSeasonStart() {
-  const explicitEnvDate = process.env.SEZON_BASLANGIC; // legacy fallback option
-  const explicitFile = process.env.SEASON_START_FILE;  // preferred override path
-  const candidateFiles = [];
-  if (explicitFile) candidateFiles.push(explicitFile);
-  // Support mounting the file beside backend (e.g. - ./frontend-nextjs/public/data/season_start.json:/app/season_start.json:ro)
-  candidateFiles.push(path.join(process.cwd(), 'season_start.json'));
-  // Monorepo relative path (works in dev when both folders present)
-  candidateFiles.push(path.join(__dirname, '..', 'frontend-nextjs', 'public', 'data', 'season_start.json'));
-  for (const fp of candidateFiles) {
-    try {
-      const raw = fs.readFileSync(fp, 'utf-8');
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.season_start) {
-        return parsed.season_start.split('T')[0];
-      }
-    } catch (_) { /* try next */ }
-  }
-  return explicitEnvDate || '2025-06-09';
-}
-let cachedSeasonStart = resolveSeasonStart();
+let cachedSeasonConfig = resolveSeasonConfig();
+let cachedSeasonStart = cachedSeasonConfig.seasonStart;
+let cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
 async function runStatsUpdateScript() {
   if (TEST_MODE) {
     return { stdout: 'test-mode skip', data: { night_avg: {} } };
   }
   // Re-resolve season start each generation in case file changed
-  cachedSeasonStart = resolveSeasonStart();
-  const datasets = await generateAll(pool, { seasonStart: cachedSeasonStart });
+  cachedSeasonConfig = resolveSeasonConfig();
+  cachedSeasonStart = cachedSeasonConfig.seasonStart;
+  cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
+  const datasets = await generateAll(pool, { seasonStart: cachedSeasonStart, seasonStarts: cachedSeasonStarts });
   return { stdout: 'ok', data: datasets };
 }
 
@@ -120,8 +104,10 @@ let lastGeneratedData = null; // cache of last generated datasets so we can rese
 // Aggregates endpoint: ALWAYS recompute season_avg & last10 (lightweight compared to full set)
 app.get('/stats/aggregates', async (req, res) => {
   try {
-    cachedSeasonStart = resolveSeasonStart();
-    const agg = await generateAggregates(pool, { seasonStart: cachedSeasonStart });
+    cachedSeasonConfig = resolveSeasonConfig();
+    cachedSeasonStart = cachedSeasonConfig.seasonStart;
+    cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
+    const agg = await generateAggregates(pool, { seasonStart: cachedSeasonStart, seasonStarts: cachedSeasonStarts });
     res.set('Cache-Control','no-store');
     res.json({ updated: true, serverTimestamp: new Date().toISOString(), ...agg });
   } catch (e) {
@@ -171,7 +157,9 @@ app.post('/stats/force-regenerate', async (req, res) => {
     lastGeneratedServerTimestamp = null;
     
     // Always run fresh generation (bypass any in-progress promise)
-    cachedSeasonStart = resolveSeasonStart();
+    cachedSeasonConfig = resolveSeasonConfig();
+    cachedSeasonStart = cachedSeasonConfig.seasonStart;
+    cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
     const result = await runStatsUpdateScript();
     
     const serverLastTs = await fetchLastDataTimestamp();
@@ -199,13 +187,16 @@ app.post('/stats/force-regenerate', async (req, res) => {
 app.get('/stats/diagnostics', async (req, res) => {
   try {
     const seasonStart = cachedSeasonStart;
+    const seasonStarts = cachedSeasonStarts;
     let counts = {};
     if (lastGeneratedData) {
       counts = {
         season_avg: Array.isArray(lastGeneratedData.season_avg)? lastGeneratedData.season_avg.length : 0,
+        season_avg_periods: lastGeneratedData.season_avg_periods ? Object.keys(lastGeneratedData.season_avg_periods.data || {}).length : 0,
         night_avg_dates: lastGeneratedData.night_avg ? Object.keys(lastGeneratedData.night_avg).length : 0,
         last10: Array.isArray(lastGeneratedData.last10)? lastGeneratedData.last10.length : 0,
         sonmac_dates: lastGeneratedData.sonmac_by_date ? Object.keys(lastGeneratedData.sonmac_by_date).length : 0,
+        sonmac_all_dates: lastGeneratedData.sonmac_by_date_all ? Object.keys(lastGeneratedData.sonmac_by_date_all).length : 0,
         duello_son_mac_rows: lastGeneratedData.duello_son_mac ? lastGeneratedData.duello_son_mac.playerRows?.length : 0,
         duello_sezon_rows: lastGeneratedData.duello_sezon ? lastGeneratedData.duello_sezon.playerRows?.length : 0,
         performance_players: Array.isArray(lastGeneratedData.performance_data)? lastGeneratedData.performance_data.length : 0,
@@ -214,7 +205,7 @@ app.get('/stats/diagnostics', async (req, res) => {
         errors: lastGeneratedData.__errors || []
       };
     }
-    res.json({ seasonStart, lastGeneratedServerTimestamp, counts });
+    res.json({ seasonStart, seasonStarts, lastGeneratedServerTimestamp, counts });
   } catch (e) {
     res.status(500).json({ error: 'diagnostics_failed', details: e.message });
   }
@@ -351,9 +342,11 @@ if (!TEST_MODE) {
   // Warm startup generation to ensure canonical names load & early visibility.
   async function warmStartup() {
     try {
-      cachedSeasonStart = resolveSeasonStart();
+      cachedSeasonConfig = resolveSeasonConfig();
+      cachedSeasonStart = cachedSeasonConfig.seasonStart;
+      cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
       console.log('[startup] triggering initial aggregates generation');
-      await generateAggregates(pool, { seasonStart: cachedSeasonStart });
+      await generateAggregates(pool, { seasonStart: cachedSeasonStart, seasonStarts: cachedSeasonStarts });
       console.log('[startup] initial aggregates generation complete');
     } catch (e) {
       console.warn('[startup] initial aggregates generation failed', e.message);

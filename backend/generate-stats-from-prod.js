@@ -7,6 +7,7 @@ const { Pool } = require('pg');
 const fs = require('fs').promises;
 const path = require('path');
 const { generateAll, generateAggregates } = require('./statsGenerator');
+const { resolveSeasonConfig } = require('./seasonConfig');
 
 // Production database configuration
 if (!process.env.PROD_DB_USER || !process.env.PROD_DB_HOST || !process.env.PROD_DB_PASSWORD) {
@@ -23,41 +24,14 @@ const productionPool = new Pool({
   port: 5432,
 });
 
-// Get season start date - uses same resolution logic as backend index.js
-function getSeasonStart() {
-  const explicitFile = process.env.SEASON_START_FILE;
-  const candidateFiles = [];
-  
-  if (explicitFile) candidateFiles.push(explicitFile);
-  
-  // Support mounting the file beside backend
-  candidateFiles.push(path.join(__dirname, 'season_start.json'));
-  
-  // Original monorepo relative path (works in dev when both folders present)
-  candidateFiles.push(path.join(__dirname, '..', 'frontend-nextjs', 'public', 'data', 'season_start.json'));
-  
-  // Production config path
-  candidateFiles.push(path.join(__dirname, '..', 'config', 'season_start.json'));
-  
-  for (const fp of candidateFiles) {
-    try {
-      const raw = require('fs').readFileSync(fp, 'utf-8');
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.season_start) {
-        return parsed.season_start.split('T')[0];
-      }
-    } catch (_) { /* try next */ }
-  }
-  
-  // Fallback to env var or hardcoded default
-  return process.env.SEZON_BASLANGIC || '2025-06-09';
-}
-
 async function generateStatsFromProduction() {
   console.log('=== Generating Stats from Production Database ===\n');
   
-  const seasonStart = getSeasonStart();
-  console.log(`Using season start: ${seasonStart}\n`);
+  const seasonConfig = resolveSeasonConfig();
+  const seasonStart = seasonConfig.seasonStart;
+  const seasonStarts = seasonConfig.seasonStarts;
+  console.log(`Using season start: ${seasonStart}`);
+  console.log(`Configured season starts: ${seasonStarts.join(', ')}\n`);
   
   const runtimeDir = path.join(__dirname, '..', 'frontend-nextjs', 'runtime-data');
   await fs.mkdir(runtimeDir, { recursive: true });
@@ -70,12 +44,12 @@ async function generateStatsFromProduction() {
     
     // Generate all incremental datasets
     console.log('Generating incremental datasets...');
-    const incremental = await generateAll(productionPool, { seasonStart });
+    const incremental = await generateAll(productionPool, { seasonStart, seasonStarts });
     console.log('✓ Incremental datasets generated\n');
     
     // Generate aggregate datasets
     console.log('Generating aggregate datasets...');
-    const aggregates = await generateAggregates(productionPool, { seasonStart });
+    const aggregates = await generateAggregates(productionPool, { seasonStart, seasonStarts });
     console.log('✓ Aggregate datasets generated\n');
     
     // Write incremental files
@@ -83,6 +57,7 @@ async function generateStatsFromProduction() {
     const incrementalFiles = {
       'night_avg.json': incremental.night_avg,
       'sonmac_by_date.json': incremental.sonmac_by_date,
+      'sonmac_by_date_all.json': incremental.sonmac_by_date_all,
       'duello_son_mac.json': incremental.duello_son_mac,
       'duello_sezon.json': incremental.duello_sezon,
       'performance_data.json': incremental.performance_data,
@@ -99,6 +74,7 @@ async function generateStatsFromProduction() {
     // Write aggregate files
     const aggregateFiles = {
       'season_avg.json': aggregates.season_avg,
+      'season_avg_periods.json': aggregates.season_avg_periods,
       'last10.json': aggregates.last10,
     };
     

@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server';
 import path from 'path';
 import fs from 'fs/promises';
 
-// Only season_avg.json and last10.json are aggregates we must always refresh
-const AGG_FILES = ['season_avg.json','last10.json'];
+// Aggregates are always refreshed on-demand.
+const AGG_FILES = ['season_avg.json','season_avg_periods.json','last10.json'];
 
 export async function GET(req: NextRequest) {
   const backendBase = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';

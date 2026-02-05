@@ -1,48 +1,125 @@
 "use client";
-import React, { useState, useEffect } from "react";
+
+import React, { useEffect, useMemo, useState } from "react";
 import SeasonStatsTable, { columns } from "@/components/SeasonStatsTable";
 import { RadarGraphs } from "@/components/SeasonAvgRadarGraphs";
 import H2HClient from "@/components/H2HClient";
 
-export default function SeasonAvgTabsClient({ data: initialData }: { data: any[] }) {
+type PeriodMeta = {
+  id: string;
+  label?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_current?: boolean;
+};
+
+type SeasonAvgPeriodPayload = {
+  current_period?: string;
+  periods?: PeriodMeta[];
+  data?: Record<string, any[]>;
+};
+
+function buildFallbackPayload(initialData: any[]): SeasonAvgPeriodPayload {
+  return {
+    current_period: "season_current",
+    periods: [{ id: "season_current", label: "Guncel Sezon", is_current: true }],
+    data: { season_current: Array.isArray(initialData) ? initialData : [] },
+  };
+}
+
+export default function SeasonAvgTabsClient({
+  data: initialData,
+  periodData: initialPeriodData,
+}: {
+  data: any[];
+  periodData?: SeasonAvgPeriodPayload | null;
+}) {
   const [activeTab, setActiveTab] = useState<"table" | "graph" | "head2head">("table");
-  const [data, setData] = useState<any[]>(initialData || []);
-  const [perfData, setPerfData] = useState<any[] | null>(null); // keep placeholder if later needed
-  const loadError = null;
-  const [loading, setLoading] = useState<boolean>(!initialData || initialData.length === 0);
+  const [periodPayload, setPeriodPayload] = useState<SeasonAvgPeriodPayload>(
+    initialPeriodData && initialPeriodData.data ? initialPeriodData : buildFallbackPayload(initialData || [])
+  );
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const periodOptions = useMemo(
+    () => (Array.isArray(periodPayload?.periods) && periodPayload.periods.length ? periodPayload.periods : []),
+    [periodPayload]
+  );
+
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(
+    periodPayload?.current_period || periodOptions[0]?.id || "season_current"
+  );
 
   useEffect(() => {
-    if (data.length > 0) { setLoading(false); return; }
+    const hasSelected = Array.isArray(periodPayload?.data?.[selectedPeriod]);
+    if (!hasSelected) {
+      const next = periodPayload?.current_period || periodOptions[0]?.id || "season_current";
+      setSelectedPeriod(next);
+    }
+  }, [periodPayload, periodOptions, selectedPeriod]);
+
+  const selectedData = useMemo(() => {
+    const fromPeriods = periodPayload?.data?.[selectedPeriod];
+    if (Array.isArray(fromPeriods)) return fromPeriods;
+    return [];
+  }, [periodPayload, selectedPeriod]);
+
+  useEffect(() => {
+    if (selectedData.length > 0) return;
     let cancelled = false;
+    setLoading(true);
     (async () => {
       try {
-        const res = await fetch(`/api/stats/aggregates?_cb=${Date.now()}`, { cache:'no-store' });
-        if (res.ok) {
-          const j = await res.json();
-          if (!cancelled && Array.isArray(j.season_avg) && j.season_avg.length) { setData(j.season_avg); }
+        const res = await fetch(`/api/stats/aggregates?_cb=${Date.now()}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const payload = await res.json();
+        if (cancelled) return;
+        if (payload?.season_avg_periods?.data) {
+          setPeriodPayload(payload.season_avg_periods);
+          if (payload.season_avg_periods.current_period) {
+            setSelectedPeriod(payload.season_avg_periods.current_period);
+          }
+        } else if (Array.isArray(payload?.season_avg)) {
+          const fallback = buildFallbackPayload(payload.season_avg);
+          setPeriodPayload(fallback);
+          setSelectedPeriod(fallback.current_period || "season_current");
         }
-      } catch(_) {} finally { if(!cancelled) setLoading(false); }
+      } catch (_) {
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
-    return () => { cancelled = true; };
-  }, [data.length]);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedData.length]);
 
   const overlay = loading ? (
     <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 text-sm text-gray-600">
       <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mb-2" />
-      İstatistikler yükleniyor...
+      Istatistikler yukleniyor...
     </div>
   ) : null;
 
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[SeasonAvgTabsClient] data length', data?.length);
-      if (data && data.length) console.log('[SeasonAvg sample]', data[0]);
-    }
-  }, [data]);
-
   return (
     <>
-      {/* Sub Tab Navigation */}
+      <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
+        <label htmlFor="season-avg-period-selector" className="block text-sm font-medium text-gray-700 mb-1">
+          Donem Secin:
+        </label>
+        <select
+          id="season-avg-period-selector"
+          className="form-select block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          value={selectedPeriod}
+          onChange={(e) => setSelectedPeriod(e.target.value)}
+        >
+          {periodOptions.map((period) => (
+            <option key={period.id} value={period.id}>
+              {period.label || period.id}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="mb-4 border-b border-gray-200">
         <ul id="season-avg-sub-tabs" className="flex flex-wrap -mb-px text-sm font-medium text-center" role="tablist">
           <li className="mr-2" role="presentation">
@@ -81,54 +158,50 @@ export default function SeasonAvgTabsClient({ data: initialData }: { data: any[]
               aria-selected={activeTab === "head2head"}
               onClick={() => setActiveTab("head2head")}
             >
-              Karşılaştırma
+              Karsilastirma
             </button>
           </li>
         </ul>
       </div>
+
       <div id="season-avg-tab-content">
-        {/* Table Content */}
         {activeTab === "table" && (
           <div id="season-avg-tab-table" className="season-avg-tab-pane active" role="tabpanel" aria-labelledby="season-avg-table-tab">
             <div className="overflow-x-auto">
-              {loadError && data.length === 0 ? (
-                <div className="p-4 text-sm text-red-600">{loadError} – Önbellekte veri yok.</div>
-              ) : (
-                <div className="relative">
-                  {overlay}
-                  <SeasonStatsTable data={data} loading={loading} />
-                </div>
-              )}
+              <div className="relative">
+                {overlay}
+                <SeasonStatsTable data={selectedData} loading={loading} />
+              </div>
             </div>
           </div>
         )}
-        {/* Graph Content */}
+
         {activeTab === "graph" && (
           <div id="season-avg-tab-graph" className="season-avg-tab-pane active" role="tabpanel" aria-labelledby="season-avg-graph-tab">
-              <div className="relative">
-                {overlay}
-                <RadarGraphs
-              data={data}
-              statConfig={columns.reduce((acc: Record<string, any>, col, i) => {
-                acc[col.key] = { label: col.label, default: i < 5, format: col.isPercentage ? "percent" : undefined };
-                return acc;
-              }, {})}
-              playerFilterKey="matches"
-              title="Pentagon İstatistiklerini Özelleştir (Sezon Ortalaması)"
-                />
-              </div>
+            <div className="relative">
+              {overlay}
+              <RadarGraphs
+                data={selectedData}
+                statConfig={columns.reduce((acc: Record<string, any>, col, i) => {
+                  acc[col.key] = { label: col.label, default: i < 5, format: col.isPercentage ? "percent" : undefined };
+                  return acc;
+                }, {})}
+                playerFilterKey="matches"
+                title="Pentagon Istatistiklerini Ozellestir (Sezon Ortalamasi)"
+              />
+            </div>
           </div>
         )}
-        {/* Head-to-Head Content */}
+
         {activeTab === "head2head" && (
           <div id="season-avg-tab-head2head" className="season-avg-tab-pane active" role="tabpanel" aria-labelledby="season-avg-head2head-tab">
             <div className="relative">
               {overlay}
-              <H2HClient data={data} columns={columns} />
+              <H2HClient data={selectedData} columns={columns} />
             </div>
           </div>
         )}
       </div>
     </>
   );
-} 
+}

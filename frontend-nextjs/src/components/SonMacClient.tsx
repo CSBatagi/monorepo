@@ -1,6 +1,7 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import SeasonStatsTable from "./SeasonStatsTable";
+import { buildSeasonWindowOptions, filterDatesBySeason } from "@/lib/seasonRanges";
 
 type RoundInfo = {
   round_number?: number;
@@ -126,15 +127,42 @@ const sonmacColumns = [
   { key: "clutches_won", label: "Clutches Won", decimals: 0 },
 ];
 
-export default function SonMacClient({ allData: initialData, dates: initialDates }: { allData: Record<string, any>; dates: string[] }) {
-  const [data, setData] = useState<Record<string, any>>(initialData);
-  const [dates, setDates] = useState<string[]>(initialDates);
-  const [selectedDate, setSelectedDate] = useState(initialDates[0] || "");
+export default function SonMacClient({
+  allData: initialData,
+  dates: initialDates,
+  seasonStarts,
+}: {
+  allData: Record<string, any>;
+  dates: string[];
+  seasonStarts: string[];
+}) {
+  const [data] = useState<Record<string, any>>(initialData);
+  const [dates] = useState<string[]>(initialDates);
+  const seasonOptions = useMemo(() => buildSeasonWindowOptions(seasonStarts || [], dates), [seasonStarts, dates]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState(seasonOptions[0]?.id || "all_time");
+  const selectedSeason = useMemo(
+    () => seasonOptions.find((s) => s.id === selectedSeasonId) || seasonOptions[0] || { id: "all_time", label: "Tum Zamanlar", startDate: null, endDate: null },
+    [seasonOptions, selectedSeasonId]
+  );
+  const filteredDates = useMemo(() => filterDatesBySeason(dates, selectedSeason), [dates, selectedSeason]);
+  const [selectedDate, setSelectedDate] = useState(filteredDates[0] || "");
   const maps = data[selectedDate]?.maps || {};
   const mapNames = Object.keys(maps);
   const [selectedMap, setSelectedMap] = useState(mapNames[0] || "");
 
   // Client no longer triggers refresh; server layout ensures up-to-date data per request.
+
+  React.useEffect(() => {
+    if (!seasonOptions.some((s) => s.id === selectedSeasonId)) {
+      setSelectedSeasonId(seasonOptions[0]?.id || "all_time");
+    }
+  }, [seasonOptions, selectedSeasonId]);
+
+  React.useEffect(() => {
+    if (!filteredDates.includes(selectedDate)) {
+      setSelectedDate(filteredDates[0] || "");
+    }
+  }, [filteredDates, selectedDate]);
 
   // Update selectedMap if date changes
   React.useEffect(() => {
@@ -264,17 +292,28 @@ export default function SonMacClient({ allData: initialData, dates: initialDates
     <>
       {/* Date Selector */}
       <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
-        <label htmlFor="sonmac-date-selector" className="block text-sm font-medium text-gray-700 mb-1">Tarih Seçin:</label>
+        <label htmlFor="sonmac-season-selector" className="block text-sm font-medium text-gray-700 mb-1">Donem Secin:</label>
+        <select
+          id="sonmac-season-selector"
+          className="form-select block w-full mt-1 mb-4 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          value={selectedSeasonId}
+          onChange={e => setSelectedSeasonId(e.target.value)}
+        >
+          {seasonOptions.map(opt => (
+            <option key={opt.id} value={opt.id}>{opt.label}</option>
+          ))}
+        </select>
+        <label htmlFor="sonmac-date-selector" className="block text-sm font-medium text-gray-700 mb-1">Tarih Secin:</label>
         <select
           id="sonmac-date-selector"
           className="form-select block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           value={selectedDate}
           onChange={e => setSelectedDate(e.target.value)}
         >
-          {dates.length === 0 ? (
+          {filteredDates.length === 0 ? (
             <option>Veri yok</option>
           ) : (
-            dates.map(date => (
+            filteredDates.map(date => (
               <option key={date} value={date}>{date}</option>
             ))
           )}
