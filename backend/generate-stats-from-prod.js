@@ -56,12 +56,14 @@ async function generateStatsFromProduction() {
     console.log('Writing files to runtime-data/...');
     const incrementalFiles = {
       'night_avg.json': incremental.night_avg,
+      'night_avg_all.json': incremental.night_avg_all,
       'sonmac_by_date.json': incremental.sonmac_by_date,
       'sonmac_by_date_all.json': incremental.sonmac_by_date_all,
       'duello_son_mac.json': incremental.duello_son_mac,
       'duello_sezon.json': incremental.duello_sezon,
       'performance_data.json': incremental.performance_data,
       'players_stats.json': incremental.players_stats,
+      'players_stats_periods.json': incremental.players_stats_periods,
       'map_stats.json': incremental.map_stats,
     };
     

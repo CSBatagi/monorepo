@@ -1,11 +1,12 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useEffect, useMemo, useState } from "react";
+import React from "react";
 import SeasonStatsTable from "./SeasonStatsTable";
 import H2HClient from "./H2HClient";
-import React from "react";
 import { RadarGraphs } from "./SeasonAvgRadarGraphs";
+import { buildSeasonWindowOptions, filterDatesBySeason } from "@/lib/seasonRanges";
 
-// Night avg columns (match the keys in night_avg.json)
 const nightAvgColumns = [
   { key: "name", label: "Oyuncu" },
   { key: "HLTV 2", label: "HLTV2", decimals: 2, isBadge: true, heatmap: true },
@@ -35,59 +36,103 @@ const nightAvgColumns = [
   { key: "Clutches Won", label: "Clutches Won", decimals: 0 },
 ];
 
-export default function NightAvgTableClient({ allData: initialData, dates: initialDates }: { allData: Record<string, any[]>; dates: string[] }) {
+export default function NightAvgTableClient({
+  allData: initialData,
+  dates: initialDates,
+  seasonStarts,
+}: {
+  allData: Record<string, any[]>;
+  dates: string[];
+  seasonStarts: string[];
+}) {
   const [dataMap, setDataMap] = useState<Record<string, any[]>>(initialData);
   const [dates, setDates] = useState<string[]>(initialDates);
-  const [selectedDate, setSelectedDate] = useState(initialDates[0] || "");
-  const [activeTab, setActiveTab] = useState<"table" | "graph" | "head2head">("table");
-  const data = dataMap[selectedDate] || [];
   const [loading, setLoading] = useState<boolean>(Object.keys(initialData || {}).length === 0);
+  const [activeTab, setActiveTab] = useState<"table" | "graph" | "head2head">("table");
+
+  const seasonOptions = useMemo(() => buildSeasonWindowOptions(seasonStarts || [], dates), [seasonStarts, dates]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>(seasonOptions[0]?.id || "all_time");
+  const selectedSeason = useMemo(
+    () => seasonOptions.find((s) => s.id === selectedSeasonId) || seasonOptions[0] || { id: "all_time", label: "Tum Zamanlar", startDate: null, endDate: null },
+    [seasonOptions, selectedSeasonId]
+  );
+  const filteredDates = useMemo(() => filterDatesBySeason(dates, selectedSeason), [dates, selectedSeason]);
+
+  const [selectedDate, setSelectedDate] = useState<string>(filteredDates[0] || "");
+  const data = dataMap[selectedDate] || [];
 
   useEffect(() => {
-    const lastKnownTs = typeof window !== 'undefined' ? localStorage.getItem('stats_last_ts') : null;
-  const cacheBust = Date.now();
-  fetch(`/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : '?'}_cb=${cacheBust}`, {cache:'no-store', headers:{'Cache-Control':'no-store'}})
-      .then(r => r.json())
-      .then(j => {
-        if (j.updated && j.night_avg) {
-          setDataMap(j.night_avg);
-          const newDates = Object.keys(j.night_avg).sort((a,b)=>b.localeCompare(a));
-            setDates(newDates);
-            if (!newDates.includes(selectedDate)) {
-              setSelectedDate(newDates[0] || '');
-            }
+    const lastKnownTs = typeof window !== "undefined" ? localStorage.getItem("stats_last_ts") : null;
+    const cacheBust = Date.now();
+    fetch(
+      `/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : "?"}_cb=${cacheBust}`,
+      { cache: "no-store", headers: { "Cache-Control": "no-store" } }
+    )
+      .then((r) => r.json())
+      .then((j) => {
+        const incoming = j?.night_avg_all || j?.night_avg;
+        if (j.updated && incoming) {
+          setDataMap(incoming);
+          const newDates = Object.keys(incoming).sort((a, b) => b.localeCompare(a));
+          setDates(newDates);
+          setSelectedDate((prev) => (newDates.includes(prev) ? prev : (newDates[0] || "")));
         }
         if (j.serverTimestamp) {
-          localStorage.setItem('stats_last_ts', j.serverTimestamp);
+          localStorage.setItem("stats_last_ts", j.serverTimestamp);
         }
         setLoading(false);
-      }).catch(()=>{});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      })
+      .catch(() => {
+        setLoading(false);
+      });
   }, []);
 
-  // Tab state should reset when date changes
   React.useEffect(() => {
     setActiveTab("table");
   }, [selectedDate]);
 
+  React.useEffect(() => {
+    if (!seasonOptions.some((s) => s.id === selectedSeasonId)) {
+      setSelectedSeasonId(seasonOptions[0]?.id || "all_time");
+    }
+  }, [seasonOptions, selectedSeasonId]);
+
+  React.useEffect(() => {
+    if (!filteredDates.includes(selectedDate)) {
+      setSelectedDate(filteredDates[0] || "");
+    }
+  }, [filteredDates, selectedDate]);
+
   return (
     <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
-      <label htmlFor="night-avg-date-selector" className="block text-sm font-medium text-gray-700 mb-1">Tarih Seçin:</label>
+      <label htmlFor="night-avg-season-selector" className="block text-sm font-medium text-gray-700 mb-1">Donem Secin:</label>
+      <select
+        id="night-avg-season-selector"
+        className="form-select block w-full mt-1 mb-4 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+        value={selectedSeasonId}
+        onChange={(e) => setSelectedSeasonId(e.target.value)}
+      >
+        {seasonOptions.map((opt) => (
+          <option key={opt.id} value={opt.id}>{opt.label}</option>
+        ))}
+      </select>
+
+      <label htmlFor="night-avg-date-selector" className="block text-sm font-medium text-gray-700 mb-1">Tarih Secin:</label>
       <select
         id="night-avg-date-selector"
         className="form-select block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
         value={selectedDate}
-        onChange={e => setSelectedDate(e.target.value)}
+        onChange={(e) => setSelectedDate(e.target.value)}
       >
-        {dates.length === 0 ? (
+        {filteredDates.length === 0 ? (
           <option>Veri yok</option>
         ) : (
-          dates.map(date => (
+          filteredDates.map((date) => (
             <option key={date} value={date}>{date}</option>
           ))
         )}
       </select>
-      {/* Tabs for selected date */}
+
       <div className="mt-6">
         <ul className="flex flex-wrap -mb-px text-sm font-medium text-center" role="tablist">
           <li className="mr-2" role="presentation">
@@ -97,15 +142,16 @@ export default function NightAvgTableClient({ allData: initialData, dates: initi
             <button className={`map-tab-button tab-nav-item inline-block border-b-2 rounded-t-lg ${activeTab === "graph" ? "active border-blue-600 text-blue-600" : "border-transparent hover:text-gray-600 hover:border-gray-300"}`} id="night-avg-graph-tab" type="button" role="tab" aria-controls="night-avg-tab-graph" aria-selected={activeTab === "graph"} onClick={() => setActiveTab("graph")}>Grafik</button>
           </li>
           <li className="mr-2" role="presentation">
-            <button className={`map-tab-button tab-nav-item inline-block border-b-2 rounded-t-lg ${activeTab === "head2head" ? "active border-blue-600 text-blue-600" : "border-transparent hover:text-gray-600 hover:border-gray-300"}`} id="night-avg-head2head-tab" type="button" role="tab" aria-controls="night-avg-tab-head2head" aria-selected={activeTab === "head2head"} onClick={() => setActiveTab("head2head")}>Karşılaştırma</button>
+            <button className={`map-tab-button tab-nav-item inline-block border-b-2 rounded-t-lg ${activeTab === "head2head" ? "active border-blue-600 text-blue-600" : "border-transparent hover:text-gray-600 hover:border-gray-300"}`} id="night-avg-head2head-tab" type="button" role="tab" aria-controls="night-avg-tab-head2head" aria-selected={activeTab === "head2head"} onClick={() => setActiveTab("head2head")}>Karsilastirma</button>
           </li>
         </ul>
       </div>
+
       <div className="mt-6 relative">
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 text-sm text-gray-600 z-10">
             <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mb-2" />
-            Yükleniyor...
+            Yukleniyor...
           </div>
         )}
         {activeTab === "table" && (
@@ -124,7 +170,7 @@ export default function NightAvgTableClient({ allData: initialData, dates: initi
                 return acc;
               }, {})}
               playerFilterKey="Nr of Matches"
-              title="Pentagon İstatistiklerini Özelleştir (Gece Ortalaması)"
+              title="Pentagon Istatistiklerini Ozellestir (Gece Ortalamasi)"
             />
           </div>
         )}
@@ -136,4 +182,4 @@ export default function NightAvgTableClient({ allData: initialData, dates: initi
       </div>
     </div>
   );
-} 
+}

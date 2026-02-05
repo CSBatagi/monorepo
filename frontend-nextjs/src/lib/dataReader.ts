@@ -46,7 +46,7 @@ export async function readJson(filename: string): Promise<any> {
   
   // Return appropriate defaults for different file types
   console.log(`[dataReader] All paths failed for ${filename}, returning default`);
-  if (filename.includes('season_avg_periods') || filename.includes('sonmac_by_date_all')) {
+  if (filename.includes('season_avg_periods') || filename.includes('players_stats_periods') || filename.includes('sonmac_by_date_all') || filename.includes('night_avg_all')) {
     return {};
   } else if (filename.includes('last10') || filename.includes('season_avg') || filename.includes('players_stats') || filename.includes('map_stats')) {
     return [];

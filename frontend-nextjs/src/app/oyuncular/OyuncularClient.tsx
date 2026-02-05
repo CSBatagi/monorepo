@@ -14,6 +14,28 @@ type StatLine = {
   value: string | number;
 };
 
+type PeriodMeta = {
+  id: string;
+  label?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_current?: boolean;
+};
+
+type PlayersStatsPeriodsPayload = {
+  current_period?: string;
+  periods?: PeriodMeta[];
+  data?: Record<string, any[]>;
+};
+
+function buildFallbackPeriods(initialStats: any[]): PlayersStatsPeriodsPayload {
+  return {
+    current_period: "season_current",
+    periods: [{ id: "season_current", label: "Guncel Sezon", is_current: true }],
+    data: { season_current: Array.isArray(initialStats) ? initialStats : [] },
+  };
+}
+
 function formatNumber(value: unknown, decimals = 1) {
   const n = Number(value);
   if (Number.isNaN(n)) return "-";
@@ -158,13 +180,28 @@ function ClutchCard({
 
 export default function OyuncularClient({
   initialStats,
+  initialPeriods,
   playersList,
 }: {
   initialStats: any[];
+  initialPeriods?: PlayersStatsPeriodsPayload | null;
   playersList: PlayerListItem[];
 }) {
-  const [stats, setStats] = useState<any[]>(Array.isArray(initialStats) ? initialStats : []);
-  const [loading, setLoading] = useState<boolean>(!Array.isArray(initialStats) || initialStats.length === 0);
+  const [periodPayload, setPeriodPayload] = useState<PlayersStatsPeriodsPayload>(
+    initialPeriods && initialPeriods.data ? initialPeriods : buildFallbackPeriods(initialStats || [])
+  );
+  const periodOptions = useMemo(
+    () => (Array.isArray(periodPayload?.periods) && periodPayload.periods.length ? periodPayload.periods : []),
+    [periodPayload]
+  );
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(
+    periodPayload?.current_period || periodOptions[0]?.id || "season_current"
+  );
+  const stats = useMemo(() => {
+    const rows = periodPayload?.data?.[selectedPeriod];
+    return Array.isArray(rows) ? rows : [];
+  }, [periodPayload, selectedPeriod]);
+  const [loading, setLoading] = useState<boolean>(stats.length === 0);
 
   const tabs = useMemo(() => {
     if (Array.isArray(playersList) && playersList.length > 0) {
@@ -188,6 +225,13 @@ export default function OyuncularClient({
   const [activeSteamId, setActiveSteamId] = useState<string>(tabs[0]?.steamId || "");
 
   useEffect(() => {
+    const hasSelected = Array.isArray(periodPayload?.data?.[selectedPeriod]);
+    if (!hasSelected) {
+      setSelectedPeriod(periodPayload?.current_period || periodOptions[0]?.id || "season_current");
+    }
+  }, [periodPayload, periodOptions, selectedPeriod]);
+
+  useEffect(() => {
     if (!activeSteamId || !tabs.find((tab) => tab.steamId === activeSteamId)) {
       setActiveSteamId(tabs[0]?.steamId || "");
     }
@@ -199,8 +243,15 @@ export default function OyuncularClient({
     fetch(url, { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => {
-        if (Array.isArray(j.players_stats)) {
-          setStats(j.players_stats);
+        if (j?.players_stats_periods?.data) {
+          setPeriodPayload(j.players_stats_periods);
+          if (j.players_stats_periods.current_period) {
+            setSelectedPeriod(j.players_stats_periods.current_period);
+          }
+        } else if (Array.isArray(j.players_stats)) {
+          const fallback = buildFallbackPeriods(j.players_stats);
+          setPeriodPayload(fallback);
+          setSelectedPeriod(fallback.current_period || "season_current");
         }
         if (j.serverTimestamp) {
           try {
@@ -248,6 +299,22 @@ export default function OyuncularClient({
 
   return (
     <div className="space-y-6">
+      <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
+        <label htmlFor="oyuncular-period-selector" className="block text-sm font-medium text-gray-700 mb-1">Donem Secin:</label>
+        <select
+          id="oyuncular-period-selector"
+          className="form-select block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          value={selectedPeriod}
+          onChange={(e) => setSelectedPeriod(e.target.value)}
+        >
+          {periodOptions.map((period) => (
+            <option key={period.id} value={period.id}>
+              {period.label || period.id}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="bg-gray-100 border border-gray-200 rounded-lg p-2 space-y-2">
         {tabRows.map((row, rowIndex) => (
           <div
@@ -285,7 +352,7 @@ export default function OyuncularClient({
 
         {!selectedStats ? (
           <div className="bg-white border border-gray-200 rounded-lg p-6 text-sm text-gray-600">
-            Bu oyuncu için sezon verisi bulunamadı.
+            Bu oyuncu icin donem verisi bulunamadi.
           </div>
         ) : (
           <div className="space-y-6">

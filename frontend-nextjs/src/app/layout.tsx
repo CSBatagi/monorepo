@@ -45,7 +45,7 @@ async function incrementalRefresh() {
       const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(),'runtime-data');
       await fs.mkdir(runtimeDir,{recursive:true});
       const statFiles = [
-        'night_avg.json','sonmac_by_date.json','sonmac_by_date_all.json','duello_son_mac.json','duello_sezon.json','performance_data.json','players_stats.json','map_stats.json','season_avg_periods.json'
+        'night_avg.json','night_avg_all.json','sonmac_by_date.json','sonmac_by_date_all.json','duello_son_mac.json','duello_sezon.json','performance_data.json','players_stats.json','players_stats_periods.json','map_stats.json','season_avg_periods.json'
       ];
       for (const base of statFiles) {
         const key = base.replace(/\.json$/, '');

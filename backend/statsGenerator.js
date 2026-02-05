@@ -306,9 +306,18 @@ function buildSonmacByDate(sonmacRows, roundRows) {
   return sonmacGrouped;
 }
 
+function applySeasonEndBounds(query, seasonEnd) {
+  if (!seasonEnd) return query;
+  const boundedEndExpr = `'${seasonEnd}'::date`;
+  return query
+    .split('(SELECT latest_match_date FROM match_date_info)').join(boundedEndExpr)
+    .split('WHERE matches.date::date >= (SELECT seasonstart FROM season_start_info)').join(`WHERE matches.date::date >= (SELECT seasonstart FROM season_start_info) AND matches.date::date <= ${boundedEndExpr}`)
+    .split('WHERE m.date::date >= (SELECT seasonstart FROM season_start_info)').join(`WHERE m.date::date >= (SELECT seasonstart FROM season_start_info) AND m.date::date <= ${boundedEndExpr}`);
+}
+
 // Build queries per invocation so updated seasonStart is reflected.
-function buildQueries(seasonStart){
-  return {
+function buildQueries(seasonStart, seasonEnd = null){
+  const queries = {
     seasonAvg: q(`WITH match_date_info AS (SELECT MAX(matches.date::date) AS latest_match_date FROM matches), season_start_info AS (SELECT '${seasonStart}'::date AS seasonstart), match_agg AS ( SELECT p1.steam_id, MAX(p1.name) AS name, AVG(p1.hltv_rating_2) AS hltv_2, AVG(p1.average_damage_per_round) AS adr, AVG(p1.kill_count) AS kills, AVG(p1.death_count) AS deaths, AVG(p1.assist_count) AS assists, AVG(p1.kill_death_ratio) AS kd, AVG(p1.headshot_count) AS headshot_kills, AVG(p1.headshot_percentage) AS headshot_killratio, AVG(p1.first_kill_count) AS first_kill_count, AVG(p1.first_death_count) AS first_death_count, AVG(p1.bomb_planted_count) AS bomb_planted, AVG(p1.bomb_defused_count) AS bomb_defused, AVG(p1.hltv_rating) AS hltv, AVG(p1.mvp_count) AS mvp, AVG(p1.kast) AS kast, AVG(p1.utility_damage) AS utl_dmg, AVG(p1.two_kill_count) AS two_kills, AVG(p1.three_kill_count) AS three_kills, AVG(p1.four_kill_count) AS four_kills, AVG(p1.five_kill_count) AS five_kills, AVG(p1.score) AS score, (SELECT latest_match_date FROM match_date_info) AS latest_match_date, COUNT(*) AS matches_in_interval, COUNT(CASE WHEN matches.winner_name = p1.team_name THEN 1 END) AS win_count, ROUND((COUNT(CASE WHEN matches.winner_name = p1.team_name THEN 1 END)::numeric / COUNT(*) * 100),2) AS win_rate_percentage FROM players p1 INNER JOIN matches ON p1.match_checksum = matches.checksum WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) GROUP BY p1.steam_id ), clutch_agg AS ( SELECT c.clutcher_steam_id AS steam_id, COUNT(*)::numeric AS total_clutches, COUNT(CASE WHEN c.won THEN 1 END)::numeric AS total_clutches_won FROM clutches c JOIN matches m ON c.match_checksum = m.checksum GROUP BY c.clutcher_steam_id ) SELECT m.*, coalesce(c.total_clutches,0) AS total_clutches, coalesce(c.total_clutches_won,0) AS total_clutches_won FROM match_agg m LEFT JOIN clutch_agg c ON m.steam_id = c.steam_id`),
   nightAvg: q(`WITH season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), player_stats_per_date AS ( SELECT p1.steam_id, MAX(p1.name) AS name, matches.date::date AS match_date, AVG(p1.hltv_rating_2) AS hltv_2, AVG(p1.average_damage_per_round) AS adr, AVG(p1.kill_death_ratio) AS kd, AVG(p1.mvp_count) AS mvp, AVG(p1.kill_count) AS kills, AVG(p1.death_count) AS deaths, AVG(p1.assist_count) AS assists, AVG(p1.headshot_count) AS headshot_kills, AVG(p1.headshot_percentage) AS headshot_killratio, AVG(p1.first_kill_count) AS first_kill_count, AVG(p1.first_death_count) AS first_death_count, AVG(p1.bomb_planted_count) AS bomb_planted, AVG(p1.bomb_defused_count) AS bomb_defused, AVG(p1.hltv_rating) AS hltv, AVG(p1.kast) AS kast, AVG(p1.utility_damage) AS utl_dmg, AVG(p1.two_kill_count) AS two_kills, AVG(p1.three_kill_count) AS three_kills, AVG(p1.four_kill_count) AS four_kills, AVG(p1.five_kill_count) AS five_kills, COUNT(*) AS matches_in_interval FROM players p1 INNER JOIN matches ON p1.match_checksum = matches.checksum WHERE matches.date::date >= (SELECT seasonstart FROM season_start_info) GROUP BY p1.steam_id, matches.date::date ), all_player_stats_per_date AS ( SELECT p1.steam_id, matches.date::date AS match_date, AVG(p1.hltv_rating_2) AS hltv_2, AVG(p1.average_damage_per_round) AS adr FROM players p1 INNER JOIN matches ON p1.match_checksum = matches.checksum GROUP BY p1.steam_id, matches.date::date ), prev_10_dates AS ( SELECT psd.steam_id, psd.match_date, ( SELECT array_agg(dates.match_date ORDER BY dates.match_date DESC) FROM ( SELECT DISTINCT m.date::date AS match_date FROM matches m WHERE m.date::date < psd.match_date ORDER BY m.date::date DESC LIMIT 10 ) dates ) AS prev_dates FROM player_stats_per_date psd ), prev_10_agg AS ( SELECT p10.steam_id, p10.match_date, AVG(hist.hltv_2) AS hltv_2_10, AVG(hist.adr) AS adr_10 FROM prev_10_dates p10 LEFT JOIN all_player_stats_per_date hist ON hist.steam_id = p10.steam_id AND hist.match_date = ANY(p10.prev_dates) GROUP BY p10.steam_id, p10.match_date ), clutches_stats AS ( SELECT c.clutcher_steam_id AS steam_id, m.date::date AS match_date, COUNT(*) AS clutches, SUM(CASE WHEN c.won THEN 1 ELSE 0 END) AS clutches_won FROM clutches c INNER JOIN matches m ON c.match_checksum = m.checksum WHERE m.date::date >= (SELECT seasonstart FROM season_start_info) GROUP BY c.clutcher_steam_id, m.date::date ) SELECT psd.*, COALESCE(p10a.hltv_2_10,0) AS hltv_2_10, (psd.hltv_2-COALESCE(p10a.hltv_2_10,0)) AS hltv_2_diff, COALESCE(p10a.adr_10,0) AS adr_10, (psd.adr-COALESCE(p10a.adr_10,0)) AS adr_diff, COALESCE(cs.clutches,0) AS clutches, COALESCE(cs.clutches_won,0) AS clutches_won FROM player_stats_per_date psd LEFT JOIN prev_10_agg p10a ON psd.steam_id=p10a.steam_id AND psd.match_date=p10a.match_date LEFT JOIN clutches_stats cs ON psd.steam_id=cs.steam_id AND cs.match_date=psd.match_date ORDER BY psd.match_date ASC, psd.hltv_2 DESC`),
     last10: q(`WITH last_x_dates AS (SELECT DISTINCT matches.date::date AS unique_date FROM matches ORDER BY unique_date DESC LIMIT 10), date_range AS ( SELECT MIN(unique_date) AS x_days_before, MAX(unique_date) AS latest_match_date FROM last_x_dates ), match_agg AS ( SELECT p1.steam_id, MAX(p1.name) AS name, AVG(p1.hltv_rating_2) AS hltv_2, AVG(p1.average_damage_per_round) AS adr, AVG(p1.kill_count) AS kills, AVG(p1.death_count) AS deaths, AVG(p1.assist_count) AS assists, AVG(p1.kill_death_ratio) AS kd, AVG(p1.headshot_count) AS headshot_kills, AVG(p1.headshot_percentage) AS headshot_killratio, AVG(p1.first_kill_count) AS first_kill_count, AVG(p1.first_death_count) AS first_death_count, AVG(p1.bomb_planted_count) AS bomb_planted, AVG(p1.bomb_defused_count) AS bomb_defused, AVG(p1.hltv_rating) AS hltv, AVG(p1.mvp_count) AS mvp, AVG(p1.kast) AS kast, AVG(p1.utility_damage) AS utl_dmg, AVG(p1.two_kill_count) AS two_kills, AVG(p1.three_kill_count) AS three_kills, AVG(p1.four_kill_count) AS four_kills, AVG(p1.five_kill_count) AS five_kills, AVG(p1.score) AS score, (SELECT latest_match_date FROM date_range) AS latest_match_date, COUNT(*) AS matches_in_interval, ROUND((COUNT(CASE WHEN matches.winner_name = p1.team_name THEN 1 END)::numeric / COUNT(*) * 100),2) AS win_rate_percentage FROM players p1 INNER JOIN matches ON p1.match_checksum = matches.checksum WHERE matches.date::date BETWEEN (SELECT x_days_before FROM date_range) AND (SELECT latest_match_date FROM date_range) GROUP BY p1.steam_id ), clutch_agg AS ( SELECT c.clutcher_steam_id AS steam_id, COUNT(*)::numeric AS total_clutches, COUNT(CASE WHEN c.won THEN 1 END)::numeric AS total_clutches_won FROM clutches c JOIN matches m ON c.match_checksum = m.checksum WHERE m.date::date BETWEEN (SELECT x_days_before FROM date_range) AND (SELECT latest_match_date FROM date_range) GROUP BY c.clutcher_steam_id ) SELECT m.*, coalesce(c.total_clutches,0) AS total_clutches, coalesce(c.total_clutches_won,0) AS total_clutches_won FROM match_agg m LEFT JOIN clutch_agg c ON m.steam_id=c.steam_id`),
@@ -328,121 +337,16 @@ function buildQueries(seasonStart){
     playerWallbangCollateral: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), wallbangs AS ( SELECT k.killer_steam_id AS steam_id, COUNT(*) AS wallbang_kills FROM kills k INNER JOIN season_matches ON k.match_checksum = season_matches.checksum WHERE k.killer_steam_id IS NOT NULL AND k.penetrated_objects > 0 GROUP BY k.killer_steam_id ), collaterals AS ( SELECT k.killer_steam_id AS steam_id, SUM(k.kill_count - 1) AS collateral_kills FROM ( SELECT killer_steam_id, match_checksum, round_number, tick, COUNT(*) AS kill_count FROM kills k INNER JOIN season_matches ON k.match_checksum = season_matches.checksum WHERE k.killer_steam_id IS NOT NULL GROUP BY killer_steam_id, match_checksum, round_number, tick HAVING COUNT(*) > 1 ) k GROUP BY k.killer_steam_id ) SELECT COALESCE(w.steam_id, c.steam_id) AS steam_id, COALESCE(w.wallbang_kills, 0) AS wallbang_kills, COALESCE(c.collateral_kills, 0) AS collateral_kills FROM wallbangs w FULL OUTER JOIN collaterals c ON w.steam_id = c.steam_id`),
     playerClutches: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ) SELECT c.clutcher_steam_id AS steam_id, c.opponent_count, COUNT(*) AS total, COUNT(*) FILTER (WHERE c.won) AS won, COUNT(*) FILTER (WHERE NOT c.won) AS lost, AVG(c.clutcher_kill_count) AS avg_kills, COUNT(*) FILTER (WHERE c.has_clutcher_survived AND NOT c.won) AS saved FROM clutches c INNER JOIN season_matches ON c.match_checksum = season_matches.checksum GROUP BY c.clutcher_steam_id, c.opponent_count`)
   };
+  if (!seasonEnd) return queries;
+  const bounded = {};
+  for (const [key, value] of Object.entries(queries)) {
+    bounded[key] = applySeasonEndBounds(value, seasonEnd);
+  }
+  return bounded;
 }
 
-async function generateAll(pool, opts={}){
-  loadCanonicalNames();
-  if (opts.seasonStart) {
-    sezonbaslangic = opts.seasonStart;
-  }
-  const seasonStarts = normalizeSeasonStarts(opts.seasonStarts, sezonbaslangic);
-  const results = {};
-  let errors = [];
-  const qset = buildQueries(sezonbaslangic);
-  const seasonAvgPeriods = await buildSeasonAvgPeriodsDataset(pool, sezonbaslangic, seasonStarts, errors);
-  results.season_avg_periods = seasonAvgPeriods;
-  results.season_avg = seasonAvgPeriods.data?.[seasonAvgPeriods.current_period] || [];
-  // Night Avg
-  let nightRows = [];
-  try { nightRows = (await pool.query(qset.nightAvg)).rows; } catch(e){ console.error('[statsGenerator] nightAvg query failed', e.message); }
-  const nightGrouped = {};
-  for(const r of nightRows){
-    const dateKey = isoDate(r.match_date); if(!dateKey) continue;
-    if(!nightGrouped[dateKey]) nightGrouped[dateKey]=[];
-    nightGrouped[dateKey].push({ steam_id:r.steam_id, name:normalizedName(r.steam_id, r.name), 'HLTV 2': num(r.hltv_2), 'ADR': num(r.adr), 'K/D': num(r.kd), 'MVP': num(r.mvp), 'Kills': num(r.kills), 'Deaths': num(r.deaths), 'Assists': num(r.assists), 'HS': num(r.headshot_kills), 'HS/Kill ratio': num(r.headshot_killratio), 'First Kill': num(r.first_kill_count), 'First Death': num(r.first_death_count), 'Bomb Planted': num(r.bomb_planted), 'Bomb Defused': num(r.bomb_defused), 'HLTV': num(r.hltv), 'KAST': num(r.kast), 'Utility Damage': num(r.utl_dmg), '2 kills': num(r.two_kills), '3 kills': num(r.three_kills), '4 kills': num(r.four_kills), '5 kills': num(r.five_kills), 'Nr of Matches': num(r.matches_in_interval), 'HLTV2 DIFF': num(r.hltv_2_diff), 'ADR DIFF': num(r.adr_diff), 'Clutch Opportunity': num(r.clutches), 'Clutches Won': num(r.clutches_won) });
-  }
-  results.night_avg = nightGrouped;
-  // Last10
-  let last10Rows = [];
-  try { last10Rows = (await pool.query(qset.last10)).rows; } catch(e){ console.error('[statsGenerator] last10 query failed', e.message); }
-  results.last10 = last10Rows.map(r=>({ steam_id:r.steam_id, name:r.name, hltv_2:num(r.hltv_2), adr:num(r.adr), kd:num(r.kd), mvp:num(r.mvp), kills:num(r.kills), deaths:num(r.deaths), assists:num(r.assists), hs:num(r.headshot_kills), hs_ratio:num(r.headshot_killratio), first_kill:num(r.first_kill_count), first_death:num(r.first_death_count), bomb_planted:num(r.bomb_planted), bomb_defused:num(r.bomb_defused), hltv:num(r.hltv), kast:num(r.kast), utl_dmg:num(r.utl_dmg), two_kills:num(r.two_kills), three_kills:num(r.three_kills), four_kills:num(r.four_kills), five_kills:num(r.five_kills), matches:num(r.matches_in_interval), win_rate:num(r.win_rate_percentage), avg_clutches: safeAvg(num(r.total_clutches), num(r.matches_in_interval)), avg_clutches_won: safeAvg(num(r.total_clutches_won), num(r.matches_in_interval)), clutch_success: pct(num(r.total_clutches_won), num(r.total_clutches)) }));
-  // Sonmac by date
-  let sonmacRows = [];
-  try { sonmacRows = (await pool.query(qset.sonmac)).rows; } catch(e){ console.error('[statsGenerator] sonmac query failed', e.message); }
-  // Sonmac rounds
-  let roundRows = [];
-  try { roundRows = (await pool.query(qset.sonmacRounds)).rows; } catch(e){ console.error('[statsGenerator] sonmacRounds query failed', e.message); }
-  results.sonmac_by_date = buildSonmacByDate(sonmacRows, roundRows);
-  let allTimeSonmacRows = sonmacRows;
-  let allTimeRoundRows = roundRows;
-  if (sezonbaslangic !== ALL_TIME_START) {
-    const allTimeQset = buildQueries(ALL_TIME_START);
-    try {
-      allTimeSonmacRows = (await pool.query(allTimeQset.sonmac)).rows;
-    } catch (e) {
-      console.error('[statsGenerator] sonmac all-time query failed', e.message);
-      errors.push({ dataset: 'sonmac_by_date_all', error: e.message });
-      allTimeSonmacRows = sonmacRows;
-    }
-    try {
-      allTimeRoundRows = (await pool.query(allTimeQset.sonmacRounds)).rows;
-    } catch (e) {
-      console.error('[statsGenerator] sonmacRounds all-time query failed', e.message);
-      errors.push({ dataset: 'sonmac_by_date_all_rounds', error: e.message });
-      allTimeRoundRows = roundRows;
-    }
-  }
-  results.sonmac_by_date_all = buildSonmacByDate(allTimeSonmacRows, allTimeRoundRows);
-  // Duello last match
-  let dLastRows = [];
-  try { dLastRows = (await pool.query(qset.duello_son_mac)).rows; } catch(e){ console.error('[statsGenerator] duello_son_mac query failed', e.message); }
-  results.duello_son_mac = buildDuello(dLastRows);
-  // Duello season
-  let dSeasonRows = [];
-  try { dSeasonRows = (await pool.query(qset.duello_sezon)).rows; } catch(e){ console.error('[statsGenerator] duello_sezon query failed', e.message); }
-  results.duello_sezon = buildDuello(dSeasonRows);
-  // Performance graphs
-  let perfRows = [];
-  try { perfRows = (await pool.query(qset.performanceGraphs)).rows; } catch(e){ console.error('[statsGenerator] performanceGraphs query failed', e.message); }
-  const perfGrouped = {};
-  for(const r of perfRows){
-    const name = normalizedName(r.steam_id, r.name); if(!perfGrouped[name]) perfGrouped[name]={ name, steam_id: r.steam_id, performance: [] };
-    perfGrouped[name].performance.push({ match_date: r.match_date ? new Date(r.match_date).toISOString() : null, hltv_2: numOrNull(r.hltv_2), adr: numOrNull(r.adr) });
-  }
-  results.performance_data = Object.values(perfGrouped).sort((a,b)=>a.name.localeCompare(b.name));
-  // Map stats
-  let mapStatsRows = [];
-  try { mapStatsRows = (await pool.query(qset.mapStats)).rows; } catch(e){ console.error('[statsGenerator] mapStats query failed', e.message); errors.push({ dataset:'map_stats', error:e.message }); }
-  const mapStatsByName = {};
-  for (const r of mapStatsRows) {
-    const mapName = r.map_name;
-    if (!mapName) continue;
-    if (!mapStatsByName[mapName]) {
-      mapStatsByName[mapName] = {
-        map_name: mapName,
-        matches_played: 0,
-        ct_round_wins: 0,
-        t_round_wins: 0,
-        ct_win_pct: 0,
-        t_win_pct: 0,
-        by_player_count: {}
-      };
-    }
-    const matchesPlayed = num(r.matches_played);
-    const ctRounds = num(r.ct_round_wins);
-    const tRounds = num(r.t_round_wins);
-    const bucket = r.players_bucket === null || r.players_bucket === undefined ? null : num(r.players_bucket);
-    if (bucket === null) {
-      mapStatsByName[mapName].matches_played = matchesPlayed;
-      mapStatsByName[mapName].ct_round_wins = ctRounds;
-      mapStatsByName[mapName].t_round_wins = tRounds;
-    } else {
-      mapStatsByName[mapName].by_player_count[String(bucket)] = {
-        matches_played: matchesPlayed,
-        ct_round_wins: ctRounds,
-        t_round_wins: tRounds,
-        ct_win_pct: pct(ctRounds, ctRounds + tRounds),
-        t_win_pct: pct(tRounds, ctRounds + tRounds)
-      };
-    }
-  }
-  for (const stats of Object.values(mapStatsByName)) {
-    const totalRounds = num(stats.ct_round_wins) + num(stats.t_round_wins);
-    stats.ct_win_pct = pct(stats.ct_round_wins, totalRounds);
-    stats.t_win_pct = pct(stats.t_round_wins, totalRounds);
-  }
-  results.map_stats = Object.values(mapStatsByName).sort((a,b)=>a.map_name.localeCompare(b.map_name));
-  // Players stats (Oyuncular page)
+
+async function buildPlayersStats(pool, qset, errors, labelPrefix = 'players_stats') {
   let playerOverviewRows = [];
   let playerRoundsRows = [];
   let weaponKillsRows = [];
@@ -452,15 +356,15 @@ async function generateAll(pool, opts={}){
   let inspectionDeathRows = [];
   let wallbangCollateralRows = [];
   let clutchRows = [];
-  try { playerOverviewRows = (await pool.query(qset.playerOverview)).rows; } catch(e){ console.error('[statsGenerator] playerOverview query failed', e.message); errors.push({ dataset:'player_overview', error:e.message }); }
-  try { playerRoundsRows = (await pool.query(qset.playerRounds)).rows; } catch(e){ console.error('[statsGenerator] playerRounds query failed', e.message); errors.push({ dataset:'player_rounds', error:e.message }); }
-  try { weaponKillsRows = (await pool.query(qset.playerWeaponKills)).rows; } catch(e){ console.error('[statsGenerator] playerWeaponKills query failed', e.message); errors.push({ dataset:'player_weapon_kills', error:e.message }); }
-  try { weaponShotsRows = (await pool.query(qset.playerWeaponShots)).rows; } catch(e){ console.error('[statsGenerator] playerWeaponShots query failed', e.message); errors.push({ dataset:'player_weapon_shots', error:e.message }); }
-  try { weaponDamageRows = (await pool.query(qset.playerWeaponDamage)).rows; } catch(e){ console.error('[statsGenerator] playerWeaponDamage query failed', e.message); errors.push({ dataset:'player_weapon_damage', error:e.message }); }
-  try { utilitiesRows = (await pool.query(qset.playerUtilities)).rows; } catch(e){ console.error('[statsGenerator] playerUtilities query failed', e.message); errors.push({ dataset:'player_utilities', error:e.message }); }
-  try { inspectionDeathRows = (await pool.query(qset.playerInspectionDeaths)).rows; } catch(e){ console.error('[statsGenerator] playerInspectionDeaths query failed', e.message); errors.push({ dataset:'player_inspection_deaths', error:e.message }); }
-  try { wallbangCollateralRows = (await pool.query(qset.playerWallbangCollateral)).rows; } catch(e){ console.error('[statsGenerator] playerWallbangCollateral query failed', e.message); errors.push({ dataset:'player_wallbang_collateral', error:e.message }); }
-  try { clutchRows = (await pool.query(qset.playerClutches)).rows; } catch(e){ console.error('[statsGenerator] playerClutches query failed', e.message); errors.push({ dataset:'player_clutches', error:e.message }); }
+  try { playerOverviewRows = (await pool.query(qset.playerOverview)).rows; } catch(e){ console.error('[statsGenerator] playerOverview query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_overview`, error:e.message }); }
+  try { playerRoundsRows = (await pool.query(qset.playerRounds)).rows; } catch(e){ console.error('[statsGenerator] playerRounds query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_rounds`, error:e.message }); }
+  try { weaponKillsRows = (await pool.query(qset.playerWeaponKills)).rows; } catch(e){ console.error('[statsGenerator] playerWeaponKills query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_weapon_kills`, error:e.message }); }
+  try { weaponShotsRows = (await pool.query(qset.playerWeaponShots)).rows; } catch(e){ console.error('[statsGenerator] playerWeaponShots query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_weapon_shots`, error:e.message }); }
+  try { weaponDamageRows = (await pool.query(qset.playerWeaponDamage)).rows; } catch(e){ console.error('[statsGenerator] playerWeaponDamage query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_weapon_damage`, error:e.message }); }
+  try { utilitiesRows = (await pool.query(qset.playerUtilities)).rows; } catch(e){ console.error('[statsGenerator] playerUtilities query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_utilities`, error:e.message }); }
+  try { inspectionDeathRows = (await pool.query(qset.playerInspectionDeaths)).rows; } catch(e){ console.error('[statsGenerator] playerInspectionDeaths query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_inspection_deaths`, error:e.message }); }
+  try { wallbangCollateralRows = (await pool.query(qset.playerWallbangCollateral)).rows; } catch(e){ console.error('[statsGenerator] playerWallbangCollateral query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_wallbang_collateral`, error:e.message }); }
+  try { clutchRows = (await pool.query(qset.playerClutches)).rows; } catch(e){ console.error('[statsGenerator] playerClutches query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_clutches`, error:e.message }); }
 
   const playersById = {};
   const weaponsByPlayer = {};
@@ -696,7 +600,189 @@ async function generateAll(pool, opts={}){
   for (const [steamId, name] of Object.entries(canonicalNames)) {
     ensurePlayer(steamId, name);
   }
-  results.players_stats = Object.values(playersById).sort((a, b) => a.name.localeCompare(b.name));
+  return Object.values(playersById).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function mapNightAvgRows(rows) {
+  const grouped = {};
+  for (const r of rows) {
+    const dateKey = isoDate(r.match_date);
+    if (!dateKey) continue;
+    if (!grouped[dateKey]) grouped[dateKey] = [];
+    grouped[dateKey].push({
+      steam_id: r.steam_id,
+      name: normalizedName(r.steam_id, r.name),
+      'HLTV 2': num(r.hltv_2),
+      'ADR': num(r.adr),
+      'K/D': num(r.kd),
+      'MVP': num(r.mvp),
+      'Kills': num(r.kills),
+      'Deaths': num(r.deaths),
+      'Assists': num(r.assists),
+      'HS': num(r.headshot_kills),
+      'HS/Kill ratio': num(r.headshot_killratio),
+      'First Kill': num(r.first_kill_count),
+      'First Death': num(r.first_death_count),
+      'Bomb Planted': num(r.bomb_planted),
+      'Bomb Defused': num(r.bomb_defused),
+      'HLTV': num(r.hltv),
+      'KAST': num(r.kast),
+      'Utility Damage': num(r.utl_dmg),
+      '2 kills': num(r.two_kills),
+      '3 kills': num(r.three_kills),
+      '4 kills': num(r.four_kills),
+      '5 kills': num(r.five_kills),
+      'Nr of Matches': num(r.matches_in_interval),
+      'HLTV2 DIFF': num(r.hltv_2_diff),
+      'ADR DIFF': num(r.adr_diff),
+      'Clutch Opportunity': num(r.clutches),
+      'Clutches Won': num(r.clutches_won),
+    });
+  }
+  return grouped;
+}
+
+function mapPerformanceRows(rows) {
+  const grouped = {};
+  for (const r of rows) {
+    const name = normalizedName(r.steam_id, r.name);
+    if (!grouped[name]) grouped[name] = { name, steam_id: r.steam_id, performance: [] };
+    grouped[name].performance.push({
+      match_date: r.match_date ? new Date(r.match_date).toISOString() : null,
+      hltv_2: numOrNull(r.hltv_2),
+      adr: numOrNull(r.adr),
+    });
+  }
+  return Object.values(grouped).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+async function generateAll(pool, opts={}){
+  loadCanonicalNames();
+  if (opts.seasonStart) {
+    sezonbaslangic = opts.seasonStart;
+  }
+  const seasonStarts = normalizeSeasonStarts(opts.seasonStarts, sezonbaslangic);
+  const results = {};
+  let errors = [];
+  const qset = buildQueries(sezonbaslangic);
+  const allTimeQset = sezonbaslangic === ALL_TIME_START ? qset : buildQueries(ALL_TIME_START);
+  const seasonAvgPeriods = await buildSeasonAvgPeriodsDataset(pool, sezonbaslangic, seasonStarts, errors);
+  results.season_avg_periods = seasonAvgPeriods;
+  results.season_avg = seasonAvgPeriods.data?.[seasonAvgPeriods.current_period] || [];
+  // Night Avg
+  let nightRows = [];
+  try { nightRows = (await pool.query(qset.nightAvg)).rows; } catch(e){ console.error('[statsGenerator] nightAvg query failed', e.message); }
+  results.night_avg = mapNightAvgRows(nightRows);
+  let nightRowsAll = nightRows;
+  if (sezonbaslangic !== ALL_TIME_START) {
+    try { nightRowsAll = (await pool.query(allTimeQset.nightAvg)).rows; } catch(e){ console.error('[statsGenerator] nightAvg all-time query failed', e.message); errors.push({ dataset:'night_avg_all', error:e.message }); }
+  }
+  results.night_avg_all = mapNightAvgRows(nightRowsAll);
+  // Last10
+  let last10Rows = [];
+  try { last10Rows = (await pool.query(qset.last10)).rows; } catch(e){ console.error('[statsGenerator] last10 query failed', e.message); }
+  results.last10 = last10Rows.map(r=>({ steam_id:r.steam_id, name:r.name, hltv_2:num(r.hltv_2), adr:num(r.adr), kd:num(r.kd), mvp:num(r.mvp), kills:num(r.kills), deaths:num(r.deaths), assists:num(r.assists), hs:num(r.headshot_kills), hs_ratio:num(r.headshot_killratio), first_kill:num(r.first_kill_count), first_death:num(r.first_death_count), bomb_planted:num(r.bomb_planted), bomb_defused:num(r.bomb_defused), hltv:num(r.hltv), kast:num(r.kast), utl_dmg:num(r.utl_dmg), two_kills:num(r.two_kills), three_kills:num(r.three_kills), four_kills:num(r.four_kills), five_kills:num(r.five_kills), matches:num(r.matches_in_interval), win_rate:num(r.win_rate_percentage), avg_clutches: safeAvg(num(r.total_clutches), num(r.matches_in_interval)), avg_clutches_won: safeAvg(num(r.total_clutches_won), num(r.matches_in_interval)), clutch_success: pct(num(r.total_clutches_won), num(r.total_clutches)) }));
+  // Sonmac by date
+  let sonmacRows = [];
+  try { sonmacRows = (await pool.query(qset.sonmac)).rows; } catch(e){ console.error('[statsGenerator] sonmac query failed', e.message); }
+  // Sonmac rounds
+  let roundRows = [];
+  try { roundRows = (await pool.query(qset.sonmacRounds)).rows; } catch(e){ console.error('[statsGenerator] sonmacRounds query failed', e.message); }
+  results.sonmac_by_date = buildSonmacByDate(sonmacRows, roundRows);
+  let allTimeSonmacRows = sonmacRows;
+  let allTimeRoundRows = roundRows;
+  if (sezonbaslangic !== ALL_TIME_START) {
+    try {
+      allTimeSonmacRows = (await pool.query(allTimeQset.sonmac)).rows;
+    } catch (e) {
+      console.error('[statsGenerator] sonmac all-time query failed', e.message);
+      errors.push({ dataset: 'sonmac_by_date_all', error: e.message });
+      allTimeSonmacRows = sonmacRows;
+    }
+    try {
+      allTimeRoundRows = (await pool.query(allTimeQset.sonmacRounds)).rows;
+    } catch (e) {
+      console.error('[statsGenerator] sonmacRounds all-time query failed', e.message);
+      errors.push({ dataset: 'sonmac_by_date_all_rounds', error: e.message });
+      allTimeRoundRows = roundRows;
+    }
+  }
+  results.sonmac_by_date_all = buildSonmacByDate(allTimeSonmacRows, allTimeRoundRows);
+  // Duello last match
+  let dLastRows = [];
+  try { dLastRows = (await pool.query(qset.duello_son_mac)).rows; } catch(e){ console.error('[statsGenerator] duello_son_mac query failed', e.message); }
+  results.duello_son_mac = buildDuello(dLastRows);
+  // Duello season
+  let dSeasonRows = [];
+  try { dSeasonRows = (await pool.query(qset.duello_sezon)).rows; } catch(e){ console.error('[statsGenerator] duello_sezon query failed', e.message); }
+  results.duello_sezon = buildDuello(dSeasonRows);
+  // Performance graphs
+  let perfRows = [];
+  try { perfRows = (await pool.query(qset.performanceGraphs)).rows; } catch(e){ console.error('[statsGenerator] performanceGraphs query failed', e.message); }
+  results.performance_data = mapPerformanceRows(perfRows);
+  // Map stats
+  let mapStatsRows = [];
+  try { mapStatsRows = (await pool.query(qset.mapStats)).rows; } catch(e){ console.error('[statsGenerator] mapStats query failed', e.message); errors.push({ dataset:'map_stats', error:e.message }); }
+  const mapStatsByName = {};
+  for (const r of mapStatsRows) {
+    const mapName = r.map_name;
+    if (!mapName) continue;
+    if (!mapStatsByName[mapName]) {
+      mapStatsByName[mapName] = {
+        map_name: mapName,
+        matches_played: 0,
+        ct_round_wins: 0,
+        t_round_wins: 0,
+        ct_win_pct: 0,
+        t_win_pct: 0,
+        by_player_count: {}
+      };
+    }
+    const matchesPlayed = num(r.matches_played);
+    const ctRounds = num(r.ct_round_wins);
+    const tRounds = num(r.t_round_wins);
+    const bucket = r.players_bucket === null || r.players_bucket === undefined ? null : num(r.players_bucket);
+    if (bucket === null) {
+      mapStatsByName[mapName].matches_played = matchesPlayed;
+      mapStatsByName[mapName].ct_round_wins = ctRounds;
+      mapStatsByName[mapName].t_round_wins = tRounds;
+    } else {
+      mapStatsByName[mapName].by_player_count[String(bucket)] = {
+        matches_played: matchesPlayed,
+        ct_round_wins: ctRounds,
+        t_round_wins: tRounds,
+        ct_win_pct: pct(ctRounds, ctRounds + tRounds),
+        t_win_pct: pct(tRounds, ctRounds + tRounds)
+      };
+    }
+  }
+  for (const stats of Object.values(mapStatsByName)) {
+    const totalRounds = num(stats.ct_round_wins) + num(stats.t_round_wins);
+    stats.ct_win_pct = pct(stats.ct_round_wins, totalRounds);
+    stats.t_win_pct = pct(stats.t_round_wins, totalRounds);
+  }
+  results.map_stats = Object.values(mapStatsByName).sort((a,b)=>a.map_name.localeCompare(b.map_name));
+  results.players_stats = await buildPlayersStats(pool, qset, errors);
+  const playersStatsPeriods = {
+    current_period: seasonAvgPeriods.current_period,
+    season_starts: seasonAvgPeriods.season_starts,
+    periods: seasonAvgPeriods.periods,
+    data: {},
+  };
+  for (const period of seasonAvgPeriods.periods || []) {
+    if (!period || !period.id) continue;
+    if (period.id === seasonAvgPeriods.current_period) {
+      playersStatsPeriods.data[period.id] = results.players_stats;
+      continue;
+    }
+    if (period.id === 'all_time') {
+      playersStatsPeriods.data[period.id] = await buildPlayersStats(pool, allTimeQset, errors, `players_stats:${period.id}`);
+      continue;
+    }
+    const periodQset = buildQueries(period.start_date || sezonbaslangic, period.end_date || null);
+    playersStatsPeriods.data[period.id] = await buildPlayersStats(pool, periodQset, errors, `players_stats:${period.id}`);
+  }
+  results.players_stats_periods = playersStatsPeriods;
   if(errors.length) results.__errors = errors;
   return results;
 }

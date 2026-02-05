@@ -194,6 +194,7 @@ app.get('/stats/diagnostics', async (req, res) => {
         season_avg: Array.isArray(lastGeneratedData.season_avg)? lastGeneratedData.season_avg.length : 0,
         season_avg_periods: lastGeneratedData.season_avg_periods ? Object.keys(lastGeneratedData.season_avg_periods.data || {}).length : 0,
         night_avg_dates: lastGeneratedData.night_avg ? Object.keys(lastGeneratedData.night_avg).length : 0,
+        night_avg_all_dates: lastGeneratedData.night_avg_all ? Object.keys(lastGeneratedData.night_avg_all).length : 0,
         last10: Array.isArray(lastGeneratedData.last10)? lastGeneratedData.last10.length : 0,
         sonmac_dates: lastGeneratedData.sonmac_by_date ? Object.keys(lastGeneratedData.sonmac_by_date).length : 0,
         sonmac_all_dates: lastGeneratedData.sonmac_by_date_all ? Object.keys(lastGeneratedData.sonmac_by_date_all).length : 0,
@@ -201,6 +202,7 @@ app.get('/stats/diagnostics', async (req, res) => {
         duello_sezon_rows: lastGeneratedData.duello_sezon ? lastGeneratedData.duello_sezon.playerRows?.length : 0,
         performance_players: Array.isArray(lastGeneratedData.performance_data)? lastGeneratedData.performance_data.length : 0,
         players_stats: Array.isArray(lastGeneratedData.players_stats)? lastGeneratedData.players_stats.length : 0,
+        players_stats_periods: lastGeneratedData.players_stats_periods ? Object.keys(lastGeneratedData.players_stats_periods.data || {}).length : 0,
         map_stats: Array.isArray(lastGeneratedData.map_stats)? lastGeneratedData.map_stats.length : 0,
         errors: lastGeneratedData.__errors || []
       };
