@@ -248,6 +248,13 @@ export default function AttendancePage() {
       });
       
       // Team Picker Resets
+      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamA/players`] = null;
+      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamB/players`] = null;
+      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamA/captainSteamId`] = "";
+      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamB/captainSteamId`] = "";
+      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamA/nameMode`] = "generic";
+      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamB/nameMode`] = "generic";
+      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/playerStatsOverrides`] = null;
       firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamA/kabile`] = "";
       firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamB/kabile`] = "";
       for (let i = 1; i <= 3; i++) {
