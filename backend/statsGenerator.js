@@ -11,6 +11,18 @@ let sezonbaslangic = process.env.SEZON_BASLANGIC || '2025-06-09';
 // Canonical player names lookup
 let canonicalNames = {};
 
+// In-memory cache for historical (completed) season data.
+// Keyed by period ID (e.g. 'season_2025-02-10').
+// Only completed seasons are cached; current season and all-time are always recomputed.
+const historicalSeasonAvgCache = {};
+const historicalPlayersStatsCache = {};
+
+function clearHistoricalCache() {
+  for (const key of Object.keys(historicalSeasonAvgCache)) delete historicalSeasonAvgCache[key];
+  for (const key of Object.keys(historicalPlayersStatsCache)) delete historicalPlayersStatsCache[key];
+  console.log('[statsGenerator] Historical season cache cleared');
+}
+
 function loadCanonicalNames() {
   const paths = [
     process.env.PLAYERS_FILE,  // Explicit override
@@ -200,9 +212,20 @@ async function buildSeasonAvgPeriodsDataset(pool, currentSeasonStart, configured
   };
 
   for (const period of seasonPeriods) {
+    // Use cache for completed (non-current) seasons
+    if (!period.is_current && historicalSeasonAvgCache[period.id]) {
+      console.log(`[statsGenerator] Using cached season_avg for ${period.id}`);
+      payload.data[period.id] = historicalSeasonAvgCache[period.id];
+      continue;
+    }
     try {
       const rows = (await pool.query(buildSeasonAvgRangeQuery(period.start_date, period.end_date))).rows;
       payload.data[period.id] = mapSeasonAvgRows(rows);
+      // Cache completed seasons
+      if (!period.is_current) {
+        historicalSeasonAvgCache[period.id] = payload.data[period.id];
+        console.log(`[statsGenerator] Cached season_avg for ${period.id}`);
+      }
     } catch (e) {
       console.error(`[statsGenerator] season_avg period query failed (${period.id})`, e.message);
       payload.data[period.id] = [];
@@ -775,12 +798,24 @@ async function generateAll(pool, opts={}){
       playersStatsPeriods.data[period.id] = results.players_stats;
       continue;
     }
+    // Use cache for completed (non-current, non-all-time) seasons
+    if (period.id !== 'all_time' && !period.is_current && historicalPlayersStatsCache[period.id]) {
+      console.log(`[statsGenerator] Using cached players_stats for ${period.id}`);
+      playersStatsPeriods.data[period.id] = historicalPlayersStatsCache[period.id];
+      continue;
+    }
     if (period.id === 'all_time') {
       playersStatsPeriods.data[period.id] = await buildPlayersStats(pool, allTimeQset, errors, `players_stats:${period.id}`);
       continue;
     }
     const periodQset = buildQueries(period.start_date || sezonbaslangic, period.end_date || null);
-    playersStatsPeriods.data[period.id] = await buildPlayersStats(pool, periodQset, errors, `players_stats:${period.id}`);
+    const periodData = await buildPlayersStats(pool, periodQset, errors, `players_stats:${period.id}`);
+    playersStatsPeriods.data[period.id] = periodData;
+    // Cache completed seasons
+    if (!period.is_current) {
+      historicalPlayersStatsCache[period.id] = periodData;
+      console.log(`[statsGenerator] Cached players_stats for ${period.id}`);
+    }
   }
   results.players_stats_periods = playersStatsPeriods;
   if(errors.length) results.__errors = errors;
@@ -828,4 +863,4 @@ async function generateAggregates(pool, opts = {}) {
   return out;
 }
 
-module.exports = { generateAll, generateAggregates };
+module.exports = { generateAll, generateAggregates, clearHistoricalCache };

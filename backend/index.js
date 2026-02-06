@@ -37,8 +37,9 @@ if (!TEST_MODE) {
 }
 
 // Utility: get last updated date from critical tables (matches & players)
-async function fetchLastDataTimestamp() {
-  // Using greatest of max dates across relevant tables; adjust if you add more tables influencing stats
+// This queries the DB directly – should only be called by the background poller,
+// never in request hot paths.
+async function fetchLastDataTimestampFromDB() {
   if (TEST_MODE) {
     // In test mode return a deterministic moving timestamp (increments per call)
     if (!global.__testLastTs) {
@@ -51,16 +52,13 @@ async function fetchLastDataTimestamp() {
   }
   // Check both matches.date (for new entries) and updated_at columns (for modifications).
   // Uses GREATEST to pick the most recent change across all tracked tables.
-  // Falls back gracefully if updated_at columns don't exist yet.
+  // NOTE: Uses subqueries instead of LEFT JOIN ON TRUE to avoid cartesian product.
   const query = `
     SELECT GREATEST(
-      COALESCE(MAX(m.date), '1970-01-01'::timestamp),
-      COALESCE(MAX(m.updated_at), '1970-01-01'::timestamp),
-      COALESCE(MAX(p.updated_at), '1970-01-01'::timestamp)
-    ) AS last_change
-    FROM matches m
-    LEFT JOIN players p ON TRUE
-    LIMIT 1;`;
+      COALESCE((SELECT MAX(date) FROM matches), '1970-01-01'::timestamp),
+      COALESCE((SELECT MAX(updated_at) FROM matches), '1970-01-01'::timestamp),
+      COALESCE((SELECT MAX(updated_at) FROM players), '1970-01-01'::timestamp)
+    ) AS last_change;`;
   try {
     const r = await pool.query(query);
     return r.rows[0]?.last_change || null;
@@ -77,8 +75,37 @@ async function fetchLastDataTimestamp() {
   }
 }
 
-// Lazy load & reuse the update-stats logic by spawning node process (decoupled from backend container codebase path)
-const { generateAll, generateAggregates } = require('./statsGenerator');
+// --- Cached timestamp poller ---
+// The DB timestamp is polled in the background every 60s.
+// All request handlers read from memory, ZERO DB cost per page load.
+const DB_POLL_INTERVAL_MS = 60 * 1000; // 60 seconds
+let cachedLastDataTimestamp = null; // in-memory cache of last DB data timestamp
+
+async function pollDataTimestamp() {
+  try {
+    const ts = await fetchLastDataTimestampFromDB();
+    if (ts) cachedLastDataTimestamp = new Date(ts);
+  } catch (e) {
+    console.error('[timestamp-poller] Error polling DB timestamp:', e.message);
+  }
+}
+
+// Returns the cached timestamp (never hits DB)
+function getCachedDataTimestamp() {
+  if (TEST_MODE) return fetchLastDataTimestampFromDB(); // test mode needs async per-call
+  return cachedLastDataTimestamp;
+}
+
+// Start background poller (only in production)
+if (!TEST_MODE) {
+  // Initial poll on startup
+  pollDataTimestamp().then(() => {
+    console.log('[timestamp-poller] Initial DB timestamp:', cachedLastDataTimestamp);
+  });
+  setInterval(pollDataTimestamp, DB_POLL_INTERVAL_MS);
+}
+
+const { generateAll, generateAggregates, clearHistoricalCache } = require('./statsGenerator');
 
 let cachedSeasonConfig = resolveSeasonConfig();
 let cachedSeasonStart = cachedSeasonConfig.seasonStart;
@@ -117,11 +144,12 @@ app.get('/stats/aggregates', async (req, res) => {
 });
 
 // Incremental endpoint: supply lastKnownTs; if no new base data, respond updated:false + serverTimestamp only.
-// If new data, regenerate only FULL set once and respond with changed datasets (same behavior as check-and-update without includeAll).
+// If new data, regenerate only FULL set once and respond with changed datasets.
+// NOTE: This uses the in-memory cached timestamp — ZERO DB cost per request.
 app.get('/stats/incremental', async (req, res) => {
   try {
     const clientTs = req.query.lastKnownTs ? new Date(req.query.lastKnownTs) : null;
-    const serverLastTs = await fetchLastDataTimestamp();
+    const serverLastTs = TEST_MODE ? await getCachedDataTimestamp() : getCachedDataTimestamp();
     if (!serverLastTs) return res.status(500).json({ error: 'timestamp_unavailable' });
     const serverDate = new Date(serverLastTs);
     const needs = !clientTs || serverDate > clientTs;
@@ -155,6 +183,8 @@ app.post('/stats/force-regenerate', async (req, res) => {
     console.log('[force-regenerate] Manual regeneration triggered');
     // Clear cached timestamp to force regeneration
     lastGeneratedServerTimestamp = null;
+    // Clear historical season cache so all periods are recomputed from scratch
+    clearHistoricalCache();
     
     // Always run fresh generation (bypass any in-progress promise)
     cachedSeasonConfig = resolveSeasonConfig();
@@ -162,7 +192,9 @@ app.post('/stats/force-regenerate', async (req, res) => {
     cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
     const result = await runStatsUpdateScript();
     
-    const serverLastTs = await fetchLastDataTimestamp();
+    // Refresh the cached timestamp immediately so next incremental check sees the new state
+    await pollDataTimestamp();
+    const serverLastTs = cachedLastDataTimestamp;
     if (serverLastTs) {
       lastGeneratedServerTimestamp = new Date(serverLastTs);
       lastGeneratedData = result.data;
@@ -231,35 +263,6 @@ app.use((req, res, next) => {
     return res.status(403).json({ error: 'Unauthorized' });
   }
   next();
-});
-
-// POST endpoint to execute a query
-app.post('/execute-query', async (req, res) => {
-  try {
-    const { query } = req.body; // Get the query from the request body
-
-    if (!query) {
-      return res.status(400).json({ error: 'Query is required in the request body.' });
-    }
-
-    try {
-      const result = await pool.query(query);
-
-      // Build the response structure
-      const response = {
-        columns: result.fields.map(field => field.name), // Extract column names
-        rows: result.rows.map(row => Object.values(row)), // Convert row objects to arrays
-      };
-
-      res.json(response);
-    } catch (err) {
-      console.error('Error executing query:', err);
-      res.status(500).json({ error: 'Failed to execute query.', details: err.message });
-    }
-  } catch (err) {
-    console.error('Error parsing request body:', err);
-    res.status(400).json({ error: 'Failed to parse request body.', details: err.message });
-  }
 });
 
 // POST  endpoint to store a match json and stores in the memory until the GET end point is called

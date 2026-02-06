@@ -22,6 +22,8 @@ export const metadata: Metadata = {
 };
 
 let lastServerKnownTs: string | null = null; // per server runtime
+let lastRefreshTime = 0; // epoch ms of last backend call
+const REFRESH_COOLDOWN_MS = 60 * 1000; // 60 seconds - backend call is cheap (in-memory timestamp comparison only)
 const tsPersistPath = path.join(process.cwd(), 'runtime-data', 'last_timestamp.txt');
 async function loadPersistedTs(){
   try { const raw = await fs.readFile(tsPersistPath,'utf-8'); lastServerKnownTs = raw.trim() || null; } catch {}
@@ -31,6 +33,11 @@ async function persistTs(ts:string){
 }
 
 async function incrementalRefresh() {
+  // Cooldown: skip backend call if we checked recently
+  const now = Date.now();
+  if (now - lastRefreshTime < REFRESH_COOLDOWN_MS) return;
+  lastRefreshTime = now;
+
   const backendBase = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
   const url = new URL('/stats/incremental', backendBase);
   if (lastServerKnownTs) url.searchParams.set('lastKnownTs', lastServerKnownTs);

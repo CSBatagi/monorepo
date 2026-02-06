@@ -37,5 +37,4 @@ Open `http://localhost:3000`.
 ## Notes
 
 - Runtime stats architecture uses `/stats/incremental` and `/stats/aggregates`.
-- Legacy `/stats/check-and-update` route is removed from runtime flow.
 - Season boundaries live in `frontend-nextjs/public/data/season_start.json`.

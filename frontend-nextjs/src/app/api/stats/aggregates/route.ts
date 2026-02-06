@@ -2,10 +2,19 @@ import { NextRequest } from 'next/server';
 import path from 'path';
 import fs from 'fs/promises';
 
-// Aggregates are always refreshed on-demand.
+// Aggregates have a cooldown to avoid hammering the backend.
 const AGG_FILES = ['season_avg.json','season_avg_periods.json','last10.json'];
+let lastAggregateTime = 0;
+let cachedAggregateResponse: string | null = null;
+const AGG_COOLDOWN_MS = 60 * 1000; // 60 seconds
 
 export async function GET(req: NextRequest) {
+  // Return cached response if within cooldown
+  const now = Date.now();
+  if (cachedAggregateResponse && (now - lastAggregateTime < AGG_COOLDOWN_MS)) {
+    return new Response(cachedAggregateResponse, { status: 200, headers:{'Content-Type':'application/json','Cache-Control':'no-store'} });
+  }
+
   const backendBase = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
   const url = `${backendBase}/stats/aggregates?_cb=${Date.now()}`;
   let data: any = null;
@@ -27,5 +36,8 @@ export async function GET(req: NextRequest) {
       try { await fs.writeFile(path.join(runtimeDir, base), JSON.stringify(data[key], null, 2), 'utf-8'); } catch {}
     }
   }
-  return new Response(JSON.stringify(data), { status: 200, headers:{'Content-Type':'application/json','Cache-Control':'no-store'} });
+  const responseBody = JSON.stringify(data);
+  cachedAggregateResponse = responseBody;
+  lastAggregateTime = Date.now();
+  return new Response(responseBody, { status: 200, headers:{'Content-Type':'application/json','Cache-Control':'no-store'} });
 }

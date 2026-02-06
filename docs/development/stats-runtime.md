@@ -69,9 +69,9 @@ Update all of the following together:
 ## Diagnostics and Notes
 
 - Main backend stats routes:
-  - `GET /stats/incremental`
-  - `GET /stats/aggregates`
-  - `POST /stats/force-regenerate`
-  - `GET /stats/diagnostics`
-- Legacy route `/stats/check-and-update` is deprecated and should not be used in new code.
-- Some older backend tests still target `/stats/check-and-update` and may fail until updated.
+  - `GET /stats/incremental` — checks cached DB timestamp (zero DB cost), regenerates if data changed
+  - `GET /stats/aggregates` — recomputes season_avg + last10 on demand
+  - `POST /stats/force-regenerate` — admin-only, clears all caches and regenerates everything
+  - `GET /stats/diagnostics` — returns cached dataset sizes and season config
+- Backend polls the DB timestamp every 60s in the background. Page loads never hit the DB directly.
+- Historical (completed) season data is cached in memory and only recomputed on force-regenerate.
