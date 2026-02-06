@@ -110,6 +110,123 @@ export function displayNameForSteamId(steamId: string, index: PlayersIndex): str
   return (p?.name || steamId).trim();
 }
 
+// Analyzes maps for a night and returns which maps are "main league" vs "casual third match"
+function getMainLeagueMapsForDate(sonmacByDate: SonmacByDate, date: string): string[] | null {
+  const night = date ? sonmacByDate?.[date] : null;
+  const maps = night?.maps;
+  if (!maps) return null;
+
+  const mapNames = Object.keys(maps);
+  if (mapNames.length <= 2) {
+    // 2 or fewer maps - all are main league
+    return mapNames;
+  }
+
+  if (mapNames.length === 3) {
+    // 3 maps - check if the 3rd map has different teams than the first 2
+    const map1 = maps[mapNames[0]];
+    const map2 = maps[mapNames[1]];
+    const map3 = maps[mapNames[2]];
+
+    if (!map1?.team1?.name || !map1?.team2?.name || !map2?.team1?.name || !map2?.team2?.name ||
+        !map3?.team1?.name || !map3?.team2?.name) {
+      // If we can't get team names, include all maps
+      return mapNames;
+    }
+
+    // Check if first 2 maps have the same teams (in any order)
+    const teams12Set1 = new Set([map1.team1.name, map1.team2.name]);
+    const teams12Set2 = new Set([map2.team1.name, map2.team2.name]);
+    const teams3Set = new Set([map3.team1.name, map3.team2.name]);
+
+    const maps12SameTeams = teams12Set1.size === teams12Set2.size && 
+                           [...teams12Set1].every(team => teams12Set2.has(team));
+
+    if (maps12SameTeams) {
+      // Check if map 3 has different teams
+      const map3DifferentTeams = teams3Set.size !== teams12Set1.size ||
+                                ![...teams3Set].every(team => teams12Set1.has(team));
+      
+      if (map3DifferentTeams) {
+        // Map 3 is a casual match - only count first 2 maps
+        return mapNames.slice(0, 2);
+      }
+    }
+  }
+
+  // Default: include all maps
+  return mapNames;
+}
+
+// Modified version of deriveTeamsForDate that only considers main league maps
+function deriveMainLeagueTeamsForDate(sonmacByDate: SonmacByDate, date: string): {
+  team1Name: string;
+  team2Name: string;
+  team1Players: Array<{ steamId: string; name?: string }>;
+  team2Players: Array<{ steamId: string; name?: string }>;
+  mapWinsTeam1: number;
+  mapWinsTeam2: number;
+} | null {
+  const night = date ? sonmacByDate?.[date] : null;
+  const allMaps = night?.maps;
+  if (!allMaps) return null;
+
+  const mainLeagueMapNames = getMainLeagueMapsForDate(sonmacByDate, date);
+  if (!mainLeagueMapNames || mainLeagueMapNames.length === 0) return null;
+
+  // Filter to only main league maps
+  const maps: Record<string, any> = {};
+  for (const mapName of mainLeagueMapNames) {
+    if (allMaps[mapName]) {
+      maps[mapName] = allMaps[mapName];
+    }
+  }
+
+  const team1Players: Array<{ steamId: string; name?: string }> = [];
+  const team2Players: Array<{ steamId: string; name?: string }> = [];
+  const seen1 = new Set<string>();
+  const seen2 = new Set<string>();
+
+  let team1Name = '';
+  let team2Name = '';
+  let mapWinsTeam1 = 0;
+  let mapWinsTeam2 = 0;
+
+  for (const m of Object.values(maps)) {
+    if (!team1Name && m?.team1?.name) team1Name = m.team1.name;
+    if (!team2Name && m?.team2?.name) team2Name = m.team2.name;
+
+    const s1 = typeof m?.team1?.score === 'number' ? m!.team1!.score! : null;
+    const s2 = typeof m?.team2?.score === 'number' ? m!.team2!.score! : null;
+    if (typeof s1 === 'number' && typeof s2 === 'number') {
+      if (s1 > s2) mapWinsTeam1 += 1;
+      else if (s2 > s1) mapWinsTeam2 += 1;
+    }
+
+    for (const p of m?.team1?.players || []) {
+      const id = String(p?.steam_id || '').trim();
+      if (!id || seen1.has(id)) continue;
+      seen1.add(id);
+      team1Players.push({ steamId: id, name: p?.name });
+    }
+    for (const p of m?.team2?.players || []) {
+      const id = String(p?.steam_id || '').trim();
+      if (!id || seen2.has(id)) continue;
+      seen2.add(id);
+      team2Players.push({ steamId: id, name: p?.name });
+    }
+  }
+
+  return {
+    team1Name: team1Name || 'Team 1',
+    team2Name: team2Name || 'Team 2',
+    team1Players,
+    team2Players,
+    mapWinsTeam1,
+    mapWinsTeam2,
+  };
+}
+
 export function deriveTeamsForDate(sonmacByDate: SonmacByDate, date: string): {
   team1Name: string;
   team2Name: string;
@@ -276,7 +393,8 @@ export function computeStandings(params: {
   function perNightPointsForPlayer(steamId: string): Array<{ date: string; hltv2: number; bonus: number; points: number }> {
     const results: Array<{ date: string; hltv2: number; bonus: number; points: number }> = [];
     for (const d of datesIncluded) {
-      const teams = deriveTeamsForDate(sonmacByDate, d);
+      // Use main league teams only (excludes casual third matches)
+      const teams = deriveMainLeagueTeamsForDate(sonmacByDate, d);
       if (!teams) continue;
 
       const isOnTeam1 = teams.team1Players.some((p) => p.steamId === steamId);
