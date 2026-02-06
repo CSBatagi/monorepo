@@ -19,6 +19,13 @@ interface TeamPlayerData {
     [steamId: string]: Player; // Keyed by steamId, value is Player object
 }
 
+type EditableStatKey = 'L10_HLTV2' | 'L10_ADR' | 'L10_KD' | 'S_HLTV2' | 'S_ADR' | 'S_KD';
+type PlayerStats = Record<EditableStatKey, number | null>;
+
+interface PlayerStatsOverrides {
+  [steamId: string]: Partial<PlayerStats>;
+}
+
 const STAT_LABELS: Record<string, string> = {
   L10_HLTV2: 'L10 HLTV',
   L10_ADR: 'L10 ADR',
@@ -43,6 +50,7 @@ const FIXED_RANGES: Record<string, { min: number; max: number }> = {
   S_ADR: { min: 50, max: 100 },
   S_KD: { min: 0.70, max: 1.40 },
 };
+const EDITABLE_STAT_KEYS = STAT_ORDER as EditableStatKey[];
 
 type TeamNameMode = 'generic' | 'captain';
 
@@ -220,6 +228,18 @@ const TeamPickerClient: React.FC = () => {
   const [loadingMapStats, setLoadingMapStats] = useState<boolean>(true);
   const [mapNameLookup, setMapNameLookup] = useState<Record<string, string>>({});
   const [firebaseAttendance, setFirebaseAttendance] = useState<FirebaseAttendanceData>({});
+  const [playerStatsOverrides, setPlayerStatsOverrides] = useState<PlayerStatsOverrides>({});
+  const [editingPlayer, setEditingPlayer] = useState<{ steamId: string; name: string } | null>(null);
+  const [editingStatsForm, setEditingStatsForm] = useState<Record<EditableStatKey, string>>({
+    L10_HLTV2: '',
+    L10_ADR: '',
+    L10_KD: '',
+    S_HLTV2: '',
+    S_ADR: '',
+    S_KD: '',
+  });
+  const [editStatsSaving, setEditStatsSaving] = useState(false);
+  const [editStatsMessage, setEditStatsMessage] = useState<string | null>(null);
 
   const [teamANameMode, setTeamANameMode] = useState<TeamNameMode>('generic');
   const [teamBNameMode, setTeamBNameMode] = useState<TeamNameMode>('generic');
@@ -344,6 +364,7 @@ const TeamPickerClient: React.FC = () => {
       setLoadingFirebaseData(false);
       setLoadingTeamA(false);
       setLoadingTeamB(false);
+      setPlayerStatsOverrides({});
       return;
     }
     setLoadingFirebaseData(true);
@@ -369,11 +390,17 @@ const TeamPickerClient: React.FC = () => {
       setTeamBPlayers(data);
       setLoadingTeamB(false);
     }, () => setLoadingTeamB(false));
+    const statsOverridesRef = ref(db, `${TEAM_PICKER_DB_PATH}/playerStatsOverrides`);
+    const onStatsOverridesValue = onValue(statsOverridesRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      setPlayerStatsOverrides(data);
+    });
 
     return () => {
       off(attendanceRef, 'value', onAttendanceValue);
       off(teamARef, 'value', onTeamAValue);
       off(teamBRef, 'value', onTeamBValue);
+      off(statsOverridesRef, 'value', onStatsOverridesValue);
     };
   }, [user]);
 
@@ -445,7 +472,7 @@ const TeamPickerClient: React.FC = () => {
     await set(ref(db, `${TEAM_PICKER_DB_PATH}/${teamPath}/captainSteamId`), captainSteamId);
   }, []);
 
-  const getStatsBySteamId = useCallback((steamId: string) => {
+  const getBaseStatsBySteamId = useCallback((steamId: string): PlayerStats => {
     const l10 = last10Stats.find((p) => p.steam_id === steamId);
     const season = seasonStats.find((p) => p.steam_id === steamId);
     return {
@@ -457,6 +484,80 @@ const TeamPickerClient: React.FC = () => {
       S_KD: season?.kd ?? null,
     };
   }, [last10Stats, seasonStats]);
+
+  const getStatsBySteamId = useCallback((steamId: string): PlayerStats => {
+    const base = getBaseStatsBySteamId(steamId);
+    const override = playerStatsOverrides[steamId] || {};
+    return { ...base, ...override };
+  }, [getBaseStatsBySteamId, playerStatsOverrides]);
+
+  const openEditStatsModal = useCallback((steamId: string, name: string) => {
+    const stats = getStatsBySteamId(steamId);
+    const nextForm = {} as Record<EditableStatKey, string>;
+    EDITABLE_STAT_KEYS.forEach((key) => {
+      const value = stats[key];
+      nextForm[key] = value === null || value === undefined || isNaN(value) ? '' : String(value);
+    });
+    setEditingPlayer({ steamId, name });
+    setEditingStatsForm(nextForm);
+    setEditStatsMessage(null);
+  }, [getStatsBySteamId]);
+
+  const closeEditStatsModal = useCallback(() => {
+    setEditingPlayer(null);
+    setEditStatsMessage(null);
+    setEditStatsSaving(false);
+  }, []);
+
+  const handleEditStatInputChange = useCallback((key: EditableStatKey, value: string) => {
+    setEditingStatsForm((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  const handleSaveEditedStats = useCallback(async () => {
+    if (!editingPlayer) return;
+    setEditStatsSaving(true);
+    setEditStatsMessage(null);
+    try {
+      const updates: Partial<PlayerStats> = {};
+      EDITABLE_STAT_KEYS.forEach((key) => {
+        const raw = editingStatsForm[key]?.trim();
+        if (raw === '') return;
+        const parsed = Number(raw);
+        if (!isNaN(parsed)) {
+          updates[key] = parsed;
+        }
+      });
+      const overrideRef = ref(db, `${TEAM_PICKER_DB_PATH}/playerStatsOverrides/${editingPlayer.steamId}`);
+      await set(overrideRef, Object.keys(updates).length > 0 ? updates : null);
+      setEditStatsMessage('Kaydedildi. Degisiklikler herkese yansidi.');
+    } catch {
+      setEditStatsMessage('Kaydetme sirasinda hata olustu.');
+    } finally {
+      setEditStatsSaving(false);
+    }
+  }, [editingPlayer, editingStatsForm]);
+
+  const handleRevertEditedStats = useCallback(async () => {
+    if (!editingPlayer) return;
+    setEditStatsSaving(true);
+    setEditStatsMessage(null);
+    try {
+      const overrideRef = ref(db, `${TEAM_PICKER_DB_PATH}/playerStatsOverrides/${editingPlayer.steamId}`);
+      await set(overrideRef, null);
+      const baseStats = getBaseStatsBySteamId(editingPlayer.steamId);
+      const nextForm = {} as Record<EditableStatKey, string>;
+      EDITABLE_STAT_KEYS.forEach((key) => {
+        const value = baseStats[key];
+        nextForm[key] = value === null || value === undefined || isNaN(value) ? '' : String(value);
+      });
+      setEditingStatsForm(nextForm);
+      setEditStatsMessage('Varsayilan degerler geri yuklendi.');
+    } catch {
+      setEditStatsMessage('Geri alma sirasinda hata olustu.');
+    } finally {
+      setEditStatsSaving(false);
+    }
+  }, [editingPlayer, getBaseStatsBySteamId]);
 
   const availablePlayers = useMemo(() => {
     if (loadingFirebaseData || loadingTeamA || loadingTeamB) return [];
@@ -735,10 +836,20 @@ const TeamPickerClient: React.FC = () => {
                         <button
                           className="text-xs text-gray-500 hover:text-gray-700"
                           type="button"
+                          onClick={() => openEditStatsModal(player.steamId, player.name)}
                         >
                           Edit
                         </button>
                       </div>
+                    )}
+                    {isAssigned && (
+                      <button
+                        className="text-xs text-gray-500 hover:text-gray-700 ml-2"
+                        type="button"
+                        onClick={() => openEditStatsModal(player.steamId, player.name)}
+                      >
+                        Edit
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -827,6 +938,10 @@ const TeamPickerClient: React.FC = () => {
       return <p className="text-sm text-gray-500">Loading {teamName}...</p>;
     }
     const playerArray = Object.values(players)
+      .map((p) => ({
+        ...p,
+        stats: getStatsBySteamId(p.steamId),
+      }))
       .slice() // copy to avoid mutating state
       .sort((a, b) => {
         const aHLTV2 = a.stats?.L10_HLTV2 ?? -Infinity;
@@ -1093,6 +1208,60 @@ const TeamPickerClient: React.FC = () => {
                 className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded"
                 onClick={() => { setStopServerModalOpen(false); setServerPassword(''); }}
               >İptal</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editingPlayer && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-bold mb-2 text-gray-800">Oyuncu Stat Duzenle</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              {editingPlayer.name} ({editingPlayer.steamId})
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {EDITABLE_STAT_KEYS.map((key) => (
+                <label key={key} className="text-sm text-gray-700">
+                  <div className="mb-1">{STAT_LABELS[key]}</div>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    className="w-full border px-2 py-1 rounded text-black"
+                    value={editingStatsForm[key]}
+                    onChange={(e) => handleEditStatInputChange(key, e.target.value)}
+                    disabled={editStatsSaving}
+                  />
+                </label>
+              ))}
+            </div>
+            {editStatsMessage && (
+              <div className={`mt-3 text-sm ${editStatsMessage.includes('hata') ? 'text-red-600' : 'text-green-600'}`}>
+                {editStatsMessage}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2 mt-4">
+              <button
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50"
+                onClick={handleSaveEditedStats}
+                disabled={editStatsSaving}
+              >
+                {editStatsSaving ? 'Kaydediliyor...' : 'Kaydet'}
+              </button>
+              <button
+                className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded disabled:opacity-50"
+                onClick={handleRevertEditedStats}
+                disabled={editStatsSaving}
+              >
+                Varsayilana Don
+              </button>
+              <button
+                className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded disabled:opacity-50"
+                onClick={closeEditStatsModal}
+                disabled={editStatsSaving}
+              >
+                Kapat
+              </button>
             </div>
           </div>
         </div>
