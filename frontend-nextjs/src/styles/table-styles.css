@@ -338,7 +338,7 @@ body {
 
 /* --- Dark Theme Base Styles --- */
 body.dark-theme {
-    background-color: #111827; /* Dark Blue-Gray background */
+    background-color: var(--dark-card); /* Dark Blue-Gray background */
     color: #d1d5db; /* Light Gray text */
 }
 
@@ -838,18 +838,18 @@ body.dark-theme .styled-table tbody tr {
 }
 
 body.dark-theme .styled-table tbody tr:nth-child(even) {
-    background-color: #2b3748; /* Slightly lighter dark for zebra */
+    background-color: var(--dark-row-alt); /* Subtle zebra stripe */
 }
 body.dark-theme .styled-table tbody tr:nth-child(even) td:first-child {
-    background-color: #2b3748; /* Match zebra for sticky */
+    background-color: var(--dark-row-alt); /* Match zebra for sticky */
 }
 
 body.dark-theme .styled-table tbody tr:hover {
-    background-color: #4b5563 !important; /* Darker hover */
+    background-color: var(--dark-hover) !important; /* Subtle hover */
     color: #ffffff !important;
 }
 body.dark-theme .styled-table tbody tr:hover td:first-child {
-    background-color: #4b5563 !important; /* Match hover for sticky */
+    background-color: var(--dark-hover) !important; /* Match hover for sticky */
 }
 
 body.dark-theme .styled-table tbody td {
@@ -1395,17 +1395,17 @@ body.dark-theme .page-content-container {
 
 /* Table base styles for dark theme */
 body.dark-theme #available-players table {
-    background-color: #1e293b;
+    background-color: var(--dark-hover);
     border-color: #374151;
 }
 
 /* Header styling */
 body.dark-theme #available-players table thead tr {
-    background-color: #1e293b !important;
+    background-color: var(--dark-hover) !important;
 }
 
 body.dark-theme #available-players table thead th {
-    background-color: #1e293b !important;
+    background-color: var(--dark-hover) !important;
     color: #94a3b8;
     border-color: #374151;
     font-weight: 600;
@@ -1413,16 +1413,16 @@ body.dark-theme #available-players table thead th {
 
 /* Row styling */
 body.dark-theme #available-players table tbody tr {
-    background-color: #1e293b;
+    background-color: var(--dark-card);
     border-color: #374151;
 }
 
 body.dark-theme #available-players table tbody tr:nth-child(even) {
-    background-color: #1e293b;
+    background-color: var(--dark-row-alt);
 }
 
 body.dark-theme #available-players table tbody tr:hover {
-    background-color: #2d3747 !important;
+    background-color: var(--dark-hover) !important;
 }
 
 /* Cell styling */
@@ -1433,23 +1433,23 @@ body.dark-theme #available-players table td {
 
 /* Player name column styling */
 body.dark-theme #available-players table tbody td:first-child {
-    background-color: #1e293b !important;
+    background-color: var(--dark-card) !important;
     color: #94a3b8;
 }
 
 body.dark-theme #available-players table tbody tr:hover td:first-child {
-    background-color: #2d3747 !important;
+    background-color: var(--dark-hover) !important;
     color: #e2e8f0;
 }
 
 /* Ensure even rows maintain consistent styling */
 body.dark-theme #available-players table tbody tr:nth-child(even) td:first-child {
-    background-color: #1e293b !important;
+    background-color: var(--dark-row-alt) !important;
 }
 
 /* Sticky header corner */
 body.dark-theme #available-players table thead th:first-child {
-    background-color: #1e293b !important;
+    background-color: var(--dark-hover) !important;
     color: #94a3b8;
     z-index: 3;
 }
@@ -2057,7 +2057,7 @@ body.dark-theme #duello-content-area {
 /* Dark theme adjustments for all header cells */
 body.dark-theme #duello-table th,
 body.dark-theme #duello-sezon-table th {
-    background-color: #1e293b !important; /* Dark blue-gray background */
+    background-color: var(--dark-hover) !important; /* Dark blue-gray background */
 }
 
 /* Dark theme border adjustments */

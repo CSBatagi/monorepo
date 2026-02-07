@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import SeasonStatsTable, { columns } from "@/components/SeasonStatsTable";
 import { RadarGraphs } from "@/components/SeasonAvgRadarGraphs";
 import H2HClient from "@/components/H2HClient";
+import { useTheme } from "@/contexts/ThemeContext";
 
 type PeriodMeta = {
   id: string;
@@ -93,8 +94,10 @@ export default function SeasonAvgTabsClient({
     };
   }, [selectedData.length]);
 
+  const { isDark } = useTheme();
+
   const overlay = loading ? (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 text-sm text-gray-600">
+    <div className={`absolute inset-0 flex flex-col items-center justify-center text-sm ${isDark ? 'bg-[#0d1321]/80 text-gray-400' : 'bg-white/70 text-gray-600'}`}>
       <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mb-2" />
       Istatistikler yukleniyor...
     </div>
@@ -102,13 +105,13 @@ export default function SeasonAvgTabsClient({
 
   return (
     <>
-      <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
-        <label htmlFor="season-avg-period-selector" className="block text-sm font-medium text-gray-700 mb-1">
+      <div className={`mb-4 p-4 border rounded-lg shadow-sm ${isDark ? 'bg-dark-surface border-dark-border' : 'bg-gray-50'}`}>
+        <label htmlFor="season-avg-period-selector" className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
           Donem Secin:
         </label>
         <select
           id="season-avg-period-selector"
-          className="form-select block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          className={`form-select block w-full mt-1 rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${isDark ? 'bg-dark-card border-dark-border text-gray-100 focus:border-blue-500 focus:ring-blue-500/20' : 'border-gray-300 focus:border-indigo-300 focus:ring-indigo-200'}`}
           value={selectedPeriod}
           onChange={(e) => setSelectedPeriod(e.target.value)}
         >

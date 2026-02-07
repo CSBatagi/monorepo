@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import SteamAvatar from "@/components/SteamAvatar";
+import { useTheme } from "@/contexts/ThemeContext";
 
 type PlayerListItem = {
   name: string;
@@ -291,6 +292,7 @@ export default function OyuncularClient({
 
   const matchesPlayed = Number(selectedStats?.matches_played) || 0;
   const perMatch = (value: number) => (matchesPlayed > 0 ? value / matchesPlayed : 0);
+  const { isDark } = useTheme();
   const tabRows = useMemo(() => {
     if (tabs.length <= 1) return [tabs];
     const mid = Math.ceil(tabs.length / 2);
@@ -344,7 +346,7 @@ export default function OyuncularClient({
 
       <div className="relative">
         {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 text-sm text-gray-600 z-10">
+          <div className={`absolute inset-0 flex flex-col items-center justify-center text-sm z-10 ${isDark ? 'bg-[#0d1321]/70 text-gray-300' : 'bg-white/70 text-gray-600'}`}>
             <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mb-2" />
             Oyuncu istatistikleri yükleniyor...
           </div>

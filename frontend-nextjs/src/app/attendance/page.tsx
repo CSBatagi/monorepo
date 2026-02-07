@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Player } from '@/types';
 import { db, auth as firebaseAuth } from '@/lib/firebase'; // Firebase db and auth instances
 import { ref, onValue, off, update, set } from 'firebase/database';
@@ -51,6 +52,7 @@ interface FirebaseKaptanlikData {
 
 export default function AttendancePage() {
   const { user, loading: authLoading } = useAuth();
+  const { isDark } = useTheme();
   const [players, setPlayers] = useState<Player[]>([]);
   const [firebaseAttendance, setFirebaseAttendance] = useState<FirebaseAttendanceData>({});
   const [firebaseEmojis, setFirebaseEmojis] = useState<FirebaseEmojiData>({});
@@ -317,7 +319,7 @@ export default function AttendancePage() {
         <div className="lg:col-span-2 min-w-0 lg:max-w-3xl">
           <h2 className="text-xl sm:text-2xl font-semibold text-blue-600 mb-3 sm:mb-4">Katılım Durumu</h2>
           
-          <div className={`p-3 mb-3 sm:mb-4 border rounded-lg shadow-sm text-sm ${tekerDondu ? 'bg-green-100 border-green-300' : comingCount < TEKER_DONDU_THRESHOLD ? 'bg-red-100 border-red-300' : 'bg-yellow-50 border-yellow-200'}`}>
+          <div className={`p-3 mb-3 sm:mb-4 border rounded-lg shadow-sm text-sm ${tekerDondu ? (isDark ? 'bg-green-900/20 border-green-700' : 'bg-green-100 border-green-300') : comingCount < TEKER_DONDU_THRESHOLD ? (isDark ? 'bg-red-900/20 border-red-700' : 'bg-red-100 border-red-300') : (isDark ? 'bg-yellow-900/20 border-yellow-700' : 'bg-yellow-50 border-yellow-200')}`}>
             <p className="font-medium">
               Gelen Oyuncu: <span className={`font-bold ${tekerDondu ? 'text-green-700' : comingCount < TEKER_DONDU_THRESHOLD ? 'text-red-700' : 'text-orange-600'}`}>{comingCount}</span>
               <span className="mx-2">|</span>
@@ -368,9 +370,9 @@ export default function AttendancePage() {
             <div className="w-full">
               {/* Mobile: Compact Card Layout */}
               <div className="block md:hidden">
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                  <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
-                    <h3 className="text-sm font-semibold text-gray-700">Oyuncu Durumu</h3>
+                <div className={`rounded-lg border shadow-sm overflow-hidden ${isDark ? 'bg-dark-card border-dark-border' : 'bg-white border-gray-200'}`}>
+                  <div className={`px-3 py-2 border-b ${isDark ? 'bg-dark-surface border-dark-border' : 'bg-gray-50 border-gray-200'}`}>
+                    <h3 className={`text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Oyuncu Durumu</h3>
                     <div className="mt-2 flex items-center justify-between text-[11px] text-gray-500">
                       <div className="flex-1 min-w-0">Oyuncu</div>
                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -382,7 +384,7 @@ export default function AttendancePage() {
                   </div>
                   <div className="divide-y divide-gray-100">
                     {combinedPlayers.map((player) => (
-                      <div key={player.steamId} className={`px-3 py-3 ${player.status === 'Adam Evde Yok' ? 'bg-red-50 opacity-70' : 'bg-white'}`}>
+                      <div key={player.steamId} className={`px-3 py-3 ${player.status === 'Adam Evde Yok' ? (isDark ? 'bg-red-900/10 opacity-70' : 'bg-red-50 opacity-70') : (isDark ? 'bg-dark-card' : 'bg-white')}`}>
                         <div className="flex items-start justify-between min-h-[40px]">
                           <div className="flex-1 min-w-0 mr-3 py-1">
                             <div className="flex items-center gap-2">
@@ -456,7 +458,7 @@ export default function AttendancePage() {
                   </thead>
                   <tbody id="player-list">
                     {combinedPlayers.map((player) => (
-                      <tr key={player.steamId} className={`border-b ${player.status === 'Adam Evde Yok' ? 'bg-red-50 opacity-70' : 'bg-white'} hover:bg-gray-50`}>
+                      <tr key={player.steamId} className={`border-b ${player.status === 'Adam Evde Yok' ? (isDark ? 'bg-red-900/10 opacity-70' : 'bg-red-50 opacity-70') : (isDark ? 'bg-dark-card' : 'bg-white')} ${isDark ? 'hover:bg-dark-border' : 'hover:bg-gray-50'}`}>
                         <td className="px-2 py-1 w-[25%]">
                           {player.status === 'Adam Evde Yok' ? (
                             <div className="flex items-center gap-2">

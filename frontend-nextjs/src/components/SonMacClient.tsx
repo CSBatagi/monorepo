@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from "react";
 import SeasonStatsTable from "./SeasonStatsTable";
 import { buildSeasonWindowOptions, filterDatesBySeason } from "@/lib/seasonRanges";
+import { useTheme } from "@/contexts/ThemeContext";
 
 type RoundInfo = {
   round_number?: number;
@@ -250,6 +251,7 @@ export default function SonMacClient({
   }
 
   const switchAfter = switchAfterRoundNumbers();
+  const { isDark } = useTheme();
   function sideLabel(side: number | null): { label: string; className: string } | null {
     if (side === 3) return { label: "CT", className: "text-gray-500" };
     if (side === 2) return { label: "T", className: "text-gray-500" };
@@ -291,11 +293,11 @@ export default function SonMacClient({
   return (
     <>
       {/* Date Selector */}
-      <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
-        <label htmlFor="sonmac-season-selector" className="block text-sm font-medium text-gray-700 mb-1">Donem Secin:</label>
+      <div className={`mb-4 p-4 border rounded-lg shadow-sm ${isDark ? 'bg-dark-surface border-dark-border' : 'bg-gray-50'}`}>
+        <label htmlFor="sonmac-season-selector" className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Donem Secin:</label>
         <select
           id="sonmac-season-selector"
-          className="form-select block w-full mt-1 mb-4 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          className={`form-select block w-full mt-1 mb-4 rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${isDark ? 'bg-dark-card border-dark-border text-gray-100 focus:border-blue-500 focus:ring-blue-500/20' : 'border-gray-300 focus:border-indigo-300 focus:ring-indigo-200'}`}
           value={selectedSeasonId}
           onChange={e => setSelectedSeasonId(e.target.value)}
         >
@@ -303,10 +305,10 @@ export default function SonMacClient({
             <option key={opt.id} value={opt.id}>{opt.label}</option>
           ))}
         </select>
-        <label htmlFor="sonmac-date-selector" className="block text-sm font-medium text-gray-700 mb-1">Tarih Secin:</label>
+        <label htmlFor="sonmac-date-selector" className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Tarih Secin:</label>
         <select
           id="sonmac-date-selector"
-          className="form-select block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          className={`form-select block w-full mt-1 rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${isDark ? 'bg-dark-card border-dark-border text-gray-100 focus:border-blue-500 focus:ring-blue-500/20' : 'border-gray-300 focus:border-indigo-300 focus:ring-indigo-200'}`}
           value={selectedDate}
           onChange={e => setSelectedDate(e.target.value)}
         >
@@ -321,10 +323,10 @@ export default function SonMacClient({
       </div>
 
       {/* Map Tabs */}
-      <div className="mb-4 border-b border-gray-200">
+      <div className={`mb-4 border-b ${isDark ? 'border-dark-border' : 'border-gray-200'}`}>
         <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
           {mapNames.length === 0 ? (
-            <li className="text-gray-500 p-4">Map yok</li>
+            <li className={`p-4 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Map yok</li>
           ) : (
             mapNames.map(map => (
               <li key={map} className="mr-2" role="presentation">
@@ -347,14 +349,14 @@ export default function SonMacClient({
       {team1 && team2 ? (
         <div className="mb-8">
           {/* Scoreboard */}
-          <div className="flex justify-between md:justify-center md:gap-16 items-center mb-6 px-4 py-3 bg-gray-100 rounded-lg overflow-x-auto">
+          <div className={`flex justify-between md:justify-center md:gap-16 items-center mb-6 px-4 py-3 rounded-lg overflow-x-auto ${isDark ? 'bg-dark-card border border-dark-border' : 'bg-gray-100'}`}>
             <div className="text-center whitespace-nowrap">
-              <h3 className="text-lg font-bold">{team1.name}</h3>
+              <h3 className={`text-lg font-bold ${isDark ? 'text-gray-100' : ''}`}>{team1.name}</h3>
               <div className="text-3xl font-extrabold text-blue-600">{team1.score}</div>
             </div>
-            <div className="text-xl md:text-3xl font-semibold text-gray-500">vs</div>
+            <div className={`text-xl md:text-3xl font-semibold ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>vs</div>
             <div className="text-center whitespace-nowrap">
-              <h3 className="text-lg font-bold">{team2.name}</h3>
+              <h3 className={`text-lg font-bold ${isDark ? 'text-gray-100' : ''}`}>{team2.name}</h3>
               <div className="text-3xl font-extrabold text-green-600">{team2.score}</div>
             </div>
           </div>
@@ -362,7 +364,7 @@ export default function SonMacClient({
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-blue-600 mb-2 px-3">{team1.name}</h3>
             <div className="overflow-x-auto">
-              <SeasonStatsTable data={team1.players} columns={sonmacColumns} tableClassName="min-w-[1200px] w-full" />
+              <SeasonStatsTable data={team1.players} columns={sonmacColumns} tableClassName="styled-table min-w-[1200px] w-full text-sm" />
             </div>
           </div>
           {/* Round Summary */}
@@ -404,12 +406,12 @@ export default function SonMacClient({
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-green-600 mb-2 px-3">{team2.name}</h3>
             <div className="overflow-x-auto">
-              <SeasonStatsTable data={team2.players} columns={sonmacColumns} tableClassName="min-w-[1200px] w-full" />
+              <SeasonStatsTable data={team2.players} columns={sonmacColumns} tableClassName="styled-table min-w-[1200px] w-full text-sm" />
             </div>
           </div>
         </div>
       ) : (
-        <div className="text-gray-500 p-4">Veri yok.</div>
+        <div className={`text-gray-500 p-4 ${isDark ? 'text-gray-400' : ''}`}>Veri yok.</div>
       )}
     </>
   );

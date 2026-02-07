@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import AwardsListClient from "./AwardsListClient";
 import { buildSeasonWindowOptions, filterDataBySeason } from "@/lib/seasonRanges";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface PlayerAward {
   name: string;
@@ -124,14 +125,15 @@ export default function PerformansOdulleriClient({
     () => monthPeriods.map((period) => ({ period, awards: calculateAwardsByMonth(scopedData, period.key) })).reverse(),
     [monthPeriods, scopedData]
   );
+  const { isDark } = useTheme();
 
   return (
     <div className="space-y-6">
-      <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
-        <label htmlFor="performans-odulleri-season-selector" className="block text-sm font-medium text-gray-700 mb-1">Donem Secin:</label>
+      <div className={`mb-4 p-4 border rounded-lg shadow-sm ${isDark ? 'bg-dark-surface border-dark-border' : 'bg-gray-50'}`}>
+        <label htmlFor="performans-odulleri-season-selector" className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Donem Secin:</label>
         <select
           id="performans-odulleri-season-selector"
-          className="form-select block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          className={`form-select block w-full mt-1 rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${isDark ? 'bg-dark-card border-dark-border text-gray-100 focus:border-blue-500 focus:ring-blue-500/20' : 'border-gray-300 focus:border-indigo-300 focus:ring-indigo-200'}`}
           value={selectedSeasonId}
           onChange={(e) => setSelectedSeasonId(e.target.value)}
         >
@@ -142,27 +144,27 @@ export default function PerformansOdulleriClient({
       </div>
 
       {awardsByPeriod.length === 0 && (
-        <p className="text-gray-500">Hic veri bulunamadi.</p>
+        <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>Hic veri bulunamadi.</p>
       )}
 
       {awardsByPeriod.length > 0 && (
         <div className="space-y-8">
           {awardsByPeriod.map(({ period, awards }) => (
-            <div key={period.key} className="border rounded-lg bg-white shadow-none p-4">
-              <h3 className="text-2xl font-bold text-blue-700 mb-4">Donem: {period.label}</h3>
+            <div key={period.key} className={`border rounded-lg shadow-none p-4 ${isDark ? 'bg-dark-card border-dark-border' : 'bg-white'}`}>
+              <h3 className={`text-2xl font-bold mb-4 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Donem: {period.label}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <h4 className="text-xl font-bold text-green-700 mb-3">En Iyi Performans Gosterenler (Top 3)</h4>
+                  <h4 className={`text-xl font-bold mb-3 ${isDark ? 'text-green-400' : 'text-green-700'}`}>En Iyi Performans Gosterenler (Top 3)</h4>
                   {awards.top3.length === 0 ? (
-                    <p className="text-gray-500">Bu donem icin en iyi performans gosteren oyuncu bulunmuyor.</p>
+                    <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>Bu donem icin en iyi performans gosteren oyuncu bulunmuyor.</p>
                   ) : (
                     <AwardsListClient players={awards.top3} color="green" />
                   )}
                 </div>
                 <div>
-                  <h4 className="text-xl font-bold text-red-700 mb-3">En Dusuk Performans Gosterenler (Bottom 3)</h4>
+                  <h4 className={`text-xl font-bold mb-3 ${isDark ? 'text-red-400' : 'text-red-700'}`}>En Dusuk Performans Gosterenler (Bottom 3)</h4>
                   {awards.bottom3.length === 0 ? (
-                    <p className="text-gray-500">Bu donem icin en dusuk performans gosteren oyuncu bulunmuyor.</p>
+                    <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>Bu donem icin en dusuk performans gosteren oyuncu bulunmuyor.</p>
                   ) : (
                     <AwardsListClient players={awards.bottom3} color="red" />
                   )}

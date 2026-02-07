@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Define interfaces for our data structures
 interface Team {
@@ -43,6 +44,7 @@ interface MatchListProps {
 }
 
 export default function MatchList({ allData, onDateSelect }: MatchListProps) {
+  const { isDark } = useTheme();
   const dates = Object.keys(allData).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
   const formatDate = (dateStr: string) => {
@@ -59,7 +61,7 @@ export default function MatchList({ allData, onDateSelect }: MatchListProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className={`rounded-lg shadow ${isDark ? 'bg-dark-card' : 'bg-white'}`}>
         <div className="space-y-1">
         {dates.map(date => {
             const maps = allData[date].maps || {};
@@ -90,29 +92,29 @@ export default function MatchList({ allData, onDateSelect }: MatchListProps) {
             return (
             <div
                 key={date}
-                className="flex items-center p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-200 last:border-b-0 transition-colors"
+                className={`flex items-center p-3 border-b cursor-pointer last:border-b-0 transition-colors ${isDark ? 'border-dark-border hover:bg-dark-border' : 'border-gray-200 hover:bg-gray-200'}`}
                 onClick={() => onDateSelect(date)}
             >
                 <div className="flex-shrink-0 mr-4 w-16 text-center">
-                    <span className="text-sm text-gray-600">{formatDate(date)}</span>
+                    <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{formatDate(date)}</span>
                 </div>
                 <div className="flex-grow min-w-0">
                     {teamA && (
                         <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center min-w-0">
                                 <Dot isWinner={teamAWonNight} />
-                                <span className="text-gray-800 truncate">{teamA}</span>
+                                <span className={`truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{teamA}</span>
                             </div>
-                            <span className="font-bold text-gray-800 ml-4">{teamAWins}</span>
+                            <span className={`font-bold ml-4 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{teamAWins}</span>
                         </div>
                     )}
                     {teamB && (
                         <div className="flex items-center justify-between">
                             <div className="flex items-center min-w-0">
                                 <Dot isWinner={teamBWonNight} />
-                                <span className="text-gray-800 truncate">{teamB}</span>
+                                <span className={`truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{teamB}</span>
                             </div>
-                            <span className="font-bold text-gray-800 ml-4">{teamBWins}</span>
+                            <span className={`font-bold ml-4 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{teamBWins}</span>
                         </div>
                     )}
                 </div>

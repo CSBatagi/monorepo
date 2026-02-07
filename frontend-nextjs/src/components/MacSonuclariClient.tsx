@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import MatchList from "./MatchList";
 import MatchDetails from "./MatchDetails";
 import { buildSeasonWindowOptions, filterDataBySeason } from "@/lib/seasonRanges";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface Team {
   name: string;
@@ -57,6 +58,7 @@ export default function MacSonuclariClient({ allData, seasonStarts }: MacSonucla
 
   const handleDateSelect = (date: string) => setSelectedDate(date);
   const handleBack = () => setSelectedDate(null);
+  const { isDark } = useTheme();
 
   if (selectedDate) {
     const nightData = scopedData[selectedDate];
@@ -70,11 +72,11 @@ export default function MacSonuclariClient({ allData, seasonStarts }: MacSonucla
     }
     return (
       <>
-        <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
-          <label htmlFor="mac-sonuclari-season-selector" className="block text-sm font-medium text-gray-700 mb-1">Donem Secin:</label>
+        <div className={`mb-4 p-4 border rounded-lg shadow-sm ${isDark ? 'bg-dark-surface border-dark-border' : 'bg-gray-50'}`}>
+          <label htmlFor="mac-sonuclari-season-selector" className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Donem Secin:</label>
           <select
             id="mac-sonuclari-season-selector"
-            className="form-select block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            className={`form-select block w-full mt-1 rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${isDark ? 'bg-dark-card border-dark-border text-gray-100 focus:border-blue-500 focus:ring-blue-500/20' : 'border-gray-300 focus:border-indigo-300 focus:ring-indigo-200'}`}
             value={selectedSeasonId}
             onChange={(e) => setSelectedSeasonId(e.target.value)}
           >
@@ -90,11 +92,11 @@ export default function MacSonuclariClient({ allData, seasonStarts }: MacSonucla
 
   return (
     <>
-      <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
-        <label htmlFor="mac-sonuclari-season-selector" className="block text-sm font-medium text-gray-700 mb-1">Donem Secin:</label>
+      <div className={`mb-4 p-4 border rounded-lg shadow-sm ${isDark ? 'bg-dark-surface border-dark-border' : 'bg-gray-50'}`}>
+        <label htmlFor="mac-sonuclari-season-selector" className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Donem Secin:</label>
         <select
           id="mac-sonuclari-season-selector"
-          className="form-select block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          className={`form-select block w-full mt-1 rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${isDark ? 'bg-dark-card border-dark-border text-gray-100 focus:border-blue-500 focus:ring-blue-500/20' : 'border-gray-300 focus:border-indigo-300 focus:ring-indigo-200'}`}
           value={selectedSeasonId}
           onChange={(e) => setSelectedSeasonId(e.target.value)}
         >
@@ -104,7 +106,7 @@ export default function MacSonuclariClient({ allData, seasonStarts }: MacSonucla
         </select>
       </div>
       {scopedDates.length === 0 ? (
-        <div className="p-4 text-gray-500">Veri yok.</div>
+        <div className={`p-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Veri yok.</div>
       ) : (
         <MatchList allData={scopedData} onDateSelect={handleDateSelect} />
       )}

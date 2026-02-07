@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useMemo } from "react";
 import { Radar } from "react-chartjs-2";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   Chart as ChartJS,
   RadialLinearScale,
@@ -59,6 +60,7 @@ function formatValue(value: any, col: any) {
 }
 
 export default function H2HClient({ data, columns, matchesKey = "matches" }: { data: any[]; columns: any[]; matchesKey?: string }) {
+  const { isDark } = useTheme();
   const players = useMemo(() =>
     data.filter((p) => typeof p[matchesKey] === "number" && p[matchesKey] > 0).sort((a, b) => a.name.localeCompare(b.name)),
     [data, matchesKey]
@@ -136,7 +138,7 @@ export default function H2HClient({ data, columns, matchesKey = "matches" }: { d
         display: true,
         position: "top" as const,
         labels: {
-          color: "#1f2937",
+          color: isDark ? "#e5e7eb" : "#1f2937",
           boxWidth: 12,
           padding: 10,
           font: { size: 12 },
@@ -166,23 +168,23 @@ export default function H2HClient({ data, columns, matchesKey = "matches" }: { d
         angleLines: {
           display: true,
           lineWidth: 0.5,
-          color: "rgba(0,0,0,0.4)",
+          color: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.4)",
         },
         suggestedMin: 0,
         suggestedMax: 100,
         ticks: { display: false, stepSize: 25, backdropColor: "rgba(0,0,0,0)" },
         pointLabels: {
           font: { size: 12, weight: 700 },
-          color: "#1f2937",
+          color: isDark ? "#e5e7eb" : "#1f2937",
         },
         grid: {
-          color: "rgba(0,0,0,0.3)",
+          color: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.3)",
           lineWidth: 0.5,
         },
       },
     },
     layout: { padding: 10 },
-  }), [selectedStats, statOptions, chartData]);
+  }), [selectedStats, statOptions, chartData, isDark]);
 
   // Reset player selection when player list changes (e.g., on date change)
   React.useEffect(() => {
@@ -195,10 +197,10 @@ export default function H2HClient({ data, columns, matchesKey = "matches" }: { d
       {/* Player Selection */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
-          <label htmlFor="season-avg-h2h-player1-select" className="block mb-2 text-sm font-medium text-gray-900">Oyuncu 1'i Seçin</label>
+          <label htmlFor="season-avg-h2h-player1-select" className={`block mb-2 text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>Oyuncu 1'i Seçin</label>
           <select
             id="season-avg-h2h-player1-select"
-            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+            className={`text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 ${isDark ? 'bg-dark-card border border-dark-border text-gray-100' : 'bg-gray-50 border border-gray-300 text-gray-900'}`}
             value={player1}
             onChange={e => setPlayer1(e.target.value)}
           >
@@ -209,10 +211,10 @@ export default function H2HClient({ data, columns, matchesKey = "matches" }: { d
           </select>
         </div>
         <div>
-          <label htmlFor="season-avg-h2h-player2-select" className="block mb-2 text-sm font-medium text-gray-900">Oyuncu 2'yi Seçin</label>
+          <label htmlFor="season-avg-h2h-player2-select" className={`block mb-2 text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>Oyuncu 2'yi Seçin</label>
           <select
             id="season-avg-h2h-player2-select"
-            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+            className={`text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 ${isDark ? 'bg-dark-card border border-dark-border text-gray-100' : 'bg-gray-50 border border-gray-300 text-gray-900'}`}
             value={player2}
             onChange={e => setPlayer2(e.target.value)}
           >
@@ -224,8 +226,8 @@ export default function H2HClient({ data, columns, matchesKey = "matches" }: { d
         </div>
       </div>
       {/* Stat Selection */}
-      <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
-        <div className="font-semibold mb-2">Karşılaştırmak için 5 istatistik seçin:</div>
+      <div className={`mb-4 p-4 border rounded-lg shadow-sm ${isDark ? 'bg-dark-surface border-dark-border' : 'bg-gray-50'}`}>
+        <div className={`font-semibold mb-2 ${isDark ? 'text-gray-200' : ''}`}>Karşılaştırmak için 5 istatistik seçin:</div>
         <div className="flex flex-wrap gap-2">
           {statOptions.map((col) => (
             <label key={col.key} className="inline-flex items-center mr-4 mb-2">
@@ -236,11 +238,11 @@ export default function H2HClient({ data, columns, matchesKey = "matches" }: { d
                 onChange={e => handleStatChange(col.key, e.target.checked)}
                 disabled={!selectedStats.includes(col.key) && selectedStats.length >= 5}
               />
-              <span className="ml-2 text-sm text-gray-700">{col.label}</span>
+              <span className={`ml-2 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{col.label}</span>
             </label>
           ))}
         </div>
-        <div className="text-xs text-gray-500 mt-1">Tam olarak 5 istatistik seçilmelidir.</div>
+        <div className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Tam olarak 5 istatistik seçilmelidir.</div>
       </div>
       {/* Validation Message */}
       {(!canCompare || validationMsg) && (
@@ -253,7 +255,7 @@ export default function H2HClient({ data, columns, matchesKey = "matches" }: { d
             <Radar data={chartData} options={chartOptions} />
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500 col-span-full">Karşılaştırma grafiğini görmek için iki oyuncu ve 5 istatistik seçin.</div>
+          <div className={`text-center py-8 col-span-full ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Karşılaştırma grafiğini görmek için iki oyuncu ve 5 istatistik seçin.</div>
         )}
       </div>
     </div>

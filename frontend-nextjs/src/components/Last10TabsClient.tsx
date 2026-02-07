@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import SeasonStatsTable, { columns } from "@/components/SeasonStatsTable";
 import H2HClient from "@/components/H2HClient";
 import { RadarGraphs } from "./SeasonAvgRadarGraphs";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function Last10TabsClient({ data: initialData }: { data: any[] }) {
   const [activeTab, setActiveTab] = useState<"table" | "graph" | "head2head">("table");
@@ -26,8 +27,10 @@ export default function Last10TabsClient({ data: initialData }: { data: any[] })
     return () => { cancelled = true; };
   }, [data.length]);
 
+  const { isDark } = useTheme();
+
   const overlay = loading ? (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 text-sm text-gray-600">
+    <div className={`absolute inset-0 flex flex-col items-center justify-center text-sm ${isDark ? 'bg-[#0d1321]/80 text-gray-400' : 'bg-white/70 text-gray-600'}`}>
       <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mb-2" />
       İstatistikler yükleniyor...
     </div>

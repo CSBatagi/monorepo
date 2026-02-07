@@ -2,4 +2,350 @@
 @tailwind components;
 @tailwind utilities;
 
-/* All other custom styles and variables temporarily removed for testing */
+/* ===== Dark Mode Color Tokens (CSS Custom Properties) ===== */
+/* Single source of truth — update here to change everywhere */
+:root {
+  --dark-bg: #080c14;
+  --dark-surface: #0d1321;
+  --dark-card: #111827;
+  --dark-border: #1a2340;
+  --dark-hover: #1e293b;
+  --dark-row-alt: #182030;
+  --dark-line: #374151;
+  --dark-accent: #3b82f6;
+}
+
+/* ===== Dark Mode Premium Design System ===== */
+
+/* Theme toggle button styling */
+.dark-toggle-btn {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+.dark-toggle-btn:hover {
+  background-color: #d1d5db;
+}
+body.dark-theme .dark-toggle-btn {
+  background-color: var(--dark-border);
+  color: #60a5fa;
+  border: 1px solid #2d3a5c;
+}
+body.dark-theme .dark-toggle-btn:hover {
+  background-color: #1e3a5f;
+  border-color: var(--dark-accent);
+}
+
+/* ===== Dark Mode: Page Content Containers ===== */
+body.dark-theme .page-content-container {
+  background-color: var(--dark-surface) !important;
+  border-color: var(--dark-border) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ===== Dark Mode: Page Headings ===== */
+body.dark-theme .page-content-container > h2.text-blue-600,
+body.dark-theme .page-content-container > h2.text-blue-700,
+body.dark-theme h2.text-blue-600,
+body.dark-theme h2.text-blue-700 {
+  color: #60a5fa !important;
+}
+
+body.dark-theme .text-3xl.text-blue-600,
+body.dark-theme .text-2xl.text-blue-600 {
+  color: #60a5fa !important;
+}
+
+/* ===== Dark Mode: Select / Dropdown elements ===== */
+body.dark-theme select,
+body.dark-theme .form-select {
+  background-color: var(--dark-card) !important;
+  color: #e5e7eb !important;
+  border-color: var(--dark-border) !important;
+}
+body.dark-theme select:focus,
+body.dark-theme .form-select:focus {
+  border-color: var(--dark-accent) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+body.dark-theme select option {
+  background-color: var(--dark-card);
+  color: #e5e7eb;
+}
+
+/* ===== Dark Mode: Input fields ===== */
+body.dark-theme input[type="text"],
+body.dark-theme input[type="email"],
+body.dark-theme input[type="password"],
+body.dark-theme input[type="number"],
+body.dark-theme input[type="search"],
+body.dark-theme textarea {
+  background-color: var(--dark-card) !important;
+  color: #e5e7eb !important;
+  border-color: var(--dark-border) !important;
+}
+body.dark-theme input:focus,
+body.dark-theme textarea:focus {
+  border-color: var(--dark-accent) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* ===== Dark Mode: Checkbox & Radio ===== */
+body.dark-theme input[type="checkbox"],
+body.dark-theme input[type="radio"] {
+  accent-color: var(--dark-accent);
+}
+
+/* ===== Dark Mode: Scrollbar ===== */
+body.dark-theme ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+body.dark-theme ::-webkit-scrollbar-track {
+  background: var(--dark-surface);
+}
+body.dark-theme ::-webkit-scrollbar-thumb {
+  background: var(--dark-border);
+  border-radius: 4px;
+}
+body.dark-theme ::-webkit-scrollbar-thumb:hover {
+  background: #2d3a5c;
+}
+
+/* ===== Dark Mode: General text color overrides ===== */
+body.dark-theme .text-gray-600 {
+  color: #9ca3af !important;
+}
+body.dark-theme .text-gray-700 {
+  color: #d1d5db !important;
+}
+body.dark-theme .text-gray-800 {
+  color: #e5e7eb !important;
+}
+body.dark-theme .text-gray-500 {
+  color: #6b7280 !important;
+}
+
+/* ===== Dark Mode: Background overrides ===== */
+body.dark-theme .bg-white {
+  background-color: var(--dark-surface) !important;
+}
+body.dark-theme .bg-gray-50 {
+  background-color: var(--dark-card) !important;
+}
+body.dark-theme .bg-gray-100 {
+  background-color: var(--dark-border) !important;
+}
+body.dark-theme .bg-gray-200 {
+  background-color: var(--dark-hover) !important;
+}
+
+/* ===== Dark Mode: Border overrides ===== */
+body.dark-theme .border-gray-200 {
+  border-color: var(--dark-border) !important;
+}
+body.dark-theme .border-gray-300 {
+  border-color: var(--dark-border) !important;
+}
+
+/* ===== Dark Mode: Shadow ===== */
+body.dark-theme .shadow-sm,
+body.dark-theme .shadow-md,
+body.dark-theme .shadow-lg {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ===== Dark Mode: Labels ===== */
+body.dark-theme label {
+  color: #d1d5db;
+}
+
+/* ===== Dark Mode: Text color overrides (additional) ===== */
+body.dark-theme .text-gray-900 {
+  color: #f3f4f6 !important;
+}
+body.dark-theme .text-black {
+  color: #e5e7eb !important;
+}
+body.dark-theme .text-slate-50 {
+  color: #e5e7eb !important;
+}
+
+/* ===== Dark Mode: Additional background overrides ===== */
+body.dark-theme .bg-slate-50,
+body.dark-theme .from-white,
+body.dark-theme .to-slate-50 {
+  background-color: var(--dark-card) !important;
+  background-image: none !important;
+}
+body.dark-theme .bg-gradient-to-br.from-white {
+  background-image: none !important;
+  background-color: var(--dark-card) !important;
+}
+
+/* ===== Dark Mode: Border overrides (additional) ===== */
+body.dark-theme .border-slate-200 {
+  border-color: var(--dark-border) !important;
+}
+body.dark-theme .border-gray-100 {
+  border-color: var(--dark-border) !important;
+}
+body.dark-theme .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--dark-border) !important;
+}
+body.dark-theme .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--dark-border) !important;
+}
+
+/* ===== Dark Mode: Hover overrides ===== */
+body.dark-theme .hover\:bg-gray-50:hover {
+  background-color: var(--dark-border) !important;
+}
+body.dark-theme .hover\:bg-gray-200:hover {
+  background-color: var(--dark-hover) !important;
+}
+
+/* ===== Dark Mode: Attendance page specific ===== */
+body.dark-theme .bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+body.dark-theme .bg-green-100 {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+}
+body.dark-theme .bg-red-100 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+body.dark-theme .bg-yellow-50 {
+  background-color: rgba(234, 179, 8, 0.1) !important;
+}
+body.dark-theme .bg-yellow-100 {
+  background-color: rgba(234, 179, 8, 0.15) !important;
+}
+body.dark-theme .border-green-300 {
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+body.dark-theme .border-red-300 {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+body.dark-theme .border-yellow-200 {
+  border-color: rgba(234, 179, 8, 0.3) !important;
+}
+body.dark-theme .border-yellow-500 {
+  border-color: rgba(234, 179, 8, 0.5) !important;
+}
+body.dark-theme .text-green-700 {
+  color: #4ade80 !important;
+}
+body.dark-theme .text-red-700 {
+  color: #f87171 !important;
+}
+body.dark-theme .text-yellow-600 {
+  color: #facc15 !important;
+}
+body.dark-theme .text-orange-600 {
+  color: #fb923c !important;
+}
+body.dark-theme .text-blue-700 {
+  color: #60a5fa !important;
+}
+body.dark-theme .text-red-600 {
+  color: #f87171 !important;
+}
+body.dark-theme .text-yellow-700 {
+  color: #fbbf24 !important;
+}
+body.dark-theme .text-yellow-800 {
+  color: #fbbf24 !important;
+}
+body.dark-theme .text-yellow-900 {
+  color: #facc15 !important;
+}
+body.dark-theme .bg-red-200 {
+  background-color: rgba(239, 68, 68, 0.25) !important;
+}
+body.dark-theme .bg-blue-100 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+body.dark-theme .bg-blue-200 {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+}
+body.dark-theme .bg-green-200 {
+  background-color: rgba(34, 197, 94, 0.2) !important;
+}
+body.dark-theme .text-blue-800 {
+  color: #93c5fd !important;
+}
+body.dark-theme .text-green-800 {
+  color: #86efac !important;
+}
+body.dark-theme .border-blue-400 {
+  border-color: rgba(59, 130, 246, 0.4) !important;
+}
+body.dark-theme .text-blue-600 {
+  color: #60a5fa !important;
+}
+
+/* ===== Dark Mode: Table elements ===== */
+body.dark-theme table {
+  color: #e5e7eb;
+}
+body.dark-theme th {
+  color: #d1d5db;
+}
+body.dark-theme td {
+  color: #e5e7eb;
+}
+body.dark-theme thead tr {
+  background-color: var(--dark-surface);
+}
+body.dark-theme tbody tr {
+  background-color: var(--dark-card);
+}
+body.dark-theme .border-t {
+  border-color: var(--dark-border);
+}
+body.dark-theme table.min-w-full {
+  border-color: var(--dark-border);
+}
+body.dark-theme .sticky.left-0.bg-gray-100 {
+  background-color: var(--dark-surface) !important;
+}
+body.dark-theme .sticky.left-0.bg-white {
+  background-color: var(--dark-card) !important;
+}
+
+/* ===== Dark Mode: Chart background for PerformanceGraphs ===== */
+body.dark-theme .border.border-gray-200 {
+  border-color: var(--dark-border) !important;
+}
+
+/* ===== Dark Mode: Stat cards for OyuncularClient ===== */
+body.dark-theme [class*="bg-gradient-to-br"] {
+  background: var(--dark-card) !important;
+}
+
+/* ===== Dark Mode: Email verification banner ===== */
+body.dark-theme .border-l-4.border-yellow-500 {
+  background-color: rgba(234, 179, 8, 0.1) !important;
+}
+
+/* ===== Dark Mode: Progress bars ===== */
+body.dark-theme .bg-gray-200.rounded-full {
+  background-color: var(--dark-border) !important;
+}
+
+/* ===== Dark Mode: Body text default ===== */
+body.dark-theme {
+  color: #e5e7eb;
+}
+body.dark-theme p {
+  color: inherit;
+}
+body.dark-theme h1, body.dark-theme h2, body.dark-theme h3, body.dark-theme h4 {
+  color: #f3f4f6;
+}
+body.dark-theme a {
+  color: #60a5fa;
+}
+body.dark-theme a:hover {
+  color: #93c5fd;
+}

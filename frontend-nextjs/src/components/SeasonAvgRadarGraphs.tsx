@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useMemo } from "react";
 import { Radar } from "react-chartjs-2";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   Chart as ChartJS,
   RadialLinearScale,
@@ -58,6 +59,7 @@ export function RadarGraphs({ data, statConfig, playerFilterKey = "matches", tit
   title?: string;
 }) {
   const PENTAGON_STAT_LIMIT = 5;
+  const { isDark } = useTheme();
   const defaultSelected = Object.entries(statConfig)
     .filter(([_, v]) => v.default)
     .map(([k]) => k)
@@ -144,17 +146,17 @@ export function RadarGraphs({ data, statConfig, playerFilterKey = "matches", tit
               angleLines: {
                 display: true,
                 lineWidth: 0.5,
-                color: "rgba(0,0,0,0.4)",
+                color: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.4)",
               },
               suggestedMin: 0,
               suggestedMax: 100,
               ticks: { display: false, stepSize: 25, backdropColor: "rgba(0,0,0,0)" },
               pointLabels: {
                 font: { size: 11, weight: 700 },
-                color: "#1f2937",
+                color: isDark ? "#e5e7eb" : "#1f2937",
               },
               grid: {
-                color: "rgba(0,0,0,0.3)",
+                color: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.3)",
                 lineWidth: 0.5,
               },
             },
@@ -162,8 +164,8 @@ export function RadarGraphs({ data, statConfig, playerFilterKey = "matches", tit
           layout: { padding: 5 },
         };
         return (
-          <div key={player.steam_id} className="player-card border rounded-lg bg-white shadow p-3 flex flex-col items-center text-center">
-            <span className="text-base font-semibold text-gray-800 mb-2">{player.name}</span>
+          <div key={player.steam_id} className={`player-card border rounded-lg shadow p-3 flex flex-col items-center text-center ${isDark ? 'bg-dark-card border-dark-border' : 'bg-white'}`}>
+            <span className={`text-base font-semibold mb-2 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{player.name}</span>
             <div className="w-full flex justify-center">
               <div className="w-[200px] h-[192px]">
                 <Radar data={chartData} options={chartOptions} />
@@ -177,18 +179,18 @@ export function RadarGraphs({ data, statConfig, playerFilterKey = "matches", tit
   return (
     <div>
       {/* Stat Selection UI */}
-      <div className="mb-6 p-4 border rounded-lg bg-gray-50 shadow-sm">
+      <div className={`mb-6 p-4 border rounded-lg shadow-sm ${isDark ? 'bg-dark-surface border-dark-border' : 'bg-gray-50'}`}>
         <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => {
           const el = document.getElementById("radar-stat-selector-content");
           if (el) el.classList.toggle("hidden");
           const arrow = document.getElementById("radar-stat-arrow");
           if (arrow) arrow.classList.toggle("rotate-180");
         }}>
-          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+          <h3 className={`text-lg font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{title}</h3>
           <svg id="radar-stat-arrow" className="w-5 h-5 text-gray-500 transform transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
         </div>
         <div id="radar-stat-selector-content" className="mt-2 hidden">
-          <p className="text-sm text-gray-600 mb-3">Grafikte göstermek için tam olarak 5 istatistik seçin:</p>
+          <p className={`text-sm mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Grafikte göstermek için tam olarak 5 istatistik seçin:</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-2 mb-4">
             {Object.entries(statConfig).map(([key, config]) => (
               <label key={key} className="inline-flex items-center">
@@ -199,7 +201,7 @@ export function RadarGraphs({ data, statConfig, playerFilterKey = "matches", tit
                   onChange={e => handleStatChange(key, e.target.checked)}
                   disabled={selectedStats.length === PENTAGON_STAT_LIMIT && !selectedStats.includes(key)}
                 />
-                <span className="ml-2 text-sm text-gray-700">{config.label}</span>
+                <span className={`ml-2 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{config.label}</span>
               </label>
             ))}
           </div>
@@ -218,7 +220,7 @@ export function RadarGraphs({ data, statConfig, playerFilterKey = "matches", tit
         {selectedStats.length !== PENTAGON_STAT_LIMIT ? (
           <div className="text-center py-8 text-gray-500 col-span-full">5 istatistik seçin ve "Grafikleri Güncelle"ye tıklayın.</div>
         ) : playerCards && playerCards.length > 0 ? playerCards : (
-          <div className="text-center py-8 text-gray-500 col-span-full">Veri yok.</div>
+          <div className={`text-center py-8 col-span-full ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Veri yok.</div>
         )}
       </div>
     </div>

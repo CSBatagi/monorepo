@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export interface PlayerAward {
   name: string;
@@ -12,7 +13,10 @@ export interface PlayerAward {
 }
 
 export default function AwardsListClient({ players, color }: { players: PlayerAward[]; color: "green" | "red" }) {
-  const colorClass = color === "green" ? "text-green-700" : "text-red-700";
+  const { isDark } = useTheme();
+  const colorClass = color === "green" 
+    ? (isDark ? "text-green-400" : "text-green-700") 
+    : (isDark ? "text-red-400" : "text-red-700");
   const NAME_WIDTH = 15;
   const NR_WIDTH = 2;
   const SKOR_WIDTH = 17;
@@ -56,7 +60,7 @@ export default function AwardsListClient({ players, color }: { players: PlayerAw
               </span>
             </div>
             <div className="ml-4">
-              <span className="text-black text-[11px] sm:text-sm">
+              <span className={`text-[11px] sm:text-sm ${isDark ? 'text-gray-400' : 'text-black'}`}>
                 {detailsText}
               </span>
             </div>

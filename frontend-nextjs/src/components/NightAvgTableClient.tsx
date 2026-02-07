@@ -6,6 +6,7 @@ import SeasonStatsTable from "./SeasonStatsTable";
 import H2HClient from "./H2HClient";
 import { RadarGraphs } from "./SeasonAvgRadarGraphs";
 import { buildSeasonWindowOptions, filterDatesBySeason } from "@/lib/seasonRanges";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const nightAvgColumns = [
   { key: "name", label: "Oyuncu" },
@@ -60,6 +61,7 @@ export default function NightAvgTableClient({
 
   const [selectedDate, setSelectedDate] = useState<string>(filteredDates[0] || "");
   const data = dataMap[selectedDate] || [];
+  const { isDark } = useTheme();
 
   useEffect(() => {
     const lastKnownTs = typeof window !== "undefined" ? localStorage.getItem("stats_last_ts") : null;
@@ -104,11 +106,11 @@ export default function NightAvgTableClient({
   }, [filteredDates, selectedDate]);
 
   return (
-    <div className="mb-4 p-4 border rounded-lg bg-gray-50 shadow-sm">
-      <label htmlFor="night-avg-season-selector" className="block text-sm font-medium text-gray-700 mb-1">Donem Secin:</label>
+    <div className={`mb-4 p-4 border rounded-lg shadow-sm ${isDark ? 'bg-dark-surface border-dark-border' : 'bg-gray-50'}`}>
+      <label htmlFor="night-avg-season-selector" className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Donem Secin:</label>
       <select
         id="night-avg-season-selector"
-        className="form-select block w-full mt-1 mb-4 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+        className={`form-select block w-full mt-1 mb-4 rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${isDark ? 'bg-dark-card border-dark-border text-gray-100 focus:border-blue-500 focus:ring-blue-500/20' : 'border-gray-300 focus:border-indigo-300 focus:ring-indigo-200'}`}
         value={selectedSeasonId}
         onChange={(e) => setSelectedSeasonId(e.target.value)}
       >
@@ -117,10 +119,10 @@ export default function NightAvgTableClient({
         ))}
       </select>
 
-      <label htmlFor="night-avg-date-selector" className="block text-sm font-medium text-gray-700 mb-1">Tarih Secin:</label>
+      <label htmlFor="night-avg-date-selector" className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Tarih Secin:</label>
       <select
         id="night-avg-date-selector"
-        className="form-select block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+        className={`form-select block w-full mt-1 rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${isDark ? 'bg-dark-card border-dark-border text-gray-100 focus:border-blue-500 focus:ring-blue-500/20' : 'border-gray-300 focus:border-indigo-300 focus:ring-indigo-200'}`}
         value={selectedDate}
         onChange={(e) => setSelectedDate(e.target.value)}
       >
@@ -149,7 +151,7 @@ export default function NightAvgTableClient({
 
       <div className="mt-6 relative">
         {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 text-sm text-gray-600 z-10">
+          <div className={`absolute inset-0 flex flex-col items-center justify-center text-sm z-10 ${isDark ? 'bg-[#0d1321]/80 text-gray-400' : 'bg-white/70 text-gray-600'}`}>
             <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mb-2" />
             Yukleniyor...
           </div>
@@ -157,7 +159,7 @@ export default function NightAvgTableClient({
         {activeTab === "table" && (
           <div id="night-avg-tab-table" className="night-avg-tab-pane active" role="tabpanel" aria-labelledby="night-avg-table-tab">
             <div className="overflow-x-auto w-full">
-              <SeasonStatsTable data={data} columns={nightAvgColumns} tableClassName="min-w-[1200px] w-full" loading={loading} />
+              <SeasonStatsTable data={data} columns={nightAvgColumns} tableClassName="styled-table min-w-[1200px] w-full text-sm" loading={loading} />
             </div>
           </div>
         )}

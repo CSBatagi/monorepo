@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { db } from '@/lib/firebase';
 import { off, onValue, ref, set } from 'firebase/database';
 import { buildPlayersIndex, displayNameForSteamId } from '@/lib/batakAllStars';
@@ -65,6 +66,7 @@ export default function GecenInMVPsiClient({
   seasonStart: string | null;
 }) {
   const { user } = useAuth();
+  const { isDark } = useTheme();
 
   const availableDates = useMemo(() => {
     const dates = Object.keys(nightAvg || {});
@@ -309,12 +311,12 @@ export default function GecenInMVPsiClient({
     <div className="space-y-6">
       {/* Date Selector */}
       <div className="mb-4">
-        <label htmlFor="date-select" className="block text-sm font-medium mb-2">
+        <label htmlFor="date-select" className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : ''}`}>
           Tarih Seç:
         </label>
         <select
           id="date-select"
-          className="border rounded px-3 py-2"
+          className={`border rounded px-3 py-2 ${isDark ? 'bg-dark-card border-dark-border text-gray-100' : ''}`}
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
         >
@@ -327,7 +329,7 @@ export default function GecenInMVPsiClient({
       </div>
 
       {message && (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded">
+        <div className={`px-4 py-3 rounded ${isDark ? 'bg-blue-900/30 border border-blue-500/30 text-blue-300' : 'bg-blue-100 border border-blue-400 text-blue-700'}`}>
           {message}
         </div>
       )}
@@ -340,18 +342,18 @@ export default function GecenInMVPsiClient({
           </h3>
 
           {isDateLocked && (
-            <div className="bg-gray-100 border border-gray-300 text-gray-700 px-4 py-3 rounded mb-4">
+            <div className={`px-4 py-3 rounded mb-4 ${isDark ? 'bg-dark-card border border-dark-border text-gray-400' : 'bg-gray-100 border border-gray-300 text-gray-700'}`}>
               Bu tarih kilitli. Oylar değiştirilemez.
             </div>
           )}
 
           {/* Winners Display */}
           {winners.length > 0 && (
-            <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 mb-4">
-              <h4 className="text-lg font-bold text-yellow-800 mb-2">
+            <div className={`rounded-lg p-4 mb-4 ${isDark ? 'bg-yellow-900/20 border-2 border-yellow-500/40' : 'bg-yellow-50 border-2 border-yellow-400'}`}>
+              <h4 className={`text-lg font-bold mb-2 ${isDark ? 'text-yellow-400' : 'text-yellow-800'}`}>
                 🏆 Gecenin MVP'si:
               </h4>
-              <div className="text-2xl font-bold text-yellow-900">
+              <div className={`text-2xl font-bold ${isDark ? 'text-yellow-300' : 'text-yellow-900'}`}>
                 {winners.map((w, i) => (
                   <span key={w.steamId}>
                     {i > 0 && ' & '}
@@ -364,13 +366,13 @@ export default function GecenInMVPsiClient({
 
           {/* Voting Table */}
           <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse border border-gray-300">
+            <table className={`min-w-full border-collapse border ${isDark ? 'border-dark-border' : 'border-gray-300'}`}>
               <thead>
-                <tr className="bg-gray-200">
-                  <th className="border border-gray-300 px-4 py-2">Oyuncu</th>
-                  <th className="border border-gray-300 px-4 py-2">Oy Ver</th>
-                  <th className="border border-gray-300 px-4 py-2">Verdiği Oy</th>
-                  <th className="border border-gray-300 px-4 py-2">Aldığı Oy Sayısı</th>
+                <tr className={isDark ? 'bg-dark-surface' : 'bg-gray-200'}>
+                  <th className={`border px-4 py-2 ${isDark ? 'border-dark-border text-gray-300' : 'border-gray-300'}`}>Oyuncu</th>
+                  <th className={`border px-4 py-2 ${isDark ? 'border-dark-border text-gray-300' : 'border-gray-300'}`}>Oy Ver</th>
+                  <th className={`border px-4 py-2 ${isDark ? 'border-dark-border text-gray-300' : 'border-gray-300'}`}>Verdiği Oy</th>
+                  <th className={`border px-4 py-2 ${isDark ? 'border-dark-border text-gray-300' : 'border-gray-300'}`}>Aldığı Oy Sayısı</th>
                 </tr>
               </thead>
               <tbody>
@@ -383,13 +385,13 @@ export default function GecenInMVPsiClient({
                     voteCounts.find((v) => v.steamId === player.steamId)?.count || 0;
 
                   return (
-                    <tr key={player.steamId}>
-                      <td className="border border-gray-300 px-4 py-2 font-semibold">
+                    <tr key={player.steamId} className={isDark ? 'hover:bg-[#1a2340]/50' : ''}>
+                      <td className={`border px-4 py-2 font-semibold ${isDark ? 'border-dark-border text-gray-200' : 'border-gray-300'}`}>
                         {player.name}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">
+                      <td className={`border px-4 py-2 ${isDark ? 'border-dark-border' : 'border-gray-300'}`}>
                         <select
-                          className="border rounded px-2 py-1 w-full"
+                          className={`border rounded px-2 py-1 w-full ${isDark ? 'bg-dark-card border-dark-border text-gray-100' : ''}`}
                           value={voterChoice}
                           onChange={(e) => handleVote(player.steamId, e.target.value)}
                           disabled={saving || isDateLocked}
@@ -404,10 +406,10 @@ export default function GecenInMVPsiClient({
                             ))}
                         </select>
                       </td>
-                      <td className="border border-gray-300 px-4 py-2 text-center">
+                      <td className={`border px-4 py-2 text-center ${isDark ? 'border-dark-border text-gray-300' : 'border-gray-300'}`}>
                         {votedForName}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2 text-center">
+                      <td className={`border px-4 py-2 text-center ${isDark ? 'border-dark-border text-gray-300' : 'border-gray-300'}`}>
                         {receivedCount}
                       </td>
                     </tr>
@@ -424,9 +426,9 @@ export default function GecenInMVPsiClient({
               <div className="space-y-1">
                 {voteCounts.map((vc, idx) => (
                   <div key={vc.steamId} className="flex items-center gap-2">
-                    <span className="font-mono text-sm text-gray-600">#{idx + 1}</span>
+                    <span className={`font-mono text-sm ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>#{idx + 1}</span>
                     <span className="font-semibold">{vc.name}</span>
-                    <span className="text-gray-600">- {vc.count} oy</span>
+                    <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>- {vc.count} oy</span>
                   </div>
                 ))}
               </div>
@@ -439,18 +441,18 @@ export default function GecenInMVPsiClient({
       <div className="mt-8">
         <h3 className="text-xl font-semibold mb-4">Geçmiş MVP'ler</h3>
         {historicalResults.length === 0 && (
-          <p className="text-gray-500">Henüz oy kullanılmamış.</p>
+          <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>Henüz oy kullanılmamış.</p>
         )}
         {historicalResults.length > 0 && (
           <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse border border-gray-300">
+            <table className={`min-w-full border-collapse border ${isDark ? 'border-dark-border' : 'border-gray-300'}`}>
               <thead>
-                <tr className="bg-gray-200">
-                  <th className="border border-gray-300 px-4 py-2">Tarih</th>
-                  <th className="border border-gray-300 px-4 py-2">MVP</th>
-                  <th className="border border-gray-300 px-4 py-2">Oy Sayısı</th>
-                  <th className="border border-gray-300 px-4 py-2">Toplam Oy / Oyuncu</th>
-                  <th className="border border-gray-300 px-4 py-2">İşlem</th>
+                <tr className={isDark ? 'bg-dark-surface' : 'bg-gray-200'}>
+                  <th className={`border px-4 py-2 ${isDark ? 'border-dark-border text-gray-300' : 'border-gray-300'}`}>Tarih</th>
+                  <th className={`border px-4 py-2 ${isDark ? 'border-dark-border text-gray-300' : 'border-gray-300'}`}>MVP</th>
+                  <th className={`border px-4 py-2 ${isDark ? 'border-dark-border text-gray-300' : 'border-gray-300'}`}>Oy Sayısı</th>
+                  <th className={`border px-4 py-2 ${isDark ? 'border-dark-border text-gray-300' : 'border-gray-300'}`}>Toplam Oy / Oyuncu</th>
+                  <th className={`border px-4 py-2 ${isDark ? 'border-dark-border text-gray-300' : 'border-gray-300'}`}>İşlem</th>
                 </tr>
               </thead>
               <tbody>
@@ -461,12 +463,13 @@ export default function GecenInMVPsiClient({
                       (() => {
                         const v = lockedByDate?.[result.date];
                         const locked = v === true || !!(v && typeof v === 'object' && (v as any).locked);
+                        if (isDark) return locked ? 'bg-dark-surface text-gray-500' : '';
                         return locked ? 'bg-gray-100 text-gray-500' : '';
                       })()
                     }
                   >
-                    <td className="border border-gray-300 px-4 py-2">{result.date}</td>
-                    <td className="border border-gray-300 px-4 py-2 font-semibold">
+                    <td className={`border px-4 py-2 ${isDark ? 'border-dark-border' : 'border-gray-300'}`}>{result.date}</td>
+                    <td className={`border px-4 py-2 font-semibold ${isDark ? 'border-dark-border' : 'border-gray-300'}`}>
                       {result.winners.map((w, i) => (
                         <span key={w.steamId}>
                           {i > 0 && ' & '}
@@ -474,13 +477,13 @@ export default function GecenInMVPsiClient({
                         </span>
                       ))}
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 text-center">
+                    <td className={`border px-4 py-2 text-center ${isDark ? 'border-dark-border' : 'border-gray-300'}`}>
                       {result.winners[0]?.count || 0}
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 text-center">
+                    <td className={`border px-4 py-2 text-center ${isDark ? 'border-dark-border' : 'border-gray-300'}`}>
                       {result.totalVotes} / {result.totalPlayers}
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 text-center">
+                    <td className={`border px-4 py-2 text-center ${isDark ? 'border-dark-border' : 'border-gray-300'}`}>
                       {(() => {
                         const v = lockedByDate?.[result.date];
                         const locked = v === true || !!(v && typeof v === 'object' && (v as any).locked);

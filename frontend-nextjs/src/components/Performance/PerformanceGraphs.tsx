@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Line } from 'react-chartjs-2';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -37,6 +38,7 @@ interface PlayerPerformance {
 interface PerformanceGraphsProps { initialData?: PlayerPerformance[] }
 
 const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] }) => {
+  const { isDark } = useTheme();
   const [performanceData, setPerformanceData] = useState<PlayerPerformance[]>(initialData);
     const [uniqueDates, setUniqueDates] = useState<string[]>([]);
     const [metric, setMetric] = useState<'hltv_2' | 'adr'>('hltv_2');
@@ -153,10 +155,14 @@ const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] 
         plugins: {
             legend: {
                 position: 'top' as const,
+                labels: {
+                    color: isDark ? '#e5e7eb' : undefined,
+                },
             },
             title: {
                 display: true,
                 text: `Performance Chart: ${metric === 'hltv_2' ? 'HLTV 2.0 Rating' : 'ADR'}`,
+                color: isDark ? '#e5e7eb' : undefined,
             },
             tooltip: {
                 callbacks: {
@@ -179,9 +185,24 @@ const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] 
                 beginAtZero: false,
                 title: {
                     display: true,
-                    text: metric === 'hltv_2' ? 'HLTV 2.0' : 'ADR'
-                }
-            }
+                    text: metric === 'hltv_2' ? 'HLTV 2.0' : 'ADR',
+                    color: isDark ? '#e5e7eb' : undefined,
+                },
+                ticks: {
+                    color: isDark ? '#9ca3af' : undefined,
+                },
+                grid: {
+                    color: isDark ? 'rgba(255,255,255,0.08)' : undefined,
+                },
+            },
+            x: {
+                ticks: {
+                    color: isDark ? '#9ca3af' : undefined,
+                },
+                grid: {
+                    color: isDark ? 'rgba(255,255,255,0.08)' : undefined,
+                },
+            },
         }
     };
   
@@ -231,12 +252,12 @@ const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] 
       </div>
 
        {/* Tabs */}
-       <div className="border-b border-gray-200 mb-4">
+       <div className={`border-b mb-4 ${isDark ? 'border-dark-border' : 'border-gray-200'}`}>
           <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            <button onClick={() => setActiveTab('graph')} className={`${activeTab === 'graph' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
+            <button onClick={() => setActiveTab('graph')} className={`${activeTab === 'graph' ? (isDark ? 'border-blue-400 text-blue-400' : 'border-blue-500 text-blue-600') : (isDark ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
               Graph
             </button>
-            <button onClick={() => setActiveTab('table')} className={`${activeTab === 'table' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
+            <button onClick={() => setActiveTab('table')} className={`${activeTab === 'table' ? (isDark ? 'border-blue-400 text-blue-400' : 'border-blue-500 text-blue-600') : (isDark ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
               Table
             </button>
           </nav>

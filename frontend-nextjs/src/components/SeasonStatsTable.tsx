@@ -1,6 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
 import SteamAvatar from "@/components/SteamAvatar";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const columns = [
   { key: "name", label: "Oyuncu" },
@@ -71,6 +72,7 @@ export default function SeasonStatsTable({ data, columns: customColumns, tableCl
   const cols = customColumns || columns;
   const [sortKey, setSortKey] = useState<string>(cols[1]?.key || "hltv_2");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const { isDark } = useTheme();
 
   // If data accidentally arrives as an object (map) convert to array heuristically
   let normalized: any[] | null = data as any[] | null;
@@ -109,7 +111,7 @@ export default function SeasonStatsTable({ data, columns: customColumns, tableCl
     return (
       <div className="animate-pulse space-y-2">
         {Array.from({ length: 6 }).map((_,i) => (
-          <div key={i} className="h-4 bg-gray-200 rounded w-full" />
+          <div key={i} className={`h-4 rounded w-full ${isDark ? 'bg-dark-border' : 'bg-gray-200'}`} />
         ))}
       </div>
     );
@@ -187,7 +189,7 @@ export default function SeasonStatsTable({ data, columns: customColumns, tableCl
               return (
                 <td key={col.key} className={
                   [
-                    j === 0 ? "font-medium text-gray-900 whitespace-nowrap" : "text-center",
+                    j === 0 ? `font-medium whitespace-nowrap ${isDark ? 'text-gray-200' : 'text-gray-900'}` : "text-center",
                     col.isBadge ? "stat-badge-cell" : "",
                   ].join(" ")
                 }>
