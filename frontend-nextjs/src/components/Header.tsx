@@ -33,6 +33,14 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const splitIndex = Math.ceil(navLinks.length / 2);
+
+  const handleNavWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.currentTarget.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }
+  };
 
   const handleSignInClick = () => {
     router.push('/login');
@@ -59,7 +67,7 @@ export default function Header() {
           ? 'bg-[#0a0f1a] text-gray-100 border-b border-dark-border' 
           : 'bg-gray-800 text-white'
       }`}>
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="container mx-auto px-4 py-3 flex items-center gap-4">
           {/* Left: Logo and Title */}
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
@@ -70,11 +78,14 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Center: Desktop Navigation Links (two rows) */}
-          <div className="hidden md:flex flex-1 justify-center">
-            <nav className="flex flex-col items-center space-y-1">
-              <div className="flex items-center space-x-1 flex-wrap">
-                {navLinks.slice(0, Math.ceil(navLinks.length / 2)).map(link => (
+          {/* Center: Desktop Navigation Links (two rows with overflow scroll) */}
+          <div className="hidden md:flex flex-1 min-w-0">
+            <nav className="w-full flex flex-col gap-1">
+              <div
+                className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-1"
+                onWheel={handleNavWheel}
+              >
+                {navLinks.slice(0, splitIndex).map(link => (
                   <Link
                     key={link.href}
                     href={link.href}
@@ -92,8 +103,11 @@ export default function Header() {
                   </Link>
                 ))}
               </div>
-              <div className="flex items-center space-x-1 flex-wrap">
-                {navLinks.slice(Math.ceil(navLinks.length / 2)).map(link => (
+              <div
+                className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-1"
+                onWheel={handleNavWheel}
+              >
+                {navLinks.slice(splitIndex).map(link => (
                   <Link
                     key={link.href}
                     href={link.href}
@@ -114,41 +128,63 @@ export default function Header() {
             </nav>
           </div>
 
-          {/* Right: Theme Toggle + Auth Buttons (desktop) */}
-          <div className="hidden md:flex items-center space-x-3 flex-shrink-0">
-            <ThemeToggle />
+          {/* Right: Account Controls (desktop/tablet) */}
+          <div className="hidden md:flex flex-col items-end gap-2 flex-shrink-0">
             {loading ? (
               <div className="px-3 py-2 text-sm">Loading...</div>
             ) : user ? (
-              <div className="flex items-center space-x-3">
-                {user.photoURL && <Image src={user.photoURL} alt={user.displayName || 'User'} width={32} height={32} className="rounded-full" />}
-                <span className="text-sm font-medium">{user.displayName || user.email}</span>
-                <button onClick={handleSignOut} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isDark 
-                    ? 'bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-700/40' 
-                    : 'bg-red-600 hover:bg-red-700'
-                }`}>
-                  Sign Out
-                </button>
+              <div className="flex flex-col items-end gap-2 rounded-lg px-2 py-1 bg-[#0b1220] border border-slate-700/70 shadow-inner">
+                <div className="flex items-center gap-2 pb-1 border-b border-blue-900/50 text-gray-100">
+                  {user.photoURL && <Image src={user.photoURL} alt={user.displayName || 'User'} width={28} height={28} className="rounded-full" />}
+                  <span className="text-sm font-medium max-w-[170px] truncate">{user.displayName || user.email}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle />
+                  <Link
+                    href="/notifications"
+                    title="Bildirim Ayarları"
+                    aria-label="Bildirim Ayarları"
+                    className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium transition-colors ${
+                      isDark
+                        ? 'bg-gray-700 hover:bg-gray-600 text-gray-100 border border-gray-600/50'
+                        : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                    }`}
+                  >
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="3.2" />
+                      <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 1 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 1 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V4a2 2 0 1 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H20a2 2 0 1 1 0 4h-.2a1 1 0 0 0-.9.6Z" />
+                    </svg>
+                  </Link>
+                  <button onClick={handleSignOut} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isDark 
+                      ? 'bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-700/40' 
+                      : 'bg-red-600 hover:bg-red-700'
+                  }`}>
+                    Sign Out
+                  </button>
+                </div>
               </div>
             ) : (
-              <button onClick={handleSignInClick} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                isDark 
-                  ? 'bg-blue-600/80 hover:bg-blue-500 border border-blue-500/30' 
-                  : 'bg-blue-600 hover:bg-blue-700'
-              }`}>
-                Giriş Yap
-              </button>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <button onClick={handleSignInClick} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isDark 
+                    ? 'bg-blue-600/80 hover:bg-blue-500 border border-blue-500/30' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}>
+                  Giriş Yap
+                </button>
+              </div>
             )}
           </div>
 
           {/* Mobile: Theme Toggle + Menu Button */}
-          <div className="md:hidden flex items-center space-x-2">
+          <div className="md:hidden ml-auto flex flex-1 items-center space-x-2 justify-end">
             <ThemeToggle />
             {loading ? (
               <div className="px-3 py-2 text-sm">...</div>
             ) : user ? (
-              <div className="flex items-center space-x-2 mr-1">
+              <div className="flex items-center space-x-2">
                 {user.photoURL && <Image src={user.photoURL} alt="User" width={28} height={28} className="rounded-full" />}
               </div>
             ) : null}
@@ -198,6 +234,17 @@ export default function Header() {
                   {user.photoURL && <Image src={user.photoURL} alt={user.displayName || 'User'} width={32} height={32} className="rounded-full" />}
                   <span className="text-base font-medium">{user.displayName || user.email}</span>
                 </div>
+                <Link
+                  href="/notifications"
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`w-full text-left block px-3 py-2 rounded-md text-base font-medium transition-colors mb-2 ${
+                    isDark
+                      ? 'bg-gray-700 hover:bg-gray-600 text-gray-100'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                  }`}
+                >
+                  Bildirim Ayarları
+                </Link>
                 <button onClick={() => { handleSignOut(); setIsMenuOpen(false); }} className={`w-full text-left block px-3 py-2 rounded-md text-base font-medium transition-colors ${
                   isDark 
                     ? 'bg-red-900/60 hover:bg-red-800 text-red-200' 

@@ -4,6 +4,7 @@ import React, { ReactNode } from "react";
 import Layout from "@/components/Layout";
 import AuthGate from "@/components/AuthGate";
 import AdminStatsButton from "@/components/AdminStatsButton";
+import NotificationForegroundHandler from "@/components/NotificationForegroundHandler";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 
@@ -18,6 +19,7 @@ export default function Providers({ children }: { children: ReactNode }) {
             </main>
           </Layout>
           <AdminStatsButton />
+          <NotificationForegroundHandler />
         </AuthGate>
       </AuthProvider>
     </ThemeProvider>

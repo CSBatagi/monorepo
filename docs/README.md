@@ -16,3 +16,4 @@ Use this folder as the canonical context source.
 - Stats architecture and data contracts: [`development/stats-runtime.md`](development/stats-runtime.md)
 - Security and secrets handling: [`operations/security-secrets.md`](operations/security-secrets.md)
 - Steam avatar integration: [`features/steam-integration.md`](features/steam-integration.md)
+- Mobile app and notifications plan: [`features/mobile-app-notifications.md`](features/mobile-app-notifications.md)

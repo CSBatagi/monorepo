@@ -151,6 +151,28 @@ export default function AttendancePage() {
     }
   }, [loadingFirebaseData, firebaseEmojis, players, initializeEmojiStatuses]);
 
+  const emitTekerDonduIfNeeded = useCallback(async () => {
+    const currentUser = firebaseAuth.currentUser;
+    if (!currentUser) return;
+    try {
+      const idToken = await currentUser.getIdToken();
+      const eventDate = new Date().toISOString().slice(0, 10);
+      await fetch('/api/notifications/emit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          topic: 'teker_dondu_reached',
+          eventId: `teker_dondu_reached:${eventDate}`,
+        }),
+      });
+    } catch (error) {
+      console.warn('Failed to emit teker_dondu notification event', error);
+    }
+  }, []);
+
   const handleAttendanceChange = async (player: Player, newAttendance: string) => {
     if (!firebaseAuth.currentUser) {
       alert("You must be logged in to change status."); return;
@@ -173,6 +195,10 @@ export default function AttendancePage() {
           body: JSON.stringify({ steamId: player.steamId, attendance: newAttendance }),
           mode: 'no-cors' // Changed from redirect:follow due to potential CORS issues with Apps Script
         }).catch(err => console.error("Error sending sheet update:", err)); // Log but don't block UI
+      }
+
+      if (newAttendance === 'coming') {
+        void emitTekerDonduIfNeeded();
       }
     } catch (error) {
       console.error("Error syncing attendance:", error);

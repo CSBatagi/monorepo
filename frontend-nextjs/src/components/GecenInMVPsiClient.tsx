@@ -292,6 +292,37 @@ export default function GecenInMVPsiClient({
           lockedByUid: user.uid,
           lockedByName: user.displayName || user.email || undefined,
         });
+
+        try {
+          const winnerSummary =
+            winners.length > 0
+              ? winners.map((w) => `${w.name} (${w.count} oy)`).join(" & ")
+              : "Sonuç hesaplanamadı";
+          const idToken = await user.getIdToken();
+          await fetch('/api/notifications/emit', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({
+              topic: 'mvp_poll_locked',
+              eventId: `mvp_poll_locked:${date}`,
+              title: "🏆 Gecenin MVP'si belirlendi",
+              body: `🏆 ${winnerSummary}`,
+              data: {
+                date,
+                winnerSummary,
+                winnerCount: winners.length,
+                topVoteCount: winners[0]?.count || 0,
+                link: "/gecenin-mvpsi",
+              },
+            }),
+          });
+        } catch (notifyError) {
+          console.warn('Failed to emit MVP lock notification event', notifyError);
+        }
+
         setMessage('Kaydedildi ve kilitlendi.');
       } else {
         // Setting null removes the node in Realtime Database
