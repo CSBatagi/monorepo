@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Player } from '@/types';
@@ -39,6 +39,7 @@ const EMOJI_EXPLANATIONS: { [key: string]: string } = {
     "dokuzda_haber": "9'da kalirsaniz haber edin"
 };
 const TEKER_DONDU_THRESHOLD = 10;
+const LIVE_DATA_LOADING_TIMEOUT_MS = 4000;
 
 interface FirebaseAttendanceData {
   [steamId: string]: { name?: string; status: string; };
@@ -61,6 +62,7 @@ export default function AttendancePage() {
   const [loadingFirebaseData, setLoadingFirebaseData] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState<{[key: string]: boolean}>({}); // For individual player updates
   const [isClearing, setIsClearing] = useState(false);
+  const hasResolvedInitialLiveLoad = useRef(false);
 
   const ensureRealtimeOnline = useCallback(() => {
     try {
@@ -113,7 +115,7 @@ export default function AttendancePage() {
       if (!user && !authLoading) setLoadingFirebaseData(false); // Not logged in, so no data to load from Firebase
       return;
     }
-    setLoadingFirebaseData(true);
+    setLoadingFirebaseData(!hasResolvedInitialLiveLoad.current);
     ensureRealtimeOnline();
 
     const attendanceRef = ref(db, ATTENDANCE_DB_PATH);
@@ -123,6 +125,7 @@ export default function AttendancePage() {
     const markAttendanceLoaded = () => {
       if (didReceiveAttendanceSnapshot) return;
       didReceiveAttendanceSnapshot = true;
+      hasResolvedInitialLiveLoad.current = true;
       setLoadingFirebaseData(false);
     };
 
@@ -154,6 +157,7 @@ export default function AttendancePage() {
       })
       .catch((error) => {
         console.warn("Firebase attendance initial get failed:", error);
+        markAttendanceLoaded();
       });
 
     void get(emojiRef)
@@ -172,7 +176,17 @@ export default function AttendancePage() {
         console.warn("Firebase kaptanlik initial get failed:", error);
       });
 
+    const loadTimeout = window.setTimeout(() => {
+      if (!didReceiveAttendanceSnapshot) {
+        console.warn(
+          `Firebase attendance first snapshot exceeded ${LIVE_DATA_LOADING_TIMEOUT_MS}ms; rendering with current cache and keeping listener active.`
+        );
+        markAttendanceLoaded();
+      }
+    }, LIVE_DATA_LOADING_TIMEOUT_MS);
+
     return () => {
+      window.clearTimeout(loadTimeout);
       off(attendanceRef, 'value', onAttendanceValue);
       off(emojiRef, 'value', onEmojiValue);
       off(kaptanlikRef, 'value', onKaptanlikValue);
@@ -444,11 +458,15 @@ export default function AttendancePage() {
             </button>
           </div>
 
-          {(loadingFirebaseData && players.length > 0) && <p className="text-center py-5">Loading live attendance data...</p>}
+          {(loadingFirebaseData && players.length > 0) && (
+            <p className="text-center py-5">
+              Canli veri baglantisi kuruluyor. Veriler geldikce otomatik guncellenecek...
+            </p>
+          )}
           {!loadingFirebaseData && players.length === 0 && !loadingPlayers && (
             <p className="text-center py-5 text-gray-500">No players found. Check players.json.</p>
           )}
-          {!loadingFirebaseData && players.length > 0 && (
+          {players.length > 0 && (
             <div className="w-full">
               {/* Mobile: Compact Card Layout */}
               <div className="block md:hidden">
