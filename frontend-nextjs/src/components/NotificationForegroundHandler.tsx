@@ -25,10 +25,12 @@ export default function NotificationForegroundHandler() {
       const messaging = getMessaging(app);
       unsubscribe = onMessage(messaging, async (payload) => {
         try {
+          if (document.visibilityState !== "visible") return;
+
           const data = payload.data || {};
-          const title = payload.notification?.title || data.title || "CS Batagi";
-          const body = payload.notification?.body || data.body || "Yeni bir bildirim var.";
-          const icon = payload.notification?.icon || data.icon || "/images/BatakLogo192.png";
+          const title = data.title || payload.notification?.title || "CS Batağı";
+          const body = data.body || payload.notification?.body || "Yeni bir bildirim var.";
+          const icon = data.icon || payload.notification?.icon || "/images/BatakLogo192.png";
           const link = data.link || "/";
           const tag = data.eventId || data.topic || undefined;
 

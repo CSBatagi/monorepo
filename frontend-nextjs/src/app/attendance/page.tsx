@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Player } from '@/types';
 import { db, auth as firebaseAuth } from '@/lib/firebase'; // Firebase db and auth instances
-import { ref, onValue, off, update, set } from 'firebase/database';
+import { ref, onValue, off, update, set, get, goOnline } from 'firebase/database';
 import EmojiControls from '@/components/Attendance/EmojiControls';
 import AttendanceControls from '@/components/Attendance/AttendanceControls';
 import KaptanlikControl from '@/components/Attendance/KaptanlikControl';
@@ -62,6 +62,14 @@ export default function AttendancePage() {
   const [isSubmitting, setIsSubmitting] = useState<{[key: string]: boolean}>({}); // For individual player updates
   const [isClearing, setIsClearing] = useState(false);
 
+  const ensureRealtimeOnline = useCallback(() => {
+    try {
+      goOnline(db);
+    } catch (error) {
+      console.warn("Failed to force Firebase Realtime Database online state", error);
+    }
+  }, []);
+
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
@@ -79,24 +87,51 @@ export default function AttendancePage() {
     fetchPlayers();
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    ensureRealtimeOnline();
+
+    const reconnect = () => ensureRealtimeOnline();
+    const reconnectOnVisible = () => {
+      if (document.visibilityState === 'visible') reconnect();
+    };
+
+    window.addEventListener('focus', reconnect);
+    window.addEventListener('pageshow', reconnect);
+    document.addEventListener('visibilitychange', reconnectOnVisible);
+
+    return () => {
+      window.removeEventListener('focus', reconnect);
+      window.removeEventListener('pageshow', reconnect);
+      document.removeEventListener('visibilitychange', reconnectOnVisible);
+    };
+  }, [user, ensureRealtimeOnline]);
+
   // Firebase listeners
   useEffect(() => {
-    if (!user || players.length === 0) {
+    if (!user) {
       if (!user && !authLoading) setLoadingFirebaseData(false); // Not logged in, so no data to load from Firebase
       return;
     }
     setLoadingFirebaseData(true);
+    ensureRealtimeOnline();
 
     const attendanceRef = ref(db, ATTENDANCE_DB_PATH);
     const emojiRef = ref(db, EMOJI_DB_PATH);
     const kaptanlikRef = ref(db, KAPTANLIK_DB_PATH);
+    let didReceiveAttendanceSnapshot = false;
+    const markAttendanceLoaded = () => {
+      if (didReceiveAttendanceSnapshot) return;
+      didReceiveAttendanceSnapshot = true;
+      setLoadingFirebaseData(false);
+    };
 
     const onAttendanceValue = onValue(attendanceRef, (snapshot) => {
       setFirebaseAttendance(snapshot.val() || {});
-      setLoadingFirebaseData(false); // Consider combined loading state later
+      markAttendanceLoaded();
     }, (error) => {
       console.error("Firebase attendance listener error:", error);
-      setLoadingFirebaseData(false);
+      markAttendanceLoaded();
     });
 
     const onEmojiValue = onValue(emojiRef, (snapshot) => {
@@ -112,12 +147,37 @@ export default function AttendancePage() {
       console.error("Firebase kaptanlik listener error:", error);
     });
 
+    void get(attendanceRef)
+      .then((snapshot) => {
+        setFirebaseAttendance(snapshot.val() || {});
+        markAttendanceLoaded();
+      })
+      .catch((error) => {
+        console.warn("Firebase attendance initial get failed:", error);
+      });
+
+    void get(emojiRef)
+      .then((snapshot) => {
+        setFirebaseEmojis(snapshot.val() || {});
+      })
+      .catch((error) => {
+        console.warn("Firebase emoji initial get failed:", error);
+      });
+
+    void get(kaptanlikRef)
+      .then((snapshot) => {
+        setFirebaseKaptanlik(snapshot.val() || {});
+      })
+      .catch((error) => {
+        console.warn("Firebase kaptanlik initial get failed:", error);
+      });
+
     return () => {
       off(attendanceRef, 'value', onAttendanceValue);
       off(emojiRef, 'value', onEmojiValue);
       off(kaptanlikRef, 'value', onKaptanlikValue);
     };
-  }, [user, players.length, authLoading]); // Depend on user and players list
+  }, [user, authLoading, ensureRealtimeOnline]); // Depend on user auth and connection lifecycle
 
   // Initialize emoji statuses in Firebase
   const initializeEmojiStatuses = useCallback(async () => {
@@ -156,7 +216,6 @@ export default function AttendancePage() {
     if (!currentUser) return;
     try {
       const idToken = await currentUser.getIdToken();
-      const eventDate = new Date().toISOString().slice(0, 10);
       await fetch('/api/notifications/emit', {
         method: 'POST',
         headers: {
@@ -165,7 +224,6 @@ export default function AttendancePage() {
         },
         body: JSON.stringify({
           topic: 'teker_dondu_reached',
-          eventId: `teker_dondu_reached:${eventDate}`,
         }),
       });
     } catch (error) {
@@ -197,9 +255,7 @@ export default function AttendancePage() {
         }).catch(err => console.error("Error sending sheet update:", err)); // Log but don't block UI
       }
 
-      if (newAttendance === 'coming') {
-        void emitTekerDonduIfNeeded();
-      }
+      void emitTekerDonduIfNeeded();
     } catch (error) {
       console.error("Error syncing attendance:", error);
       alert("Failed to update attendance. Please try again.");

@@ -112,6 +112,9 @@ export async function dispatchTopicNotification(params: {
 
   const messageData = {
     topic: params.topic,
+    title: params.title,
+    body: params.body,
+    icon: "/images/BatakLogo192.png",
     ...toStringMap(params.data),
   };
 
@@ -124,11 +127,15 @@ export async function dispatchTopicNotification(params: {
   for (const tokenChunk of tokenChunks) {
     const response = await messaging.sendEachForMulticast({
       tokens: tokenChunk,
-      notification: {
-        title: params.title,
-        body: params.body,
-      },
       data: messageData,
+      webpush: {
+        fcmOptions: {
+          link:
+            typeof params.data?.link === "string" && params.data.link.length > 0
+              ? params.data.link
+              : "/",
+        },
+      },
     });
 
     successCount += response.successCount;
@@ -197,7 +204,10 @@ export async function emitNotificationEvent(params: {
       topic: params.topic,
       title: params.title,
       body: params.body,
-      data: params.data,
+      data: {
+        ...(params.data || {}),
+        eventId: params.eventId,
+      },
     });
 
     await eventRef.update({

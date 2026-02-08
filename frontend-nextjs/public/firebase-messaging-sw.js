@@ -12,10 +12,11 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  const title = payload?.notification?.title || "CS Batagi";
+  const title = payload?.data?.title || payload?.notification?.title || "CS Batağı";
   const options = {
-    body: payload?.notification?.body || "Yeni bir bildirim var.",
-    icon: "/images/BatakLogo192.png",
+    body: payload?.data?.body || payload?.notification?.body || "Yeni bir bildirim var.",
+    icon: payload?.data?.icon || "/images/BatakLogo192.png",
+    tag: payload?.data?.eventId || payload?.data?.topic || undefined,
     data: payload?.data || {},
   };
 
@@ -24,6 +25,23 @@ messaging.onBackgroundMessage((payload) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const link = event.notification?.data?.link || "/";
-  event.waitUntil(self.clients.openWindow(link));
+  const rawLink = event.notification?.data?.link || "/";
+  const targetUrl = new URL(rawLink, self.location.origin).toString();
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then(async (clientList) => {
+        for (const client of clientList) {
+          try {
+            await client.navigate(targetUrl);
+            await client.focus();
+            return;
+          } catch (_error) {
+            // Try next client or fallback openWindow.
+          }
+        }
+        await self.clients.openWindow(targetUrl);
+      })
+  );
 });
