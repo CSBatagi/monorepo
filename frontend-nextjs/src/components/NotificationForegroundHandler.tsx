@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { getMessaging, isSupported, onMessage } from "firebase/messaging";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,7 +9,24 @@ import { app } from "@/lib/firebase";
 
 export default function NotificationForegroundHandler() {
   const { user } = useAuth();
+  const router = useRouter();
   const lastFingerprintRef = useRef<string>("");
+
+  // Listen for postMessage from service worker notificationclick events.
+  // This allows seamless client-side navigation instead of a full page reload
+  // when the user taps a notification while the app is already open.
+  useEffect(() => {
+    function handleServiceWorkerMessage(event: MessageEvent) {
+      if (event.data?.type === "NOTIFICATION_CLICK" && typeof event.data.url === "string") {
+        router.push(event.data.url);
+      }
+    }
+
+    navigator.serviceWorker?.addEventListener("message", handleServiceWorkerMessage);
+    return () => {
+      navigator.serviceWorker?.removeEventListener("message", handleServiceWorkerMessage);
+    };
+  }, [router]);
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;

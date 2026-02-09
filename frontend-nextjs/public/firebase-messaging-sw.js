@@ -27,18 +27,27 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const rawLink = event.notification?.data?.link || "/";
   const targetUrl = new URL(rawLink, self.location.origin).toString();
+  // Keep just the pathname+search+hash for client-side navigation
+  const parsedUrl = new URL(targetUrl);
+  const clientPath = parsedUrl.pathname + parsedUrl.search + parsedUrl.hash;
 
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then(async (clientList) => {
+        // If an existing window is available, use postMessage for seamless
+        // client-side navigation instead of client.navigate() which causes
+        // a full page reload (white screen, Firebase reconnection delay).
         for (const client of clientList) {
           try {
-            await client.navigate(targetUrl);
+            client.postMessage({
+              type: "NOTIFICATION_CLICK",
+              url: clientPath,
+            });
             await client.focus();
             return;
           } catch (_error) {
-            // Try next client or fallback openWindow.
+            // Try next client or fallback to openWindow.
           }
         }
         await self.clients.openWindow(targetUrl);

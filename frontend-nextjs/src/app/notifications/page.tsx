@@ -360,25 +360,38 @@ export default function NotificationsPage() {
           <p className="text-sm">Yükleniyor...</p>
         ) : (
           <div className="space-y-4">
-            <label className="flex items-center justify-between gap-4">
-              <div>
-                <div className="font-medium">Tüm bildirimler</div>
-                <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                  Tek tuşla tüm bildirim türlerini aç/kapat.
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={effectivePrefs.enabled}
-                onChange={(e) =>
-                  savePreferences({
-                    ...effectivePrefs,
-                    enabled: e.target.checked,
-                  })
-                }
-                disabled={saving}
-              />
-            </label>
+            {(() => {
+              const allTopicsOn = TOPIC_META.every(
+                (t) => effectivePrefs.topics[t.key] === true
+              );
+              return (
+                <label className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="font-medium">Tüm bildirimler</div>
+                    <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                      Tek tuşla tüm bildirim türlerini aç/kapat.
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={allTopicsOn}
+                    onChange={(e) => {
+                      const nextValue = e.target.checked;
+                      const nextTopics = { ...effectivePrefs.topics };
+                      for (const t of TOPIC_META) {
+                        nextTopics[t.key] = nextValue;
+                      }
+                      savePreferences({
+                        ...effectivePrefs,
+                        enabled: true,
+                        topics: nextTopics,
+                      });
+                    }}
+                    disabled={saving}
+                  />
+                </label>
+              );
+            })()}
 
             {TOPIC_META.map((topic) => (
               <label key={topic.key} className="flex items-center justify-between gap-4">
@@ -394,6 +407,7 @@ export default function NotificationsPage() {
                   onChange={(e) =>
                     savePreferences({
                       ...effectivePrefs,
+                      enabled: true,
                       topics: {
                         ...effectivePrefs.topics,
                         [topic.key]: e.target.checked,

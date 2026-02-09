@@ -81,9 +81,11 @@ async function resolveRecipientTokens(topic: NotificationTopic): Promise<string[
 
   for (const [uid, userDevices] of Object.entries(subscriptions)) {
     const userPref = preferences[uid];
-    const userEnabled = userPref?.enabled === true;
-    const topicEnabled = userPref?.topics?.[topic] === true;
-    if (!userEnabled || !topicEnabled) continue;
+    // Device-level enabled check handles master on/off (Bildirimleri Aç/Kapat).
+    // Per-topic toggle is checked here; the old "enabled" master override
+    // is intentionally removed — it was redundant and caused confusion.
+    const topicEnabled = userPref?.topics?.[topic] !== false;
+    if (!topicEnabled) continue;
 
     for (const device of Object.values(userDevices || {})) {
       if (!device || device.enabled !== true || !device.token) continue;
