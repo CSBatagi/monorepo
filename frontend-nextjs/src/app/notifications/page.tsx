@@ -24,7 +24,7 @@ type NotificationPreferences = {
 const TOPIC_META: Array<{ key: TopicKey; label: string; description: string }> = [
   {
     key: "teker_dondu_reached",
-    label: "Teker dondu",
+    label: "Teker döndü",
     description: "Katılım sayısı 10 oyuncuya ulaşınca bildir.",
   },
   {
@@ -365,18 +365,11 @@ export default function NotificationsPage() {
                 (t) => effectivePrefs.topics[t.key] === true
               );
               return (
-                <label className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="font-medium">Tüm bildirimler</div>
-                    <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                      Tek tuşla tüm bildirim türlerini aç/kapat.
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={allTopicsOn}
-                    onChange={(e) => {
-                      const nextValue = e.target.checked;
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextValue = !allTopicsOn;
                       const nextTopics = { ...effectivePrefs.topics };
                       for (const t of TOPIC_META) {
                         nextTopics[t.key] = nextValue;
@@ -388,35 +381,57 @@ export default function NotificationsPage() {
                       });
                     }}
                     disabled={saving}
-                  />
-                </label>
+                    className="w-full flex items-center justify-between gap-4 text-left hover:opacity-80 transition-opacity disabled:opacity-50"
+                  >
+                    <div>
+                      <div className="font-medium">Hepsini aç/kapa</div>
+                      <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                        (Otomasyon) Tek tuşla tüm bildirim türlerini açıp kapatır.
+                      </div>
+                    </div>
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center text-white font-bold text-xl ${
+                      allTopicsOn ? "bg-green-600" : "bg-red-600"
+                    }`}>
+                      {allTopicsOn ? "✓" : "✗"}
+                    </div>
+                  </button>
+                  <hr className={`my-2 border-t ${isDark ? "border-dark-border" : "border-gray-200"}`} />
+                  <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                    Not: Bu kutu kapalıysa fakat alt seçenekler işaretliyse, seçili oldukları bildirimleri almaya devam edersiniz.
+                  </p>
+                </div>
               );
             })()}
 
             {TOPIC_META.map((topic) => (
-              <label key={topic.key} className="flex items-center justify-between gap-4">
+              <button
+                key={topic.key}
+                type="button"
+                onClick={() =>
+                  savePreferences({
+                    ...effectivePrefs,
+                    enabled: true,
+                    topics: {
+                      ...effectivePrefs.topics,
+                      [topic.key]: !effectivePrefs.topics[topic.key],
+                    },
+                  })
+                }
+                disabled={saving}
+                className="w-full flex items-center justify-between gap-4 text-left hover:opacity-80 transition-opacity disabled:opacity-50"
+              >
                 <div>
                   <div className="font-medium">{topic.label}</div>
                   <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
                     {topic.description}
                   </div>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={Boolean(effectivePrefs.topics[topic.key])}
-                  onChange={(e) =>
-                    savePreferences({
-                      ...effectivePrefs,
-                      enabled: true,
-                      topics: {
-                        ...effectivePrefs.topics,
-                        [topic.key]: e.target.checked,
-                      },
-                    })
-                  }
-                  disabled={saving}
-                />
-              </label>
+                <div className={`flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center text-white font-bold text-xl ${
+                  effectivePrefs.topics[topic.key] ? "bg-green-600" : "bg-red-600"
+                }`}>
+                  {effectivePrefs.topics[topic.key] ? "✓" : "✗"}
+                </div>
+              </button>
             ))}
           </div>
         )}
