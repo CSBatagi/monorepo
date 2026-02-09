@@ -360,48 +360,46 @@ export default function NotificationsPage() {
           <p className="text-sm">Yükleniyor...</p>
         ) : (
           <div className="space-y-4">
-            {(() => {
-              const allTopicsOn = TOPIC_META.every(
-                (t) => effectivePrefs.topics[t.key] === true
-              );
-              return (
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextValue = !allTopicsOn;
-                      const nextTopics = { ...effectivePrefs.topics };
-                      for (const t of TOPIC_META) {
-                        nextTopics[t.key] = nextValue;
-                      }
-                      savePreferences({
-                        ...effectivePrefs,
-                        enabled: true,
-                        topics: nextTopics,
-                      });
-                    }}
-                    disabled={saving}
-                    className="w-full flex items-center justify-between gap-4 text-left hover:opacity-80 transition-opacity disabled:opacity-50"
-                  >
-                    <div>
-                      <div className="font-medium">Hepsini aç/kapa</div>
-                      <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                        (Otomasyon) Tek tuşla tüm bildirim türlerini açıp kapatır.
-                      </div>
-                    </div>
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center text-white font-bold text-xl ${
-                      allTopicsOn ? "bg-green-600" : "bg-red-600"
-                    }`}>
-                      {allTopicsOn ? "✓" : "✗"}
-                    </div>
-                  </button>
-                  <hr className={`my-2 border-t ${isDark ? "border-dark-border" : "border-gray-200"}`} />
-                  <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                    Not: Bu kutu kapalıysa fakat alt seçenekler işaretliyse, seçili oldukları bildirimleri almaya devam edersiniz.
-                  </p>
-                </div>
-              );
-            })()}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const nextTopics = { ...effectivePrefs.topics };
+                  for (const t of TOPIC_META) {
+                    nextTopics[t.key] = true;
+                  }
+                  savePreferences({
+                    ...effectivePrefs,
+                    enabled: true,
+                    topics: nextTopics,
+                  });
+                }}
+                disabled={saving}
+                className="flex-1 px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 font-medium transition-colors"
+              >
+                Hepsini aç
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextTopics = { ...effectivePrefs.topics };
+                  for (const t of TOPIC_META) {
+                    nextTopics[t.key] = false;
+                  }
+                  savePreferences({
+                    ...effectivePrefs,
+                    enabled: true,
+                    topics: nextTopics,
+                  });
+                }}
+                disabled={saving}
+                className="flex-1 px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 font-medium transition-colors"
+              >
+                Hepsini kapat
+              </button>
+            </div>
+
+            <hr className={`border-t ${isDark ? "border-dark-border" : "border-gray-200"}`} />
 
             {TOPIC_META.map((topic) => (
               <button
