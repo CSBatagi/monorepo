@@ -4,9 +4,7 @@ import fs from 'fs/promises';
 // Helper to read JSON files, preferring runtime-data volume for dynamic files
 export async function readJson(filename: string): Promise<any> {
   const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
-  
-  console.log(`[dataReader] Reading ${filename}, runtime dir: ${runtimeDir}`);
-  
+
   // Static files (always in public/data)
   const staticFiles = ['kabile.json', 'maps.json', 'players.json', 'season_start.json'];
   
@@ -33,19 +31,14 @@ export async function readJson(filename: string): Promise<any> {
   
   for (const p of candidates) {
     try {
-      console.log(`[dataReader] Trying path: ${p}`);
       const raw = await fs.readFile(p, 'utf-8');
-      const parsed = JSON.parse(raw);
-      console.log(`[dataReader] Success! ${filename} - type: ${typeof parsed}, isArray: ${Array.isArray(parsed)}, length: ${Array.isArray(parsed) ? parsed.length : 'N/A'}`);
-      return parsed;
+      return JSON.parse(raw);
     } catch (e) { 
-      console.log(`[dataReader] Failed ${p}: ${e instanceof Error ? e.message : String(e)}`);
       /* continue */ 
     }
   }
   
   // Return appropriate defaults for different file types
-  console.log(`[dataReader] All paths failed for ${filename}, returning default`);
   if (filename.includes('season_avg_periods') || filename.includes('players_stats_periods') || filename.includes('sonmac_by_date_all') || filename.includes('night_avg_all')) {
     return {};
   } else if (filename.includes('last10') || filename.includes('season_avg') || filename.includes('players_stats') || filename.includes('map_stats')) {

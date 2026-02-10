@@ -26,7 +26,10 @@ export const metadata: Metadata = {
 let lastServerKnownTs: string | null = null; // per server runtime
 let lastRefreshTime = 0; // epoch ms of last backend call
 const REFRESH_COOLDOWN_MS = 60 * 1000; // 60 seconds - backend call is cheap (in-memory timestamp comparison only)
-const tsPersistPath = path.join(process.cwd(), 'runtime-data', 'last_timestamp.txt');
+const REFRESH_TIMEOUT_MS = 4000;
+let refreshInFlight: Promise<void> | null = null;
+const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
+const tsPersistPath = path.join(runtimeDir, 'last_timestamp.txt');
 async function loadPersistedTs(){
   try { const raw = await fs.readFile(tsPersistPath,'utf-8'); lastServerKnownTs = raw.trim() || null; } catch {}
 }
@@ -38,33 +41,45 @@ async function incrementalRefresh() {
   // Cooldown: skip backend call if we checked recently
   const now = Date.now();
   if (now - lastRefreshTime < REFRESH_COOLDOWN_MS) return;
+  if (refreshInFlight) return refreshInFlight;
   lastRefreshTime = now;
+  refreshInFlight = (async () => {
+    const backendBase = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
+    const url = new URL('/stats/incremental', backendBase);
+    if (lastServerKnownTs) url.searchParams.set('lastKnownTs', lastServerKnownTs);
+    url.searchParams.set('_cb', Date.now().toString());
 
-  const backendBase = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
-  const url = new URL('/stats/incremental', backendBase);
-  if (lastServerKnownTs) url.searchParams.set('lastKnownTs', lastServerKnownTs);
-  url.searchParams.set('_cb', Date.now().toString());
-  try {
-    const res = await fetch(url.toString(), { cache: 'no-store' });
-    if (!res.ok) return;
-    const data: any = await res.json().catch(()=>null);
-    if (!data) return;
-  if (data.serverTimestamp) { lastServerKnownTs = data.serverTimestamp; await persistTs(lastServerKnownTs as string); }
-    if (data.updated) {
-      const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(),'runtime-data');
-      await fs.mkdir(runtimeDir,{recursive:true});
-      const statFiles = [
-        'night_avg.json','night_avg_all.json','sonmac_by_date.json','sonmac_by_date_all.json','duello_son_mac.json','duello_sezon.json','performance_data.json','players_stats.json','players_stats_periods.json','map_stats.json','season_avg_periods.json'
-      ];
-      for (const base of statFiles) {
-        const key = base.replace(/\.json$/, '');
-        if (data[key] !== undefined) {
-          try { await fs.writeFile(path.join(runtimeDir, base), JSON.stringify(data[key], null, 2),'utf-8'); } catch {}
+    const ac = new AbortController();
+    const timeout = setTimeout(() => ac.abort(), REFRESH_TIMEOUT_MS);
+    try {
+      const res = await fetch(url.toString(), { cache: 'no-store', signal: ac.signal });
+      if (!res.ok) return;
+      const data: any = await res.json().catch(()=>null);
+      if (!data) return;
+      if (data.serverTimestamp) {
+        lastServerKnownTs = data.serverTimestamp;
+        await persistTs(lastServerKnownTs as string);
+      }
+      if (data.updated) {
+        await fs.mkdir(runtimeDir,{recursive:true});
+        const statFiles = [
+          'night_avg.json','night_avg_all.json','sonmac_by_date.json','sonmac_by_date_all.json','duello_son_mac.json','duello_sezon.json','performance_data.json','players_stats.json','players_stats_periods.json','map_stats.json','season_avg_periods.json'
+        ];
+        for (const base of statFiles) {
+          const key = base.replace(/\.json$/, '');
+          if (data[key] !== undefined) {
+            try { await fs.writeFile(path.join(runtimeDir, base), JSON.stringify(data[key], null, 2),'utf-8'); } catch {}
+          }
         }
       }
-
+    } catch {}
+    finally {
+      clearTimeout(timeout);
     }
-  } catch {}
+  })().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
 }
 
 // Load persisted timestamp once (module scope ensures single flight)
@@ -79,8 +94,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   ensureNotificationSchedulerStarted();
-  // Trigger incremental refresh once per request lifecycle (doesn't block rendering significantly)
-  await incrementalRefresh();
+  // Trigger background refresh without blocking page rendering.
+  void incrementalRefresh();
   return (
     <html lang="en">
       <head>

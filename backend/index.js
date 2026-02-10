@@ -148,24 +148,35 @@ app.get('/stats/aggregates', async (req, res) => {
 // NOTE: This uses the in-memory cached timestamp — ZERO DB cost per request.
 app.get('/stats/incremental', async (req, res) => {
   try {
-    const clientTs = req.query.lastKnownTs ? new Date(req.query.lastKnownTs) : null;
+    const clientTsRaw = typeof req.query.lastKnownTs === 'string' ? req.query.lastKnownTs : null;
+    const parsedClientTs = clientTsRaw ? new Date(clientTsRaw) : null;
+    const clientTs = parsedClientTs && !Number.isNaN(parsedClientTs.getTime()) ? parsedClientTs : null;
     const serverLastTs = TEST_MODE ? await getCachedDataTimestamp() : getCachedDataTimestamp();
     if (!serverLastTs) return res.status(500).json({ error: 'timestamp_unavailable' });
     const serverDate = new Date(serverLastTs);
     const needs = !clientTs || serverDate > clientTs;
+    const sourceChanged =
+      !lastGeneratedServerTimestamp ||
+      serverDate.getTime() !== new Date(lastGeneratedServerTimestamp).getTime();
     let payload = { updated: false, serverTimestamp: serverDate.toISOString() };
     if (needs) {
-      if (!statsGenerationPromise) {
-        statsGenerationPromise = runStatsUpdateScript().finally(()=>{ statsGenerationPromise=null; });
-      }
-      try {
-        const result = await statsGenerationPromise;
-        lastGeneratedServerTimestamp = serverDate;
-        lastGeneratedData = result.data;
-        payload = { updated: true, serverTimestamp: serverDate.toISOString(), ...result.data };
-      } catch (e) {
-        console.error('Incremental generation failed', e);
-        return res.status(500).json({ error: 'incremental_failed', details: e.message });
+      // Regenerate only when source timestamp actually changed (or on cold start).
+      // If unchanged, reuse cached payload to avoid repeated heavy SQL.
+      if (sourceChanged || !lastGeneratedData) {
+        if (!statsGenerationPromise) {
+          statsGenerationPromise = runStatsUpdateScript().finally(()=>{ statsGenerationPromise=null; });
+        }
+        try {
+          const result = await statsGenerationPromise;
+          lastGeneratedServerTimestamp = serverDate;
+          lastGeneratedData = result.data;
+          payload = { updated: true, serverTimestamp: serverDate.toISOString(), ...result.data };
+        } catch (e) {
+          console.error('Incremental generation failed', e);
+          return res.status(500).json({ error: 'incremental_failed', details: e.message });
+        }
+      } else {
+        payload = { updated: true, serverTimestamp: serverDate.toISOString(), ...lastGeneratedData };
       }
     }
     res.set('Cache-Control','no-store');
