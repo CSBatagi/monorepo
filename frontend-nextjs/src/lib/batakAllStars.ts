@@ -480,3 +480,140 @@ export function computeStandings(params: {
 
   return { byLeague, datesIncluded, warnings };
 }
+
+// --- Captain Performance Analysis ---
+// Uses pre-computed HLTV2 DIFF and ADR DIFF from night_avg (gece ortalaması),
+// which are the player's performance minus their rolling last-10-nights average.
+
+export type CaptainNightDetail = {
+  date: string;
+  hltv2: number;
+  adr: number;
+  deltaHltv2: number | null; // from night_avg "HLTV2 DIFF"
+  deltaAdr: number | null;   // from night_avg "ADR DIFF"
+};
+
+export type CaptainPerformanceSummary = {
+  steamId: string;
+  name: string;
+  captainNights: number;
+  avgHltv2AsCaptain: number;
+  avgAdrAsCaptain: number;
+  avgDeltaHltv2: number | null;
+  avgDeltaAdr: number | null;
+  nights: CaptainNightDetail[];
+};
+
+/**
+ * For each captain, collects their HLTV2 / ADR and the pre-computed DIFF values
+ * on the nights they captained. Uses the same HLTV2 DIFF / ADR DIFF shown on
+ * the gece ortalaması page (rolling last-10-match-dates baseline from the DB).
+ */
+export function computeCaptainPerformance(params: {
+  nightAvg: NightAvgData;
+  captainsByDate: CaptainsByDateSnapshot | null;
+  seasonStart: string | null;
+  playersIndex: PlayersIndex;
+}): CaptainPerformanceSummary[] {
+  const { nightAvg, captainsByDate, seasonStart, playersIndex } = params;
+
+  if (!captainsByDate || !nightAvg) return [];
+
+  const start = seasonStart || null;
+
+  // Get included All-Stars dates (same criteria as computeStandings)
+  const datesIncluded = Object.keys(captainsByDate)
+    .filter((d) => {
+      if (start && d < start) return false;
+      const rec = captainsByDate[d];
+      if (!rec?.team1?.steamId || !rec?.team2?.steamId) return false;
+      if (!nightAvg[d]) return false;
+      return true;
+    })
+    .sort();
+
+  if (!datesIncluded.length) return [];
+
+  // Build night_avg index per date
+  const nightRowByDate: Record<string, Map<string, NightAvgRow>> = {};
+  for (const d of datesIncluded) {
+    const rows = nightAvg[d] || [];
+    const map = new Map<string, NightAvgRow>();
+    for (const r of rows) {
+      if (r?.steam_id) map.set(r.steam_id, r);
+    }
+    nightRowByDate[d] = map;
+  }
+
+  // Collect captain nights per player
+  const captainAssignments = new Map<string, string[]>(); // steamId → dates
+
+  for (const d of datesIncluded) {
+    const rec = captainsByDate[d];
+    for (const teamKey of ['team1', 'team2'] as const) {
+      const captain = rec?.[teamKey];
+      if (!captain?.steamId) continue;
+      const steamId = captain.steamId;
+      if (!captainAssignments.has(steamId)) {
+        captainAssignments.set(steamId, []);
+      }
+      captainAssignments.get(steamId)!.push(d);
+    }
+  }
+
+  const results: CaptainPerformanceSummary[] = [];
+
+  for (const [steamId, dates] of captainAssignments) {
+    const name = displayNameForSteamId(steamId, playersIndex);
+    const nights: CaptainNightDetail[] = [];
+
+    for (const date of dates) {
+      const row = nightRowByDate[date]?.get(steamId);
+      const hltv2 = getNightStatValue(row, 'HLTV 2');
+      const adr = getNightStatValue(row, 'ADR');
+
+      if (hltv2 === null || adr === null) continue;
+
+      // Use the pre-computed diffs from the backend (same as gece ortalaması page)
+      const deltaHltv2 = getNightStatValue(row, 'HLTV2 DIFF');
+      const deltaAdr = getNightStatValue(row, 'ADR DIFF');
+
+      nights.push({ date, hltv2, adr, deltaHltv2, deltaAdr });
+    }
+
+    if (nights.length === 0) continue;
+
+    const avgHltv2 = nights.reduce((s, n) => s + n.hltv2, 0) / nights.length;
+    const avgAdr = nights.reduce((s, n) => s + n.adr, 0) / nights.length;
+
+    const withDelta = nights.filter((n) => n.deltaHltv2 !== null);
+    const avgDeltaHltv2 =
+      withDelta.length > 0
+        ? withDelta.reduce((s, n) => s + n.deltaHltv2!, 0) / withDelta.length
+        : null;
+    const avgDeltaAdr =
+      withDelta.length > 0
+        ? withDelta.reduce((s, n) => s + n.deltaAdr!, 0) / withDelta.length
+        : null;
+
+    results.push({
+      steamId,
+      name,
+      captainNights: nights.length,
+      avgHltv2AsCaptain: avgHltv2,
+      avgAdrAsCaptain: avgAdr,
+      avgDeltaHltv2,
+      avgDeltaAdr,
+      nights,
+    });
+  }
+
+  // Sort by HLTV2 delta descending (best captain boost first)
+  results.sort((a, b) => {
+    const da = a.avgDeltaHltv2 ?? -Infinity;
+    const db = b.avgDeltaHltv2 ?? -Infinity;
+    return db - da;
+  });
+
+  return results;
+}

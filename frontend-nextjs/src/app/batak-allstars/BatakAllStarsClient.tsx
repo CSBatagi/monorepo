@@ -9,6 +9,7 @@ import {
   buildPlayersIndex,
   computeStandings,
   computeCaptainTokens,
+  computeCaptainPerformance,
   deriveTeamsForDate,
   displayNameForSteamId,
   type AllStarsConfig,
@@ -18,6 +19,7 @@ import {
   type SonmacByDate,
   type CaptainRecord,
   type PlayerStanding,
+  type CaptainPerformanceSummary,
 } from '@/lib/batakAllStars';
 
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || 'osirikler';
@@ -37,6 +39,17 @@ function formatNumber(value: unknown, decimals = 2): string {
   const n = typeof value === 'number' ? value : Number(value);
   if (Number.isNaN(n)) return '-';
   return n.toFixed(decimals);
+}
+
+function formatDelta(value: number | null, decimals = 3): string {
+  if (value === null) return '-';
+  const prefix = value >= 0 ? '+' : '';
+  return `${prefix}${value.toFixed(decimals)}`;
+}
+
+function deltaColorClass(value: number | null): string {
+  if (value === null) return 'text-gray-400';
+  return value >= 0 ? 'text-green-600' : 'text-red-600';
 }
 
 // Season Progress Bar Component - Interactive
@@ -260,7 +273,8 @@ export default function BatakAllStarsClient({
   const [captainSteamIds, setCaptainSteamIds] = useState<Record<TeamKey, string>>({ team1: '', team2: '' });
   const [savingTeam, setSavingTeam] = useState<Record<TeamKey, boolean>>({ team1: false, team2: false });
   const [message, setMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'standings' | 'raw' | 'kaptanlik'>('standings');
+  const [activeTab, setActiveTab] = useState<'standings' | 'raw' | 'kaptanlik' | 'captain-performance'>('standings');
+  const [expandedCaptainId, setExpandedCaptainId] = useState<string | null>(null);
   
   // Selected progress bar index (null = show all/latest, 1-based number = show standings up to that match)
   const [selectedProgressIndex, setSelectedProgressIndex] = useState<number | null>(null);
@@ -427,6 +441,15 @@ export default function BatakAllStarsClient({
     return volunteers;
   }, [kaptanlikVolunteers, captainsByDate, standingsData?.datesIncluded, playersIndex]);
 
+  const captainPerformance = useMemo(() => {
+    return computeCaptainPerformance({
+      nightAvg,
+      captainsByDate,
+      seasonStart,
+      playersIndex,
+    });
+  }, [nightAvg, captainsByDate, seasonStart, playersIndex]);
+
   // Default date selection
   useEffect(() => {
     if (!selectedDate && availableDates.length) setSelectedDate(availableDates[0]);
@@ -589,6 +612,19 @@ export default function BatakAllStarsClient({
                 onClick={() => setActiveTab('kaptanlik')}
               >
                 Kaptanlık Durumu
+              </button>
+            </li>
+            <li className="mr-2" role="presentation">
+              <button
+                className={`map-tab-button tab-nav-item inline-block border-b-2 rounded-t-lg ${activeTab === 'captain-performance' ? 'active border-blue-600 text-blue-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
+                id="batak-allstars-captain-performance-tab"
+                type="button"
+                role="tab"
+                aria-controls="batak-allstars-tab-captain-performance"
+                aria-selected={activeTab === 'captain-performance'}
+                onClick={() => setActiveTab('captain-performance')}
+              >
+                Kaptan Performansı
               </button>
             </li>
           </ul>
@@ -869,6 +905,109 @@ export default function BatakAllStarsClient({
                   <li>İlk 2 sıradaki oyuncular yeşil ile vurgulanır.</li>
                   <li>Kpt. Token, bu sezon içinde All-Stars gecelerinde kaç kez kaptan olduğunuzu gösterir.</li>
                   <li>Token sayısı, lig sıralamasında en kötü gecelerinizin çıkarılması için kullanılır.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'captain-performance' ? (
+          <div id="batak-allstars-tab-captain-performance" role="tabpanel" aria-labelledby="batak-allstars-captain-performance-tab">
+            <div className="border rounded p-3">
+              <div className="flex flex-col gap-1 mb-3">
+                <div className="text-lg font-semibold text-gray-800">Kaptan Performansı</div>
+                <div className="text-xs text-gray-600">
+                  Kaptanların, kaptan oldukları gecelerdeki performansları ile önceki son 10 gecedeki
+                  ortalamalarının karşılaştırması (Gece Ortalaması sayfasındaki DIFF değerleri).
+                  Δ pozitif = ortalamasının üstünde oynadı.
+                </div>
+              </div>
+
+              {captainPerformance.length === 0 ? (
+                <div className="text-sm text-gray-700 py-4">
+                  Henüz kaptan performans verisi yok. Kaptanları kaydettiğinizde burada görünecektir.
+                </div>
+              ) : (
+                <div className="overflow-x-auto border rounded bg-white">
+                  <table className="min-w-full text-sm bg-white">
+                    <thead className="bg-gray-200">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-semibold text-gray-800">Oyuncu</th>
+                        <th className="text-center px-2 py-2 font-semibold text-gray-800">Kpt</th>
+                        <th className="text-right px-2 py-2 font-semibold text-gray-800 hidden sm:table-cell">HLTV2</th>
+                        <th className="text-right px-2 py-2 font-semibold text-gray-800">Δ HLTV2</th>
+                        <th className="text-right px-2 py-2 font-semibold text-gray-800 hidden sm:table-cell">ADR</th>
+                        <th className="text-right px-2 py-2 font-semibold text-gray-800">Δ ADR</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {captainPerformance.map((cp) => (
+                        <React.Fragment key={cp.steamId}>
+                          <tr
+                            className={`border-t cursor-pointer hover:bg-gray-50 ${expandedCaptainId === cp.steamId ? 'bg-blue-50' : ''}`}
+                            onClick={() => setExpandedCaptainId(expandedCaptainId === cp.steamId ? null : cp.steamId)}
+                          >
+                            <td className="px-3 py-2 font-medium">
+                              <div className="flex items-center gap-1">
+                                <span className="text-gray-400 text-xs">{expandedCaptainId === cp.steamId ? '▼' : '▶'}</span>
+                                {cp.name}
+                              </div>
+                            </td>
+                            <td className="px-2 py-2 text-center">{cp.captainNights}</td>
+                            <td className="px-2 py-2 text-right font-mono text-xs hidden sm:table-cell">{cp.avgHltv2AsCaptain.toFixed(3)}</td>
+                            <td className={`px-2 py-2 text-right font-mono text-xs font-bold ${deltaColorClass(cp.avgDeltaHltv2)}`}>
+                              {formatDelta(cp.avgDeltaHltv2, 3)}
+                            </td>
+                            <td className="px-2 py-2 text-right font-mono text-xs hidden sm:table-cell">{cp.avgAdrAsCaptain.toFixed(1)}</td>
+                            <td className={`px-2 py-2 text-right font-mono text-xs font-bold ${deltaColorClass(cp.avgDeltaAdr)}`}>
+                              {formatDelta(cp.avgDeltaAdr, 1)}
+                            </td>
+                          </tr>
+                          {expandedCaptainId === cp.steamId && (
+                            <tr>
+                              <td colSpan={6} className="px-3 py-2 bg-gray-50">
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-xs">
+                                    <thead className="bg-gray-100">
+                                      <tr>
+                                        <th className="text-left px-2 py-1">Tarih</th>
+                                        <th className="text-right px-2 py-1">HLTV2</th>
+                                        <th className="text-right px-2 py-1">Δ HLTV2</th>
+                                        <th className="text-right px-2 py-1">ADR</th>
+                                        <th className="text-right px-2 py-1">Δ ADR</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {cp.nights.map((n) => (
+                                        <tr key={n.date} className="border-t">
+                                          <td className="px-2 py-1 font-mono">{n.date.slice(5)}</td>
+                                          <td className="px-2 py-1 text-right font-mono">{n.hltv2.toFixed(3)}</td>
+                                          <td className={`px-2 py-1 text-right font-mono font-bold ${deltaColorClass(n.deltaHltv2)}`}>
+                                            {formatDelta(n.deltaHltv2, 3)}
+                                          </td>
+                                          <td className="px-2 py-1 text-right font-mono">{n.adr.toFixed(1)}</td>
+                                          <td className={`px-2 py-1 text-right font-mono font-bold ${deltaColorClass(n.deltaAdr)}`}>
+                                            {formatDelta(n.deltaAdr, 1)}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="mt-4 text-xs text-gray-500">
+                <div className="font-medium mb-1">Not:</div>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Δ değerleri Gece Ortalaması sayfasındaki HLTV2 DIFF ve ADR DIFF ile aynıdır (son 10 geceye göre hesaplanır).</li>
+                  <li>Pozitif değer kaptan olarak ortalamasının üstünde oynadığını, negatif değer altında oynadığını gösterir.</li>
+                  <li>Satıra tıklayarak gece detaylarını görebilirsiniz.</li>
                 </ul>
               </div>
             </div>
