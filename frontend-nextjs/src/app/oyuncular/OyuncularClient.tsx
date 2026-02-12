@@ -218,6 +218,7 @@ export default function OyuncularClient({
       return stats.map((p) => ({
         steamId: String(p.steam_id),
         name: p.name,
+        status: undefined as string | undefined,
       }));
     }
     return [] as { steamId: string; name: string; status?: string }[];

@@ -4,6 +4,7 @@ import {
   App,
   AppOptions,
   cert,
+  deleteApp,
   getApp,
   getApps,
   initializeApp,
@@ -107,7 +108,7 @@ export function getFirebaseAdminApp(): App {
     const currentProject = global.__firebaseAdminApp.options.projectId;
     if (expectedProjectId && currentProject && currentProject !== expectedProjectId) {
       try {
-        void global.__firebaseAdminApp.delete();
+        void deleteApp(global.__firebaseAdminApp);
       } catch {
         // best effort cleanup
       }
