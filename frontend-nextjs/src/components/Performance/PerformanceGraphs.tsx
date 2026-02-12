@@ -64,10 +64,17 @@ const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] 
             } catch(_) {}
           }
           if (!data) {
-            // fallback try static path (will likely 404 but keeps previous behavior)
-            response = await fetch('/data/performance_data.json?_cb=' + Date.now());
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            data = await response.json();
+            // API didn't return performance_data (e.g. updated:false with no payload).
+            // Keep the server-rendered initialData rather than fetching the stale static file.
+            if (initialData.length > 0) {
+              data = initialData;
+            } else {
+              // True cold start with no initialData — last resort static fallback
+              response = await fetch('/data/performance_data.json?_cb=' + Date.now());
+              if (response.ok) {
+                data = await response.json();
+              }
+            }
           }
           const perfArray: PlayerPerformance[] = data || [];
           perfArray.sort((a, b) => a.name.localeCompare(b.name));
