@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import ThemeToggle from '@/components/ThemeToggle';
+import NotificationBell from '@/components/NotificationBell';
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -140,6 +141,7 @@ export default function Header() {
                 </div>
                 <div className="flex items-center gap-2">
                   <ThemeToggle />
+                  <NotificationBell />
                   <Link
                     href="/notifications"
                     title="Bildirim Ayarları"
@@ -181,6 +183,7 @@ export default function Header() {
           {/* Mobile: Theme Toggle + Menu Button */}
           <div className="md:hidden ml-auto flex flex-1 items-center space-x-2 justify-end">
             <ThemeToggle />
+            {!loading && user && <NotificationBell />}
             {loading ? (
               <div className="px-3 py-2 text-sm">...</div>
             ) : user ? (
@@ -234,6 +237,17 @@ export default function Header() {
                   {user.photoURL && <Image src={user.photoURL} alt={user.displayName || 'User'} width={32} height={32} className="rounded-full" />}
                   <span className="text-base font-medium">{user.displayName || user.email}</span>
                 </div>
+                <Link
+                  href="/notifications/inbox"
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`w-full text-left block px-3 py-2 rounded-md text-base font-medium transition-colors mb-2 ${
+                    isDark
+                      ? 'bg-gray-700 hover:bg-gray-600 text-gray-100'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                  }`}
+                >
+                  Bildirim Kutusu
+                </Link>
                 <Link
                   href="/notifications"
                   onClick={() => setIsMenuOpen(false)}

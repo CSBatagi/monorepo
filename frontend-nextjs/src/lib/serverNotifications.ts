@@ -64,7 +64,13 @@ function toStringMap(data?: NotificationData): Record<string, string> {
   return out;
 }
 
-async function resolveRecipientTokens(topic: NotificationTopic): Promise<string[]> {
+type ResolvedRecipients = {
+  tokens: string[];
+  /** UIDs of users who should receive this notification (for inbox persistence) */
+  recipientUids: string[];
+};
+
+async function resolveRecipients(topic: NotificationTopic): Promise<ResolvedRecipients> {
   const db = adminDb();
   const [prefSnap, subsSnap] = await Promise.all([
     db.ref("notifications/preferences").get(),
@@ -78,6 +84,7 @@ async function resolveRecipientTokens(topic: NotificationTopic): Promise<string[
   >;
 
   const tokens = new Set<string>();
+  const recipientUids = new Set<string>();
 
   for (const [uid, userDevices] of Object.entries(subscriptions)) {
     const userPref = preferences[uid];
@@ -87,13 +94,57 @@ async function resolveRecipientTokens(topic: NotificationTopic): Promise<string[
     const topicEnabled = userPref?.topics?.[topic] !== false;
     if (!topicEnabled) continue;
 
+    let hasActiveDevice = false;
     for (const device of Object.values(userDevices || {})) {
       if (!device || device.enabled !== true || !device.token) continue;
       tokens.add(device.token);
+      hasActiveDevice = true;
+    }
+    if (hasActiveDevice) {
+      recipientUids.add(uid);
     }
   }
 
-  return [...tokens];
+  return { tokens: [...tokens], recipientUids: [...recipientUids] };
+}
+
+/**
+ * Persist a notification to each recipient's in-app inbox in RTDB.
+ * Path: notifications/inbox/{uid}/{pushId}
+ */
+async function persistToInbox(params: {
+  recipientUids: string[];
+  topic: NotificationTopic;
+  title: string;
+  body: string;
+  data?: NotificationData;
+  eventId?: string;
+}): Promise<void> {
+  if (params.recipientUids.length === 0) return;
+
+  const database = adminDb();
+  const now = Date.now();
+  const updates: Record<string, unknown> = {};
+
+  for (const uid of params.recipientUids) {
+    const pushKey = database.ref(`notifications/inbox/${uid}`).push().key;
+    if (!pushKey) continue;
+    updates[`notifications/inbox/${uid}/${pushKey}`] = {
+      topic: params.topic,
+      title: params.title,
+      body: params.body,
+      data: params.data ? toStringMap(params.data) : null,
+      read: false,
+      createdAt: now,
+      eventId: params.eventId || null,
+    };
+  }
+
+  try {
+    await database.ref().update(updates);
+  } catch (err) {
+    console.error("[serverNotifications] persistToInbox failed:", err);
+  }
 }
 
 export async function dispatchTopicNotification(params: {
@@ -102,8 +153,23 @@ export async function dispatchTopicNotification(params: {
   body: string;
   data?: NotificationData;
 }): Promise<DispatchResult> {
-  const tokens = await resolveRecipientTokens(params.topic);
+  const { tokens, recipientUids } = await resolveRecipients(params.topic);
+
+  // Persist to each recipient's in-app inbox (fire-and-forget, non-blocking)
+  const inboxPromise = persistToInbox({
+    recipientUids,
+    topic: params.topic,
+    title: params.title,
+    body: params.body,
+    data: params.data,
+    eventId:
+      typeof params.data?.eventId === "string"
+        ? params.data.eventId
+        : undefined,
+  });
+
   if (tokens.length === 0) {
+    await inboxPromise;
     return {
       recipientCount: 0,
       successCount: 0,
@@ -148,6 +214,9 @@ export async function dispatchTopicNotification(params: {
       }
     });
   }
+
+  // Wait for inbox persistence to complete
+  await inboxPromise;
 
   return {
     recipientCount: tokens.length,
