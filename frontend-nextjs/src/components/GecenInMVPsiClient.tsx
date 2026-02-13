@@ -6,6 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { db } from '@/lib/firebase';
 import { off, onValue, ref, set } from 'firebase/database';
 import { buildPlayersIndex, displayNameForSteamId } from '@/lib/batakAllStars';
+import { Trophy } from 'lucide-react';
 
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || 'osirikler';
 
@@ -381,8 +382,8 @@ export default function GecenInMVPsiClient({
           {/* Winners Display */}
           {winners.length > 0 && (
             <div className={`rounded-lg p-4 mb-4 ${isDark ? 'bg-yellow-900/20 border-2 border-yellow-500/40' : 'bg-yellow-50 border-2 border-yellow-400'}`}>
-              <h4 className={`text-lg font-bold mb-2 ${isDark ? 'text-yellow-400' : 'text-yellow-800'}`}>
-                🏆 Gecenin MVP'si:
+              <h4 className={`text-lg font-bold mb-2 flex items-center gap-2 ${isDark ? 'text-yellow-400' : 'text-yellow-800'}`}>
+                <Trophy className="w-5 h-5" /> Gecenin MVP&apos;si:
               </h4>
               <div className={`text-2xl font-bold ${isDark ? 'text-yellow-300' : 'text-yellow-900'}`}>
                 {winners.map((w, i) => (

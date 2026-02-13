@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BASE_PATH: currentBasePath, // Expose basePath to the client
   },
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
   eslint: {
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.

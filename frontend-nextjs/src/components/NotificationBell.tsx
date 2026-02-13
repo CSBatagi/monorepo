@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Gamepad2, Trophy, BarChart3, Clock, Megaphone, Bell, type LucideIcon } from "lucide-react";
 
 import { useTheme } from "@/contexts/ThemeContext";
 import {
@@ -11,16 +12,17 @@ import {
 
 /* ─── topic display helpers ─── */
 
-const TOPIC_ICONS: Record<string, string> = {
-  teker_dondu_reached: "🎮",
-  mvp_poll_locked: "🏆",
-  stats_updated: "📊",
-  timed_reminders: "⏰",
-  admin_custom_message: "📢",
+const TOPIC_ICONS: Record<string, LucideIcon> = {
+  teker_dondu_reached: Gamepad2,
+  mvp_poll_locked: Trophy,
+  stats_updated: BarChart3,
+  timed_reminders: Clock,
+  admin_custom_message: Megaphone,
 };
 
-function topicIcon(topic: string) {
-  return TOPIC_ICONS[topic] || "🔔";
+function TopicIcon({ topic, className }: { topic: string; className?: string }) {
+  const Icon = TOPIC_ICONS[topic] || Bell;
+  return <Icon className={className || "w-4 h-4"} />;
 }
 
 function timeAgo(ts: number): string {
@@ -74,8 +76,8 @@ function NotificationItem({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-base" aria-hidden="true">
-              {topicIcon(notification.topic)}
+            <span className="text-base flex-shrink-0" aria-hidden="true">
+              <TopicIcon topic={notification.topic} className="w-4 h-4" />
             </span>
             <span
               className={`text-sm font-semibold truncate ${

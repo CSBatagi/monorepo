@@ -2,6 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import { Gamepad2, Trophy, BarChart3, Clock, Megaphone, Bell, type LucideIcon } from "lucide-react";
 
 import { useTheme } from "@/contexts/ThemeContext";
 import {
@@ -19,13 +20,18 @@ const TOPIC_LABELS: Record<string, string> = {
   admin_custom_message: "Admin mesajı",
 };
 
-const TOPIC_ICONS: Record<string, string> = {
-  teker_dondu_reached: "🎮",
-  mvp_poll_locked: "🏆",
-  stats_updated: "📊",
-  timed_reminders: "⏰",
-  admin_custom_message: "📢",
+const TOPIC_ICON_MAP: Record<string, LucideIcon> = {
+  teker_dondu_reached: Gamepad2,
+  mvp_poll_locked: Trophy,
+  stats_updated: BarChart3,
+  timed_reminders: Clock,
+  admin_custom_message: Megaphone,
 };
+
+function TopicIcon({ topic, className }: { topic: string; className?: string }) {
+  const Icon = TOPIC_ICON_MAP[topic] || Bell;
+  return <Icon className={className || "w-4 h-4"} />;
+}
 
 const TOPIC_COLORS: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
   teker_dondu_reached: { bg: "bg-green-100", text: "text-green-700", darkBg: "bg-green-900/30", darkText: "text-green-400" },
@@ -107,7 +113,7 @@ function InboxCard({
                   : `${topicColor.bg} ${topicColor.text}`
               }`}
             >
-              <span aria-hidden="true">{TOPIC_ICONS[notification.topic] || "🔔"}</span>
+              <span aria-hidden="true"><TopicIcon topic={notification.topic} className="w-4 h-4" /></span>
               {TOPIC_LABELS[notification.topic] || notification.topic}
             </span>
             <span
@@ -301,7 +307,7 @@ export default function NotificationInboxPage() {
                 onClick={() => setFilter(topic)}
                 isDark={isDark}
               >
-                {TOPIC_ICONS[topic] || "🔔"}{" "}
+                <TopicIcon topic={topic} className="w-3.5 h-3.5 inline-block align-text-bottom" />{" "}
                 {TOPIC_LABELS[topic] || topic}
               </FilterButton>
             ))}

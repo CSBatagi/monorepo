@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { off, onValue, ref, set } from 'firebase/database';
+import { ArrowUp, ArrowDown, Circle, Sparkles, CheckCircle, BarChart3 } from 'lucide-react';
 
 import {
   buildPlayersIndex,
@@ -176,13 +177,13 @@ function SeasonProgressBar({
 function PositionChangeIndicator({ change }: { change?: 'up' | 'down' | 'same' | 'new' }) {
   switch (change) {
     case 'up':
-      return <span title="Yükseldi" className="text-green-600">🔼</span>;
+      return <span title="Yükseldi" className="text-green-600 inline-flex"><ArrowUp className="w-4 h-4" strokeWidth={2.5} /></span>;
     case 'down':
-      return <span title="Düştü" className="text-red-600">🔽</span>;
+      return <span title="Düştü" className="text-red-600 inline-flex"><ArrowDown className="w-4 h-4" strokeWidth={2.5} /></span>;
     case 'same':
-      return <span title="Aynı" className="text-gray-400">⏺️</span>;
+      return <span title="Aynı" className="text-gray-400 inline-flex"><Circle className="w-3 h-3" /></span>;
     case 'new':
-      return <span title="Yeni" className="text-blue-400">🆕</span>;
+      return <span title="Yeni" className="text-blue-400 inline-flex"><Sparkles className="w-4 h-4" /></span>;
     default:
       return <span className="text-gray-300">-</span>;
   }
@@ -191,7 +192,7 @@ function PositionChangeIndicator({ change }: { change?: 'up' | 'down' | 'same' |
 // Criteria Met Indicator Component
 function KriteriaMet({ met }: { met?: boolean }) {
   if (met) {
-    return <span title="5 maç + 1 kaptanlık kriterlerini tamamladı" className="text-green-600">✅</span>;
+    return <span title="5 maç + 1 kaptanlık kriterlerini tamamladı" className="text-green-600 inline-flex"><CheckCircle className="w-4 h-4" /></span>;
   }
   return <span className="text-gray-300">-</span>;
 }
@@ -734,7 +735,7 @@ export default function BatakAllStarsClient({
                           <table className="min-w-full text-sm">
                             <thead className="bg-gray-200">
                               <tr>
-                                <th className="text-center px-1 py-2 font-semibold text-gray-800 w-8" title="Pozisyon değişimi">📊</th>
+                                <th className="text-center px-1 py-2 font-semibold text-gray-800 w-8" title="Pozisyon değişimi"><BarChart3 className="w-4 h-4 mx-auto" /></th>
                                 <th className="text-left px-2 py-2 font-semibold text-gray-800">Oyuncu</th>
                                 <th className="text-center px-1 py-2 font-semibold text-gray-800 hidden sm:table-cell" title="5 maç + 1 kaptanlık">
                                   <span className="hidden md:inline">5m/1k</span>
