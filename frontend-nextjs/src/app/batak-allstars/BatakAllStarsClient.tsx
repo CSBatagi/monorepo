@@ -1071,7 +1071,7 @@ export default function BatakAllStarsClient({
 
             return (
               <div key={teamKey} className="border rounded p-3">
-                <div className="flex items-end justify-between gap-3 mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-3">
                   <div>
                     <div className="text-sm text-gray-500">Takım</div>
                     <div className="text-lg font-semibold text-gray-800">
@@ -1084,9 +1084,9 @@ export default function BatakAllStarsClient({
                       </div>
                     ) : null}
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex w-full sm:w-auto flex-col gap-2 sm:items-end">
                     <select
-                      className="border rounded px-2 py-2 text-sm w-64"
+                      className="border rounded px-2 py-2 text-sm w-full sm:w-64 max-w-full"
                       value={selectedCaptainSteamId}
                       onChange={(e) => setCaptainSteamIds((prev) => ({ ...prev, [teamKey]: e.target.value }))}
                       disabled={!selectedDate || roster.length === 0}
@@ -1101,7 +1101,7 @@ export default function BatakAllStarsClient({
                     <button
                       onClick={() => handleSaveTeamCaptain(teamKey)}
                       disabled={isSaving || !selectedCaptainSteamId}
-                      className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-700 transition-colors text-white disabled:opacity-60 disabled:hover:bg-blue-600"
+                      className="w-full sm:w-auto px-4 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-700 transition-colors text-white disabled:opacity-60 disabled:hover:bg-blue-600"
                     >
                       {isSaving ? 'Kaydediliyor…' : 'Kaptanı kaydet'}
                     </button>
