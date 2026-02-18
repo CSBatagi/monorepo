@@ -9,7 +9,7 @@ function DuelloGrid({ data, isDark }: { data: any; isDark: boolean }) {
   const { playerRows, playerCols, duels } = data;
   function renderCell(rowName: string, colName: string) {
     if (rowName === colName) {
-      return <td className={`border ${isDark ? 'bg-dark-border border-dark-border' : 'bg-gray-100'}`} />;
+      return <td key={colName} className={`border ${isDark ? 'bg-dark-border border-dark-border' : 'bg-gray-100'}`} />;
     }
     const duelData = duels[rowName]?.[colName] || { kills: 0, deaths: 0 };
     const reverseData = duels[colName]?.[rowName] || { kills: 0, deaths: 0 };
@@ -33,7 +33,7 @@ function DuelloGrid({ data, isDark }: { data: any; isDark: boolean }) {
     let diagLine = isDark ? '#374151' : '#cccccc';
     if (rowKills === 0 && colKills === 0) {
       // Both zero: teammates, no diagonal, no circles
-      return <td className={`${isDark ? 'border-dark-border' : 'border'}`} style={{ background: emptyBg, width: cellSize, height: cellSize, minWidth: cellSize, minHeight: cellSize, padding: 0 }} />;
+      return <td key={colName} className={`${isDark ? 'border-dark-border' : 'border'}`} style={{ background: emptyBg, width: cellSize, height: cellSize, minWidth: cellSize, minHeight: cellSize, padding: 0 }} />;
     }
     if (winner === 'row') {
       bottomLeftBg = green200;
@@ -86,6 +86,7 @@ function DuelloGrid({ data, isDark }: { data: any; isDark: boolean }) {
     }
     return (
       <td
+        key={colName}
         className={`relative ${isDark ? 'border-dark-border' : 'border'}`}
         style={{
           width: cellSize,
