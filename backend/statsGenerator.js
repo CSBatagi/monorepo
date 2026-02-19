@@ -342,12 +342,12 @@ function applySeasonEndBounds(query, seasonEnd) {
 function buildQueries(seasonStart, seasonEnd = null){
   const queries = {
     seasonAvg: q(`WITH match_date_info AS (SELECT MAX(matches.date::date) AS latest_match_date FROM matches), season_start_info AS (SELECT '${seasonStart}'::date AS seasonstart), match_agg AS ( SELECT p1.steam_id, MAX(p1.name) AS name, AVG(p1.hltv_rating_2) AS hltv_2, AVG(p1.average_damage_per_round) AS adr, AVG(p1.kill_count) AS kills, AVG(p1.death_count) AS deaths, AVG(p1.assist_count) AS assists, AVG(p1.kill_death_ratio) AS kd, AVG(p1.headshot_count) AS headshot_kills, AVG(p1.headshot_percentage) AS headshot_killratio, AVG(p1.first_kill_count) AS first_kill_count, AVG(p1.first_death_count) AS first_death_count, AVG(p1.bomb_planted_count) AS bomb_planted, AVG(p1.bomb_defused_count) AS bomb_defused, AVG(p1.hltv_rating) AS hltv, AVG(p1.mvp_count) AS mvp, AVG(p1.kast) AS kast, AVG(p1.utility_damage) AS utl_dmg, AVG(p1.two_kill_count) AS two_kills, AVG(p1.three_kill_count) AS three_kills, AVG(p1.four_kill_count) AS four_kills, AVG(p1.five_kill_count) AS five_kills, AVG(p1.score) AS score, (SELECT latest_match_date FROM match_date_info) AS latest_match_date, COUNT(*) AS matches_in_interval, COUNT(CASE WHEN matches.winner_name = p1.team_name THEN 1 END) AS win_count, ROUND((COUNT(CASE WHEN matches.winner_name = p1.team_name THEN 1 END)::numeric / COUNT(*) * 100),2) AS win_rate_percentage FROM players p1 INNER JOIN matches ON p1.match_checksum = matches.checksum WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) GROUP BY p1.steam_id ), clutch_agg AS ( SELECT c.clutcher_steam_id AS steam_id, COUNT(*)::numeric AS total_clutches, COUNT(CASE WHEN c.won THEN 1 END)::numeric AS total_clutches_won FROM clutches c JOIN matches m ON c.match_checksum = m.checksum GROUP BY c.clutcher_steam_id ) SELECT m.*, coalesce(c.total_clutches,0) AS total_clutches, coalesce(c.total_clutches_won,0) AS total_clutches_won FROM match_agg m LEFT JOIN clutch_agg c ON m.steam_id = c.steam_id`),
-  nightAvg: q(`WITH season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), player_stats_per_date AS ( SELECT p1.steam_id, MAX(p1.name) AS name, matches.date::date AS match_date, AVG(p1.hltv_rating_2) AS hltv_2, AVG(p1.average_damage_per_round) AS adr, AVG(p1.kill_death_ratio) AS kd, AVG(p1.mvp_count) AS mvp, AVG(p1.kill_count) AS kills, AVG(p1.death_count) AS deaths, AVG(p1.assist_count) AS assists, AVG(p1.headshot_count) AS headshot_kills, AVG(p1.headshot_percentage) AS headshot_killratio, AVG(p1.first_kill_count) AS first_kill_count, AVG(p1.first_death_count) AS first_death_count, AVG(p1.bomb_planted_count) AS bomb_planted, AVG(p1.bomb_defused_count) AS bomb_defused, AVG(p1.hltv_rating) AS hltv, AVG(p1.kast) AS kast, AVG(p1.utility_damage) AS utl_dmg, AVG(p1.two_kill_count) AS two_kills, AVG(p1.three_kill_count) AS three_kills, AVG(p1.four_kill_count) AS four_kills, AVG(p1.five_kill_count) AS five_kills, COUNT(*) AS matches_in_interval FROM players p1 INNER JOIN matches ON p1.match_checksum = matches.checksum WHERE matches.date::date >= (SELECT seasonstart FROM season_start_info) GROUP BY p1.steam_id, matches.date::date ), all_player_stats_per_date AS ( SELECT p1.steam_id, matches.date::date AS match_date, AVG(p1.hltv_rating_2) AS hltv_2, AVG(p1.average_damage_per_round) AS adr FROM players p1 INNER JOIN matches ON p1.match_checksum = matches.checksum GROUP BY p1.steam_id, matches.date::date ), prev_10_dates AS ( SELECT psd.steam_id, psd.match_date, ( SELECT array_agg(dates.match_date ORDER BY dates.match_date DESC) FROM ( SELECT DISTINCT m.date::date AS match_date FROM matches m WHERE m.date::date < psd.match_date ORDER BY m.date::date DESC LIMIT 10 ) dates ) AS prev_dates FROM player_stats_per_date psd ), prev_10_agg AS ( SELECT p10.steam_id, p10.match_date, AVG(hist.hltv_2) AS hltv_2_10, AVG(hist.adr) AS adr_10 FROM prev_10_dates p10 LEFT JOIN all_player_stats_per_date hist ON hist.steam_id = p10.steam_id AND hist.match_date = ANY(p10.prev_dates) GROUP BY p10.steam_id, p10.match_date ), clutches_stats AS ( SELECT c.clutcher_steam_id AS steam_id, m.date::date AS match_date, COUNT(*) AS clutches, SUM(CASE WHEN c.won THEN 1 ELSE 0 END) AS clutches_won FROM clutches c INNER JOIN matches m ON c.match_checksum = m.checksum WHERE m.date::date >= (SELECT seasonstart FROM season_start_info) GROUP BY c.clutcher_steam_id, m.date::date ) SELECT psd.*, COALESCE(p10a.hltv_2_10,0) AS hltv_2_10, (psd.hltv_2-COALESCE(p10a.hltv_2_10,0)) AS hltv_2_diff, COALESCE(p10a.adr_10,0) AS adr_10, (psd.adr-COALESCE(p10a.adr_10,0)) AS adr_diff, COALESCE(cs.clutches,0) AS clutches, COALESCE(cs.clutches_won,0) AS clutches_won FROM player_stats_per_date psd LEFT JOIN prev_10_agg p10a ON psd.steam_id=p10a.steam_id AND psd.match_date=p10a.match_date LEFT JOIN clutches_stats cs ON psd.steam_id=cs.steam_id AND cs.match_date=psd.match_date ORDER BY psd.match_date ASC, psd.hltv_2 DESC`),
+  nightAvg: q(`WITH season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), player_stats_per_date AS ( SELECT p1.steam_id, MAX(p1.name) AS name, matches.date::date AS match_date, AVG(p1.hltv_rating_2) AS hltv_2, AVG(p1.average_damage_per_round) AS adr, AVG(p1.kill_death_ratio) AS kd, AVG(p1.mvp_count) AS mvp, AVG(p1.kill_count) AS kills, AVG(p1.death_count) AS deaths, AVG(p1.assist_count) AS assists, AVG(p1.headshot_count) AS headshot_kills, AVG(p1.headshot_percentage) AS headshot_killratio, AVG(p1.first_kill_count) AS first_kill_count, AVG(p1.first_death_count) AS first_death_count, AVG(p1.bomb_planted_count) AS bomb_planted, AVG(p1.bomb_defused_count) AS bomb_defused, AVG(p1.hltv_rating) AS hltv, AVG(p1.kast) AS kast, AVG(p1.utility_damage) AS utl_dmg, AVG(p1.two_kill_count) AS two_kills, AVG(p1.three_kill_count) AS three_kills, AVG(p1.four_kill_count) AS four_kills, AVG(p1.five_kill_count) AS five_kills, COUNT(*) AS matches_in_interval FROM players p1 INNER JOIN matches ON p1.match_checksum = matches.checksum WHERE matches.date::date >= (SELECT seasonstart FROM season_start_info) GROUP BY p1.steam_id, matches.date::date ), all_player_stats_per_date AS ( SELECT p1.steam_id, matches.date::date AS match_date, AVG(p1.hltv_rating_2) AS hltv_2, AVG(p1.average_damage_per_round) AS adr FROM players p1 INNER JOIN matches ON p1.match_checksum = matches.checksum GROUP BY p1.steam_id, matches.date::date ), all_distinct_dates AS ( SELECT DISTINCT date::date AS match_date, ROW_NUMBER() OVER (ORDER BY date::date) AS rn FROM matches ), date_prev_10 AS ( SELECT a.match_date, array_agg(b.match_date ORDER BY b.match_date DESC) AS prev_dates FROM all_distinct_dates a JOIN all_distinct_dates b ON b.match_date < a.match_date AND b.rn >= a.rn - 10 GROUP BY a.match_date ), prev_10_agg AS ( SELECT psd.steam_id, psd.match_date, AVG(hist.hltv_2) AS hltv_2_10, AVG(hist.adr) AS adr_10 FROM player_stats_per_date psd LEFT JOIN date_prev_10 dp ON dp.match_date = psd.match_date LEFT JOIN all_player_stats_per_date hist ON hist.steam_id = psd.steam_id AND hist.match_date = ANY(dp.prev_dates) GROUP BY psd.steam_id, psd.match_date ), clutches_stats AS ( SELECT c.clutcher_steam_id AS steam_id, m.date::date AS match_date, COUNT(*) AS clutches, SUM(CASE WHEN c.won THEN 1 ELSE 0 END) AS clutches_won FROM clutches c INNER JOIN matches m ON c.match_checksum = m.checksum WHERE m.date::date >= (SELECT seasonstart FROM season_start_info) GROUP BY c.clutcher_steam_id, m.date::date ) SELECT psd.*, COALESCE(p10a.hltv_2_10,0) AS hltv_2_10, (psd.hltv_2-COALESCE(p10a.hltv_2_10,0)) AS hltv_2_diff, COALESCE(p10a.adr_10,0) AS adr_10, (psd.adr-COALESCE(p10a.adr_10,0)) AS adr_diff, COALESCE(cs.clutches,0) AS clutches, COALESCE(cs.clutches_won,0) AS clutches_won FROM player_stats_per_date psd LEFT JOIN prev_10_agg p10a ON psd.steam_id=p10a.steam_id AND psd.match_date=p10a.match_date LEFT JOIN clutches_stats cs ON psd.steam_id=cs.steam_id AND cs.match_date=psd.match_date ORDER BY psd.match_date ASC, psd.hltv_2 DESC`),
     last10: q(`WITH last_x_dates AS (SELECT DISTINCT matches.date::date AS unique_date FROM matches ORDER BY unique_date DESC LIMIT 10), date_range AS ( SELECT MIN(unique_date) AS x_days_before, MAX(unique_date) AS latest_match_date FROM last_x_dates ), match_agg AS ( SELECT p1.steam_id, MAX(p1.name) AS name, AVG(p1.hltv_rating_2) AS hltv_2, AVG(p1.average_damage_per_round) AS adr, AVG(p1.kill_count) AS kills, AVG(p1.death_count) AS deaths, AVG(p1.assist_count) AS assists, AVG(p1.kill_death_ratio) AS kd, AVG(p1.headshot_count) AS headshot_kills, AVG(p1.headshot_percentage) AS headshot_killratio, AVG(p1.first_kill_count) AS first_kill_count, AVG(p1.first_death_count) AS first_death_count, AVG(p1.bomb_planted_count) AS bomb_planted, AVG(p1.bomb_defused_count) AS bomb_defused, AVG(p1.hltv_rating) AS hltv, AVG(p1.mvp_count) AS mvp, AVG(p1.kast) AS kast, AVG(p1.utility_damage) AS utl_dmg, AVG(p1.two_kill_count) AS two_kills, AVG(p1.three_kill_count) AS three_kills, AVG(p1.four_kill_count) AS four_kills, AVG(p1.five_kill_count) AS five_kills, AVG(p1.score) AS score, (SELECT latest_match_date FROM date_range) AS latest_match_date, COUNT(*) AS matches_in_interval, ROUND((COUNT(CASE WHEN matches.winner_name = p1.team_name THEN 1 END)::numeric / COUNT(*) * 100),2) AS win_rate_percentage FROM players p1 INNER JOIN matches ON p1.match_checksum = matches.checksum WHERE matches.date::date BETWEEN (SELECT x_days_before FROM date_range) AND (SELECT latest_match_date FROM date_range) GROUP BY p1.steam_id ), clutch_agg AS ( SELECT c.clutcher_steam_id AS steam_id, COUNT(*)::numeric AS total_clutches, COUNT(CASE WHEN c.won THEN 1 END)::numeric AS total_clutches_won FROM clutches c JOIN matches m ON c.match_checksum = m.checksum WHERE m.date::date BETWEEN (SELECT x_days_before FROM date_range) AND (SELECT latest_match_date FROM date_range) GROUP BY c.clutcher_steam_id ) SELECT m.*, coalesce(c.total_clutches,0) AS total_clutches, coalesce(c.total_clutches_won,0) AS total_clutches_won FROM match_agg m LEFT JOIN clutch_agg c ON m.steam_id=c.steam_id`),
     sonmac: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ) SELECT matches.date::date AS match_date, matches.map_name, teams.name AS team_name, p1.name, p1.steam_id, teams.score AS team_score, AVG(p1.hltv_rating_2) AS hltv_2, AVG(p1.average_damage_per_round) AS adr, AVG(p1.kill_count) AS kills, AVG(p1.death_count) AS deaths, AVG(p1.assist_count) AS assists, AVG(p1.kill_death_ratio) AS kd, AVG(p1.headshot_count) AS headshot_kills, AVG(p1.headshot_percentage) AS headshot_killratio, AVG(p1.first_kill_count) AS first_kill_count, AVG(p1.first_death_count) AS first_death_count, AVG(p1.bomb_planted_count) AS bomb_planted, AVG(p1.bomb_defused_count) AS bomb_defused, AVG(p1.hltv_rating) AS hltv, AVG(p1.mvp_count) AS mvp, AVG(p1.kast) AS kast, AVG(p1.utility_damage) AS utl_dmg, AVG(p1.two_kill_count) AS two_kills, AVG(p1.three_kill_count) AS three_kills, AVG(p1.four_kill_count) AS four_kills, AVG(p1.five_kill_count) AS five_kills, AVG(p1.score) AS score, COALESCE(c.num_clutches,0) AS number_of_clutches, COALESCE(c.num_successful_clutches,0) AS number_of_successful_clutches FROM players p1 INNER JOIN matches ON p1.match_checksum = matches.checksum INNER JOIN teams ON matches.checksum = teams.match_checksum AND p1.team_name = teams.name LEFT JOIN ( SELECT match_checksum, clutcher_steam_id, COUNT(*) AS num_clutches, SUM(CASE WHEN won THEN 1 ELSE 0 END) AS num_successful_clutches FROM clutches GROUP BY match_checksum, clutcher_steam_id ) c ON c.match_checksum = matches.checksum AND c.clutcher_steam_id = p1.steam_id WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) GROUP BY matches.date::date, matches.map_name, teams.name, teams.score, p1.steam_id, p1.name, c.num_clutches, c.num_successful_clutches ORDER BY matches.date::date DESC, matches.map_name, teams.name, hltv_2 DESC`),
     sonmacRounds: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ) SELECT matches.date::date AS match_date, matches.map_name, matches.checksum AS match_checksum, matches.max_rounds, rounds.number AS round_number, rounds.end_reason, rounds.winner_name, rounds.winner_side, rounds.team_a_name, rounds.team_b_name, rounds.team_a_side, rounds.team_b_side, rounds.team_a_score, rounds.team_b_score, rounds.overtime_number FROM rounds INNER JOIN matches ON rounds.match_checksum = matches.checksum WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ORDER BY matches.date::date DESC, matches.map_name, rounds.number ASC`),
-    duello_son_mac: q(`WITH last_x_dates AS ( SELECT DISTINCT matches.date::date AS unique_date FROM matches ORDER BY unique_date DESC LIMIT 1 ), last_date_matches AS ( SELECT checksum FROM matches WHERE date::date = (SELECT MAX(unique_date) FROM last_x_dates) ), player_kills_deaths AS ( SELECT p1.steam_id AS killerSteamId, MIN(p1.name) AS killerName, p2.steam_id AS victimSteamId, MIN(p2.name) AS victimName, ( SELECT COUNT(*) FROM kills k WHERE k.killer_steam_id = p1.steam_id AND k.victim_steam_id = p2.steam_id AND k.match_checksum IN (SELECT checksum FROM last_date_matches) ) AS killCount, ( SELECT COUNT(*) FROM kills k2 WHERE k2.killer_steam_id = p2.steam_id AND k2.victim_steam_id = p1.steam_id AND k2.match_checksum IN (SELECT checksum FROM last_date_matches) ) AS deathCount FROM players p1 INNER JOIN players p2 ON p1.match_checksum = p2.match_checksum WHERE p1.match_checksum IN (SELECT checksum FROM last_date_matches) AND p2.match_checksum IN (SELECT checksum FROM last_date_matches) AND p1.team_name <> p2.team_name GROUP BY p1.steam_id, p2.steam_id ), distinct_players AS ( SELECT DISTINCT killerSteamId AS playerSteamId, killerName AS playerName FROM player_kills_deaths UNION SELECT DISTINCT victimSteamId, victimName FROM player_kills_deaths ) SELECT dp1.playerSteamId AS PlayerRowSteamId, dp1.playerName AS PlayerRow, dp2.playerSteamId AS PlayerColumnSteamId, dp2.playerName AS PlayerColumn, COALESCE(pkd.killCount,0)||'/'||COALESCE(pkd.deathCount,0) AS KillDeathRatio FROM distinct_players dp1 CROSS JOIN distinct_players dp2 LEFT JOIN player_kills_deaths pkd ON dp1.playerSteamId=pkd.killerSteamId AND dp2.playerSteamId=pkd.victimSteamId ORDER BY dp1.playerName, dp2.playerName`),
-    duello_sezon: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT checksum FROM matches WHERE date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), player_kills_deaths AS ( SELECT p1.steam_id AS killerSteamId, MAX(p1.name) AS killerName, p2.steam_id AS victimSteamId, MAX(p2.name) AS victimName, ( SELECT COUNT(*) FROM kills k WHERE k.killer_steam_id = p1.steam_id AND k.victim_steam_id = p2.steam_id AND k.match_checksum IN (SELECT checksum FROM season_matches) ) AS killCount, ( SELECT COUNT(*) FROM kills k2 WHERE k2.killer_steam_id = p2.steam_id AND k2.victim_steam_id = p1.steam_id AND k2.match_checksum IN (SELECT checksum FROM season_matches) ) AS deathCount FROM players p1 INNER JOIN players p2 ON p1.match_checksum = p2.match_checksum WHERE p1.match_checksum IN (SELECT checksum FROM season_matches) AND p2.match_checksum IN (SELECT checksum FROM season_matches) AND p1.team_name <> p2.team_name GROUP BY p1.steam_id, p2.steam_id ), distinct_players AS ( SELECT DISTINCT killerSteamId AS playerSteamId, killerName AS playerName FROM player_kills_deaths UNION SELECT DISTINCT victimSteamId, victimName FROM player_kills_deaths ) SELECT dp1.playerSteamId AS PlayerRowSteamId, dp1.playerName AS PlayerRow, dp2.playerSteamId AS PlayerColumnSteamId, dp2.playerName AS PlayerColumn, COALESCE(pkd.killCount,0)||'/'||COALESCE(pkd.deathCount,0) AS KillDeathRatio FROM distinct_players dp1 CROSS JOIN distinct_players dp2 LEFT JOIN player_kills_deaths pkd ON dp1.playerSteamId=pkd.killerSteamId AND dp2.playerSteamId=pkd.victimSteamId ORDER BY dp1.playerName, dp2.playerName`),
+    duello_son_mac: q(`WITH last_x_dates AS ( SELECT DISTINCT matches.date::date AS unique_date FROM matches ORDER BY unique_date DESC LIMIT 1 ), last_date_matches AS ( SELECT checksum FROM matches WHERE date::date = (SELECT MAX(unique_date) FROM last_x_dates) ), kill_counts AS ( SELECT k.killer_steam_id, k.victim_steam_id, COUNT(*) AS kc FROM kills k WHERE k.match_checksum IN (SELECT checksum FROM last_date_matches) GROUP BY k.killer_steam_id, k.victim_steam_id ), distinct_players AS ( SELECT p.steam_id AS playerSteamId, MIN(p.name) AS playerName FROM players p WHERE p.match_checksum IN (SELECT checksum FROM last_date_matches) GROUP BY p.steam_id ) SELECT dp1.playerSteamId AS PlayerRowSteamId, dp1.playerName AS PlayerRow, dp2.playerSteamId AS PlayerColumnSteamId, dp2.playerName AS PlayerColumn, COALESCE(kc.kc,0)||'/'||COALESCE(kc2.kc,0) AS KillDeathRatio FROM distinct_players dp1 CROSS JOIN distinct_players dp2 LEFT JOIN kill_counts kc ON kc.killer_steam_id=dp1.playerSteamId AND kc.victim_steam_id=dp2.playerSteamId LEFT JOIN kill_counts kc2 ON kc2.killer_steam_id=dp2.playerSteamId AND kc2.victim_steam_id=dp1.playerSteamId ORDER BY dp1.playerName, dp2.playerName`),
+    duello_sezon: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT checksum FROM matches WHERE date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), kill_counts AS ( SELECT k.killer_steam_id, k.victim_steam_id, COUNT(*) AS kc FROM kills k WHERE k.match_checksum IN (SELECT checksum FROM season_matches) GROUP BY k.killer_steam_id, k.victim_steam_id ), distinct_players AS ( SELECT p.steam_id AS playerSteamId, MAX(p.name) AS playerName FROM players p WHERE p.match_checksum IN (SELECT checksum FROM season_matches) GROUP BY p.steam_id ) SELECT dp1.playerSteamId AS PlayerRowSteamId, dp1.playerName AS PlayerRow, dp2.playerSteamId AS PlayerColumnSteamId, dp2.playerName AS PlayerColumn, COALESCE(kc.kc,0)||'/'||COALESCE(kc2.kc,0) AS KillDeathRatio FROM distinct_players dp1 CROSS JOIN distinct_players dp2 LEFT JOIN kill_counts kc ON kc.killer_steam_id=dp1.playerSteamId AND kc.victim_steam_id=dp2.playerSteamId LEFT JOIN kill_counts kc2 ON kc2.killer_steam_id=dp2.playerSteamId AND kc2.victim_steam_id=dp1.playerSteamId ORDER BY dp1.playerName, dp2.playerName`),
     performanceGraphs: q(`WITH season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), match_date_info AS ( SELECT MAX(date::date) AS latest_match_date FROM matches ), match_dates AS ( SELECT DISTINCT date::date AS match_date FROM matches WHERE date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), distinct_players AS ( SELECT steam_id, MAX(name) AS name FROM players GROUP BY steam_id ), performance_data AS ( SELECT p.steam_id, m.date::date AS match_date, AVG(p.hltv_rating_2) AS hltv_2, AVG(p.average_damage_per_round) AS adr FROM players p INNER JOIN matches m ON p.match_checksum = m.checksum WHERE m.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) GROUP BY p.steam_id, m.date::date ) SELECT dp.steam_id, dp.name, md.match_date::date, pd.hltv_2, pd.adr FROM distinct_players dp CROSS JOIN match_dates md LEFT JOIN performance_data pd ON pd.steam_id=dp.steam_id AND pd.match_date=md.match_date ORDER BY dp.name, md.match_date`),
     mapStats: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT m.checksum, m.map_name FROM matches m WHERE m.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) AND m.map_name IS NOT NULL AND m.map_name <> '' ), team_sizes AS ( SELECT p.match_checksum, p.team_name, COUNT(DISTINCT p.steam_id) AS team_size FROM players p INNER JOIN season_matches sm ON p.match_checksum = sm.checksum GROUP BY p.match_checksum, p.team_name ), match_sizes AS ( SELECT match_checksum, MAX(team_size) AS players_per_team FROM team_sizes GROUP BY match_checksum ), round_wins AS ( SELECT r.match_checksum, COUNT(*) FILTER (WHERE r.winner_side = 2) AS ct_round_wins, COUNT(*) FILTER (WHERE r.winner_side = 3) AS t_round_wins FROM rounds r INNER JOIN season_matches sm ON r.match_checksum = sm.checksum GROUP BY r.match_checksum ), match_summaries AS ( SELECT sm.map_name, sm.checksum AS match_checksum, COALESCE(ms.players_per_team, 0) AS players_per_team, COALESCE(rw.ct_round_wins, 0) AS ct_round_wins, COALESCE(rw.t_round_wins, 0) AS t_round_wins FROM season_matches sm LEFT JOIN match_sizes ms ON ms.match_checksum = sm.checksum LEFT JOIN round_wins rw ON rw.match_checksum = sm.checksum ) SELECT map_name, NULL::int AS players_bucket, COUNT(*) AS matches_played, SUM(ct_round_wins) AS ct_round_wins, SUM(t_round_wins) AS t_round_wins FROM match_summaries GROUP BY map_name UNION ALL SELECT map_name, CASE WHEN players_per_team >= 7 THEN 7 WHEN players_per_team = 6 THEN 6 WHEN players_per_team = 5 THEN 5 ELSE players_per_team END AS players_bucket, COUNT(*) AS matches_played, SUM(ct_round_wins) AS ct_round_wins, SUM(t_round_wins) AS t_round_wins FROM match_summaries GROUP BY map_name, CASE WHEN players_per_team >= 7 THEN 7 WHEN players_per_team = 6 THEN 6 WHEN players_per_team = 5 THEN 5 ELSE players_per_team END ORDER BY map_name, players_bucket NULLS FIRST`),
     playerOverview: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum, matches.winner_name, matches.date::date AS match_date FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), player_match_stats AS ( SELECT p.steam_id, MAX(p.name) AS name, COUNT(*) AS matches_played, COUNT(CASE WHEN season_matches.winner_name = p.team_name THEN 1 END) AS wins, COUNT(CASE WHEN season_matches.winner_name IS NULL OR season_matches.winner_name = '' THEN 1 END) AS ties, SUM(p.kill_count) AS kills, SUM(p.death_count) AS deaths, SUM(p.assist_count) AS assists, SUM(p.headshot_count) AS headshots, AVG(p.hltv_rating_2) AS hltv_2, AVG(p.hltv_rating) AS hltv, AVG(p.average_damage_per_round) AS adr, AVG(p.kast) AS kast, SUM(p.first_kill_count) AS first_kills, SUM(p.first_death_count) AS first_deaths, SUM(p.first_trade_kill_count) AS first_trade_kills, SUM(p.first_trade_death_count) AS first_trade_deaths, SUM(p.bomb_planted_count) AS bomb_planted, SUM(p.bomb_defused_count) AS bomb_defused, SUM(p.hostage_rescued_count) AS hostage_rescued, SUM(p.one_kill_count) AS one_kill_count, SUM(p.two_kill_count) AS two_kill_count, SUM(p.three_kill_count) AS three_kill_count, SUM(p.four_kill_count) AS four_kill_count, SUM(p.five_kill_count) AS five_kill_count, SUM(p.inspect_weapon_count) AS inspect_weapon_count FROM players p INNER JOIN season_matches ON p.match_checksum = season_matches.checksum GROUP BY p.steam_id ) SELECT *, CASE WHEN matches_played > 0 THEN ROUND((wins::numeric / matches_played) * 100, 2) ELSE 0 END AS win_rate FROM player_match_stats`),
@@ -370,24 +370,26 @@ function buildQueries(seasonStart, seasonEnd = null){
 
 
 async function buildPlayersStats(pool, qset, errors, labelPrefix = 'players_stats') {
-  let playerOverviewRows = [];
-  let playerRoundsRows = [];
-  let weaponKillsRows = [];
-  let weaponShotsRows = [];
-  let weaponDamageRows = [];
-  let utilitiesRows = [];
-  let inspectionDeathRows = [];
-  let wallbangCollateralRows = [];
-  let clutchRows = [];
-  try { playerOverviewRows = (await pool.query(qset.playerOverview)).rows; } catch(e){ console.error('[statsGenerator] playerOverview query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_overview`, error:e.message }); }
-  try { playerRoundsRows = (await pool.query(qset.playerRounds)).rows; } catch(e){ console.error('[statsGenerator] playerRounds query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_rounds`, error:e.message }); }
-  try { weaponKillsRows = (await pool.query(qset.playerWeaponKills)).rows; } catch(e){ console.error('[statsGenerator] playerWeaponKills query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_weapon_kills`, error:e.message }); }
-  try { weaponShotsRows = (await pool.query(qset.playerWeaponShots)).rows; } catch(e){ console.error('[statsGenerator] playerWeaponShots query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_weapon_shots`, error:e.message }); }
-  try { weaponDamageRows = (await pool.query(qset.playerWeaponDamage)).rows; } catch(e){ console.error('[statsGenerator] playerWeaponDamage query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_weapon_damage`, error:e.message }); }
-  try { utilitiesRows = (await pool.query(qset.playerUtilities)).rows; } catch(e){ console.error('[statsGenerator] playerUtilities query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_utilities`, error:e.message }); }
-  try { inspectionDeathRows = (await pool.query(qset.playerInspectionDeaths)).rows; } catch(e){ console.error('[statsGenerator] playerInspectionDeaths query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_inspection_deaths`, error:e.message }); }
-  try { wallbangCollateralRows = (await pool.query(qset.playerWallbangCollateral)).rows; } catch(e){ console.error('[statsGenerator] playerWallbangCollateral query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_wallbang_collateral`, error:e.message }); }
-  try { clutchRows = (await pool.query(qset.playerClutches)).rows; } catch(e){ console.error('[statsGenerator] playerClutches query failed', e.message); errors.push({ dataset: `${labelPrefix}:player_clutches`, error:e.message }); }
+  // Run all 9 independent player-stats queries concurrently
+  const safeQ = async (query, label) => {
+    try { return (await pool.query(query)).rows; }
+    catch (e) { console.error(`[statsGenerator] ${label} query failed`, e.message); errors.push({ dataset: `${labelPrefix}:${label}`, error: e.message }); return []; }
+  };
+  const [
+    playerOverviewRows, playerRoundsRows, weaponKillsRows,
+    weaponShotsRows, weaponDamageRows, utilitiesRows,
+    inspectionDeathRows, wallbangCollateralRows, clutchRows
+  ] = await Promise.all([
+    safeQ(qset.playerOverview,          'player_overview'),
+    safeQ(qset.playerRounds,            'player_rounds'),
+    safeQ(qset.playerWeaponKills,       'player_weapon_kills'),
+    safeQ(qset.playerWeaponShots,       'player_weapon_shots'),
+    safeQ(qset.playerWeaponDamage,      'player_weapon_damage'),
+    safeQ(qset.playerUtilities,         'player_utilities'),
+    safeQ(qset.playerInspectionDeaths,  'player_inspection_deaths'),
+    safeQ(qset.playerWallbangCollateral,'player_wallbang_collateral'),
+    safeQ(qset.playerClutches,          'player_clutches'),
+  ]);
 
   const playersById = {};
   const weaponsByPlayer = {};
@@ -692,60 +694,48 @@ async function generateAll(pool, opts={}){
   const seasonAvgPeriods = await buildSeasonAvgPeriodsDataset(pool, sezonbaslangic, seasonStarts, errors);
   results.season_avg_periods = seasonAvgPeriods;
   results.season_avg = seasonAvgPeriods.data?.[seasonAvgPeriods.current_period] || [];
-  // Night Avg
-  let nightRows = [];
-  try { nightRows = (await pool.query(qset.nightAvg)).rows; } catch(e){ console.error('[statsGenerator] nightAvg query failed', e.message); }
-  results.night_avg = mapNightAvgRows(nightRows);
-  let nightRowsAll = nightRows;
-  if (sezonbaslangic !== ALL_TIME_START) {
-    try { nightRowsAll = (await pool.query(allTimeQset.nightAvg)).rows; } catch(e){ console.error('[statsGenerator] nightAvg all-time query failed', e.message); errors.push({ dataset:'night_avg_all', error:e.message }); }
-  }
+  // Run all independent dataset queries concurrently (11 parallel DB round-trips)
+  const isAllTime = sezonbaslangic === ALL_TIME_START;
+  const safeQG = async (query, label) => {
+    try { return (await pool.query(query)).rows; }
+    catch (e) { console.error(`[statsGenerator] ${label} query failed`, e.message); errors.push({ dataset: label, error: e.message }); return []; }
+  };
+  const [
+    nightRows,
+    nightRowsAllRaw,
+    last10Rows,
+    sonmacRows,
+    roundRows,
+    allTimeSonmacRowsRaw,
+    allTimeRoundRowsRaw,
+    dLastRows,
+    dSeasonRows,
+    perfRows,
+    mapStatsRows,
+  ] = await Promise.all([
+    safeQG(qset.nightAvg,                                        'night_avg'),
+    isAllTime ? Promise.resolve([]) : safeQG(allTimeQset.nightAvg,    'night_avg_all'),
+    safeQG(qset.last10,                                          'last10'),
+    safeQG(qset.sonmac,                                          'sonmac'),
+    safeQG(qset.sonmacRounds,                                    'sonmac_rounds'),
+    isAllTime ? Promise.resolve([]) : safeQG(allTimeQset.sonmac,      'sonmac_by_date_all'),
+    isAllTime ? Promise.resolve([]) : safeQG(allTimeQset.sonmacRounds,'sonmac_by_date_all_rounds'),
+    safeQG(qset.duello_son_mac,                                  'duello_son_mac'),
+    safeQG(qset.duello_sezon,                                    'duello_sezon'),
+    safeQG(qset.performanceGraphs,                               'performance_graphs'),
+    safeQG(qset.mapStats,                                        'map_stats'),
+  ]);
+  const nightRowsAll = isAllTime ? nightRows : nightRowsAllRaw;
+  const allTimeSonmacRows = isAllTime ? sonmacRows : allTimeSonmacRowsRaw;
+  const allTimeRoundRows  = isAllTime ? roundRows  : allTimeRoundRowsRaw;
+  results.night_avg     = mapNightAvgRows(nightRows);
   results.night_avg_all = mapNightAvgRows(nightRowsAll);
-  // Last10
-  let last10Rows = [];
-  try { last10Rows = (await pool.query(qset.last10)).rows; } catch(e){ console.error('[statsGenerator] last10 query failed', e.message); }
   results.last10 = last10Rows.map(r=>({ steam_id:r.steam_id, name:r.name, hltv_2:num(r.hltv_2), adr:num(r.adr), kd:num(r.kd), mvp:num(r.mvp), kills:num(r.kills), deaths:num(r.deaths), assists:num(r.assists), hs:num(r.headshot_kills), hs_ratio:num(r.headshot_killratio), first_kill:num(r.first_kill_count), first_death:num(r.first_death_count), bomb_planted:num(r.bomb_planted), bomb_defused:num(r.bomb_defused), hltv:num(r.hltv), kast:num(r.kast), utl_dmg:num(r.utl_dmg), two_kills:num(r.two_kills), three_kills:num(r.three_kills), four_kills:num(r.four_kills), five_kills:num(r.five_kills), matches:num(r.matches_in_interval), win_rate:num(r.win_rate_percentage), avg_clutches: safeAvg(num(r.total_clutches), num(r.matches_in_interval)), avg_clutches_won: safeAvg(num(r.total_clutches_won), num(r.matches_in_interval)), clutch_success: pct(num(r.total_clutches_won), num(r.total_clutches)) }));
-  // Sonmac by date
-  let sonmacRows = [];
-  try { sonmacRows = (await pool.query(qset.sonmac)).rows; } catch(e){ console.error('[statsGenerator] sonmac query failed', e.message); }
-  // Sonmac rounds
-  let roundRows = [];
-  try { roundRows = (await pool.query(qset.sonmacRounds)).rows; } catch(e){ console.error('[statsGenerator] sonmacRounds query failed', e.message); }
-  results.sonmac_by_date = buildSonmacByDate(sonmacRows, roundRows);
-  let allTimeSonmacRows = sonmacRows;
-  let allTimeRoundRows = roundRows;
-  if (sezonbaslangic !== ALL_TIME_START) {
-    try {
-      allTimeSonmacRows = (await pool.query(allTimeQset.sonmac)).rows;
-    } catch (e) {
-      console.error('[statsGenerator] sonmac all-time query failed', e.message);
-      errors.push({ dataset: 'sonmac_by_date_all', error: e.message });
-      allTimeSonmacRows = sonmacRows;
-    }
-    try {
-      allTimeRoundRows = (await pool.query(allTimeQset.sonmacRounds)).rows;
-    } catch (e) {
-      console.error('[statsGenerator] sonmacRounds all-time query failed', e.message);
-      errors.push({ dataset: 'sonmac_by_date_all_rounds', error: e.message });
-      allTimeRoundRows = roundRows;
-    }
-  }
+  results.sonmac_by_date     = buildSonmacByDate(sonmacRows, roundRows);
   results.sonmac_by_date_all = buildSonmacByDate(allTimeSonmacRows, allTimeRoundRows);
-  // Duello last match
-  let dLastRows = [];
-  try { dLastRows = (await pool.query(qset.duello_son_mac)).rows; } catch(e){ console.error('[statsGenerator] duello_son_mac query failed', e.message); }
-  results.duello_son_mac = buildDuello(dLastRows);
-  // Duello season
-  let dSeasonRows = [];
-  try { dSeasonRows = (await pool.query(qset.duello_sezon)).rows; } catch(e){ console.error('[statsGenerator] duello_sezon query failed', e.message); }
-  results.duello_sezon = buildDuello(dSeasonRows);
-  // Performance graphs
-  let perfRows = [];
-  try { perfRows = (await pool.query(qset.performanceGraphs)).rows; } catch(e){ console.error('[statsGenerator] performanceGraphs query failed', e.message); }
+  results.duello_son_mac  = buildDuello(dLastRows);
+  results.duello_sezon    = buildDuello(dSeasonRows);
   results.performance_data = mapPerformanceRows(perfRows);
-  // Map stats
-  let mapStatsRows = [];
-  try { mapStatsRows = (await pool.query(qset.mapStats)).rows; } catch(e){ console.error('[statsGenerator] mapStats query failed', e.message); errors.push({ dataset:'map_stats', error:e.message }); }
   const mapStatsByName = {};
   for (const r of mapStatsRows) {
     const mapName = r.map_name;
@@ -792,21 +782,22 @@ async function generateAll(pool, opts={}){
     periods: seasonAvgPeriods.periods,
     data: {},
   };
-  for (const period of seasonAvgPeriods.periods || []) {
-    if (!period || !period.id) continue;
+  // Build players_stats for each period concurrently (each period itself parallelises its 9 queries internally)
+  await Promise.all((seasonAvgPeriods.periods || []).map(async (period) => {
+    if (!period || !period.id) return;
     if (period.id === seasonAvgPeriods.current_period) {
       playersStatsPeriods.data[period.id] = results.players_stats;
-      continue;
+      return;
     }
     // Use cache for completed (non-current, non-all-time) seasons
     if (period.id !== 'all_time' && !period.is_current && historicalPlayersStatsCache[period.id]) {
       console.log(`[statsGenerator] Using cached players_stats for ${period.id}`);
       playersStatsPeriods.data[period.id] = historicalPlayersStatsCache[period.id];
-      continue;
+      return;
     }
     if (period.id === 'all_time') {
       playersStatsPeriods.data[period.id] = await buildPlayersStats(pool, allTimeQset, errors, `players_stats:${period.id}`);
-      continue;
+      return;
     }
     const periodQset = buildQueries(period.start_date || sezonbaslangic, period.end_date || null);
     const periodData = await buildPlayersStats(pool, periodQset, errors, `players_stats:${period.id}`);
@@ -816,7 +807,7 @@ async function generateAll(pool, opts={}){
       historicalPlayersStatsCache[period.id] = periodData;
       console.log(`[statsGenerator] Cached players_stats for ${period.id}`);
     }
-  }
+  }));
   results.players_stats_periods = playersStatsPeriods;
   if(errors.length) results.__errors = errors;
   return results;
