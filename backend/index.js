@@ -128,15 +128,38 @@ let lastGeneratedServerTimestamp = null; // tracks last successful generation ba
 let lastGeneratedData = null; // cache of last generated datasets so we can resend when not updated (for volume backfill)
 
 
-// Aggregates endpoint: ALWAYS recompute season_avg & last10 (lightweight compared to full set)
+// Aggregates endpoint: recompute only when DB data has changed (or on cold start).
+// Uses the same in-memory cached timestamp as /stats/incremental to avoid unnecessary DB work.
+let lastAggregateServerTimestamp = null; // tracks DB timestamp of last aggregate generation
+let lastAggregateData = null; // cached aggregate result
+let aggregateGenerationPromise = null; // concurrency lock
+
 app.get('/stats/aggregates', async (req, res) => {
   try {
-    cachedSeasonConfig = resolveSeasonConfig();
-    cachedSeasonStart = cachedSeasonConfig.seasonStart;
-    cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
-    const agg = await generateAggregates(pool, { seasonStart: cachedSeasonStart, seasonStarts: cachedSeasonStarts });
+    const serverLastTs = TEST_MODE ? await getCachedDataTimestamp() : getCachedDataTimestamp();
+    const serverDate = serverLastTs ? new Date(serverLastTs) : null;
+
+    // If we have cached data and the DB hasn't changed since, return cached result immediately
+    if (lastAggregateData && serverDate && lastAggregateServerTimestamp &&
+        serverDate.getTime() === new Date(lastAggregateServerTimestamp).getTime()) {
+      res.set('Cache-Control','no-store');
+      return res.json({ updated: true, serverTimestamp: serverDate.toISOString(), ...lastAggregateData });
+    }
+
+    // DB changed (or cold start) — regenerate with concurrency lock
+    if (!aggregateGenerationPromise) {
+      aggregateGenerationPromise = (async () => {
+        cachedSeasonConfig = resolveSeasonConfig();
+        cachedSeasonStart = cachedSeasonConfig.seasonStart;
+        cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
+        return await generateAggregates(pool, { seasonStart: cachedSeasonStart, seasonStarts: cachedSeasonStarts });
+      })().finally(() => { aggregateGenerationPromise = null; });
+    }
+    const agg = await aggregateGenerationPromise;
+    if (serverDate) lastAggregateServerTimestamp = serverDate;
+    lastAggregateData = agg;
     res.set('Cache-Control','no-store');
-    res.json({ updated: true, serverTimestamp: new Date().toISOString(), ...agg });
+    res.json({ updated: true, serverTimestamp: (serverDate || new Date()).toISOString(), ...agg });
   } catch (e) {
     console.error('Error in /stats/aggregates', e);
     res.status(500).json({ error: 'aggregates_failed', details: e.message });
@@ -192,8 +215,10 @@ app.get('/stats/incremental', async (req, res) => {
 app.post('/stats/force-regenerate', async (req, res) => {
   try {
     console.log('[force-regenerate] Manual regeneration triggered');
-    // Clear cached timestamp to force regeneration
+    // Clear cached timestamps to force regeneration of both full & aggregates
     lastGeneratedServerTimestamp = null;
+    lastAggregateServerTimestamp = null;
+    lastAggregateData = null;
     // Clear historical season cache so all periods are recomputed from scratch
     clearHistoricalCache();
     
