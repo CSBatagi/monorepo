@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 
 // Stat files that need to be written
 const STAT_FILES = [
@@ -21,13 +22,42 @@ const STAT_FILES = [
 
 export async function POST(req: NextRequest) {
   try {
+    // --- Auth: verify Firebase ID token + admin role in RTDB ---
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.warn('[regenerate-stats] Rejected: no auth header');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const idToken = authHeader.slice('Bearer '.length).trim();
+    if (!idToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    let uid: string;
+    try {
+      const decoded = await adminAuth().verifyIdToken(idToken);
+      uid = decoded.uid;
+    } catch (verifyErr: any) {
+      console.warn('[regenerate-stats] Invalid Firebase token:', verifyErr.message);
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Check admin status in Firebase RTDB
+    const adminSnap = await adminDb().ref(`admins/${uid}`).get();
+    if (!adminSnap.exists() || adminSnap.val() !== true) {
+      console.warn(`[regenerate-stats] Non-admin uid ${uid} tried to regenerate stats`);
+      return NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
+    }
+
     const backendUrl = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
+    const apiToken = process.env.MATCHMAKING_TOKEN;
     
-    // Call backend to force stats regeneration
+    // Call backend to force stats regeneration (reuses the same MATCHMAKING_TOKEN other routes use)
     const response = await fetch(`${backendUrl}/stats/force-regenerate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(apiToken ? { 'Authorization': `Bearer ${apiToken}` } : {}),
       },
     });
 

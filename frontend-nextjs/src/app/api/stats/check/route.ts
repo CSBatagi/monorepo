@@ -21,6 +21,13 @@ const STAT_FILES = [
 const BACKEND_TIMEOUT_MS = 5000;
 const TIMESTAMP_FILE = 'last_timestamp.txt';
 
+// --- Response cache / cooldown (mirrors the aggregates route pattern) ---
+// Prevents thundering-herd: multiple client useEffect mounts all arrive within
+// milliseconds of each other; only the first one actually hits the backend.
+const CHECK_COOLDOWN_MS = 60 * 1000; // 60 seconds
+let cachedCheckResponse: string | null = null;
+let lastCheckTime = 0;
+
 async function readPersistedTimestamp(runtimeDir: string): Promise<string | null> {
   try {
     const raw = await fs.readFile(path.join(runtimeDir, TIMESTAMP_FILE), 'utf-8');
@@ -32,6 +39,15 @@ async function readPersistedTimestamp(runtimeDir: string): Promise<string | null
 }
 
 export async function GET(req: NextRequest) {
+  // Return cached response if within cooldown window — prevents backend hammering
+  const now = Date.now();
+  if (cachedCheckResponse && (now - lastCheckTime < CHECK_COOLDOWN_MS)) {
+    return new Response(cachedCheckResponse, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+    });
+  }
+
   const backendBase = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
   const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
   const url = new URL(req.url);
@@ -118,7 +134,11 @@ export async function GET(req: NextRequest) {
       } catch {}
     }
     if (debug) console.log('[stats-proxy] Success updated=', data.updated);
-    return new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json','Cache-Control':'no-store, no-cache, must-revalidate','Pragma':'no-cache','Expires':'0' } });
+    // Cache the response to avoid repeated backend calls within the cooldown window
+    const responseBody = JSON.stringify(data);
+    cachedCheckResponse = responseBody;
+    lastCheckTime = Date.now();
+    return new Response(responseBody, { status: 200, headers: { 'Content-Type': 'application/json','Cache-Control':'no-store, no-cache, must-revalidate','Pragma':'no-cache','Expires':'0' } });
   } catch (e: any) {
     if (debug) console.error('[stats-proxy] Unexpected error', e);
     return new Response(JSON.stringify({ error: 'Unexpected error', details: e.message }), { status: 500, headers:{'Cache-Control':'no-store'} });

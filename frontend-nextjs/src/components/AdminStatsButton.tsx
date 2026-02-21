@@ -49,10 +49,13 @@ export default function AdminStatsButton() {
     setMessage('⏳ Veritabanından istatistikler çekiliyor...');
 
     try {
+      // Get Firebase ID token for server-side admin verification
+      const idToken = await user!.getIdToken();
       const response = await fetch('/api/admin/regenerate-stats', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
         },
       });
 

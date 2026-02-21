@@ -22,7 +22,7 @@ console.log('Schema path:', schemaPath);
 const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
 const validate = ajv.compile(schema);
 
-// Hardcoded PostgreSQL connection details
+// PostgreSQL connection details with explicit pool limits to prevent connection exhaustion
 
 let pool = null;
 const TEST_MODE = process.env.NODE_ENV === 'test';
@@ -33,6 +33,9 @@ if (!TEST_MODE) {
     database: process.env.DB_DATABASE,
     password: process.env.DB_PASSWORD,
     port: 5432,
+    max: 5,                       // Maximum 5 connections (prevent DB overload on small VM)
+    idleTimeoutMillis: 30000,     // Close idle connections after 30s
+    connectionTimeoutMillis: 5000 // Fail fast if a connection can't be acquired in 5s
   });
 }
 
@@ -106,6 +109,62 @@ if (!TEST_MODE) {
 }
 
 const { generateAll, generateAggregates, clearHistoricalCache } = require('./statsGenerator');
+
+// --- Per-IP rate limiting ---
+// Simple in-memory rate limiter to prevent abuse. No external dependencies needed.
+const rateLimitMap = new Map(); // ip -> { count, resetTime }
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute window
+const RATE_LIMIT_MAX_REQUESTS = 30;      // max requests per window per IP
+
+function rateLimiter(req, res, next) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  const now = Date.now();
+  let entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetTime) {
+    entry = { count: 0, resetTime: now + RATE_LIMIT_WINDOW_MS };
+    rateLimitMap.set(ip, entry);
+  }
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX_REQUESTS) {
+    console.warn(`[rate-limit] IP ${ip} exceeded ${RATE_LIMIT_MAX_REQUESTS} req/min (count: ${entry.count})`);
+    return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+  }
+  next();
+}
+
+// Clean up stale entries every 5 minutes to prevent memory leak
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitMap) {
+    if (now > entry.resetTime) rateLimitMap.delete(ip);
+  }
+}, 5 * 60 * 1000);
+
+app.use(rateLimiter);
+
+// --- Auth middleware for non-GET requests ---
+// Placed BEFORE all route handlers so POST endpoints (including /stats/force-regenerate) are protected.
+app.use((req, res, next) => {
+  if (req.method === 'GET') {
+    return next();
+  }
+
+  const apiKey = req.headers['authorization'];
+
+  // Check if the Authorization header is present and starts with 'Bearer '
+  if (!apiKey || !apiKey.startsWith('Bearer ')) {
+    console.warn(`[auth] Rejected ${req.method} ${req.path} — no/invalid auth header`);
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+
+  // Extract the token after 'Bearer ' and compare it with the environment variable
+  const token = apiKey.split(' ')[1];
+  if (token !== process.env.AUTH_TOKEN) {
+    console.warn(`[auth] Rejected ${req.method} ${req.path} — invalid token`);
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  next();
+});
 
 let cachedSeasonConfig = resolveSeasonConfig();
 let cachedSeasonStart = cachedSeasonConfig.seasonStart;
@@ -281,25 +340,8 @@ app.get('/stats/diagnostics', async (req, res) => {
   }
 });
 
-app.use((req, res, next) => {
-  if (req.method === 'GET') {
-    return next();
-  }
-
-  const apiKey = req.headers['authorization'];
-
-  // Check if the Authorization header is present and starts with 'Bearer '
-  if (!apiKey || !apiKey.startsWith('Bearer ')) {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
-
-  // Extract the token after 'Bearer ' and compare it with the environment variable
-  const token = apiKey.split(' ')[1];
-  if (token !== process.env.AUTH_TOKEN) {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
-  next();
-});
+// NOTE: Auth middleware for POST requests has been moved above (before route definitions)
+// to ensure ALL POST endpoints including /stats/force-regenerate are protected.
 
 // POST  endpoint to store a match json and stores in the memory until the GET end point is called
 app.post('/start-match', async (req, res) => {

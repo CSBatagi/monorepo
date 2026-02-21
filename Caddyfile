@@ -3,6 +3,19 @@
 }
 
 csbatagi.com {
+	# NOTE: Rate limiting requires a custom Caddy build with caddy-rate-limit plugin.
+	# The backend Express server has its own built-in rate limiter (30 req/min per IP).
+	# To add Caddy-level rate limiting, build a custom image with:
+	#   xcaddy build --with github.com/mholt/caddy-ratelimit
+
+	# Security headers
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+
 	handle_path /backend/* {
 		reverse_proxy backend:3000
 	}

@@ -77,8 +77,9 @@ services:
   postgres:
     image: postgres:17  # Match existing data format (was auto-upgraded)
     restart: unless-stopped 
-    ports:
-      - 5432:5432
+    # NOTE: No host port mapping — backend accesses Postgres via Docker network (hostname: postgres).
+    # The port was previously exposed (5432:5432) which is a security risk on production.
+    # For local dev DB access, use docker-compose.local.yml instead.
     networks:
       - db2
     env_file:
