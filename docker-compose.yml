@@ -8,6 +8,11 @@ services:
     read_only: true # Make the container filesystem read-only (optional but recommended)
     cap_drop: [all] # Drop all Linux capabilities (optional but recommended)
     security_opt: [no-new-privileges:true] # Another protection to restrict superuser privileges (optional but recommended)
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - DOMAINS=csbatagi.com,db2.csbatagi.com # Comma-separated list of domains to update
       - PROXIED=false # Tell Cloudflare to cache webpages and hide your IP (optional)
@@ -32,9 +37,14 @@ services:
   #     - /srv/mysql:/var/lib/mysql
 
   backend:
-    restart: unless-stopped 
+    restart: unless-stopped
     image: ghcr.io/csbatagi/monorepo/backend:latest  # Using the image from GitHub Container Registry with main branch tag
     pull_policy: always  # Force Docker to pull the latest image every time
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       DB_HOST: postgres # Hostname matches the service name below
       DB_DATABASE: csdm
@@ -58,9 +68,14 @@ services:
       - postgres  # Ensure the database is started before backend
 
   frontend-nextjs:
-    restart: unless-stopped 
+    restart: unless-stopped
     image: ghcr.io/csbatagi/monorepo/frontend-nextjs:latest  # Using the image from GitHub Container Registry
     pull_policy: always  # Force Docker to pull the latest image every time
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - db2
     expose:
@@ -76,7 +91,12 @@ services:
 
   postgres:
     image: postgres:17  # Match existing data format (was auto-upgraded)
-    restart: unless-stopped 
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     # NOTE: No host port mapping — backend accesses Postgres via Docker network (hostname: postgres).
     # The port was previously exposed (5432:5432) which is a security risk on production.
     # For local dev DB access, use docker-compose.local.yml instead.
@@ -89,9 +109,14 @@ services:
      - /srv/pgdata:/var/lib/postgresql/data
 
   caddy:
-    image: caddy:latest 
+    image: caddy:latest
     container_name: caddy-reverse-proxy
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - db2 
     volumes:
