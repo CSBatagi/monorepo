@@ -134,6 +134,12 @@ jobs:
             echo "No services need to be updated"
           fi
 
+      - name: Prune old Docker images
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
+            --command="sudo docker image prune -af --filter 'until=48h'" \
+            --ssh-key-expire-after=1m
+
       - name: Invalidate stats timestamp if config data changed
         if: steps.changes.outputs.config_data == 'true'
         run: |
