@@ -97,9 +97,8 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    # NOTE: No host port mapping — backend accesses Postgres via Docker network (hostname: postgres).
-    # The port was previously exposed (5432:5432) which is a security risk on production.
-    # For local dev DB access, use docker-compose.local.yml instead.
+    ports:
+      - 5432:5432
     networks:
       - db2
     env_file:
