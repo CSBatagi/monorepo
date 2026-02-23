@@ -12,6 +12,9 @@ export const runtime = "nodejs";
 const ISTANBUL_TZ = "Europe/Istanbul";
 const TEKER_DONDU_THRESHOLD = 10;
 const TEKER_DONDU_COOLDOWN_MS = 60_000;
+// How long the count must stay at or above the threshold before the notification fires.
+// This prevents a scroll-through (no_response → coming → not_coming) from triggering.
+const TEKER_DONDU_SETTLE_MS = 10_000;
 
 const DEFAULT_MESSAGES: Record<string, { title: string; body: string }> = {
   teker_dondu_reached: {
@@ -49,6 +52,8 @@ type TekerStateNode = {
   crossingCount?: number;
   lastNotificationAt?: number;
   lastComingCount?: number;
+  /** Timestamp (ms) when the count first crossed the threshold in the current crossing. */
+  pendingSince?: number;
   updatedAt?: number;
 };
 
@@ -91,6 +96,8 @@ async function evaluateTekerDonduCrossing(params: {
   crossingCount: number;
   cooldownActive: boolean;
   cooldownRemainingMs: number;
+  /** When non-zero, the threshold was just crossed and the settle window ends at this timestamp. */
+  pendingSettlesAt: number;
 }> {
   const stateRef = adminDb().ref(`notifications/state/teker_dondu/${params.dateKey}`);
   const nowTs = Date.now();
@@ -98,6 +105,7 @@ async function evaluateTekerDonduCrossing(params: {
   let crossingCount = 0;
   let cooldownActive = false;
   let cooldownRemainingMs = 0;
+  let pendingSettlesAt = 0;
 
   await stateRef.transaction(
     (currentValue: TekerStateNode | null) => {
@@ -106,18 +114,43 @@ async function evaluateTekerDonduCrossing(params: {
       const nowAbove = params.comingCount >= TEKER_DONDU_THRESHOLD;
       const previousCrossing = Number(current.crossingCount || 0);
       const lastNotificationAt = Number(current.lastNotificationAt || 0);
-      const elapsedMs = lastNotificationAt > 0 ? nowTs - lastNotificationAt : Number.MAX_SAFE_INTEGER;
-      const inCooldown = elapsedMs < TEKER_DONDU_COOLDOWN_MS;
+      const pendingSince = Number(current.pendingSince || 0);
+      const elapsedSinceNotif = lastNotificationAt > 0 ? nowTs - lastNotificationAt : Number.MAX_SAFE_INTEGER;
+      const inCooldown = elapsedSinceNotif < TEKER_DONDU_COOLDOWN_MS;
 
-      shouldSend = nowAbove && !previousAbove && !inCooldown;
-      cooldownActive = nowAbove && !previousAbove && inCooldown;
-      cooldownRemainingMs = inCooldown ? Math.max(TEKER_DONDU_COOLDOWN_MS - elapsedMs, 0) : 0;
+      // Determine the active pendingSince timestamp for this crossing:
+      //   - First time we cross above: record now as pendingSince.
+      //   - Still above and a pendingSince is already set: keep it.
+      //   - Dropped below (or no crossing): clear it.
+      let newPendingSince: number;
+      if (!previousAbove && nowAbove) {
+        // Fresh crossing — start the settle timer.
+        newPendingSince = nowTs;
+      } else if (previousAbove && nowAbove && pendingSince > 0) {
+        // Still above threshold, preserve the original crossing timestamp.
+        newPendingSince = pendingSince;
+      } else {
+        // Below threshold or already sent (pendingSince cleared after send).
+        newPendingSince = 0;
+      }
+
+      const settleElapsed = newPendingSince > 0 ? nowTs - newPendingSince : 0;
+      const settled = settleElapsed >= TEKER_DONDU_SETTLE_MS;
+
+      shouldSend = nowAbove && settled && !inCooldown;
+      cooldownActive = nowAbove && settled && inCooldown;
+      cooldownRemainingMs = inCooldown ? Math.max(TEKER_DONDU_COOLDOWN_MS - elapsedSinceNotif, 0) : 0;
       crossingCount = shouldSend ? previousCrossing + 1 : previousCrossing;
+      // Expose the wall-clock time when the settle window ends so the client can
+      // schedule its follow-up call precisely.
+      pendingSettlesAt = !settled && newPendingSince > 0 ? newPendingSince + TEKER_DONDU_SETTLE_MS : 0;
 
       return {
         ...current,
         aboveThreshold: nowAbove,
         crossingCount,
+        // Clear pendingSince once we send, so a subsequent drop+rise starts fresh.
+        pendingSince: shouldSend ? 0 : newPendingSince,
         lastComingCount: params.comingCount,
         lastNotificationAt: shouldSend ? nowTs : lastNotificationAt || 0,
         updatedAt: nowTs,
@@ -127,7 +160,7 @@ async function evaluateTekerDonduCrossing(params: {
     false
   );
 
-  return { shouldSend, crossingCount, cooldownActive, cooldownRemainingMs };
+  return { shouldSend, crossingCount, cooldownActive, cooldownRemainingMs, pendingSettlesAt };
 }
 
 export async function POST(req: NextRequest) {
@@ -163,17 +196,23 @@ export async function POST(req: NextRequest) {
       });
 
       if (!crossing.shouldSend) {
+        const reason =
+          comingCount < TEKER_DONDU_THRESHOLD
+            ? "threshold_not_reached"
+            : crossing.pendingSettlesAt > 0
+              ? "settle_pending"
+              : crossing.cooldownActive
+                ? "cooldown_active"
+                : "already_emitted_for_current_threshold_state";
         return NextResponse.json({
           ok: true,
           skipped: true,
-          reason:
-            comingCount < TEKER_DONDU_THRESHOLD
-              ? "threshold_not_reached"
-              : crossing.cooldownActive
-                ? "cooldown_active"
-                : "already_emitted_for_current_threshold_state",
+          reason,
           comingCount,
           cooldownRemainingMs: crossing.cooldownRemainingMs,
+          // When settle_pending, tell the client exactly when to retry so it can
+          // schedule a follow-up call without polling.
+          ...(crossing.pendingSettlesAt > 0 && { settlesAt: crossing.pendingSettlesAt }),
         });
       }
 

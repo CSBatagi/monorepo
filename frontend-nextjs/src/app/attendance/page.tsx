@@ -63,6 +63,8 @@ export default function AttendancePage() {
   const [isSubmitting, setIsSubmitting] = useState<{[key: string]: boolean}>({}); // For individual player updates
   const [isClearing, setIsClearing] = useState(false);
   const hasResolvedInitialLiveLoad = useRef(false);
+  // Holds a scheduled follow-up teker-döndü settle check (cleared on unmount).
+  const tekerFollowUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const ensureRealtimeOnline = useCallback(() => {
     try {
@@ -230,7 +232,7 @@ export default function AttendancePage() {
     if (!currentUser) return;
     try {
       const idToken = await currentUser.getIdToken();
-      await fetch('/api/notifications/emit', {
+      const res = await fetch('/api/notifications/emit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -240,9 +242,31 @@ export default function AttendancePage() {
           topic: 'teker_dondu_reached',
         }),
       });
+      // If the server is waiting for the count to "settle" at 10, it returns
+      // the exact timestamp when the settle window ends. Schedule a follow-up
+      // call at that time so the notification fires without requiring another
+      // manual status change from any player.
+      if (res.ok) {
+        const json = await res.json() as { skipped?: boolean; reason?: string; settlesAt?: number };
+        if (json.skipped && json.reason === 'settle_pending' && json.settlesAt) {
+          const delayMs = Math.max(json.settlesAt - Date.now(), 0) + 250; // +250 ms buffer
+          if (tekerFollowUpTimerRef.current) clearTimeout(tekerFollowUpTimerRef.current);
+          tekerFollowUpTimerRef.current = setTimeout(() => {
+            tekerFollowUpTimerRef.current = null;
+            void emitTekerDonduIfNeeded();
+          }, delayMs);
+        }
+      }
     } catch (error) {
       console.warn('Failed to emit teker_dondu notification event', error);
     }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps -- recursive self-reference intentional
+
+  // Clean up any pending settle timer when the component unmounts.
+  useEffect(() => {
+    return () => {
+      if (tekerFollowUpTimerRef.current) clearTimeout(tekerFollowUpTimerRef.current);
+    };
   }, []);
 
   const handleAttendanceChange = async (player: Player, newAttendance: string) => {
@@ -269,6 +293,13 @@ export default function AttendancePage() {
         }).catch(err => console.error("Error sending sheet update:", err)); // Log but don't block UI
       }
 
+      // Cancel any pending settle follow-up and fire a fresh check. The server
+      // will either start a new settle window (scroll-through case) or confirm
+      // the count has dropped and skip silently.
+      if (tekerFollowUpTimerRef.current) {
+        clearTimeout(tekerFollowUpTimerRef.current);
+        tekerFollowUpTimerRef.current = null;
+      }
       void emitTekerDonduIfNeeded();
     } catch (error) {
       console.error("Error syncing attendance:", error);
