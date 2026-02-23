@@ -50,7 +50,9 @@ export const TIMED_NOTIFICATION_RULES: TimedNotificationRule[] = [
     title: "Tek kaldık",
     body: (ctx) =>
       `Katılım şu an tek sayı (${ctx.comingCount}). Bir kişi daha lazım olabilir.`,
-    condition: (ctx) => ctx.comingCount > 0 && ctx.comingCount % 2 === 1,
+    // Only fires for odd numbers when we already have enough players (>= 10).
+    // The under-10 case is handled separately below.
+    condition: (ctx) => ctx.comingCount >= 10 && ctx.comingCount % 2 === 1,
     data: (ctx) => ({ comingCount: ctx.comingCount, link: "/attendance" }),
   },
   {
@@ -61,7 +63,31 @@ export const TIMED_NOTIFICATION_RULES: TimedNotificationRule[] = [
     title: "Tek kaldık",
     body: (ctx) =>
       `Katılım şu an tek sayı (${ctx.comingCount}). Bir kişi daha lazım olabilir.`,
-    condition: (ctx) => ctx.comingCount > 0 && ctx.comingCount % 2 === 1,
+    // Only fires for odd numbers when we already have enough players (>= 10).
+    // The under-10 case is handled separately below.
+    condition: (ctx) => ctx.comingCount >= 10 && ctx.comingCount % 2 === 1,
+    data: (ctx) => ({ comingCount: ctx.comingCount, link: "/attendance" }),
+  },
+  {
+    id: "tuesday_2130_under_threshold",
+    dayOfWeek: 2, // Tuesday
+    hour: 21,
+    minute: 30,
+    title: "Teker tehlikede",
+    body: (ctx) =>
+      `Maça 1 saat kaldı ama sadece ${ctx.comingCount} kişi var. Beyler bi el atın`,
+    condition: (ctx) => ctx.comingCount > 0 && ctx.comingCount < 10,
+    data: (ctx) => ({ comingCount: ctx.comingCount, link: "/attendance" }),
+  },
+  {
+    id: "friday_2130_under_threshold",
+    dayOfWeek: 5, // Friday
+    hour: 21,
+    minute: 30,
+    title: "Teker tehlikede",
+    body: (ctx) =>
+      `Maça 1 saat kaldı ama sadece ${ctx.comingCount} kişi var. Beyler bi el atın`,
+    condition: (ctx) => ctx.comingCount > 0 && ctx.comingCount < 10,
     data: (ctx) => ({ comingCount: ctx.comingCount, link: "/attendance" }),
   },
 ];
