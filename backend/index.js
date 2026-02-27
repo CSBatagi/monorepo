@@ -33,9 +33,9 @@ if (!TEST_MODE) {
     database: process.env.DB_DATABASE,
     password: process.env.DB_PASSWORD,
     port: 5432,
-    max: 5,                       // Maximum 5 connections (prevent DB overload on small VM)
+    max: 15,                      // Enough for concurrent Promise.all batches (11 main + 9 per period)
     idleTimeoutMillis: 30000,     // Close idle connections after 30s
-    connectionTimeoutMillis: 5000 // Fail fast if a connection can't be acquired in 5s
+    connectionTimeoutMillis: 30000 // Allow time for connections when parallel queries contend
   });
 }
 

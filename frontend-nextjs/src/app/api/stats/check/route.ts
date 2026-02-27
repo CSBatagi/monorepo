@@ -117,6 +117,14 @@ export async function GET(req: NextRequest) {
           // Timestamp did not change, so avoid expensive rewrites.
           try { await fs.stat(target); continue; } catch {}
         }
+        // Guard: don't overwrite a valid file with empty data from a failed query.
+        // If new data is an empty object/array but existing file has real content, skip.
+        const newVal = data[key];
+        const isEmpty = (Array.isArray(newVal) && newVal.length === 0) ||
+          (typeof newVal === 'object' && newVal !== null && !Array.isArray(newVal) && Object.keys(newVal).length === 0);
+        if (isEmpty) {
+          try { await fs.stat(target); continue; } catch { /* file doesn't exist yet, write empty */ }
+        }
         try { await fs.writeFile(target, JSON.stringify(data[key], null, 2), 'utf-8'); } catch {}
       }
     } else {
