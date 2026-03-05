@@ -617,3 +617,70 @@ export function computeCaptainPerformance(params: {
 
   return results;
 }
+
+// --- Super Kupa (Playoff Bracket) ---
+
+export type SuperKupaPlayer = {
+  steamId: string;
+  name: string;
+  leagueId: string;
+  leagueName: string;
+};
+
+export type SuperKupaMatchResult = {
+  player1SteamId: string;
+  player1Name: string;
+  player1League: string;
+  player2SteamId: string;
+  player2Name: string;
+  player2League: string;
+  winnerSteamId?: string;
+  score?: string; // e.g. "2-0", "2-1"
+  date?: string;
+  setByUid?: string;
+  setByName?: string;
+  setAt?: number;
+};
+
+export type SuperKupaData = {
+  semi1?: SuperKupaMatchResult | null;
+  semi2?: SuperKupaMatchResult | null;
+  final?: SuperKupaMatchResult | null;
+};
+
+/**
+ * Derives the 4 bracket participants from current standings.
+ * Semi 1: 1. Lig leader vs 4. Lig leader
+ * Semi 2: 2. Lig leader vs 3. Lig leader
+ * Final: Semi 1 winner vs Semi 2 winner
+ */
+export function deriveSuperKupaParticipants(
+  standings: Record<string, { id: string; name: string; standings: PlayerStanding[] }> | null | undefined,
+  leagueOrder: Array<{ id: string; name: string }>,
+): { semi1: [SuperKupaPlayer | null, SuperKupaPlayer | null]; semi2: [SuperKupaPlayer | null, SuperKupaPlayer | null] } {
+  function leaderOf(leagueId: string): SuperKupaPlayer | null {
+    const league = standings?.[leagueId];
+    if (!league?.standings?.length) return null;
+    // Find matching league config for name
+    const leagueConfig = leagueOrder.find((l) => l.id === leagueId);
+    const top = league.standings[0];
+    return {
+      steamId: top.steamId,
+      name: top.name,
+      leagueId,
+      leagueName: leagueConfig?.name || leagueId,
+    };
+  }
+
+  // Expected 4 leagues: lig1, lig2, lig3, lig4
+  const ids = leagueOrder.map((l) => l.id);
+  const l1 = ids[0] ? leaderOf(ids[0]) : null;
+  const l2 = ids[1] ? leaderOf(ids[1]) : null;
+  const l3 = ids[2] ? leaderOf(ids[2]) : null;
+  const l4 = ids[3] ? leaderOf(ids[3]) : null;
+
+  return {
+    semi1: [l1, l4], // 1. Lig leader vs 4. Lig leader
+    semi2: [l2, l3], // 2. Lig leader vs 3. Lig leader
+  };
+}

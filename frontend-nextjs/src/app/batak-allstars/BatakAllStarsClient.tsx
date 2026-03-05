@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { off, onValue, ref, set } from 'firebase/database';
-import { ArrowUp, ArrowDown, Circle, Sparkles, CheckCircle, BarChart3 } from 'lucide-react';
+import { ArrowUp, ArrowDown, Circle, Sparkles, CheckCircle, BarChart3, Trophy } from 'lucide-react';
 
 import {
   buildPlayersIndex,
@@ -22,6 +22,7 @@ import {
   type PlayerStanding,
   type CaptainPerformanceSummary,
 } from '@/lib/batakAllStars';
+import SuperKupaBracket from './SuperKupaBracket';
 
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || 'osirikler';
 
@@ -274,7 +275,7 @@ export default function BatakAllStarsClient({
   const [captainSteamIds, setCaptainSteamIds] = useState<Record<TeamKey, string>>({ team1: '', team2: '' });
   const [savingTeam, setSavingTeam] = useState<Record<TeamKey, boolean>>({ team1: false, team2: false });
   const [message, setMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'standings' | 'raw' | 'kaptanlik' | 'captain-performance'>('standings');
+  const [activeTab, setActiveTab] = useState<'standings' | 'raw' | 'kaptanlik' | 'captain-performance' | 'super-kupa'>('standings');
   const [expandedCaptainId, setExpandedCaptainId] = useState<string | null>(null);
   
   // Selected progress bar index (null = show all/latest, 1-based number = show standings up to that match)
@@ -628,6 +629,19 @@ export default function BatakAllStarsClient({
                 Kaptan Performansı
               </button>
             </li>
+            <li className="mr-2" role="presentation">
+              <button
+                className={`map-tab-button tab-nav-item inline-block border-b-2 rounded-t-lg ${activeTab === 'super-kupa' ? 'active border-yellow-500 text-yellow-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
+                id="batak-allstars-super-kupa-tab"
+                type="button"
+                role="tab"
+                aria-controls="batak-allstars-tab-super-kupa"
+                aria-selected={activeTab === 'super-kupa'}
+                onClick={() => setActiveTab('super-kupa')}
+              >
+                <Trophy className="w-4 h-4 inline-block -mt-0.5" /> Süper Kupa
+              </button>
+            </li>
           </ul>
         </div>
 
@@ -909,6 +923,14 @@ export default function BatakAllStarsClient({
                 </ul>
               </div>
             </div>
+          </div>
+        ) : activeTab === 'super-kupa' ? (
+          <div id="batak-allstars-tab-super-kupa" role="tabpanel" aria-labelledby="batak-allstars-super-kupa-tab">
+            <SuperKupaBracket
+              standingsByLeague={standingsData?.byLeague ?? null}
+              config={effectiveConfig}
+              playersIndex={playersIndex}
+            />
           </div>
         ) : activeTab === 'captain-performance' ? (
           <div id="batak-allstars-tab-captain-performance" role="tabpanel" aria-labelledby="batak-allstars-captain-performance-tab">
