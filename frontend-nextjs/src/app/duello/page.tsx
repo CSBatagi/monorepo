@@ -1,7 +1,7 @@
 import DuelloTabsClient from './DuelloTabsClient';
 import { readJson } from "@/lib/dataReader";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60; // seconds – data changes only when stats regenerate
 
 export default async function DuelloPage() {
   const sonmacData = (await readJson('duello_son_mac.json')) || { playerRows: [], playerCols: [], duels: {} };

@@ -1,7 +1,7 @@
 import SeasonAvgTabsClient from "@/components/SeasonAvgTabsClient";
 import { readJson } from "@/lib/dataReader";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // seconds – data changes only when stats regenerate
 
 export default async function SeasonAvgPage() {
   let data: any[] = [];

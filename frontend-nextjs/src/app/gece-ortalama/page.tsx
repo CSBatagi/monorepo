@@ -2,7 +2,7 @@ import NightAvgTableClient from "@/components/NightAvgTableClient";
 import { readJson } from "@/lib/dataReader";
 import { normalizeSeasonStarts } from "@/lib/seasonRanges";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // seconds – data changes only when stats regenerate
 
 export default async function GeceOrtalamasiPage() {
   const seasonStartRaw = (await readJson("season_start.json")) || {};

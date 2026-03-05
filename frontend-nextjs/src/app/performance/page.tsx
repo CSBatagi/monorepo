@@ -2,7 +2,7 @@ import React from 'react';
 import PerformanceGraphs from '@/components/Performance/PerformanceGraphs';
 import { readJson } from '@/lib/dataReader';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60; // seconds – data changes only when stats regenerate
 
 export default async function PerformancePage() {
   // Server-side read so page can stream HTML with data immediately (no client 'Loading...')

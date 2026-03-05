@@ -1,7 +1,7 @@
 import BatakAllStarsClient from './BatakAllStarsClient';
 import { readJson } from '@/lib/dataReader';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60; // seconds – data changes only when stats regenerate
 
 export default async function BatakAllStarsPage() {
   const seasonStartRaw = (await readJson('season_start.json')) || {};

@@ -2,7 +2,7 @@ import MacSonuclariClient from "@/components/MacSonuclariClient";
 import { readJson } from "@/lib/dataReader";
 import { normalizeSeasonStarts } from "@/lib/seasonRanges";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // seconds – data changes only when stats regenerate
 
 async function tryBackend(timeoutMs = 1500) {
   const backendBase = process.env.BACKEND_INTERNAL_URL || "http://backend:3000";
