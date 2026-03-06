@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 
-export default function LoginPage() {
+function LoginPageInner() {
   const { user, loading, emailSignIn, emailSignUp, signInWithGoogle } = useAuth();
   const { isDark } = useTheme();
   const params = useSearchParams();
@@ -17,9 +17,27 @@ export default function LoginPage() {
   const [signupPassword, setSignupPassword] = React.useState("");
 
   useEffect(() => {
-    if (!loading && user) {
-      router.replace(nextParam);
+    let cancelled = false;
+
+    async function finalizeLogin() {
+      if (loading || !user) return;
+      try {
+        const idToken = await user.getIdToken();
+        await fetch('/api/session/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        });
+      } catch {}
+      if (!cancelled) {
+        router.replace(nextParam);
+      }
     }
+
+    void finalizeLogin();
+    return () => {
+      cancelled = true;
+    };
   }, [user, loading, router, nextParam]);
 
   const handleEmailAuth = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -152,5 +170,13 @@ export default function LoginPage() {
         <p className={`text-xs text-center mt-4 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Girişten sonra yönlendirileceğiniz yer: {nextParam}</p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center p-6">Yukleniyor...</div>}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

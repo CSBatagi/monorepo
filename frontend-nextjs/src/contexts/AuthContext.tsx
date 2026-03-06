@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { User, onIdTokenChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase'; // Assuming your firebase.ts is in lib
 
 interface AuthContextType {
@@ -15,6 +15,20 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+async function syncServerSession(currentUser: User | null) {
+  if (!currentUser) {
+    await fetch('/api/session/logout', { method: 'POST' }).catch(() => {});
+    return;
+  }
+
+  const idToken = await currentUser.getIdToken();
+  await fetch('/api/session/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken }),
+  }).catch(() => {});
+}
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -40,7 +54,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
-    await signOut(auth);
+    await Promise.allSettled([
+      fetch('/api/session/logout', { method: 'POST' }),
+      signOut(auth),
+    ]);
   };
 
   const resendVerificationEmail = async () => {
@@ -53,12 +70,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   useEffect(() => {
-    // onAuthStateChanged fires immediately with cached credentials (no network round-trip)
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    let cancelled = false;
+    // onIdTokenChanged fires from cached auth state and again when Firebase refreshes the token.
+    const unsubscribe = onIdTokenChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setLoading(false);
+      if (!cancelled) {
+        await syncServerSession(currentUser);
+      }
     });
-    return () => unsubscribe();
+    if (auth.currentUser) {
+      setUser(auth.currentUser);
+      setLoading(false);
+    }
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   const value = {
