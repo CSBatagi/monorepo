@@ -141,8 +141,10 @@ async function runStatsUpdateCheck() {
   url.searchParams.set("_cb", String(now));
 
   let res: Response;
+  const ac = new AbortController();
+  const fetchTimeout = setTimeout(() => ac.abort(), 5000);
   try {
-    res = await fetch(url.toString(), { cache: "no-store" });
+    res = await fetch(url.toString(), { cache: "no-store", signal: ac.signal });
     warnedBackendUnavailable = false;
   } catch (error: any) {
     if (!warnedBackendUnavailable) {
@@ -153,6 +155,8 @@ async function runStatsUpdateCheck() {
       );
     }
     return;
+  } finally {
+    clearTimeout(fetchTimeout);
   }
 
   if (!res.ok) return;

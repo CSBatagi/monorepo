@@ -422,9 +422,26 @@ app.post('/stop-vm', async (req, res) => {
 // Start the server
 if (!TEST_MODE) {
   const port = process.env.PORT || 3000;
+
+  // Auto-apply idempotent schema migrations on startup
+  async function runMigrations() {
+    const migrations = [
+      `CREATE OR REPLACE FUNCTION update_timestamp() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='matches' AND column_name='updated_at') THEN ALTER TABLE matches ADD COLUMN updated_at TIMESTAMP DEFAULT NOW(); END IF; END $$`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='players' AND column_name='updated_at') THEN ALTER TABLE players ADD COLUMN updated_at TIMESTAMP DEFAULT NOW(); END IF; END $$`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='matches_updated_at') THEN CREATE TRIGGER matches_updated_at BEFORE UPDATE ON matches FOR EACH ROW EXECUTE FUNCTION update_timestamp(); END IF; END $$`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='players_updated_at') THEN CREATE TRIGGER players_updated_at BEFORE UPDATE ON players FOR EACH ROW EXECUTE FUNCTION update_timestamp(); END IF; END $$`,
+    ];
+    for (const sql of migrations) {
+      try { await pool.query(sql); } catch (e) { console.warn('[migration]', e.message); }
+    }
+    console.log('[migration] schema migrations applied');
+  }
+
   // Warm startup generation to ensure canonical names load & early visibility.
   async function warmStartup() {
     try {
+      await runMigrations();
       cachedSeasonConfig = resolveSeasonConfig();
       cachedSeasonStart = cachedSeasonConfig.seasonStart;
       cachedSeasonStarts = cachedSeasonConfig.seasonStarts;

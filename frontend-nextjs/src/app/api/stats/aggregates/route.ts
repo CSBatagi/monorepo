@@ -19,14 +19,18 @@ export async function GET(req: NextRequest) {
   const backendBase = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
   const url = `${backendBase}/stats/aggregates?_cb=${Date.now()}`;
   let data: any = null;
+  const ac = new AbortController();
+  const timeout = setTimeout(() => ac.abort(), 5000);
   try {
-    const res = await fetch(url, { cache: 'no-store', headers:{'Cache-Control':'no-store'} });
+    const res = await fetch(url, { cache: 'no-store', headers:{'Cache-Control':'no-store'}, signal: ac.signal });
     if (!res.ok) {
       return new Response(JSON.stringify({ error: 'backend_failed', status: res.status }), { status: 500 });
     }
     data = await res.json();
   } catch (e:any) {
     return new Response(JSON.stringify({ error: 'network', details: e.message }), { status: 502 });
+  } finally {
+    clearTimeout(timeout);
   }
   // Persist both aggregate files unconditionally because they always change logically (fresh recompute) even if identical
   const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(),'runtime-data');

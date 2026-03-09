@@ -5,6 +5,7 @@ import "@/styles/table-styles.css";
 import Providers from "@/components/Providers";
 import fs from 'fs/promises';
 import path from 'path';
+import { after } from 'next/server';
 import { ensureNotificationSchedulerStarted } from "@/lib/notificationScheduler";
 
 const geistSans = Geist({
@@ -94,8 +95,10 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   ensureNotificationSchedulerStarted();
-  // Trigger background refresh without blocking page rendering.
-  void incrementalRefresh();
+  // Run refresh AFTER the response is sent — avoids tainting ISR pages as dynamic.
+  after(() => {
+    void incrementalRefresh();
+  });
   return (
     <html lang="en">
       <head>
