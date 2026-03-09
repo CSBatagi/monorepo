@@ -6,6 +6,7 @@ import fs from 'fs/promises';
 const AGG_FILES = ['season_avg.json','season_avg_periods.json','last10.json'];
 let lastAggregateTime = 0;
 let cachedAggregateResponse: string | null = null;
+let aggCacheTimer: ReturnType<typeof setTimeout> | null = null;
 const AGG_COOLDOWN_MS = 60 * 1000; // 60 seconds
 
 export async function GET(req: NextRequest) {
@@ -39,5 +40,8 @@ export async function GET(req: NextRequest) {
   const responseBody = JSON.stringify(data);
   cachedAggregateResponse = responseBody;
   lastAggregateTime = Date.now();
+  // Free cached string after cooldown expires to avoid holding memory indefinitely
+  if (aggCacheTimer) clearTimeout(aggCacheTimer);
+  aggCacheTimer = setTimeout(() => { cachedAggregateResponse = null; aggCacheTimer = null; }, AGG_COOLDOWN_MS + 5000);
   return new Response(responseBody, { status: 200, headers:{'Content-Type':'application/json','Cache-Control':'no-store'} });
 }

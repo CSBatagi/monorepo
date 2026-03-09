@@ -26,6 +26,7 @@ const TIMESTAMP_FILE = 'last_timestamp.txt';
 // milliseconds of each other; only the first one actually hits the backend.
 const CHECK_COOLDOWN_MS = 60 * 1000; // 60 seconds
 let cachedCheckResponse: string | null = null;
+let checkCacheTimer: ReturnType<typeof setTimeout> | null = null;
 let lastCheckTime = 0;
 
 async function readPersistedTimestamp(runtimeDir: string): Promise<string | null> {
@@ -146,6 +147,9 @@ export async function GET(req: NextRequest) {
     const responseBody = JSON.stringify(data);
     cachedCheckResponse = responseBody;
     lastCheckTime = Date.now();
+    // Free cached string after cooldown expires to avoid holding memory indefinitely
+    if (checkCacheTimer) clearTimeout(checkCacheTimer);
+    checkCacheTimer = setTimeout(() => { cachedCheckResponse = null; checkCacheTimer = null; }, CHECK_COOLDOWN_MS + 5000);
     return new Response(responseBody, { status: 200, headers: { 'Content-Type': 'application/json','Cache-Control':'no-store, no-cache, must-revalidate','Pragma':'no-cache','Expires':'0' } });
   } catch (e: any) {
     if (debug) console.error('[stats-proxy] Unexpected error', e);
