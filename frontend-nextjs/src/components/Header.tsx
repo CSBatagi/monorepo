@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSession } from '@/contexts/SessionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import ThemeToggle from '@/components/ThemeToggle';
 import NotificationBell from '@/components/NotificationBell';
@@ -29,7 +29,7 @@ const navLinks = [
 ];
 
 export default function Header() {
-  const { user, loading, logout } = useAuth();
+  const { user, ready, logout } = useSession();
   const { isDark } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -50,7 +50,6 @@ export default function Header() {
   const handleSignOut = async () => {
     try {
       await logout();
-      router.push('/login');
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -64,8 +63,8 @@ export default function Header() {
   return (
     <>
       <header className={`shadow-lg transition-colors duration-300 ${
-        isDark 
-          ? 'bg-[#0a0f1a] text-gray-100 border-b border-dark-border' 
+        isDark
+          ? 'bg-[#0a0f1a] text-gray-100 border-b border-dark-border'
           : 'bg-gray-800 text-white'
       }`}>
         <div className="container mx-auto px-4 py-3 flex items-center gap-4">
@@ -131,13 +130,13 @@ export default function Header() {
 
           {/* Right: Account Controls (desktop/tablet) */}
           <div className="hidden md:flex flex-col items-end gap-2 flex-shrink-0">
-            {loading ? (
+            {!ready ? (
               <div className="px-3 py-2 text-sm">Loading...</div>
             ) : user ? (
               <div className="flex flex-col items-end gap-2 rounded-lg px-2 py-1 bg-[#0b1220] border border-slate-700/70 shadow-inner">
                 <div className="flex items-center gap-2 pb-1 border-b border-blue-900/50 text-gray-100">
-                  {user.photoURL && <Image src={user.photoURL} alt={user.displayName || 'User'} width={28} height={28} className="rounded-full" />}
-                  <span className="text-sm font-medium max-w-[170px] truncate">{user.displayName || user.email}</span>
+                  {user.picture && <Image src={user.picture} alt={user.name || 'User'} width={28} height={28} className="rounded-full" />}
+                  <span className="text-sm font-medium max-w-[170px] truncate">{user.name || user.email}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <ThemeToggle />
@@ -158,8 +157,8 @@ export default function Header() {
                     </svg>
                   </Link>
                   <button onClick={handleSignOut} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isDark 
-                      ? 'bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-700/40' 
+                    isDark
+                      ? 'bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-700/40'
                       : 'bg-red-600 hover:bg-red-700'
                   }`}>
                     Sign Out
@@ -170,8 +169,8 @@ export default function Header() {
               <div className="flex items-center gap-2">
                 <ThemeToggle />
                 <button onClick={handleSignInClick} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isDark 
-                    ? 'bg-blue-600/80 hover:bg-blue-500 border border-blue-500/30' 
+                  isDark
+                    ? 'bg-blue-600/80 hover:bg-blue-500 border border-blue-500/30'
                     : 'bg-blue-600 hover:bg-blue-700'
                 }`}>
                   Giriş Yap
@@ -183,12 +182,12 @@ export default function Header() {
           {/* Mobile: Theme Toggle + Menu Button */}
           <div className="md:hidden ml-auto flex flex-1 items-center space-x-2 justify-end">
             <ThemeToggle />
-            {!loading && user && <NotificationBell />}
-            {loading ? (
+            {ready && user && <NotificationBell />}
+            {!ready ? (
               <div className="px-3 py-2 text-sm">...</div>
             ) : user ? (
               <div className="flex items-center space-x-2">
-                {user.photoURL && <Image src={user.photoURL} alt="User" width={28} height={28} className="rounded-full" />}
+                {user.picture && <Image src={user.picture} alt="User" width={28} height={28} className="rounded-full" />}
               </div>
             ) : null}
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu" className={`p-2 rounded-md transition-colors ${
@@ -229,13 +228,13 @@ export default function Header() {
               </Link>
             ))}
             <hr className={`my-2 ${isDark ? 'border-dark-border' : 'border-gray-700'}`} />
-            {loading ? (
+            {!ready ? (
               <div className="px-3 py-2 text-base font-medium">Loading...</div>
             ) : user ? (
               <div className="px-3 py-2">
                 <div className="flex items-center space-x-2 mb-2">
-                  {user.photoURL && <Image src={user.photoURL} alt={user.displayName || 'User'} width={32} height={32} className="rounded-full" />}
-                  <span className="text-base font-medium">{user.displayName || user.email}</span>
+                  {user.picture && <Image src={user.picture} alt={user.name || 'User'} width={32} height={32} className="rounded-full" />}
+                  <span className="text-base font-medium">{user.name || user.email}</span>
                 </div>
                 <Link
                   href="/notifications/inbox"
@@ -260,8 +259,8 @@ export default function Header() {
                   Bildirim Ayarları
                 </Link>
                 <button onClick={() => { handleSignOut(); setIsMenuOpen(false); }} className={`w-full text-left block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                  isDark 
-                    ? 'bg-red-900/60 hover:bg-red-800 text-red-200' 
+                  isDark
+                    ? 'bg-red-900/60 hover:bg-red-800 text-red-200'
                     : 'bg-red-600 hover:bg-red-700'
                 }`}>
                   Sign Out
@@ -269,8 +268,8 @@ export default function Header() {
               </div>
             ) : (
               <button onClick={() => { handleSignInClick(); setIsMenuOpen(false); }} className={`w-full text-left block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                isDark 
-                  ? 'bg-blue-600/80 hover:bg-blue-500' 
+                isDark
+                  ? 'bg-blue-600/80 hover:bg-blue-500'
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}>
                 Giriş Yap
@@ -282,6 +281,3 @@ export default function Header() {
     </>
   );
 }
-
-
-

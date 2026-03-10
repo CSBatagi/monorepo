@@ -20,11 +20,12 @@ export function createSessionToken(payload: {
   uid: string;
   email?: string | null;
   name?: string | null;
+  picture?: string | null;
 }): string {
   const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
   const exp = Math.floor(Date.now() / 1000) + SESSION_MAX_AGE_SECONDS;
   const body = Buffer.from(
-    JSON.stringify({ uid: payload.uid, email: payload.email || null, name: payload.name || null, exp })
+    JSON.stringify({ uid: payload.uid, email: payload.email || null, name: payload.name || null, picture: payload.picture || null, exp })
   ).toString("base64url");
   const signature = createHmac("sha256", getSecret()).update(`${header}.${body}`).digest("base64url");
   return `${header}.${body}.${signature}`;
@@ -36,7 +37,7 @@ export function createSessionToken(payload: {
  */
 export function verifySessionToken(
   token: string
-): { uid: string; email?: string | null; name?: string | null; exp: number } | null {
+): { uid: string; email?: string | null; name?: string | null; picture?: string | null; exp: number } | null {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;

@@ -2,7 +2,6 @@
 
 import React, { ReactNode } from 'react';
 import Header from './Header';
-import EmailVerificationBanner from './EmailVerificationBanner';
 import { usePathname } from 'next/navigation';
 
 interface LayoutProps {
@@ -15,12 +14,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     return (
         <>
-            {!isLoginPage && (
-                <>
-                    <Header />
-                    <EmailVerificationBanner />
-                </>
-            )}
+            {!isLoginPage && <Header />}
             {children}
         </>
     );

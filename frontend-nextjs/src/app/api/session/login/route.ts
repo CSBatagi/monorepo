@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     // Decode the Firebase ID token payload (no signature verification — same
     // trust model as the Edge middleware which also can't run firebase-admin).
-    let decoded: { sub?: string; email?: string; name?: string };
+    let decoded: { sub?: string; email?: string; name?: string; picture?: string };
     try {
       const parts = idToken.split(".");
       if (parts.length !== 3) throw new Error("bad_token_format");
@@ -47,13 +47,14 @@ export async function POST(req: NextRequest) {
       uid,
       email: decoded.email,
       name: decoded.name,
+      picture: decoded.picture,
     });
 
     const response = NextResponse.json({ ok: true });
     response.cookies.set({
       name: SESSION_COOKIE_NAME,
       value: sessionToken,
-      httpOnly: true,
+      httpOnly: false, // Readable by client-side SessionContext for user display
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",

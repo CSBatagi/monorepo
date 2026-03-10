@@ -54,7 +54,7 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType>({
   notifications: [],
   unreadCount: 0,
-  loading: true,
+  loading: false, // false by default so NotificationBell works outside NotificationProvider
   markAsRead: async () => {},
   markAllAsRead: async () => {},
   deleteNotification: async () => {},
