@@ -24,7 +24,7 @@ const TIMESTAMP_FILE = 'last_timestamp.txt';
 // --- Response cache / cooldown (mirrors the aggregates route pattern) ---
 // Prevents thundering-herd: multiple client useEffect mounts all arrive within
 // milliseconds of each other; only the first one actually hits the backend.
-const CHECK_COOLDOWN_MS = 60 * 1000; // 60 seconds
+const CHECK_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes — stats change infrequently; saves memory on 1 GB VM
 let cachedCheckResponse: string | null = null;
 let checkCacheTimer: ReturnType<typeof setTimeout> | null = null;
 let lastCheckTime = 0;
@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
         if (isEmpty) {
           try { await fs.stat(target); continue; } catch { /* file doesn't exist yet, write empty */ }
         }
-        try { await fs.writeFile(target, JSON.stringify(data[key], null, 2), 'utf-8'); } catch {}
+        try { await fs.writeFile(target, JSON.stringify(data[key]), 'utf-8'); } catch {}
       }
     } else {
       // Backfill any missing file from payload (if present) or leave as-is
@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
         const key = base.replace(/\.json$/, '');
         if (data[key] === undefined) continue;
         const target = path.join(runtimeDir, base);
-        try { await fs.stat(target); } catch { try { await fs.writeFile(target, JSON.stringify(data[key], null, 2),'utf-8'); } catch {} }
+        try { await fs.stat(target); } catch { try { await fs.writeFile(target, JSON.stringify(data[key]),'utf-8'); } catch {} }
       }
     }
     if (serverTimestamp && serverTimestamp !== persistedTs) {

@@ -2,11 +2,12 @@
 
 ## Runtime Flow
 
-1. Frontend calls `/api/stats/check` which proxies backend `GET /stats/incremental`.
-2. Backend compares latest DB match timestamp.
+1. Root layout's `after()` hook calls `incrementalRefresh()` (cooldown: 5 minutes) which fetches backend `GET /stats/incremental`.
+2. Backend compares latest DB match timestamp (polls DB every 60s in background).
 3. If updated, backend regenerates incremental datasets once and returns changed payload.
 4. Frontend persists payload into `frontend-nextjs/runtime-data/` (or `STATS_DATA_DIR`).
 5. Aggregates are refreshed through `/api/stats/aggregates` -> backend `GET /stats/aggregates`.
+6. All data API routes (`/api/data/*`) serve from runtime-data with `Cache-Control: public, s-maxage=60, stale-while-revalidate=300`.
 
 ## Canonical Season Config
 
@@ -65,6 +66,16 @@ Update all of the following together:
 - `frontend-nextjs/src/app/api/stats/check/route.ts`
 - `frontend-nextjs/src/app/api/admin/regenerate-stats/route.ts`
 - `frontend-nextjs/src/lib/dataReader.ts`
+
+## Memory Optimizations (1 GB VM)
+
+The platform runs on a 1 GB RAM GCP VM. Key optimizations:
+
+- **PostgreSQL**: tuned to `shared_buffers=32MB`, `work_mem=2MB`, `max_connections=20` (Docker limit: 192M).
+- **Backend**: connection pool reduced to 5, V8 heap capped at 128 MB (Docker limit: 256M). Stats queries run in staggered batches of 3-4 instead of 11 parallel. Data cache expires after 5 minutes to free memory.
+- **Frontend**: V8 heap capped at 160 MB (Docker limit: 256M). Session auth uses HMAC-SHA256 tokens (`authSession.ts`) instead of firebase-admin for the hot path. firebase-admin only loads lazily for the notification scheduler and admin routes.
+- **Caddy**: gzip/zstd compression enabled. Static assets (`/_next/static/*`, `/images/*`) get long-lived cache headers.
+- **Incremental refresh cooldown**: 5 minutes (layout.tsx). JSON files written without pretty-printing.
 
 ## Diagnostics and Notes
 

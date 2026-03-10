@@ -33,8 +33,8 @@ if (!TEST_MODE) {
     database: process.env.DB_DATABASE,
     password: process.env.DB_PASSWORD,
     port: 5432,
-    max: 15,                      // Enough for concurrent Promise.all batches (11 main + 9 per period)
-    idleTimeoutMillis: 30000,     // Close idle connections after 30s
+    max: 5,                        // Reduced for 1 GB VM — queries run in smaller batches now
+    idleTimeoutMillis: 15000,      // Close idle connections after 15s to free memory sooner
     connectionTimeoutMillis: 30000 // Allow time for connections when parallel queries contend
   });
 }
@@ -185,6 +185,17 @@ async function runStatsUpdateScript() {
 let statsGenerationPromise = null;
 let lastGeneratedServerTimestamp = null; // tracks last successful generation based on server data timestamp
 let lastGeneratedData = null; // cache of last generated datasets so we can resend when not updated (for volume backfill)
+let dataCacheTimer = null;
+const DATA_CACHE_TTL_MS = 5 * 60 * 1000; // Clear cached data after 5 min to free memory on 1 GB VM
+
+function touchDataCacheTimer() {
+  if (dataCacheTimer) clearTimeout(dataCacheTimer);
+  dataCacheTimer = setTimeout(() => {
+    lastGeneratedData = null;
+    lastAggregateData = null;
+    dataCacheTimer = null;
+  }, DATA_CACHE_TTL_MS);
+}
 
 
 // Aggregates endpoint: recompute only when DB data has changed (or on cold start).
@@ -217,6 +228,7 @@ app.get('/stats/aggregates', async (req, res) => {
     const agg = await aggregateGenerationPromise;
     if (serverDate) lastAggregateServerTimestamp = serverDate;
     lastAggregateData = agg;
+    touchDataCacheTimer();
     res.set('Cache-Control','no-store');
     res.json({ updated: true, serverTimestamp: (serverDate || new Date()).toISOString(), ...agg });
   } catch (e) {
@@ -252,6 +264,7 @@ app.get('/stats/incremental', async (req, res) => {
           const result = await statsGenerationPromise;
           lastGeneratedServerTimestamp = serverDate;
           lastGeneratedData = result.data;
+          touchDataCacheTimer();
           payload = { updated: true, serverTimestamp: serverDate.toISOString(), ...result.data };
         } catch (e) {
           console.error('Incremental generation failed', e);
@@ -438,18 +451,17 @@ if (!TEST_MODE) {
     console.log('[migration] schema migrations applied');
   }
 
-  // Warm startup generation to ensure canonical names load & early visibility.
+  // Lightweight startup: run migrations and load config, but defer heavy generation
+  // to the first request. This keeps memory low during boot on 1 GB VMs.
   async function warmStartup() {
     try {
       await runMigrations();
       cachedSeasonConfig = resolveSeasonConfig();
       cachedSeasonStart = cachedSeasonConfig.seasonStart;
       cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
-      console.log('[startup] triggering initial aggregates generation');
-      await generateAggregates(pool, { seasonStart: cachedSeasonStart, seasonStarts: cachedSeasonStarts });
-      console.log('[startup] initial aggregates generation complete');
+      console.log('[startup] migrations applied, config loaded. Heavy generation deferred to first request.');
     } catch (e) {
-      console.warn('[startup] initial aggregates generation failed', e.message);
+      console.warn('[startup] warmStartup failed', e.message);
     }
   }
   warmStartup();

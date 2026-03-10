@@ -18,7 +18,7 @@ declare global {
 }
 
 const ISTANBUL_TZ = "Europe/Istanbul";
-const SCHEDULER_INTERVAL_MS = 30_000;
+const SCHEDULER_INTERVAL_MS = 60_000;
 const STATS_CHECK_COOLDOWN_MS = 60_000;
 
 let lastStatsCheckAt = 0;

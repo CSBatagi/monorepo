@@ -17,3 +17,4 @@ Use this folder as the canonical context source.
 - Security and secrets handling: [`operations/security-secrets.md`](operations/security-secrets.md)
 - Steam avatar integration: [`features/steam-integration.md`](features/steam-integration.md)
 - Mobile app and notifications plan: [`features/mobile-app-notifications.md`](features/mobile-app-notifications.md)
+- Performance and memory budget: [`../PERFORMANCE_REPORT.md`](../PERFORMANCE_REPORT.md)

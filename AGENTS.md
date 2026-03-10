@@ -14,6 +14,8 @@
 - Runtime JSON persistence uses `frontend-nextjs/runtime-data/` (or `STATS_DATA_DIR`).
 - Main backend stats routes are `/stats/incremental`, `/stats/aggregates`, `/stats/force-regenerate`, `/stats/diagnostics`.
 - If you add/rename a stats file, update all sync points listed in `docs/development/stats-runtime.md`.
+- Session auth uses HMAC-SHA256 tokens (`authSession.ts`), NOT firebase-admin session cookies. firebase-admin only loads for the notification scheduler and admin notification routes.
+- The VM has 1 GB RAM. Docker memory limits are enforced (postgres 192M, backend 256M, frontend 256M). Do not add heavy dependencies or increase parallelism without checking the memory budget in `PERFORMANCE_REPORT.md`.
 
 ## Scope Rule
 

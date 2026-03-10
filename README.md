@@ -8,6 +8,7 @@ Monorepo for CS2 stats generation, APIs, and the Next.js frontend.
 - Documentation index: [`docs/README.md`](docs/README.md)
 - Development guide: [`DEVELOPMENT.md`](DEVELOPMENT.md)
 - Security rules: [`SECURITY.md`](SECURITY.md)
+- Performance report: [`PERFORMANCE_REPORT.md`](PERFORMANCE_REPORT.md)
 
 ## Quick Start (Stats Viewer)
 
@@ -38,3 +39,5 @@ Open `http://localhost:3000`.
 
 - Runtime stats architecture uses `/stats/incremental` and `/stats/aggregates`.
 - Season boundaries live in `frontend-nextjs/public/data/season_start.json`.
+- Deployed on a 1 GB RAM GCP VM with Docker memory limits. See `PERFORMANCE_REPORT.md` for the memory budget.
+- Session auth uses lightweight HMAC tokens; firebase-admin only loads for the notification scheduler.

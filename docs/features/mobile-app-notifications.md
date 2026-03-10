@@ -212,12 +212,13 @@ Current rules:
 ## Scheduler Polling + Cost
 
 - Scheduler starts in app runtime via `frontend-nextjs/src/app/layout.tsx` (`ensureNotificationSchedulerStarted`).
-- Main loop interval is every 30 seconds (`SCHEDULER_INTERVAL_MS = 30_000`).
+- Main loop interval is every 60 seconds (`SCHEDULER_INTERVAL_MS = 60_000`).
 - Work per loop:
   - Timed rules: one RTDB read (`attendanceState`) to compute `comingCount`.
   - Stats update: at most once per 60 seconds (`STATS_CHECK_COOLDOWN_MS = 60_000`), one fetch to `/stats/incremental` through `BACKEND_INTERNAL_URL`.
 - Duplicate sends are blocked by `notifications/events/{eventId}` transaction guard.
 - If backend is unavailable or `BACKEND_INTERNAL_URL` is missing, stats check is skipped with warning logs; scheduler keeps running for other rules.
+- firebase-admin lazy-loads on first scheduler tick, adding ~30-50 MB to the frontend process. The V8 heap is set to 160 MB to accommodate this.
 
 For your user size (20-30 people), this is lightweight and should not bottleneck GCP. Load is dominated by small RTDB reads and one small backend check per minute.
 

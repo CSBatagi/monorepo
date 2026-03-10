@@ -52,6 +52,7 @@ services:
       GCP_ZONE: europe-west3-c
       SEASON_START_FILE: /app/config/season_start.json
       PLAYERS_FILE: /app/players.json
+      NODE_OPTIONS: "--max-old-space-size=128"
     env_file:
       - path: .backend_secrets
         required: true
@@ -66,6 +67,10 @@ services:
       - 3000
     depends_on:
       - postgres  # Ensure the database is started before backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   frontend-nextjs:
     restart: unless-stopped
@@ -79,7 +84,7 @@ services:
     networks:
       - db2
     expose:
-      - 3000 
+      - 3000
     env_file:
       - path: .frontend_secrets
         required: true
@@ -88,6 +93,10 @@ services:
       - BACKEND_INTERNAL_URL=http://backend:3000
     volumes:
       - nextjs_data:/app/runtime-data
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   postgres:
     image: postgres:17  # Match existing data format (was auto-upgraded)
@@ -97,6 +106,16 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    # Tuned for 1 GB RAM VM — keep Postgres footprint under ~120 MB
+    command: >
+      postgres
+      -c shared_buffers=32MB
+      -c work_mem=2MB
+      -c maintenance_work_mem=32MB
+      -c effective_cache_size=128MB
+      -c max_connections=20
+      -c wal_buffers=1MB
+      -c checkpoint_completion_target=0.9
     ports:
       - 5432:5432
     networks:
@@ -106,6 +125,10 @@ services:
         required: true
     volumes:
      - /srv/pgdata:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 192M
 
   caddy:
     image: caddy:latest

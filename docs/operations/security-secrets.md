@@ -30,6 +30,12 @@ Never commit:
 - Database dumps from production
 - Any token-bearing config
 
+## Session Authentication
+
+User sessions use HMAC-SHA256 tokens signed with `MATCHMAKING_TOKEN` (or `AUTH_TOKEN` fallback). The implementation is in `frontend-nextjs/src/lib/authSession.ts`. Tokens are stored as `csbatagi_session` cookies with a 5-day expiry. Edge middleware (`middleware.ts`) validates the signature and expiry on each request.
+
+If `MATCHMAKING_TOKEN` is rotated, all existing user sessions will be invalidated (users must re-login).
+
 ## Emergency Response
 
 1. Revoke and rotate exposed credentials.

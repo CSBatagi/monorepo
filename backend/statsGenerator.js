@@ -370,25 +370,25 @@ function buildQueries(seasonStart, seasonEnd = null){
 
 
 async function buildPlayersStats(pool, qset, errors, labelPrefix = 'players_stats') {
-  // Run all 9 independent player-stats queries concurrently
+  // Run player-stats queries in staggered batches (max 4 concurrent for pool of 5)
   const safeQ = async (query, label) => {
     try { return (await pool.query(query)).rows; }
     catch (e) { console.error(`[statsGenerator] ${label} query failed`, e.message); errors.push({ dataset: `${labelPrefix}:${label}`, error: e.message }); return []; }
   };
-  const [
-    playerOverviewRows, playerRoundsRows, weaponKillsRows,
-    weaponShotsRows, weaponDamageRows, utilitiesRows,
-    inspectionDeathRows, wallbangCollateralRows, clutchRows
-  ] = await Promise.all([
-    safeQ(qset.playerOverview,          'player_overview'),
-    safeQ(qset.playerRounds,            'player_rounds'),
-    safeQ(qset.playerWeaponKills,       'player_weapon_kills'),
-    safeQ(qset.playerWeaponShots,       'player_weapon_shots'),
-    safeQ(qset.playerWeaponDamage,      'player_weapon_damage'),
-    safeQ(qset.playerUtilities,         'player_utilities'),
-    safeQ(qset.playerInspectionDeaths,  'player_inspection_deaths'),
-    safeQ(qset.playerWallbangCollateral,'player_wallbang_collateral'),
-    safeQ(qset.playerClutches,          'player_clutches'),
+  const [playerOverviewRows, playerRoundsRows, weaponKillsRows, weaponShotsRows] = await Promise.all([
+    safeQ(qset.playerOverview, 'player_overview'),
+    safeQ(qset.playerRounds, 'player_rounds'),
+    safeQ(qset.playerWeaponKills, 'player_weapon_kills'),
+    safeQ(qset.playerWeaponShots, 'player_weapon_shots'),
+  ]);
+  const [weaponDamageRows, utilitiesRows, inspectionDeathRows] = await Promise.all([
+    safeQ(qset.playerWeaponDamage, 'player_weapon_damage'),
+    safeQ(qset.playerUtilities, 'player_utilities'),
+    safeQ(qset.playerInspectionDeaths, 'player_inspection_deaths'),
+  ]);
+  const [wallbangCollateralRows, clutchRows] = await Promise.all([
+    safeQ(qset.playerWallbangCollateral, 'player_wallbang_collateral'),
+    safeQ(qset.playerClutches, 'player_clutches'),
   ]);
 
   const playersById = {};
@@ -694,36 +694,32 @@ async function generateAll(pool, opts={}){
   const seasonAvgPeriods = await buildSeasonAvgPeriodsDataset(pool, sezonbaslangic, seasonStarts, errors);
   results.season_avg_periods = seasonAvgPeriods;
   results.season_avg = seasonAvgPeriods.data?.[seasonAvgPeriods.current_period] || [];
-  // Run all independent dataset queries concurrently (11 parallel DB round-trips)
+  // Run dataset queries in staggered batches to reduce peak memory on 1 GB VMs.
+  // Each batch runs up to 4 queries in parallel (fits in pool of 5 connections).
   const isAllTime = sezonbaslangic === ALL_TIME_START;
   const safeQG = async (query, label) => {
     try { return (await pool.query(query)).rows; }
     catch (e) { console.error(`[statsGenerator] ${label} query failed`, e.message); errors.push({ dataset: label, error: e.message }); return []; }
   };
-  const [
-    nightRows,
-    nightRowsAllRaw,
-    last10Rows,
-    sonmacRows,
-    roundRows,
-    allTimeSonmacRowsRaw,
-    allTimeRoundRowsRaw,
-    dLastRows,
-    dSeasonRows,
-    perfRows,
-    mapStatsRows,
-  ] = await Promise.all([
-    safeQG(qset.nightAvg,                                        'night_avg'),
-    isAllTime ? Promise.resolve([]) : safeQG(allTimeQset.nightAvg,    'night_avg_all'),
-    safeQG(qset.last10,                                          'last10'),
-    safeQG(qset.sonmac,                                          'sonmac'),
-    safeQG(qset.sonmacRounds,                                    'sonmac_rounds'),
-    isAllTime ? Promise.resolve([]) : safeQG(allTimeQset.sonmac,      'sonmac_by_date_all'),
-    isAllTime ? Promise.resolve([]) : safeQG(allTimeQset.sonmacRounds,'sonmac_by_date_all_rounds'),
-    safeQG(qset.duello_son_mac,                                  'duello_son_mac'),
-    safeQG(qset.duello_sezon,                                    'duello_sezon'),
-    safeQG(qset.performanceGraphs,                               'performance_graphs'),
-    safeQG(qset.mapStats,                                        'map_stats'),
+  // Batch 1: night averages + last10 + season sonmac
+  const [nightRows, nightRowsAllRaw, last10Rows, sonmacRows] = await Promise.all([
+    safeQG(qset.nightAvg, 'night_avg'),
+    isAllTime ? Promise.resolve([]) : safeQG(allTimeQset.nightAvg, 'night_avg_all'),
+    safeQG(qset.last10, 'last10'),
+    safeQG(qset.sonmac, 'sonmac'),
+  ]);
+  // Batch 2: rounds + all-time sonmac + duello
+  const [roundRows, allTimeSonmacRowsRaw, allTimeRoundRowsRaw, dLastRows] = await Promise.all([
+    safeQG(qset.sonmacRounds, 'sonmac_rounds'),
+    isAllTime ? Promise.resolve([]) : safeQG(allTimeQset.sonmac, 'sonmac_by_date_all'),
+    isAllTime ? Promise.resolve([]) : safeQG(allTimeQset.sonmacRounds, 'sonmac_by_date_all_rounds'),
+    safeQG(qset.duello_son_mac, 'duello_son_mac'),
+  ]);
+  // Batch 3: remaining datasets
+  const [dSeasonRows, perfRows, mapStatsRows] = await Promise.all([
+    safeQG(qset.duello_sezon, 'duello_sezon'),
+    safeQG(qset.performanceGraphs, 'performance_graphs'),
+    safeQG(qset.mapStats, 'map_stats'),
   ]);
   const nightRowsAll = isAllTime ? nightRows : nightRowsAllRaw;
   const allTimeSonmacRows = isAllTime ? sonmacRows : allTimeSonmacRowsRaw;
@@ -782,22 +778,23 @@ async function generateAll(pool, opts={}){
     periods: seasonAvgPeriods.periods,
     data: {},
   };
-  // Build players_stats for each period concurrently (each period itself parallelises its 9 queries internally)
-  await Promise.all((seasonAvgPeriods.periods || []).map(async (period) => {
-    if (!period || !period.id) return;
+  // Build players_stats for each period SEQUENTIALLY to cap peak memory on 1 GB VMs.
+  // Each period internally runs batched queries, so this avoids stacking multiple periods' result sets.
+  for (const period of (seasonAvgPeriods.periods || [])) {
+    if (!period || !period.id) continue;
     if (period.id === seasonAvgPeriods.current_period) {
       playersStatsPeriods.data[period.id] = results.players_stats;
-      return;
+      continue;
     }
     // Use cache for completed (non-current, non-all-time) seasons
     if (period.id !== 'all_time' && !period.is_current && historicalPlayersStatsCache[period.id]) {
       console.log(`[statsGenerator] Using cached players_stats for ${period.id}`);
       playersStatsPeriods.data[period.id] = historicalPlayersStatsCache[period.id];
-      return;
+      continue;
     }
     if (period.id === 'all_time') {
       playersStatsPeriods.data[period.id] = await buildPlayersStats(pool, allTimeQset, errors, `players_stats:${period.id}`);
-      return;
+      continue;
     }
     const periodQset = buildQueries(period.start_date || sezonbaslangic, period.end_date || null);
     const periodData = await buildPlayersStats(pool, periodQset, errors, `players_stats:${period.id}`);
@@ -807,7 +804,7 @@ async function generateAll(pool, opts={}){
       historicalPlayersStatsCache[period.id] = periodData;
       console.log(`[statsGenerator] Cached players_stats for ${period.id}`);
     }
-  }));
+  }
   results.players_stats_periods = playersStatsPeriods;
   if(errors.length) results.__errors = errors;
   return results;

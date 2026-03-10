@@ -3,10 +3,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "@/styles/table-styles.css";
 import Providers from "@/components/Providers";
+import { ensureNotificationSchedulerStarted } from "@/lib/notificationScheduler";
 import fs from 'fs/promises';
 import path from 'path';
 import { after } from 'next/server';
-import { ensureNotificationSchedulerStarted } from "@/lib/notificationScheduler";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 
 let lastServerKnownTs: string | null = null; // per server runtime
 let lastRefreshTime = 0; // epoch ms of last backend call
-const REFRESH_COOLDOWN_MS = 60 * 1000; // 60 seconds - backend call is cheap (in-memory timestamp comparison only)
+const REFRESH_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes - saves CPU/memory on 1 GB VM; stats rarely change faster
 const REFRESH_TIMEOUT_MS = 4000;
 let refreshInFlight: Promise<void> | null = null;
 const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
@@ -69,7 +69,7 @@ async function incrementalRefresh() {
         for (const base of statFiles) {
           const key = base.replace(/\.json$/, '');
           if (data[key] !== undefined) {
-            try { await fs.writeFile(path.join(runtimeDir, base), JSON.stringify(data[key], null, 2),'utf-8'); } catch {}
+            try { await fs.writeFile(path.join(runtimeDir, base), JSON.stringify(data[key]),'utf-8'); } catch {}
           }
         }
       }
@@ -94,7 +94,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Start the notification scheduler (runs every 60s; firebase-admin lazy-loads on first tick)
   ensureNotificationSchedulerStarted();
+
   // Run refresh AFTER the response is sent — avoids tainting ISR pages as dynamic.
   after(() => {
     void incrementalRefresh();

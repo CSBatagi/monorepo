@@ -8,12 +8,27 @@ csbatagi.com {
 	# To add Caddy-level rate limiting, build a custom image with:
 	#   xcaddy build --with github.com/mholt/caddy-ratelimit
 
+	# Compress all responses
+	encode gzip zstd
+
 	# Security headers
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+
+	# Cache immutable Next.js static assets (hashed filenames)
+	handle /_next/static/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		reverse_proxy frontend-nextjs:3000
+	}
+
+	# Cache public images
+	handle /images/* {
+		header Cache-Control "public, max-age=86400"
+		reverse_proxy frontend-nextjs:3000
 	}
 
 	handle_path /backend/* {

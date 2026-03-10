@@ -7,7 +7,7 @@ const AGG_FILES = ['season_avg.json','season_avg_periods.json','last10.json'];
 let lastAggregateTime = 0;
 let cachedAggregateResponse: string | null = null;
 let aggCacheTimer: ReturnType<typeof setTimeout> | null = null;
-const AGG_COOLDOWN_MS = 60 * 1000; // 60 seconds
+const AGG_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes — reduced backend load on 1 GB VM
 
 export async function GET(req: NextRequest) {
   // Return cached response if within cooldown
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
   for (const base of AGG_FILES) {
     const key = base.replace(/\.json$/, '');
     if (data[key] !== undefined) {
-      try { await fs.writeFile(path.join(runtimeDir, base), JSON.stringify(data[key], null, 2), 'utf-8'); } catch {}
+      try { await fs.writeFile(path.join(runtimeDir, base), JSON.stringify(data[key]), 'utf-8'); } catch {}
     }
   }
   const responseBody = JSON.stringify(data);

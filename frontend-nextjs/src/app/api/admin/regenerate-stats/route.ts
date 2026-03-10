@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
         try {
           await fs.writeFile(
             path.join(runtimeDir, filename),
-            JSON.stringify(data[key], null, 2),
+            JSON.stringify(data[key]),
             'utf-8'
           );
           filesWritten.push(filename);
