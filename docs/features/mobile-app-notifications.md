@@ -34,7 +34,7 @@ Provide a mobile-app-like experience for a private group (20-30 users) on Androi
 
 ### Firebase Realtime Features Already in Use
 
-- Attendance page writes/reads `attendanceState` (`src/app/attendance/page.tsx`).
+- Attendance page writes/reads `attendanceState` (`src/app/attendance/AttendanceClient.tsx`; server wrapper in `page.tsx` provides player data via ISR).
 - MVP page writes/reads:
   - `mvpVotes/votesByDate`
   - `mvpVotes/lockedByDate`
@@ -185,7 +185,7 @@ Current rules:
 
 ### A) Timed notifications (cron-like)
 
-1. Add a new rule in `frontend-nextjs/src/lib/notificationScheduleRules.ts`.
+1. Add a new rule in `backend/notificationScheduler.js` (the `TIMED_NOTIFICATION_RULES` array).
 2. Set `id`, `dayOfWeek`, `hour`, `minute`, `title`, `body`, and optional `condition`.
 3. If you introduce a new topic (not `timed_reminders`), also update:
    - `frontend-nextjs/src/lib/serverNotifications.ts` (`NOTIFICATION_TOPICS`)
@@ -194,9 +194,9 @@ Current rules:
 ### B) Event-driven notifications (feature trigger)
 
 1. Emit an event from the source flow (example files):
-   - `frontend-nextjs/src/app/attendance/page.tsx` (teker dondu threshold)
+   - `frontend-nextjs/src/app/attendance/AttendanceClient.tsx` (teker dondu threshold)
    - `frontend-nextjs/src/components/GecenInMVPsiClient.tsx` (MVP lock)
-   - `frontend-nextjs/src/lib/notificationScheduler.ts` (stats update and timed checks)
+   - `backend/notificationScheduler.js` (stats update and timed checks)
 2. Use deterministic `eventId` format for dedupe (e.g. `topic:date` or `topic:timestamp`).
 3. If it is a new topic, update:
    - `frontend-nextjs/src/lib/serverNotifications.ts`
@@ -211,16 +211,18 @@ Current rules:
 
 ## Scheduler Polling + Cost
 
-- Scheduler starts in app runtime via `frontend-nextjs/src/app/layout.tsx` (`ensureNotificationSchedulerStarted`).
+- Scheduler runs in the **backend** Express process (`backend/notificationScheduler.js`), NOT in Next.js.
+- Started after the Express server is listening; uses the backend's in-memory cached DB timestamp for stats-update checks (zero HTTP cost).
 - Main loop interval is every 60 seconds (`SCHEDULER_INTERVAL_MS = 60_000`).
 - Work per loop:
   - Timed rules: one RTDB read (`attendanceState`) to compute `comingCount`.
-  - Stats update: at most once per 60 seconds (`STATS_CHECK_COOLDOWN_MS = 60_000`), one fetch to `/stats/incremental` through `BACKEND_INTERNAL_URL`.
+  - Stats update: compares the cached DB timestamp (updated by the backend's 60s poller) — no network call needed.
 - Duplicate sends are blocked by `notifications/events/{eventId}` transaction guard.
-- If backend is unavailable or `BACKEND_INTERNAL_URL` is missing, stats check is skipped with warning logs; scheduler keeps running for other rules.
-- firebase-admin lazy-loads on first scheduler tick, adding ~30-50 MB to the frontend process. The V8 heap is set to 160 MB to accommodate this.
+- firebase-admin loads in the backend process alongside the stats generator. The frontend no longer needs firebase-admin for the scheduler.
+- Can be disabled via `ENABLE_NOTIFICATION_SCHEDULER=false` env var on the backend.
+- Requires Firebase credentials (`FIREBASE_ADMIN_SERVICE_ACCOUNT_JSON`, `FIREBASE_DATABASE_URL`) in the backend environment. These are shared from `.frontend_secrets` via docker-compose.
 
-For your user size (20-30 people), this is lightweight and should not bottleneck GCP. Load is dominated by small RTDB reads and one small backend check per minute.
+For your user size (20-30 people), this is lightweight and should not bottleneck GCP. Load is dominated by small RTDB reads and in-memory timestamp comparisons.
 
 ## Acceptance Criteria for MVP
 

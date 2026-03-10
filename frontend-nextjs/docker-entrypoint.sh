@@ -10,9 +10,9 @@ chown -R nextjs:nodejs "$RUNTIME_DIR"
 echo "[entrypoint] Runtime directory prepared at $RUNTIME_DIR"
 
 # Limit V8 heap to prevent unbounded growth on memory-constrained VMs.
-# 160 MiB old-space — firebase-admin lazy-loads for the notification scheduler,
-# so we need headroom above 128. V8 GC keeps RSS under ~220 MB.
-export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=160"
+# 128 MiB old-space — notification scheduler moved to backend, so firebase-admin
+# only loads on-demand for admin API routes. V8 GC keeps RSS under ~200 MB.
+export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=128"
 
 # Switch to nextjs user and run the server
 exec su-exec nextjs:nodejs node server.js

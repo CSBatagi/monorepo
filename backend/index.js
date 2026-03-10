@@ -109,6 +109,7 @@ if (!TEST_MODE) {
 }
 
 const { generateAll, generateAggregates, clearHistoricalCache } = require('./statsGenerator');
+const notificationScheduler = require('./notificationScheduler');
 
 // --- Per-IP rate limiting ---
 // Simple in-memory rate limiter to prevent abuse. No external dependencies needed.
@@ -467,6 +468,12 @@ if (!TEST_MODE) {
   warmStartup();
   app.listen(port, () => {
     console.log(`Middleware is running on port ${port}`);
+
+    // Start the notification scheduler after the server is listening.
+    // It uses getCachedDataTimestamp() (in-memory, no DB cost) to detect stats changes.
+    notificationScheduler.start({
+      getCachedDataTimestamp: () => cachedLastDataTimestamp,
+    });
   });
 }
  

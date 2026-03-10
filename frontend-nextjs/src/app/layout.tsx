@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "@/styles/table-styles.css";
 import Providers from "@/components/Providers";
-import { ensureNotificationSchedulerStarted } from "@/lib/notificationScheduler";
 import fs from 'fs/promises';
 import path from 'path';
 import { after } from 'next/server';
@@ -94,8 +93,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Start the notification scheduler (runs every 60s; firebase-admin lazy-loads on first tick)
-  ensureNotificationSchedulerStarted();
+  // Notification scheduler now runs in the backend process (see backend/notificationScheduler.js).
 
   // Run refresh AFTER the response is sent — avoids tainting ISR pages as dynamic.
   after(() => {

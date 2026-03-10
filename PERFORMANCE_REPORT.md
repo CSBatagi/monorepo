@@ -50,11 +50,14 @@ Leaves ~490-600 MB headroom (including OS).
 ### 3. Frontend Memory Reduction
 
 - **HMAC session tokens** (`authSession.ts`): replaced firebase-admin in the login/session flow with lightweight HMAC-SHA256 JWT. firebase-admin no longer loads on every request.
-- **V8 heap**: 160 MB (`docker-entrypoint.sh`) — accommodates firebase-admin for the notification scheduler
-- **Notification scheduler**: interval increased from 30s to 60s (`notificationScheduler.ts`)
+- **V8 heap**: 128 MB (`docker-entrypoint.sh`) — firebase-admin no longer loads on startup (scheduler moved to backend)
+- **Notification scheduler**: moved to the backend process (see below)
+- **Lazy Firebase SDK**: `FirebaseProviders` is code-split via `next/dynamic`. Stats pages never download the Firebase client SDK (~200-400 KB JS saved).
+- **SessionContext**: lightweight cookie-based user context replaces Firebase Auth in shared components (Header, Layout)
 - **Incremental refresh cooldown**: increased from 60s to 5 minutes (`layout.tsx`)
 - **JSON writes**: removed pretty-printing (`JSON.stringify(data)` instead of `JSON.stringify(data, null, 2)`)
 - **Duplicate firebase config**: deleted `lib/firebase.ts` (root-level duplicate with debug console.log)
+- **Server-side player data**: `attendance/page.tsx` is a server component that reads `players.json` from disk (ISR, revalidate 60s). The client component (`AttendanceClient.tsx`) receives players as props — no client-side fetch waterfall.
 - Docker memory limit: 256M
 
 ### 4. Caddy / Network Optimizations (Caddyfile)
@@ -81,12 +84,15 @@ This eliminates ~30-50 MB of firebase-admin memory from the request hot path.
 
 ## Notification Scheduler
 
-The scheduler remains active in the Next.js process (`layout.tsx` calls `ensureNotificationSchedulerStarted()`):
+The scheduler runs in the **backend** Express process (`backend/notificationScheduler.js`), not in Next.js:
 
-- Runs every 60 seconds (was 30s)
-- firebase-admin lazy-loads on first tick (~30-50 MB one-time cost)
-- Handles timed reminders (attendance nudges) and stats-update notifications
+- Started after the Express server is listening (`index.js`)
+- Runs every 60 seconds
+- firebase-admin loads in the backend process (shared memory with stats generation)
+- Timed rules check Istanbul time and read attendance count from Firebase RTDB
+- Stats-update check uses the backend's in-memory cached DB timestamp (zero DB/HTTP cost)
 - Can be disabled via `ENABLE_NOTIFICATION_SCHEDULER=false`
+- Requires Firebase credentials in the backend env (`.frontend_secrets` is shared via docker-compose)
 
 ## Remaining Optimization Opportunities
 
@@ -94,6 +100,4 @@ If further memory reduction is needed:
 
 1. **Add swap space** (1-2 GB) on the VM as OOM safety net
 2. **Paginate `sonmac_by_date_all.json`** (4.1 MB) — load only current season by default
-3. **Lazy-load notification components** on the client (NotificationProvider, NotificationBell)
-4. **Move notification scheduler to backend** container to fully eliminate firebase-admin from the frontend process
-5. **Re-enable Next.js image optimization** or use a CDN for static images
+3. **Re-enable Next.js image optimization** or use a CDN for static images
