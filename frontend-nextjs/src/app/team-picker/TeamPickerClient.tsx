@@ -101,7 +101,7 @@ const MapSelection: React.FC<MapSelectionProps> = ({ teamAName, teamBName }) => 
   useEffect(() => {
     const fetchMaps = async () => {
       try {
-        const res = await fetch('/data/maps.json?_cb=' + Date.now());
+        const res = await fetch('/data/maps.json');
         const data = await res.json();
         setMapsList(data);
       } catch {
@@ -262,29 +262,21 @@ const TeamPickerClient: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    const fetchStats = async () => {
-      const cacheBust = Date.now();
+    const fetchStats = async (retries = 2) => {
       try {
-        // Fetch runtime-first via API routes that already implement fallback logic
         const [l10Res, seasonRes] = await Promise.all([
-          fetch(`/api/data/last10?_cb=${cacheBust}`, { cache: 'no-store' }),
-          fetch(`/api/data/season_avg?_cb=${cacheBust}`, { cache: 'no-store' })
+          fetch('/api/data/last10'),
+          fetch('/api/data/season_avg')
         ]);
         let l10Data: any[] = [];
         let seasonData: any[] = [];
         try { l10Data = await l10Res.json(); } catch { l10Data = []; }
         try { seasonData = await seasonRes.json(); } catch { seasonData = []; }
-        // If either dataset is empty, attempt an aggregate regeneration then refetch once
-        if ((l10Data?.length ?? 0) === 0 || (seasonData?.length ?? 0) === 0) {
-          try {
-            await fetch(`/api/stats/aggregates?_cb=${Date.now()}`, { method: 'POST', cache: 'no-store' });
-            const [l10Res2, seasonRes2] = await Promise.all([
-              fetch(`/api/data/last10?_cb=${Date.now()}`, { cache: 'no-store' }),
-              fetch(`/api/data/season_avg?_cb=${Date.now()}`, { cache: 'no-store' })
-            ]);
-            try { l10Data = await l10Res2.json(); } catch {}
-            try { seasonData = await seasonRes2.json(); } catch {}
-          } catch {}
+        // If data not ready yet, retry after delay (background refresh may still be running)
+        if (((l10Data?.length ?? 0) === 0 || (seasonData?.length ?? 0) === 0) && retries > 0) {
+          await new Promise(r => setTimeout(r, 3000));
+          if (!cancelled) return fetchStats(retries - 1);
+          return;
         }
         if (!cancelled) {
           setLast10Stats(Array.isArray(l10Data) ? l10Data : []);
@@ -307,7 +299,7 @@ const TeamPickerClient: React.FC = () => {
     let cancelled = false;
     const fetchMapNames = async () => {
       try {
-        const res = await fetch(`/data/maps.json?_cb=${Date.now()}`);
+        const res = await fetch('/data/maps.json');
         const data = await res.json();
         if (cancelled) return;
         const lookup: Record<string, string> = {};
@@ -329,24 +321,18 @@ const TeamPickerClient: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    const fetchMapStats = async () => {
+    const fetchMapStats = async (retries = 2) => {
       setLoadingMapStats(true);
       try {
-        const res = await fetch(`/api/data/map_stats?_cb=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetch('/api/data/map_stats');
         let data: any = null;
         try { data = await res.json(); } catch { data = null; }
-        let list: any[] = Array.isArray(data) ? data : Array.isArray(data?.map_stats) ? data.map_stats : [];
-        if (!list || list.length === 0) {
-          try {
-            const checkRes = await fetch(`/api/stats/check?_cb=${Date.now()}`, { cache: 'no-store' });
-            const checkData = await checkRes.json().catch(() => null);
-            if (Array.isArray(checkData?.map_stats)) {
-              list = checkData.map_stats;
-            }
-            if (checkData?.serverTimestamp) {
-              try { localStorage.setItem('stats_last_ts', checkData.serverTimestamp); } catch {}
-            }
-          } catch {}
+        const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.map_stats) ? data.map_stats : [];
+        if ((!list || list.length === 0) && retries > 0) {
+          // Data not ready yet (background refresh in progress); retry after short delay
+          await new Promise(r => setTimeout(r, 3000));
+          if (!cancelled) return fetchMapStats(retries - 1);
+          return;
         }
         if (!cancelled) setMapStats(Array.isArray(list) ? list : []);
       } catch {

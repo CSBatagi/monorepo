@@ -18,7 +18,7 @@ const STAT_FILES = [
   'players_stats_periods.json',
   'map_stats.json'
 ];
-const BACKEND_TIMEOUT_MS = 5000;
+const BACKEND_TIMEOUT_MS = 30000; // 30s — stats generation on 1 GB VM can take 10-20s; short timeout causes data to stay stale until next cooldown window
 const TIMESTAMP_FILE = 'last_timestamp.txt';
 
 // --- Response cache / cooldown (mirrors the aggregates route pattern) ---

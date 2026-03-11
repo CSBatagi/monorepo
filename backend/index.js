@@ -209,12 +209,18 @@ app.get('/stats/aggregates', async (req, res) => {
   try {
     const serverLastTs = TEST_MODE ? await getCachedDataTimestamp() : getCachedDataTimestamp();
     const serverDate = serverLastTs ? new Date(serverLastTs) : null;
+    const dbUnchanged = serverDate && lastAggregateServerTimestamp &&
+        serverDate.getTime() === new Date(lastAggregateServerTimestamp).getTime();
 
-    // If we have cached data and the DB hasn't changed since, return cached result immediately
-    if (lastAggregateData && serverDate && lastAggregateServerTimestamp &&
-        serverDate.getTime() === new Date(lastAggregateServerTimestamp).getTime()) {
+    // If DB hasn't changed since last generation, return cached data or skip
+    if (dbUnchanged) {
+      if (lastAggregateData) {
+        res.set('Cache-Control','no-store');
+        return res.json({ updated: true, serverTimestamp: serverDate.toISOString(), ...lastAggregateData });
+      }
+      // Cache expired but DB unchanged — frontend has data on disk, no need to regenerate
       res.set('Cache-Control','no-store');
-      return res.json({ updated: true, serverTimestamp: serverDate.toISOString(), ...lastAggregateData });
+      return res.json({ updated: false, serverTimestamp: serverDate.toISOString() });
     }
 
     // DB changed (or cold start) — regenerate with concurrency lock
@@ -256,8 +262,9 @@ app.get('/stats/incremental', async (req, res) => {
     let payload = { updated: false, serverTimestamp: serverDate.toISOString() };
     if (needs) {
       // Regenerate only when source timestamp actually changed (or on cold start).
-      // If unchanged, reuse cached payload to avoid repeated heavy SQL.
-      if (sourceChanged || !lastGeneratedData) {
+      // If source hasn't changed but in-memory cache expired (5-min TTL), skip regeneration —
+      // the frontend already has the data persisted on disk. Avoids expensive SQL on 1 GB VM.
+      if (sourceChanged) {
         if (!statsGenerationPromise) {
           statsGenerationPromise = runStatsUpdateScript().finally(()=>{ statsGenerationPromise=null; });
         }
@@ -271,8 +278,11 @@ app.get('/stats/incremental', async (req, res) => {
           console.error('Incremental generation failed', e);
           return res.status(500).json({ error: 'incremental_failed', details: e.message });
         }
-      } else {
+      } else if (lastGeneratedData) {
         payload = { updated: true, serverTimestamp: serverDate.toISOString(), ...lastGeneratedData };
+      } else {
+        // Source unchanged but cache expired — frontend has data on disk, no need to regenerate
+        payload = { updated: false, serverTimestamp: serverDate.toISOString() };
       }
     }
     res.set('Cache-Control','no-store');
