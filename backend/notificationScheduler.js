@@ -310,10 +310,28 @@ async function emitNotificationEvent(params) {
 
 // ─── Scheduler checks ───
 
+// Pool is injected via start() — used for attendance count (migrated from Firebase RTDB to PostgreSQL).
+let dbPool = null;
+
 async function resolveComingCount() {
-  const snap = await adminDb().ref('attendanceState').get();
-  const attendance = snap.val() || {};
-  return Object.values(attendance).filter((item) => item?.status === 'coming').length;
+  // Attendance data lives in PostgreSQL now (Firebase RTDB is no longer written to).
+  if (dbPool) {
+    try {
+      const r = await dbPool.query(`SELECT COUNT(*) AS cnt FROM attendance WHERE status = 'coming'`);
+      return parseInt(r.rows[0]?.cnt, 10) || 0;
+    } catch (e) {
+      console.error('[notification-scheduler] resolveComingCount DB error:', e.message);
+      return 0;
+    }
+  }
+  // Fallback to Firebase RTDB for backward compatibility (should not happen in production)
+  try {
+    const snap = await adminDb().ref('attendanceState').get();
+    const attendance = snap.val() || {};
+    return Object.values(attendance).filter((item) => item?.status === 'coming').length;
+  } catch {
+    return 0;
+  }
 }
 
 async function runTimedRuleCheck() {
@@ -386,6 +404,7 @@ async function runStatsUpdateCheck() {
  * Start the notification scheduler.
  * @param {Object} options
  * @param {Function} options.getCachedDataTimestamp — returns the cached DB timestamp (from index.js)
+ * @param {Object}   options.pool — PostgreSQL pool for attendance queries
  */
 function start(options = {}) {
   if (process.env.ENABLE_NOTIFICATION_SCHEDULER === 'false') {
@@ -408,6 +427,7 @@ function start(options = {}) {
   schedulerStarted = true;
 
   getTimestampFn = options.getCachedDataTimestamp || null;
+  dbPool = options.pool || null;
 
   console.log('[notification-scheduler] Starting (interval: %dms)', SCHEDULER_INTERVAL_MS);
 

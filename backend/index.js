@@ -501,6 +501,7 @@ if (!TEST_MODE) {
     // It uses getCachedDataTimestamp() (in-memory, no DB cost) to detect stats changes.
     notificationScheduler.start({
       getCachedDataTimestamp: () => cachedLastDataTimestamp,
+      pool,
     });
   });
 }

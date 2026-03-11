@@ -73,6 +73,7 @@ INSERT INTO live_version (key, version) VALUES ('attendance', 0), ('team_picker'
 
 - `GET /live/attendance` — returns attendance rows + version
 - `POST /live/attendance/:steamId` — update one player's status/emoji/kaptan
+- `POST /live/attendance/bulk` — bulk update multiple players
 - `POST /live/attendance/reset` — clear all attendance
 - `GET /live/team-picker` — returns full team-picker state + version
 - `POST /live/team-picker/assign` — assign player to team
@@ -81,15 +82,21 @@ INSERT INTO live_version (key, version) VALUES ('attendance', 0), ('team_picker'
 - `POST /live/team-picker/reset` — reset all team-picker state
 
 All GET endpoints accept `?v=N` — return 304 if server version <= N.
+Rate limiting is bypassed for `/live/*` routes (high-frequency polling by design, all frontend proxy traffic shares one Docker IP).
 
 ### Frontend
 
-- New `useLivePolling(url, intervalMs)` hook — replaces `onValue` listeners
+- `useLivePolling(url, intervalMs)` hook — replaces `onValue` listeners, polls with version-based 304
+- `useLivePolling.refetch()` resets the polling timer to avoid redundant requests after writes
+- `liveApi.ts` — POST helpers: `updateAttendance`, `bulkUpdateAttendance`, `resetAttendance`, `resetTeamPicker`
 - Migrate TeamPickerClient: replace all Firebase RTDB reads/writes ✅
 - Migrate AttendanceClient: replace all Firebase RTDB reads/writes ✅
 - Remove `firebase/database` imports from these files ✅
-- Notification emit route reads coming count from PostgreSQL (fallback: Firebase RTDB) ✅
-- Note: `/attendance` stays in `FIREBASE_ROUTES` because `emitTekerDonduIfNeeded()` needs `firebaseAuth.currentUser.getIdToken()`
+- Notification emit route reads coming count from PostgreSQL exclusively ✅
+- Notification emit route uses HMAC session cookie (no Firebase ID token needed) ✅
+- Teker dondu crossing detection uses in-memory state (no Firebase RTDB transaction) ✅
+- `/attendance` removed from `FIREBASE_ROUTES` — zero Firebase SDK on this page ✅
+- `/team-picker` removed from `FIREBASE_ROUTES` — zero Firebase SDK on this page ✅
 
 ## Phase 2: MVP Voting (P1)
 
@@ -111,8 +118,43 @@ All GET endpoints accept `?v=N` — return 304 if server version <= N.
 - Backend scheduler reads from PostgreSQL instead of RTDB
 - Only firebase-admin Messaging remains
 
-## What Stays on Firebase
+## Remaining Firebase Dependencies
 
-- **Firebase Auth** — login flow works, HMAC session cookie minimizes impact
-- **FCM push delivery** — no self-hosted alternative without significant infra
-- **Service worker** — firebase-messaging-sw.js for background notifications
+### Client-Side (loaded only on FIREBASE_ROUTES: `/gecenin-mvpsi`, `/notifications`, `/login`, `/batak-allstars`)
+
+| File | Firebase Feature | Purpose |
+|------|-----------------|---------|
+| `contexts/AuthContext.tsx` | Auth (client SDK) | Login/signup (email, Google OAuth), `onIdTokenChanged` syncs to session cookie |
+| `contexts/SessionContext.tsx` | Auth (dynamic `signOut` import) | Clears Firebase auth state on logout |
+| `contexts/NotificationContext.tsx` | RTDB (`onValue`, `update`, `remove`) | Real-time notification inbox: `notifications/inbox/{uid}` |
+| `components/GecenInMVPsiClient.tsx` | RTDB (`onValue`, `set`, `remove`) + Auth (`getIdToken`) | MVP voting: `mvpVotes/byDate`, `mvpVotes/lockedByDate` |
+| `components/AdminStatsButton.tsx` | RTDB (`get`) + Auth (`getIdToken`) | Admin check: `admins/{uid}`, stats regeneration |
+| `app/batak-allstars/BatakAllStarsClient.tsx` | RTDB (`onValue`, `set`) | Kaptanlik state: `kaptanlikState` |
+| `app/batak-allstars/SuperKupaBracket.tsx` | RTDB (`onValue`, `set`, `remove`) | Tournament bracket: `batakAllStars/superKupa` |
+| `app/notifications/page.tsx` | RTDB + Auth + Messaging (`getToken`) | FCM registration, notification preferences |
+| `components/NotificationForegroundHandler.tsx` | Messaging (`onMessage`) | Foreground push notification display |
+| `public/firebase-messaging-sw.js` | Messaging (service worker) | Background push notification handling |
+
+### Server-Side (loaded lazily via `firebaseAdmin.ts`)
+
+| File | Firebase Feature | Purpose |
+|------|-----------------|---------|
+| `lib/serverNotifications.ts` | Admin RTDB + Messaging | Dispatch FCM messages, persist to inbox, event dedup |
+| `lib/notificationScheduler.ts` | Admin RTDB | Reads `attendanceState` for timed notifications |
+| `api/notifications/emit/route.ts` | Admin Auth + RTDB | `verifyIdToken` fallback (for gecenin-mvpsi), `isMvpDateLocked` |
+| `api/admin/notifications/send/route.ts` | Admin Auth + RTDB | Admin broadcast: verifies token + checks `admins/{uid}` |
+| `api/admin/regenerate-stats/route.ts` | Admin Auth + RTDB | Admin stats regen: verifies token + checks `admins/{uid}` |
+
+### Config Files
+
+| File | Purpose |
+|------|---------|
+| `lib/firebase.ts` | Client SDK init (app, auth, db, googleProvider) |
+| `lib/firebaseAdmin.ts` | Admin SDK init (adminAuth, adminDb, adminMessaging) |
+| `components/FirebaseProviders.tsx` | Code-split wrapper, only loaded for FIREBASE_ROUTES |
+
+### What Will Always Stay on Firebase
+
+- **Firebase Auth** — login flow (email + Google OAuth). HMAC session cookie minimizes runtime impact
+- **FCM push delivery** — `adminMessaging().sendEachForMulticast()`. No self-hosted alternative without significant infra
+- **Service worker** — `firebase-messaging-sw.js` for background push notifications

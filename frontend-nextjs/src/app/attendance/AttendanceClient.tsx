@@ -121,7 +121,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
     } catch (error) {
       console.warn('Failed to emit teker_dondu notification event', error);
     }
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps -- recursive self-reference intentional
+  }, [user]);  // user must be in deps to avoid stale-closure (was [] before)
 
   useEffect(() => {
     return () => {

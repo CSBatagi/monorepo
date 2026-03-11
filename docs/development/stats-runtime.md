@@ -92,10 +92,13 @@ The platform runs on a 1 GB RAM GCP VM. Key optimizations:
 Attendance and team-picker state migrated from Firebase RTDB to PostgreSQL. See `docs/FIREBASE_MIGRATION_PLAN.md`.
 
 - **Backend routes**: `GET/POST /live/attendance`, `GET/POST /live/team-picker/*` (`liveRoutes.js`)
+- **Rate limiting**: `/live/*` routes are exempt from the 30 req/min rate limiter (high-frequency polling, shared Docker IP)
 - **Frontend polling**: `useLivePolling` hook polls every 3s with version-based 304 responses
-- **Frontend writes**: `liveApi.ts` helpers for POST calls
+  - `refetch()` resets the polling timer to avoid redundant requests after writes
+- **Frontend writes**: `liveApi.ts` helpers: `updateAttendance`, `bulkUpdateAttendance`, `resetAttendance`, `resetTeamPicker`
 - **Tables**: `attendance`, `team_picker`, `live_version` (auto-created via migrations in `index.js`)
-- Team-picker page no longer requires Firebase SDK (removed from `FIREBASE_ROUTES` in `Providers.tsx`)
-- Attendance page still in `FIREBASE_ROUTES` — needs Firebase Auth for notification emit (`getIdToken()`)
-- `AttendanceClient.tsx` uses `useSession` (not `useAuth`) + `useLivePolling` + `liveApi` for all RTDB operations
-- Notification emit route (`/api/notifications/emit`) reads coming count from PostgreSQL backend (fallback: Firebase RTDB)
+- Both `/attendance` and `/team-picker` removed from `FIREBASE_ROUTES` — zero Firebase SDK on these pages
+- `AttendanceClient.tsx` uses `useSession` (not `useAuth`) + `useLivePolling` + `liveApi` for all operations
+- Notification emit route (`/api/notifications/emit`) reads coming count from PostgreSQL backend exclusively
+- Notification emit auth: accepts HMAC session cookie (attendance) or Firebase ID token (gecenin-mvpsi)
+- Teker dondu crossing state: in-memory Map (replaces Firebase RTDB transaction). Resets on deploy — acceptable trade-off

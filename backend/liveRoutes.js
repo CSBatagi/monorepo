@@ -12,8 +12,8 @@ function setup(dbPool) {
 }
 
 // --- Helper: bump version counter ---
-async function bumpVersion(key) {
-  await pool.query(
+async function bumpVersion(key, queryable) {
+  await (queryable || pool).query(
     `UPDATE live_version SET version = version + 1 WHERE key = $1`,
     [key]
   );
@@ -92,7 +92,7 @@ router.post('/attendance/bulk', async (req, res) => {
           [p.steamId, p.name, p.status || null, p.emoji_status || null, p.is_kaptan ?? null, p.kaptan_timestamp ?? null]
         );
       }
-      await bumpVersion('attendance');
+      await bumpVersion('attendance', client);
       await client.query('COMMIT');
     } catch (e) {
       await client.query('ROLLBACK');
