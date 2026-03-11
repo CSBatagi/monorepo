@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
     }
     const data = await res.json();
     return NextResponse.json(data, {
+      status: res.status,
       headers: { 'Cache-Control': 'no-store' },
     });
   } catch (e: any) {

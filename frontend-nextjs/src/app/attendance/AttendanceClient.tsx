@@ -63,7 +63,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
   const [isClearing, setIsClearing] = useState(false);
   const tekerFollowUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: liveData, loading: loadingLiveData } = useLivePolling<LiveAttendancePayload>({
+  const { data: liveData, loading: loadingLiveData, refetch } = useLivePolling<LiveAttendancePayload>({
     url: '/api/live/attendance',
     intervalMs: 3000,
     enabled: !!user,
@@ -146,6 +146,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
         fields.kaptan_timestamp = null;
       }
       await updateAttendance(player.steamId, player.name, fields);
+      void refetch();
 
       if (APPS_SCRIPT_URL) {
         fetch(APPS_SCRIPT_URL, {
@@ -179,6 +180,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
         is_kaptan: isKaptan,
         kaptan_timestamp: isKaptan ? Date.now() : null,
       });
+      void refetch();
     } catch (error) {
       console.error("Error syncing kaptanlik:", error);
       alert("Failed to update kaptanlik status. Please try again.");
@@ -194,6 +196,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
     setIsSubmitting(prev => ({ ...prev, [player.steamId]: true }));
     try {
       await updateAttendance(player.steamId, player.name, { emoji_status: newEmoji });
+      void refetch();
     } catch (error) {
       console.error("Error syncing emoji:", error);
       alert("Failed to update emoji. Please try again.");
@@ -246,6 +249,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
         resetTeamPicker(),
         ...sheetUpdatePromises,
       ]);
+      void refetch();
       alert("Attendance cleared successfully!");
     } catch (error) {
       console.error("Error clearing attendance:", error);

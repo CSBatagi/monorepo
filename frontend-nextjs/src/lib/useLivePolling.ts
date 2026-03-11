@@ -14,6 +14,7 @@ interface UseLivePollingResult<T> {
   loading: boolean;
   version: number;
   error: string | null;
+  /** Re-fetch immediately, bypassing the version check (forces fresh data). */
   refetch: () => Promise<void>;
 }
 
@@ -33,14 +34,19 @@ export function useLivePolling<T>({
   const [error, setError] = useState<string | null>(null);
   const versionRef = useRef(0);
   const mountedRef = useRef(true);
+  const loadingRef = useRef(true);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (forceRefresh = false) => {
     if (!enabled) return;
     try {
-      const res = await fetch(`${url}?v=${versionRef.current}`);
+      const v = forceRefresh ? 0 : versionRef.current;
+      const res = await fetch(`${url}?v=${v}`);
       if (res.status === 304) {
         // No changes
-        if (mountedRef.current && loading) setLoading(false);
+        if (mountedRef.current && loadingRef.current) {
+          loadingRef.current = false;
+          setLoading(false);
+        }
         return;
       }
       if (!res.ok) {
@@ -55,18 +61,27 @@ export function useLivePolling<T>({
       const { version: _, ...rest } = json;
       setData(rest as unknown as T);
       setError(null);
-      setLoading(false);
+      if (loadingRef.current) {
+        loadingRef.current = false;
+        setLoading(false);
+      }
     } catch (e: any) {
       if (mountedRef.current) {
         setError(e.message);
-        setLoading(false);
+        if (loadingRef.current) {
+          loadingRef.current = false;
+          setLoading(false);
+        }
       }
     }
-  }, [url, enabled, loading]);
+  }, [url, enabled]);
+
+  const refetch = useCallback(() => fetchData(true), [fetchData]);
 
   useEffect(() => {
     mountedRef.current = true;
     if (!enabled) {
+      loadingRef.current = false;
       setLoading(false);
       return;
     }
@@ -83,5 +98,5 @@ export function useLivePolling<T>({
     };
   }, [url, intervalMs, enabled, fetchData]);
 
-  return { data, loading, version: versionRef.current, error, refetch: fetchData };
+  return { data, loading, version: versionRef.current, error, refetch };
 }

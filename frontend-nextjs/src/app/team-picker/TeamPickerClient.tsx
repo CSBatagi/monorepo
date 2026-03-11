@@ -208,7 +208,7 @@ const TeamPickerClient: React.FC = () => {
   const authLoading = !ready;
 
   // --- Live polling replaces Firebase RTDB listeners (data from local PostgreSQL, sub-ms) ---
-  const { data: attendanceData, loading: loadingAttendancePoll } = useLivePolling<{ attendance?: FirebaseAttendanceData }>({
+  const { data: attendanceData, loading: loadingAttendancePoll, refetch: refetchAttendance } = useLivePolling<{ attendance?: FirebaseAttendanceData }>({
     url: '/api/live/attendance',
     intervalMs: 3000,
     enabled: !!user,
@@ -216,7 +216,7 @@ const TeamPickerClient: React.FC = () => {
   });
   const firebaseAttendancePoll = attendanceData.attendance || {};
 
-  const { data: teamPickerData, loading: loadingTeamPickerPoll } = useLivePolling<{
+  const { data: teamPickerData, loading: loadingTeamPickerPoll, refetch: refetchTeamPicker } = useLivePolling<{
     teamA?: { players: TeamPlayerData; nameMode: string; captainSteamId: string; kabile: string };
     teamB?: { players: TeamPlayerData; nameMode: string; captainSteamId: string; kabile: string };
     maps?: any;
@@ -384,13 +384,13 @@ const TeamPickerClient: React.FC = () => {
 
   const handleTeamNameModeChange = useCallback(async (team: 'A' | 'B', mode: TeamNameMode) => {
     const field = team === 'A' ? 'teamA_nameMode' : 'teamB_nameMode';
-    try { await updateTeamPicker({ [field]: mode }); } catch {}
-  }, []);
+    try { await updateTeamPicker({ [field]: mode }); void refetchTeamPicker(); } catch {}
+  }, [refetchTeamPicker]);
 
   const handleCaptainChange = useCallback(async (team: 'A' | 'B', captainSteamId: string) => {
     const field = team === 'A' ? 'teamA_captain' : 'teamB_captain';
-    try { await updateTeamPicker({ [field]: captainSteamId }); } catch {}
-  }, []);
+    try { await updateTeamPicker({ [field]: captainSteamId }); void refetchTeamPicker(); } catch {}
+  }, [refetchTeamPicker]);
 
   const getBaseStatsBySteamId = useCallback((steamId: string): PlayerStats => {
     const l10 = last10Stats.find((p) => p.steam_id === steamId);
@@ -448,6 +448,7 @@ const TeamPickerClient: React.FC = () => {
         }
       });
       await updatePlayerOverride(editingPlayer.steamId, Object.keys(updates).length > 0 ? updates as Record<string, number> : null);
+      void refetchTeamPicker();
       setEditStatsMessage('Kaydedildi. Degisiklikler herkese yansidi.');
     } catch {
       setEditStatsMessage('Kaydetme sirasinda hata olustu.');
@@ -462,6 +463,7 @@ const TeamPickerClient: React.FC = () => {
     setEditStatsMessage(null);
     try {
       await updatePlayerOverride(editingPlayer.steamId, null);
+      void refetchTeamPicker();
       const baseStats = getBaseStatsBySteamId(editingPlayer.steamId);
       const nextForm = {} as Record<EditableStatKey, string>;
       EDITABLE_STAT_KEYS.forEach((key) => {
@@ -499,12 +501,12 @@ const TeamPickerClient: React.FC = () => {
   const handleAssignPlayer = useCallback(async (playerSteamId: string, targetTeam: 'A' | 'B') => {
     const playerToAssign = availablePlayers.find(p => p.steamId === playerSteamId);
     if (!playerToAssign) return;
-    try { await apiAssignPlayer(playerSteamId, targetTeam, playerToAssign); } catch {}
-  }, [availablePlayers]);
+    try { await apiAssignPlayer(playerSteamId, targetTeam, playerToAssign); void refetchTeamPicker(); } catch {}
+  }, [availablePlayers, refetchTeamPicker]);
 
   const handleRemovePlayerFromTeam = useCallback(async (playerSteamId: string, targetTeam: 'A' | 'B') => {
-    try { await apiRemovePlayer(playerSteamId, targetTeam); } catch {}
-  }, []);
+    try { await apiRemovePlayer(playerSteamId, targetTeam); void refetchTeamPicker(); } catch {}
+  }, [refetchTeamPicker]);
 
   const handleMarkNotComing = useCallback(async (playerSteamId: string) => {
     const playerInTeamA = teamAPlayers[playerSteamId];
@@ -512,8 +514,8 @@ const TeamPickerClient: React.FC = () => {
     if (playerInTeamA) await handleRemovePlayerFromTeam(playerSteamId, 'A');
     if (playerInTeamB) await handleRemovePlayerFromTeam(playerSteamId, 'B');
     const name = firebaseAttendance[playerSteamId]?.name || playerSteamId;
-    try { await updateAttendance(playerSteamId, name, { status: 'not_coming' }); } catch {}
-  }, [teamAPlayers, teamBPlayers, firebaseAttendance, handleRemovePlayerFromTeam]);
+    try { await updateAttendance(playerSteamId, name, { status: 'not_coming' }); void refetchAttendance(); } catch {}
+  }, [teamAPlayers, teamBPlayers, firebaseAttendance, handleRemovePlayerFromTeam, refetchAttendance]);
 
   // --- Match creation handler ---
   const handleCreateMatch = async () => {
@@ -1028,7 +1030,7 @@ const TeamPickerClient: React.FC = () => {
             </div>
           </div>
           {/* Map selection after the graph comparison */}
-          <MapSelection teamAName={teamAName || 'A'} teamBName={teamBName || 'B'} mapsState={mapsState} onMapsChange={() => {}} />
+          <MapSelection teamAName={teamAName || 'A'} teamBName={teamBName || 'B'} mapsState={mapsState} onMapsChange={() => { void refetchTeamPicker(); }} />
           <div className="flex flex-col items-center mt-4 gap-2">
             <div className="flex flex-row gap-2">
               <button
