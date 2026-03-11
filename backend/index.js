@@ -83,12 +83,25 @@ async function fetchLastDataTimestampFromDB() {
 // All request handlers read from memory, ZERO DB cost per page load.
 const DB_POLL_INTERVAL_MS = 60 * 1000; // 60 seconds
 let cachedLastDataTimestamp = null; // in-memory cache of last DB data timestamp
+let lastTimestampPollAt = null;
+let lastTimestampPollError = null;
+let lastTimestampSource = 'uninitialized';
 
 async function pollDataTimestamp() {
+  lastTimestampPollAt = new Date();
   try {
     const ts = await fetchLastDataTimestampFromDB();
-    if (ts) cachedLastDataTimestamp = new Date(ts);
+    if (ts) {
+      cachedLastDataTimestamp = new Date(ts);
+      lastTimestampPollError = null;
+      lastTimestampSource = 'poller';
+    } else {
+      lastTimestampPollError = 'timestamp query returned no value';
+      lastTimestampSource = 'poller-empty';
+    }
   } catch (e) {
+    lastTimestampPollError = e.message;
+    lastTimestampSource = 'poller-error';
     console.error('[timestamp-poller] Error polling DB timestamp:', e.message);
   }
 }
@@ -97,6 +110,38 @@ async function pollDataTimestamp() {
 function getCachedDataTimestamp() {
   if (TEST_MODE) return fetchLastDataTimestampFromDB(); // test mode needs async per-call
   return cachedLastDataTimestamp;
+}
+
+async function getDataTimestampWithFallback() {
+  const cachedTs = TEST_MODE ? await getCachedDataTimestamp() : getCachedDataTimestamp();
+  if (cachedTs) {
+    return { timestamp: cachedTs, source: TEST_MODE ? 'test' : 'cache' };
+  }
+
+  if (!pool) {
+    return { timestamp: null, source: 'no-pool' };
+  }
+
+  try {
+    const freshTs = await fetchLastDataTimestampFromDB();
+    lastTimestampPollAt = new Date();
+    if (!freshTs) {
+      lastTimestampPollError = 'timestamp query returned no value';
+      lastTimestampSource = 'live-fallback-empty';
+      return { timestamp: null, source: 'live-fallback-empty' };
+    }
+
+    cachedLastDataTimestamp = new Date(freshTs);
+    lastTimestampPollError = null;
+    lastTimestampSource = 'live-fallback';
+    return { timestamp: cachedLastDataTimestamp, source: 'live-fallback' };
+  } catch (e) {
+    lastTimestampPollAt = new Date();
+    lastTimestampPollError = e.message;
+    lastTimestampSource = 'live-fallback-error';
+    console.error('[timestamp-poller] Live fallback failed:', e.message);
+    return { timestamp: null, source: 'live-fallback-error' };
+  }
 }
 
 // Start background poller (only in production)
@@ -212,7 +257,7 @@ let aggregateGenerationPromise = null; // concurrency lock
 
 app.get('/stats/aggregates', async (req, res) => {
   try {
-    const serverLastTs = TEST_MODE ? await getCachedDataTimestamp() : getCachedDataTimestamp();
+    const { timestamp: serverLastTs } = await getDataTimestampWithFallback();
     const serverDate = serverLastTs ? new Date(serverLastTs) : null;
     const dbUnchanged = serverDate && lastAggregateServerTimestamp &&
         serverDate.getTime() === new Date(lastAggregateServerTimestamp).getTime();
@@ -257,8 +302,15 @@ app.get('/stats/incremental', async (req, res) => {
     const clientTsRaw = typeof req.query.lastKnownTs === 'string' ? req.query.lastKnownTs : null;
     const parsedClientTs = clientTsRaw ? new Date(clientTsRaw) : null;
     const clientTs = parsedClientTs && !Number.isNaN(parsedClientTs.getTime()) ? parsedClientTs : null;
-    const serverLastTs = TEST_MODE ? await getCachedDataTimestamp() : getCachedDataTimestamp();
-    if (!serverLastTs) return res.status(500).json({ error: 'timestamp_unavailable' });
+    const { timestamp: serverLastTs, source: timestampSource } = await getDataTimestampWithFallback();
+    if (!serverLastTs) {
+      return res.status(500).json({
+        error: 'timestamp_unavailable',
+        timestampSource,
+        lastTimestampPollAt: lastTimestampPollAt ? lastTimestampPollAt.toISOString() : null,
+        lastTimestampPollError,
+      });
+    }
     const serverDate = new Date(serverLastTs);
     const needs = !clientTs || serverDate > clientTs;
     const sourceChanged =
@@ -342,6 +394,7 @@ app.post('/stats/force-regenerate', async (req, res) => {
 // Lightweight diagnostics endpoint to help debug missing data
 app.get('/stats/diagnostics', async (req, res) => {
   try {
+    const { timestamp: effectiveDataTimestamp, source: effectiveTimestampSource } = await getDataTimestampWithFallback();
     const seasonStart = cachedSeasonStart;
     const seasonStarts = cachedSeasonStarts;
     let counts = {};
@@ -363,7 +416,18 @@ app.get('/stats/diagnostics', async (req, res) => {
         errors: lastGeneratedData.__errors || []
       };
     }
-    res.json({ seasonStart, seasonStarts, lastGeneratedServerTimestamp, counts });
+    res.json({
+      seasonStart,
+      seasonStarts,
+      cachedLastDataTimestamp: cachedLastDataTimestamp ? cachedLastDataTimestamp.toISOString() : null,
+      effectiveDataTimestamp: effectiveDataTimestamp ? new Date(effectiveDataTimestamp).toISOString() : null,
+      effectiveTimestampSource,
+      lastTimestampPollAt: lastTimestampPollAt ? lastTimestampPollAt.toISOString() : null,
+      lastTimestampPollError,
+      lastTimestampSource,
+      lastGeneratedServerTimestamp,
+      counts,
+    });
   } catch (e) {
     res.status(500).json({ error: 'diagnostics_failed', details: e.message });
   }
@@ -488,6 +552,7 @@ if (!TEST_MODE) {
       cachedSeasonConfig = resolveSeasonConfig();
       cachedSeasonStart = cachedSeasonConfig.seasonStart;
       cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
+      await pollDataTimestamp();
       console.log('[startup] migrations applied, config loaded. Heavy generation deferred to first request.');
     } catch (e) {
       console.warn('[startup] warmStartup failed', e.message);
