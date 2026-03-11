@@ -75,9 +75,19 @@ async function readBearerToken(req: NextRequest): Promise<string | null> {
 }
 
 async function resolveComingCount(): Promise<number> {
-  const snap = await adminDb().ref("attendanceState").get();
-  const attendance = (snap.val() || {}) as Record<string, { status?: string }>;
-  return Object.values(attendance).filter((item) => item?.status === "coming").length;
+  // Read from PostgreSQL via backend (attendance migrated from Firebase RTDB)
+  const BACKEND = process.env.BACKEND_INTERNAL_URL || "http://backend:3000";
+  try {
+    const res = await fetch(`${BACKEND}/live/attendance?v=0`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = (await res.json()) as { attendance?: Record<string, { status?: string }> };
+    return Object.values(data.attendance || {}).filter((item) => item?.status === "coming").length;
+  } catch (e) {
+    console.error("[resolveComingCount] failed to fetch from backend, falling back to Firebase RTDB", e);
+    const snap = await adminDb().ref("attendanceState").get();
+    const attendance = (snap.val() || {}) as Record<string, { status?: string }>;
+    return Object.values(attendance).filter((item) => item?.status === "coming").length;
+  }
 }
 
 async function isMvpDateLocked(date: string): Promise<boolean> {

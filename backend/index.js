@@ -110,6 +110,7 @@ if (!TEST_MODE) {
 
 const { generateAll, generateAggregates, clearHistoricalCache } = require('./statsGenerator');
 const notificationScheduler = require('./notificationScheduler');
+const liveRoutes = require('./liveRoutes');
 
 // --- Per-IP rate limiting ---
 // Simple in-memory rate limiter to prevent abuse. No external dependencies needed.
@@ -367,6 +368,13 @@ app.get('/stats/diagnostics', async (req, res) => {
 // NOTE: Auth middleware for POST requests has been moved above (before route definitions)
 // to ensure ALL POST endpoints including /stats/force-regenerate are protected.
 
+// --- Live state routes (attendance + team picker) ---
+// GET endpoints are open (polling); POST endpoints are protected by auth middleware above.
+if (pool) {
+  liveRoutes.setup(pool);
+  app.use('/live', liveRoutes.router);
+}
+
 // POST  endpoint to store a match json and stores in the memory until the GET end point is called
 app.post('/start-match', async (req, res) => {
   try {
@@ -455,6 +463,12 @@ if (!TEST_MODE) {
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='players' AND column_name='updated_at') THEN ALTER TABLE players ADD COLUMN updated_at TIMESTAMP DEFAULT NOW(); END IF; END $$`,
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='matches_updated_at') THEN CREATE TRIGGER matches_updated_at BEFORE UPDATE ON matches FOR EACH ROW EXECUTE FUNCTION update_timestamp(); END IF; END $$`,
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='players_updated_at') THEN CREATE TRIGGER players_updated_at BEFORE UPDATE ON players FOR EACH ROW EXECUTE FUNCTION update_timestamp(); END IF; END $$`,
+      // Live state tables (attendance + team picker) — replaces Firebase RTDB
+      `CREATE TABLE IF NOT EXISTS attendance (steam_id TEXT PRIMARY KEY, name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'no_response', emoji_status TEXT NOT NULL DEFAULT 'normal', is_kaptan BOOLEAN NOT NULL DEFAULT FALSE, kaptan_timestamp BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+      `CREATE TABLE IF NOT EXISTS team_picker (id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1), team_a_players JSONB NOT NULL DEFAULT '{}', team_b_players JSONB NOT NULL DEFAULT '{}', team_a_name_mode TEXT NOT NULL DEFAULT 'generic', team_b_name_mode TEXT NOT NULL DEFAULT 'generic', team_a_captain TEXT NOT NULL DEFAULT '', team_b_captain TEXT NOT NULL DEFAULT '', team_a_kabile TEXT NOT NULL DEFAULT '', team_b_kabile TEXT NOT NULL DEFAULT '', maps JSONB NOT NULL DEFAULT '{}', overrides JSONB NOT NULL DEFAULT '{}', updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+      `INSERT INTO team_picker (id) VALUES (1) ON CONFLICT DO NOTHING`,
+      `CREATE TABLE IF NOT EXISTS live_version (key TEXT PRIMARY KEY, version BIGINT NOT NULL DEFAULT 0)`,
+      `INSERT INTO live_version (key, version) VALUES ('attendance', 0), ('team_picker', 0) ON CONFLICT DO NOTHING`,
     ];
     for (const sql of migrations) {
       try { await pool.query(sql); } catch (e) { console.warn('[migration]', e.message); }

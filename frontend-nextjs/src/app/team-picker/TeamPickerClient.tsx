@@ -1,15 +1,19 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSession } from '@/contexts/SessionContext';
 import { Player } from '@/types';
-import { db } from '@/lib/firebase';
-import { ref, onValue, off, set, update } from 'firebase/database';
+import { useLivePolling } from '@/lib/useLivePolling';
+import {
+  assignPlayer as apiAssignPlayer,
+  removePlayer as apiRemovePlayer,
+  updateTeamPicker,
+  updatePlayerOverride,
+  resetTeamPicker,
+  updateAttendance,
+} from '@/lib/liveApi';
 import TeamAveragesTable from '@/components/TeamAveragesTable';
 import TeamComparisonRadar from '@/components/TeamComparisonRadar';
-
-const ATTENDANCE_DB_PATH = 'attendanceState';
-const TEAM_PICKER_DB_PATH = 'teamPickerState';
 
 interface FirebaseAttendanceData {
   [steamId: string]: { name?: string; status: string; };
@@ -90,14 +94,14 @@ function getTeamAverages(players: Player[]): Record<string, number | null> {
 interface MapSelectionProps {
   teamAName: string;
   teamBName: string;
+  mapsState: any;
+  onMapsChange: (newMaps: any) => void;
 }
-const MapSelection: React.FC<MapSelectionProps> = ({ teamAName, teamBName }) => {
+const MapSelection: React.FC<MapSelectionProps> = ({ teamAName, teamBName, mapsState, onMapsChange }) => {
   const [mapsList, setMapsList] = useState<{ id: string; name: string }[]>([]);
-  const [mapsState, setMapsState] = useState<any>({});
-  const [loadingMaps, setLoadingMaps] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Fetch maps.json
+  // Fetch maps.json (static data, not from Firebase)
   useEffect(() => {
     const fetchMaps = async () => {
       try {
@@ -111,46 +115,33 @@ const MapSelection: React.FC<MapSelectionProps> = ({ teamAName, teamBName }) => 
     fetchMaps();
   }, []);
 
-  // Listen to Firebase for maps selection
-  useEffect(() => {
-    const mapsRef = ref(db, `${TEAM_PICKER_DB_PATH}/maps`);
-    setLoadingMaps(true);
-    const unsub = onValue(mapsRef, (snap) => {
-      setMapsState(snap.val() || {});
-      setLoadingMaps(false);
-    }, () => setLoadingMaps(false));
-    return () => off(mapsRef, 'value', unsub);
-  }, []);
-
-  // Helper to get map state for a given index
   const getMap = (i: number) => mapsState[`map${i}`] || { mapName: '', t_team: '', ct_team: '' };
 
-  // Write to Firebase with side consistency logic
   const handleMapChange = async (i: number, mapName: string) => {
     setSaving(true);
-    const mapNamePath = `${TEAM_PICKER_DB_PATH}/maps/map${i}/mapName`;
-    await update(ref(db), { [mapNamePath]: mapName });
+    const newMaps = { ...mapsState, [`map${i}`]: { ...getMap(i), mapName } };
+    try { await updateTeamPicker({ maps: newMaps }); onMapsChange(newMaps); } catch {}
     setSaving(false);
   };
+
   const handleSideChange = async (i: number, side: 't' | 'ct', value: string) => {
     setSaving(true);
-    const updates: any = {};
-    const basePath = `${TEAM_PICKER_DB_PATH}/maps/map${i}`;
-    updates[`${basePath}/${side}_team`] = value;
-    // Side consistency: if T is A, CT must be B, etc.
+    const map = { ...getMap(i) };
+    map[`${side}_team`] = value;
     const otherSide = side === 't' ? 'ct' : 't';
     if (value) {
       const otherTeamShouldBe = value === 'A' ? 'B' : 'A';
-      const otherTeamCurrent = getMap(i)[`${otherSide}_team`];
-      if (!otherTeamCurrent || otherTeamCurrent === value) {
-        updates[`${basePath}/${otherSide}_team`] = otherTeamShouldBe;
+      if (!map[`${otherSide}_team`] || map[`${otherSide}_team`] === value) {
+        map[`${otherSide}_team`] = otherTeamShouldBe;
       }
     } else {
-      updates[`${basePath}/${otherSide}_team`] = '';
+      map[`${otherSide}_team`] = '';
     }
-    await update(ref(db), updates);
+    const newMaps = { ...mapsState, [`map${i}`]: map };
+    try { await updateTeamPicker({ maps: newMaps }); onMapsChange(newMaps); } catch {}
     setSaving(false);
   };
+  const loadingMaps = false;
 
   // Render
   return (
@@ -213,13 +204,33 @@ const MapSelection: React.FC<MapSelectionProps> = ({ teamAName, teamBName }) => 
 const SERVERACPASS = process.env.NEXT_PUBLIC_SERVERACPASS;
 
 const TeamPickerClient: React.FC = () => {
-  const { user, loading: authLoading } = useAuth();
-  const [teamAPlayers, setTeamAPlayers] = useState<TeamPlayerData>({});
-  const [teamBPlayers, setTeamBPlayers] = useState<TeamPlayerData>({});
+  const { user, ready } = useSession();
+  const authLoading = !ready;
 
-  const [loadingFirebaseData, setLoadingFirebaseData] = useState(true);
-  const [loadingTeamA, setLoadingTeamA] = useState(true);
-  const [loadingTeamB, setLoadingTeamB] = useState(true);
+  // --- Live polling replaces Firebase RTDB listeners (data from local PostgreSQL, sub-ms) ---
+  const { data: attendanceData, loading: loadingAttendancePoll } = useLivePolling<{ attendance?: FirebaseAttendanceData }>({
+    url: '/api/live/attendance',
+    intervalMs: 3000,
+    enabled: !!user,
+    initialData: {},
+  });
+  const firebaseAttendancePoll = attendanceData.attendance || {};
+
+  const { data: teamPickerData, loading: loadingTeamPickerPoll } = useLivePolling<{
+    teamA?: { players: TeamPlayerData; nameMode: string; captainSteamId: string; kabile: string };
+    teamB?: { players: TeamPlayerData; nameMode: string; captainSteamId: string; kabile: string };
+    maps?: any;
+    overrides?: PlayerStatsOverrides;
+  }>({
+    url: '/api/live/team-picker',
+    intervalMs: 3000,
+    enabled: !!user,
+    initialData: {},
+  });
+
+  const loadingFirebaseData = loadingAttendancePoll;
+  const loadingTeamA = loadingTeamPickerPoll;
+  const loadingTeamB = loadingTeamPickerPoll;
 
   const [last10Stats, setLast10Stats] = useState<any[]>([]);
   const [seasonStats, setSeasonStats] = useState<any[]>([]);
@@ -227,8 +238,16 @@ const TeamPickerClient: React.FC = () => {
   const [mapStats, setMapStats] = useState<any[]>([]);
   const [loadingMapStats, setLoadingMapStats] = useState<boolean>(true);
   const [mapNameLookup, setMapNameLookup] = useState<Record<string, string>>({});
-  const [firebaseAttendance, setFirebaseAttendance] = useState<FirebaseAttendanceData>({});
-  const [playerStatsOverrides, setPlayerStatsOverrides] = useState<PlayerStatsOverrides>({});
+  // Derive state from polling data (replaces Firebase onValue listeners)
+  const firebaseAttendance: FirebaseAttendanceData = firebaseAttendancePoll;
+  const teamAPlayers: TeamPlayerData = teamPickerData.teamA?.players || {};
+  const teamBPlayers: TeamPlayerData = teamPickerData.teamB?.players || {};
+  const playerStatsOverrides: PlayerStatsOverrides = teamPickerData.overrides || {};
+  const teamANameMode: TeamNameMode = (teamPickerData.teamA?.nameMode === 'captain' ? 'captain' : 'generic');
+  const teamBNameMode: TeamNameMode = (teamPickerData.teamB?.nameMode === 'captain' ? 'captain' : 'generic');
+  const teamACaptainSteamId: string = teamPickerData.teamA?.captainSteamId || '';
+  const teamBCaptainSteamId: string = teamPickerData.teamB?.captainSteamId || '';
+
   const [editingPlayer, setEditingPlayer] = useState<{ steamId: string; name: string } | null>(null);
   const [editingStatsForm, setEditingStatsForm] = useState<Record<EditableStatKey, string>>({
     L10_HLTV2: '',
@@ -241,13 +260,7 @@ const TeamPickerClient: React.FC = () => {
   const [editStatsSaving, setEditStatsSaving] = useState(false);
   const [editStatsMessage, setEditStatsMessage] = useState<string | null>(null);
 
-  const [teamANameMode, setTeamANameMode] = useState<TeamNameMode>('generic');
-  const [teamBNameMode, setTeamBNameMode] = useState<TeamNameMode>('generic');
-  const [teamACaptainSteamId, setTeamACaptainSteamId] = useState<string>('');
-  const [teamBCaptainSteamId, setTeamBCaptainSteamId] = useState<string>('');
-
-  // --- Maps state for match creation ---
-  const [mapsState, setMapsState] = useState<any>({});
+  // --- Maps state for match creation (comes from polling, see below) ---
   const [creatingMatch, setCreatingMatch] = useState(false);
   const [matchMessage, setMatchMessage] = useState<string | null>(null);
   const [pluginsMessage, setPluginsMessage] = useState<string | null>(null);
@@ -345,76 +358,7 @@ const TeamPickerClient: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    if (!user) {
-      setLoadingFirebaseData(false);
-      setLoadingTeamA(false);
-      setLoadingTeamB(false);
-      setPlayerStatsOverrides({});
-      return;
-    }
-    setLoadingFirebaseData(true);
-    const attendanceRef = ref(db, ATTENDANCE_DB_PATH);
-    const onAttendanceValue = onValue(attendanceRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      setFirebaseAttendance(data);
-      setLoadingFirebaseData(false);
-    }, () => setLoadingFirebaseData(false));
-
-    setLoadingTeamA(true);
-    const teamARef = ref(db, `${TEAM_PICKER_DB_PATH}/teamA/players`);
-    const onTeamAValue = onValue(teamARef, (snapshot) => {
-      const data = snapshot.val() || {};
-      setTeamAPlayers(data);
-      setLoadingTeamA(false);
-    }, () => setLoadingTeamA(false));
-
-    setLoadingTeamB(true);
-    const teamBRef = ref(db, `${TEAM_PICKER_DB_PATH}/teamB/players`);
-    const onTeamBValue = onValue(teamBRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      setTeamBPlayers(data);
-      setLoadingTeamB(false);
-    }, () => setLoadingTeamB(false));
-    const statsOverridesRef = ref(db, `${TEAM_PICKER_DB_PATH}/playerStatsOverrides`);
-    const onStatsOverridesValue = onValue(statsOverridesRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      setPlayerStatsOverrides(data);
-    });
-
-    return () => {
-      off(attendanceRef, 'value', onAttendanceValue);
-      off(teamARef, 'value', onTeamAValue);
-      off(teamBRef, 'value', onTeamBValue);
-      off(statsOverridesRef, 'value', onStatsOverridesValue);
-    };
-  }, [user]);
-
-  // Listen for kabile changes from Firebase
-  useEffect(() => {
-    if (!user) return;
-    const aModeRef = ref(db, `${TEAM_PICKER_DB_PATH}/teamA/nameMode`);
-    const bModeRef = ref(db, `${TEAM_PICKER_DB_PATH}/teamB/nameMode`);
-    const aCaptainRef = ref(db, `${TEAM_PICKER_DB_PATH}/teamA/captainSteamId`);
-    const bCaptainRef = ref(db, `${TEAM_PICKER_DB_PATH}/teamB/captainSteamId`);
-
-    const onAMode = onValue(aModeRef, (snap) => {
-      const v = snap.val();
-      setTeamANameMode(v === 'captain' ? 'captain' : 'generic');
-    });
-    const onBMode = onValue(bModeRef, (snap) => {
-      const v = snap.val();
-      setTeamBNameMode(v === 'captain' ? 'captain' : 'generic');
-    });
-    const onACaptain = onValue(aCaptainRef, (snap) => setTeamACaptainSteamId(snap.val() || ''));
-    const onBCaptain = onValue(bCaptainRef, (snap) => setTeamBCaptainSteamId(snap.val() || ''));
-    return () => {
-      off(aModeRef, 'value', onAMode);
-      off(bModeRef, 'value', onBMode);
-      off(aCaptainRef, 'value', onACaptain);
-      off(bCaptainRef, 'value', onBCaptain);
-    };
-  }, [user]);
+  // Polling-based data is derived above via useLivePolling — no Firebase listeners needed
 
   const getDisplayNameBySteamId = useCallback((steamId: string, fallback: string) => {
     const inA = teamAPlayers?.[steamId]?.name;
@@ -435,27 +379,17 @@ const TeamPickerClient: React.FC = () => {
     return `Team ${captainName}`;
   }, [getDisplayNameBySteamId, teamBCaptainSteamId, teamBNameMode]);
 
-  // Listen to Firebase for maps selection (for match creation)
-  useEffect(() => {
-    const mapsRef = ref(db, `${TEAM_PICKER_DB_PATH}/maps`);
-    const unsub = onValue(mapsRef, (snap) => {
-      setMapsState(snap.val() || {});
-    });
-    return () => off(mapsRef, 'value', unsub);
-  }, []);
+  // Maps state comes from team-picker polling data
+  const mapsState = teamPickerData.maps || {};
 
   const handleTeamNameModeChange = useCallback(async (team: 'A' | 'B', mode: TeamNameMode) => {
-    if (team === 'A') setTeamANameMode(mode);
-    else setTeamBNameMode(mode);
-    const teamPath = team === 'A' ? 'teamA' : 'teamB';
-    await set(ref(db, `${TEAM_PICKER_DB_PATH}/${teamPath}/nameMode`), mode);
+    const field = team === 'A' ? 'teamA_nameMode' : 'teamB_nameMode';
+    try { await updateTeamPicker({ [field]: mode }); } catch {}
   }, []);
 
   const handleCaptainChange = useCallback(async (team: 'A' | 'B', captainSteamId: string) => {
-    if (team === 'A') setTeamACaptainSteamId(captainSteamId);
-    else setTeamBCaptainSteamId(captainSteamId);
-    const teamPath = team === 'A' ? 'teamA' : 'teamB';
-    await set(ref(db, `${TEAM_PICKER_DB_PATH}/${teamPath}/captainSteamId`), captainSteamId);
+    const field = team === 'A' ? 'teamA_captain' : 'teamB_captain';
+    try { await updateTeamPicker({ [field]: captainSteamId }); } catch {}
   }, []);
 
   const getBaseStatsBySteamId = useCallback((steamId: string): PlayerStats => {
@@ -513,8 +447,7 @@ const TeamPickerClient: React.FC = () => {
           updates[key] = parsed;
         }
       });
-      const overrideRef = ref(db, `${TEAM_PICKER_DB_PATH}/playerStatsOverrides/${editingPlayer.steamId}`);
-      await set(overrideRef, Object.keys(updates).length > 0 ? updates : null);
+      await updatePlayerOverride(editingPlayer.steamId, Object.keys(updates).length > 0 ? updates as Record<string, number> : null);
       setEditStatsMessage('Kaydedildi. Degisiklikler herkese yansidi.');
     } catch {
       setEditStatsMessage('Kaydetme sirasinda hata olustu.');
@@ -528,8 +461,7 @@ const TeamPickerClient: React.FC = () => {
     setEditStatsSaving(true);
     setEditStatsMessage(null);
     try {
-      const overrideRef = ref(db, `${TEAM_PICKER_DB_PATH}/playerStatsOverrides/${editingPlayer.steamId}`);
-      await set(overrideRef, null);
+      await updatePlayerOverride(editingPlayer.steamId, null);
       const baseStats = getBaseStatsBySteamId(editingPlayer.steamId);
       const nextForm = {} as Record<EditableStatKey, string>;
       EDITABLE_STAT_KEYS.forEach((key) => {
@@ -567,19 +499,11 @@ const TeamPickerClient: React.FC = () => {
   const handleAssignPlayer = useCallback(async (playerSteamId: string, targetTeam: 'A' | 'B') => {
     const playerToAssign = availablePlayers.find(p => p.steamId === playerSteamId);
     if (!playerToAssign) return;
-    const otherTeam = targetTeam === 'A' ? 'B' : 'A';
-    const otherTeamPlayers = targetTeam === 'A' ? teamBPlayers : teamAPlayers;
-    if (otherTeamPlayers[playerSteamId]) {
-      const otherTeamRef = ref(db, `${TEAM_PICKER_DB_PATH}/team${otherTeam}/players/${playerSteamId}`);
-      try { await set(otherTeamRef, null); } catch {}
-    }
-    const teamRef = ref(db, `${TEAM_PICKER_DB_PATH}/team${targetTeam}/players/${playerSteamId}`);
-    try { await set(teamRef, playerToAssign); } catch {}
-  }, [availablePlayers, teamAPlayers, teamBPlayers]);
+    try { await apiAssignPlayer(playerSteamId, targetTeam, playerToAssign); } catch {}
+  }, [availablePlayers]);
 
   const handleRemovePlayerFromTeam = useCallback(async (playerSteamId: string, targetTeam: 'A' | 'B') => {
-    const teamRef = ref(db, `${TEAM_PICKER_DB_PATH}/team${targetTeam}/players/${playerSteamId}`);
-    try { await set(teamRef, null); } catch {}
+    try { await apiRemovePlayer(playerSteamId, targetTeam); } catch {}
   }, []);
 
   const handleMarkNotComing = useCallback(async (playerSteamId: string) => {
@@ -587,9 +511,9 @@ const TeamPickerClient: React.FC = () => {
     const playerInTeamB = teamBPlayers[playerSteamId];
     if (playerInTeamA) await handleRemovePlayerFromTeam(playerSteamId, 'A');
     if (playerInTeamB) await handleRemovePlayerFromTeam(playerSteamId, 'B');
-    const attendanceStatusRef = ref(db, `${ATTENDANCE_DB_PATH}/${playerSteamId}/status`);
-    try { await set(attendanceStatusRef, 'not_coming'); } catch {}
-  }, [teamAPlayers, teamBPlayers, handleRemovePlayerFromTeam]);
+    const name = firebaseAttendance[playerSteamId]?.name || playerSteamId;
+    try { await updateAttendance(playerSteamId, name, { status: 'not_coming' }); } catch {}
+  }, [teamAPlayers, teamBPlayers, firebaseAttendance, handleRemovePlayerFromTeam]);
 
   // --- Match creation handler ---
   const handleCreateMatch = async () => {
@@ -1104,7 +1028,7 @@ const TeamPickerClient: React.FC = () => {
             </div>
           </div>
           {/* Map selection after the graph comparison */}
-          <MapSelection teamAName={teamAName || 'A'} teamBName={teamBName || 'B'} />
+          <MapSelection teamAName={teamAName || 'A'} teamBName={teamBName || 'B'} mapsState={mapsState} onMapsChange={() => {}} />
           <div className="flex flex-col items-center mt-4 gap-2">
             <div className="flex flex-row gap-2">
               <button

@@ -86,3 +86,16 @@ The platform runs on a 1 GB RAM GCP VM. Key optimizations:
   - `GET /stats/diagnostics` — returns cached dataset sizes and season config
 - Backend polls the DB timestamp every 60s in the background. Page loads never hit the DB directly.
 - Historical (completed) season data is cached in memory and only recomputed on force-regenerate.
+
+## Live State (Attendance + Team Picker)
+
+Attendance and team-picker state migrated from Firebase RTDB to PostgreSQL. See `docs/FIREBASE_MIGRATION_PLAN.md`.
+
+- **Backend routes**: `GET/POST /live/attendance`, `GET/POST /live/team-picker/*` (`liveRoutes.js`)
+- **Frontend polling**: `useLivePolling` hook polls every 3s with version-based 304 responses
+- **Frontend writes**: `liveApi.ts` helpers for POST calls
+- **Tables**: `attendance`, `team_picker`, `live_version` (auto-created via migrations in `index.js`)
+- Team-picker page no longer requires Firebase SDK (removed from `FIREBASE_ROUTES` in `Providers.tsx`)
+- Attendance page still in `FIREBASE_ROUTES` — needs Firebase Auth for notification emit (`getIdToken()`)
+- `AttendanceClient.tsx` uses `useSession` (not `useAuth`) + `useLivePolling` + `liveApi` for all RTDB operations
+- Notification emit route (`/api/notifications/emit`) reads coming count from PostgreSQL backend (fallback: Firebase RTDB)

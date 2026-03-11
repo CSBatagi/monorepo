@@ -1,21 +1,18 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSession } from '@/contexts/SessionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Player } from '@/types';
-import { db, auth as firebaseAuth } from '@/lib/firebase';
-import { ref, onValue, off, update, set, get, goOnline } from 'firebase/database';
+import { auth as firebaseAuth } from '@/lib/firebase';
+import { useLivePolling } from '@/lib/useLivePolling';
+import { updateAttendance, bulkUpdateAttendance, resetTeamPicker } from '@/lib/liveApi';
 import EmojiControls from '@/components/Attendance/EmojiControls';
 import AttendanceControls from '@/components/Attendance/AttendanceControls';
 import KaptanlikControl from '@/components/Attendance/KaptanlikControl';
 import InfoPanel from '@/components/Attendance/InfoPanel';
 import SteamAvatar from '@/components/SteamAvatar';
 
-const ATTENDANCE_DB_PATH = 'attendanceState';
-const EMOJI_DB_PATH = 'emojiState';
-const KAPTANLIK_DB_PATH = 'kaptanlikState';
-const TEAM_PICKER_DB_PATH = 'teamPickerState';
 const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || "osirikler";
 
@@ -38,16 +35,21 @@ const EMOJI_EXPLANATIONS: { [key: string]: string } = {
     "dokuzda_haber": "9'da kalirsaniz haber edin"
 };
 const TEKER_DONDU_THRESHOLD = 10;
-const LIVE_DATA_LOADING_TIMEOUT_MS = 4000;
 
-interface FirebaseAttendanceData {
+interface AttendanceData {
   [steamId: string]: { name?: string; status: string; };
 }
-interface FirebaseEmojiData {
+interface EmojiData {
   [steamId: string]: { name?: string; status: string; };
 }
-interface FirebaseKaptanlikData {
+interface KaptanlikData {
   [steamId: string]: { name?: string; isKaptan: boolean; timestamp?: number; };
+}
+
+interface LiveAttendancePayload {
+  attendance: AttendanceData;
+  emojis: EmojiData;
+  kaptanlik: KaptanlikData;
 }
 
 interface AttendanceClientProps {
@@ -55,157 +57,45 @@ interface AttendanceClientProps {
 }
 
 export default function AttendanceClient({ players }: AttendanceClientProps) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, ready: sessionReady } = useSession();
   const { isDark } = useTheme();
-  const [firebaseAttendance, setFirebaseAttendance] = useState<FirebaseAttendanceData>({});
-  const [firebaseEmojis, setFirebaseEmojis] = useState<FirebaseEmojiData>({});
-  const [firebaseKaptanlik, setFirebaseKaptanlik] = useState<FirebaseKaptanlikData>({});
-  const [loadingFirebaseData, setLoadingFirebaseData] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState<{[key: string]: boolean}>({});
   const [isClearing, setIsClearing] = useState(false);
-  const hasResolvedInitialLiveLoad = useRef(false);
   const tekerFollowUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const ensureRealtimeOnline = useCallback(() => {
-    try {
-      goOnline(db);
-    } catch (error) {
-      console.warn("Failed to force Firebase Realtime Database online state", error);
-    }
-  }, []);
+  const { data: liveData, loading: loadingLiveData } = useLivePolling<LiveAttendancePayload>({
+    url: '/api/live/attendance',
+    intervalMs: 3000,
+    enabled: !!user,
+    initialData: { attendance: {}, emojis: {}, kaptanlik: {} },
+  });
 
+  const attendance = liveData.attendance;
+  const emojis = liveData.emojis;
+  const kaptanlik = liveData.kaptanlik;
+
+  // Sync missing emoji statuses for players that don't have one yet
   useEffect(() => {
-    if (!user) return;
-    ensureRealtimeOnline();
+    if (!user || players.length === 0 || loadingLiveData) return;
+    if (Object.keys(emojis).length === 0) return;
 
-    const reconnect = () => ensureRealtimeOnline();
-    const reconnectOnVisible = () => {
-      if (document.visibilityState === 'visible') reconnect();
-    };
-
-    window.addEventListener('focus', reconnect);
-    window.addEventListener('pageshow', reconnect);
-    document.addEventListener('visibilitychange', reconnectOnVisible);
-
-    return () => {
-      window.removeEventListener('focus', reconnect);
-      window.removeEventListener('pageshow', reconnect);
-      document.removeEventListener('visibilitychange', reconnectOnVisible);
-    };
-  }, [user, ensureRealtimeOnline]);
-
-  // Firebase listeners
-  useEffect(() => {
-    if (!user) {
-      if (!user && !authLoading) setLoadingFirebaseData(false);
-      return;
-    }
-    setLoadingFirebaseData(!hasResolvedInitialLiveLoad.current);
-    ensureRealtimeOnline();
-
-    const attendanceRef = ref(db, ATTENDANCE_DB_PATH);
-    const emojiRef = ref(db, EMOJI_DB_PATH);
-    const kaptanlikRef = ref(db, KAPTANLIK_DB_PATH);
-    let didReceiveAttendanceSnapshot = false;
-    const markAttendanceLoaded = () => {
-      if (didReceiveAttendanceSnapshot) return;
-      didReceiveAttendanceSnapshot = true;
-      hasResolvedInitialLiveLoad.current = true;
-      setLoadingFirebaseData(false);
-    };
-
-    const onAttendanceValue = onValue(attendanceRef, (snapshot) => {
-      setFirebaseAttendance(snapshot.val() || {});
-      markAttendanceLoaded();
-    }, (error) => {
-      console.error("Firebase attendance listener error:", error);
-      markAttendanceLoaded();
-    });
-
-    const onEmojiValue = onValue(emojiRef, (snapshot) => {
-      setFirebaseEmojis(snapshot.val() || {});
-    }, (error) => {
-      console.error("Firebase emoji listener error:", error);
-    });
-
-    const onKaptanlikValue = onValue(kaptanlikRef, (snapshot) => {
-      setFirebaseKaptanlik(snapshot.val() || {});
-    }, (error) => {
-      console.error("Firebase kaptanlik listener error:", error);
-    });
-
-    void get(attendanceRef)
-      .then((snapshot) => {
-        setFirebaseAttendance(snapshot.val() || {});
-        markAttendanceLoaded();
-      })
-      .catch((error) => {
-        console.warn("Firebase attendance initial get failed:", error);
-        markAttendanceLoaded();
-      });
-
-    void get(emojiRef)
-      .then((snapshot) => {
-        setFirebaseEmojis(snapshot.val() || {});
-      })
-      .catch((error) => {
-        console.warn("Firebase emoji initial get failed:", error);
-      });
-
-    void get(kaptanlikRef)
-      .then((snapshot) => {
-        setFirebaseKaptanlik(snapshot.val() || {});
-      })
-      .catch((error) => {
-        console.warn("Firebase kaptanlik initial get failed:", error);
-      });
-
-    const loadTimeout = window.setTimeout(() => {
-      if (!didReceiveAttendanceSnapshot) {
-        console.warn(
-          `Firebase attendance first snapshot exceeded ${LIVE_DATA_LOADING_TIMEOUT_MS}ms; rendering with current cache and keeping listener active.`
-        );
-        markAttendanceLoaded();
-      }
-    }, LIVE_DATA_LOADING_TIMEOUT_MS);
-
-    return () => {
-      window.clearTimeout(loadTimeout);
-      off(attendanceRef, 'value', onAttendanceValue);
-      off(emojiRef, 'value', onEmojiValue);
-      off(kaptanlikRef, 'value', onKaptanlikValue);
-    };
-  }, [user, authLoading, ensureRealtimeOnline]);
-
-  // Initialize emoji statuses in Firebase
-  const initializeEmojiStatuses = useCallback(async () => {
-    if (!user || players.length === 0 || Object.keys(firebaseEmojis).length === 0 || loadingFirebaseData) return;
-
-    const updates: { [key: string]: any } = {};
-    let needsSync = false;
-
-    players.forEach(player => {
-      if (player.steamId && (!firebaseEmojis[player.steamId] || firebaseEmojis[player.steamId].name !== player.name)) {
-        updates[`${EMOJI_DB_PATH}/${player.steamId}`] = { name: player.name, status: firebaseEmojis[player.steamId]?.status || 'normal' };
-        needsSync = true;
-      }
-    });
-
-    if (needsSync) {
-      try {
-        await update(ref(db), updates);
-        console.log("Initial/missing emoji states synced to Firebase");
-      } catch (error) {
-        console.error("Failed to sync initial emoji states:", error);
+    const needsSync: Array<{ steamId: string; name: string; emoji_status: string }> = [];
+    for (const player of players) {
+      if (player.steamId && (!emojis[player.steamId] || emojis[player.steamId].name !== player.name)) {
+        needsSync.push({
+          steamId: player.steamId,
+          name: player.name,
+          emoji_status: emojis[player.steamId]?.status || 'normal',
+        });
       }
     }
-  }, [user, players, firebaseEmojis, loadingFirebaseData]);
 
-  useEffect(() => {
-    if (!loadingFirebaseData && Object.keys(firebaseEmojis).length > 0 && players.length > 0) {
-        initializeEmojiStatuses();
+    if (needsSync.length > 0) {
+      bulkUpdateAttendance(needsSync).catch((err) =>
+        console.error("Failed to sync initial emoji states:", err)
+      );
     }
-  }, [loadingFirebaseData, firebaseEmojis, players, initializeEmojiStatuses]);
+  }, [user, players, emojis, loadingLiveData]);
 
   const emitTekerDonduIfNeeded = useCallback(async () => {
     const currentUser = firebaseAuth.currentUser;
@@ -238,7 +128,6 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
     }
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps -- recursive self-reference intentional
 
-  // Clean up any pending settle timer when the component unmounts.
   useEffect(() => {
     return () => {
       if (tekerFollowUpTimerRef.current) clearTimeout(tekerFollowUpTimerRef.current);
@@ -246,19 +135,17 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
   }, []);
 
   const handleAttendanceChange = async (player: Player, newAttendance: string) => {
-    if (!firebaseAuth.currentUser) {
+    if (!user) {
       alert("You must be logged in to change status."); return;
     }
     setIsSubmitting(prev => ({ ...prev, [player.steamId]: true }));
     try {
-      const attendanceUpdatePath = `${ATTENDANCE_DB_PATH}/${player.steamId}`;
-      await set(ref(db, attendanceUpdatePath), { name: player.name, status: newAttendance });
-
-      // If changing away from "coming", reset kaptanlik status
+      const fields: { status: string; is_kaptan?: boolean; kaptan_timestamp?: null } = { status: newAttendance };
       if (newAttendance !== 'coming') {
-        const kaptanlikUpdatePath = `${KAPTANLIK_DB_PATH}/${player.steamId}`;
-        await set(ref(db, kaptanlikUpdatePath), { name: player.name, isKaptan: false, timestamp: null });
+        fields.is_kaptan = false;
+        fields.kaptan_timestamp = null;
       }
+      await updateAttendance(player.steamId, player.name, fields);
 
       if (APPS_SCRIPT_URL) {
         fetch(APPS_SCRIPT_URL, {
@@ -283,16 +170,14 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
   };
 
   const handleKaptanlikChange = async (player: Player, isKaptan: boolean) => {
-    if (!firebaseAuth.currentUser) {
+    if (!user) {
       alert("You must be logged in to change status."); return;
     }
     setIsSubmitting(prev => ({ ...prev, [player.steamId]: true }));
     try {
-      const kaptanlikUpdatePath = `${KAPTANLIK_DB_PATH}/${player.steamId}`;
-      await set(ref(db, kaptanlikUpdatePath), {
-        name: player.name,
-        isKaptan: isKaptan,
-        timestamp: isKaptan ? Date.now() : null
+      await updateAttendance(player.steamId, player.name, {
+        is_kaptan: isKaptan,
+        kaptan_timestamp: isKaptan ? Date.now() : null,
       });
     } catch (error) {
       console.error("Error syncing kaptanlik:", error);
@@ -303,13 +188,12 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
   };
 
   const handleEmojiChange = async (player: Player, newEmoji: string) => {
-    if (!firebaseAuth.currentUser) {
+    if (!user) {
       alert("You must be logged in to change status."); return;
     }
     setIsSubmitting(prev => ({ ...prev, [player.steamId]: true }));
     try {
-      const emojiUpdatePath = `${EMOJI_DB_PATH}/${player.steamId}`;
-      await set(ref(db, emojiUpdatePath), { name: player.name, status: newEmoji });
+      await updateAttendance(player.steamId, player.name, { emoji_status: newEmoji });
     } catch (error) {
       console.error("Error syncing emoji:", error);
       alert("Failed to update emoji. Please try again.");
@@ -319,7 +203,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
   };
 
   const handleClearAttendance = async () => {
-    if (!firebaseAuth.currentUser) { alert("You must be logged in to clear attendance."); return; }
+    if (!user) { alert("You must be logged in to clear attendance."); return; }
     const password = prompt("Please enter the password to clear attendance:");
     if (password === null) return;
     if (password !== CLEAR_ATTENDANCE_PASSWORD) { alert("Incorrect password."); return; }
@@ -331,15 +215,23 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
         alert("Player list not loaded. Cannot clear."); return;
       }
 
-      const firebaseTotalUpdates: { [key: string]: any } = {};
+      const bulkPlayers: Array<{
+        steamId: string; name: string; status: string;
+        emoji_status: string; is_kaptan: boolean; kaptan_timestamp: null;
+      }> = [];
       const sheetUpdatePromises: Promise<any>[] = [];
 
       players.forEach(player => {
         const targetAttendance = (player.status || '').trim().toLowerCase() === 'adam evde yok' ? 'not_coming' : 'no_response';
-        firebaseTotalUpdates[`${ATTENDANCE_DB_PATH}/${player.steamId}`] = { name: player.name, status: targetAttendance };
-        firebaseTotalUpdates[`${EMOJI_DB_PATH}/${player.steamId}`] = { name: player.name, status: 'normal' };
-        firebaseTotalUpdates[`${KAPTANLIK_DB_PATH}/${player.steamId}`] = { name: player.name, isKaptan: false, timestamp: null };
-        if (APPS_SCRIPT_URL && firebaseAttendance[player.steamId]?.status !== targetAttendance) {
+        bulkPlayers.push({
+          steamId: player.steamId,
+          name: player.name,
+          status: targetAttendance,
+          emoji_status: 'normal',
+          is_kaptan: false,
+          kaptan_timestamp: null,
+        });
+        if (APPS_SCRIPT_URL && attendance[player.steamId]?.status !== targetAttendance) {
           sheetUpdatePromises.push(
             fetch(APPS_SCRIPT_URL, {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -349,24 +241,11 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
         }
       });
 
-      // Team Picker Resets
-      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamA/players`] = null;
-      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamB/players`] = null;
-      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamA/captainSteamId`] = "";
-      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamB/captainSteamId`] = "";
-      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamA/nameMode`] = "generic";
-      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamB/nameMode`] = "generic";
-      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/playerStatsOverrides`] = null;
-      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamA/kabile`] = "";
-      firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/teamB/kabile`] = "";
-      for (let i = 1; i <= 3; i++) {
-        firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/maps/map${i}/mapName`] = "";
-        firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/maps/map${i}/t_team`] = "";
-        firebaseTotalUpdates[`${TEAM_PICKER_DB_PATH}/maps/map${i}/ct_team`] = "";
-      }
-
-      await update(ref(db), firebaseTotalUpdates);
-      await Promise.all(sheetUpdatePromises);
+      await Promise.all([
+        bulkUpdateAttendance(bulkPlayers),
+        resetTeamPicker(),
+        ...sheetUpdatePromises,
+      ]);
       alert("Attendance cleared successfully!");
     } catch (error) {
       console.error("Error clearing attendance:", error);
@@ -376,17 +255,17 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
     }
   };
 
-  if (authLoading) {
+  if (!sessionReady) {
     return <div className="text-center py-10">Loading page data...</div>;
   }
 
   const getCombinedPlayerData = () => {
     const combined = players.map(p => ({
       ...p,
-      attendanceStatus: firebaseAttendance[p.steamId]?.status || 'no_response',
-      currentEmoji: firebaseEmojis[p.steamId]?.status || 'normal',
-      isKaptan: firebaseKaptanlik[p.steamId]?.isKaptan || false,
-      kaptanlikTimestamp: firebaseKaptanlik[p.steamId]?.timestamp || null,
+      attendanceStatus: attendance[p.steamId]?.status || 'no_response',
+      currentEmoji: emojis[p.steamId]?.status || 'normal',
+      isKaptan: kaptanlik[p.steamId]?.isKaptan || false,
+      kaptanlikTimestamp: kaptanlik[p.steamId]?.timestamp || null,
     }));
 
     combined.sort((a, b) => {
@@ -451,19 +330,19 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
               id="clear-attendance-button"
               onClick={handleClearAttendance}
               className="px-3 py-2 sm:px-4 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 disabled:opacity-50 flex items-center transition-colors"
-              disabled={!user || isClearing || Object.values(isSubmitting).some(s => s) || loadingFirebaseData}
+              disabled={!user || isClearing || Object.values(isSubmitting).some(s => s) || loadingLiveData}
             >
               {isClearing && <span className="spinner-mini mr-2"></span>}
               Katılımı Temizle
             </button>
           </div>
 
-          {(loadingFirebaseData && players.length > 0) && (
+          {(loadingLiveData && players.length > 0) && (
             <p className="text-center py-5">
               Canli veri baglantisi kuruluyor. Veriler geldikce otomatik guncellenecek...
             </p>
           )}
-          {!loadingFirebaseData && players.length === 0 && (
+          {!loadingLiveData && players.length === 0 && (
             <p className="text-center py-5 text-gray-500">No players found. Check players.json.</p>
           )}
           {players.length > 0 && (
@@ -514,7 +393,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
                                 emojiMapping={EMOJI_MAPPING}
                                 emojiExplanations={EMOJI_EXPLANATIONS}
                                 onEmojiChange={handleEmojiChange}
-                                disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
+                                disabled={!user || isClearing || isSubmitting[player.steamId] || loadingLiveData}
                                 compact={true}
                               />
                             </div>
@@ -524,7 +403,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
                                 currentAttendance={player.attendanceStatus}
                                 attendanceStates={ATTENDANCE_STATES}
                                 onAttendanceChange={handleAttendanceChange}
-                                disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
+                                disabled={!user || isClearing || isSubmitting[player.steamId] || loadingLiveData}
                                 compact={true}
                               />
                             </div>
@@ -534,7 +413,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
                                 isKaptan={player.isKaptan}
                                 attendanceStatus={player.attendanceStatus}
                                 onKaptanlikChange={handleKaptanlikChange}
-                                disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
+                                disabled={!user || isClearing || isSubmitting[player.steamId] || loadingLiveData}
                               />
                             </div>
                           </div>
@@ -600,7 +479,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
                               emojiMapping={EMOJI_MAPPING}
                               emojiExplanations={EMOJI_EXPLANATIONS}
                               onEmojiChange={handleEmojiChange}
-                              disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
+                              disabled={!user || isClearing || isSubmitting[player.steamId] || loadingLiveData}
                             />
                           </div>
                         </td>
@@ -611,7 +490,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
                               currentAttendance={player.attendanceStatus}
                               attendanceStates={ATTENDANCE_STATES}
                               onAttendanceChange={handleAttendanceChange}
-                              disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
+                              disabled={!user || isClearing || isSubmitting[player.steamId] || loadingLiveData}
                             />
                           </div>
                         </td>
@@ -622,7 +501,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
                               isKaptan={player.isKaptan}
                               attendanceStatus={player.attendanceStatus}
                               onKaptanlikChange={handleKaptanlikChange}
-                              disabled={!user || isClearing || isSubmitting[player.steamId] || loadingFirebaseData}
+                              disabled={!user || isClearing || isSubmitting[player.steamId] || loadingLiveData}
                             />
                           </div>
                         </td>
