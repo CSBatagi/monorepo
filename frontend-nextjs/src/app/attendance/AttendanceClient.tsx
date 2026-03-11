@@ -70,9 +70,9 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
     initialData: { attendance: {}, emojis: {}, kaptanlik: {} },
   });
 
-  const attendance = liveData.attendance;
-  const emojis = liveData.emojis;
-  const kaptanlik = liveData.kaptanlik;
+  const attendance = liveData.attendance || {};
+  const emojis = liveData.emojis || {};
+  const kaptanlik = liveData.kaptanlik || {};
 
   // Sync missing emoji statuses for players that don't have one yet
   useEffect(() => {

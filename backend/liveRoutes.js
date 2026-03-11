@@ -65,41 +65,9 @@ router.get('/attendance', async (req, res) => {
   }
 });
 
-// POST /live/attendance/:steamId — upsert one player's attendance/emoji/kaptan
-// Body: { name, status?, emoji_status?, is_kaptan?, kaptan_timestamp? }
-router.post('/attendance/:steamId', async (req, res) => {
-  try {
-    const { steamId } = req.params;
-    const { name, status, emoji_status, is_kaptan, kaptan_timestamp } = req.body;
-
-    if (!steamId || !name) {
-      return res.status(400).json({ error: 'steamId and name required' });
-    }
-
-    await pool.query(
-      `INSERT INTO attendance (steam_id, name, status, emoji_status, is_kaptan, kaptan_timestamp, updated_at)
-       VALUES ($1, $2, COALESCE($3, 'no_response'), COALESCE($4, 'normal'), COALESCE($5, false), $6, NOW())
-       ON CONFLICT (steam_id) DO UPDATE SET
-         name = COALESCE(EXCLUDED.name, attendance.name),
-         status = COALESCE($3, attendance.status),
-         emoji_status = COALESCE($4, attendance.emoji_status),
-         is_kaptan = COALESCE($5, attendance.is_kaptan),
-         kaptan_timestamp = CASE WHEN $5 = false THEN NULL WHEN $6 IS NOT NULL THEN $6 ELSE attendance.kaptan_timestamp END,
-         updated_at = NOW()`,
-      [steamId, name, status || null, emoji_status || null, is_kaptan ?? null, kaptan_timestamp ?? null]
-    );
-
-    await bumpVersion('attendance');
-    const version = await getVersion('attendance');
-    res.json({ ok: true, version });
-  } catch (e) {
-    console.error('[live/attendance POST]', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // POST /live/attendance/bulk — upsert multiple players at once
 // Body: { players: [{ steamId, name, status?, emoji_status?, is_kaptan?, kaptan_timestamp? }] }
+// NOTE: Must be defined BEFORE /attendance/:steamId to avoid Express matching 'bulk' as a steamId.
 router.post('/attendance/bulk', async (req, res) => {
   try {
     const { players } = req.body;
@@ -142,6 +110,7 @@ router.post('/attendance/bulk', async (req, res) => {
 });
 
 // POST /live/attendance/reset — clear all attendance (admin action)
+// NOTE: Must be defined BEFORE /attendance/:steamId to avoid Express matching 'reset' as a steamId.
 router.post('/attendance/reset', async (req, res) => {
   try {
     await pool.query(`DELETE FROM attendance`);
@@ -150,6 +119,39 @@ router.post('/attendance/reset', async (req, res) => {
     res.json({ ok: true, version });
   } catch (e) {
     console.error('[live/attendance/reset POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /live/attendance/:steamId — upsert one player's attendance/emoji/kaptan
+// Body: { name, status?, emoji_status?, is_kaptan?, kaptan_timestamp? }
+router.post('/attendance/:steamId', async (req, res) => {
+  try {
+    const { steamId } = req.params;
+    const { name, status, emoji_status, is_kaptan, kaptan_timestamp } = req.body;
+
+    if (!steamId || !name) {
+      return res.status(400).json({ error: 'steamId and name required' });
+    }
+
+    await pool.query(
+      `INSERT INTO attendance (steam_id, name, status, emoji_status, is_kaptan, kaptan_timestamp, updated_at)
+       VALUES ($1, $2, COALESCE($3, 'no_response'), COALESCE($4, 'normal'), COALESCE($5, false), $6, NOW())
+       ON CONFLICT (steam_id) DO UPDATE SET
+         name = COALESCE(EXCLUDED.name, attendance.name),
+         status = COALESCE($3, attendance.status),
+         emoji_status = COALESCE($4, attendance.emoji_status),
+         is_kaptan = COALESCE($5, attendance.is_kaptan),
+         kaptan_timestamp = CASE WHEN $5 = false THEN NULL WHEN $6 IS NOT NULL THEN $6 ELSE attendance.kaptan_timestamp END,
+         updated_at = NOW()`,
+      [steamId, name, status || null, emoji_status || null, is_kaptan ?? null, kaptan_timestamp ?? null]
+    );
+
+    await bumpVersion('attendance');
+    const version = await getVersion('attendance');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/attendance POST]', e.message);
     res.status(500).json({ error: e.message });
   }
 });
