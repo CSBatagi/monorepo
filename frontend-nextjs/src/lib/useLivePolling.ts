@@ -95,6 +95,14 @@ export function useLivePolling<T>({
       return;
     }
 
+    // When (re-)enabled, mark as loading until the first fetch resolves.
+    // Without this, the UI briefly shows default/empty data with no indicator
+    // between the moment `enabled` flips true and the first response arrives.
+    if (!loadingRef.current && versionRef.current === 0) {
+      loadingRef.current = true;
+      setLoading(true);
+    }
+
     // Initial fetch immediately
     fetchData();
 
