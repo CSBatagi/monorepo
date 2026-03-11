@@ -4,7 +4,6 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from '@/contexts/SessionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Player } from '@/types';
-import { auth as firebaseAuth } from '@/lib/firebase';
 import { useLivePolling } from '@/lib/useLivePolling';
 import { updateAttendance, bulkUpdateAttendance, resetTeamPicker } from '@/lib/liveApi';
 import EmojiControls from '@/components/Attendance/EmojiControls';
@@ -98,16 +97,12 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
   }, [user, players, emojis, loadingLiveData]);
 
   const emitTekerDonduIfNeeded = useCallback(async () => {
-    const currentUser = firebaseAuth.currentUser;
-    if (!currentUser) return;
+    if (!user) return;
     try {
-      const idToken = await currentUser.getIdToken();
       const res = await fetch('/api/notifications/emit', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           topic: 'teker_dondu_reached',
         }),

@@ -6,6 +6,7 @@ import {
   emitNotificationEvent,
   isNotificationTopic,
 } from "@/lib/serverNotifications";
+import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/authSession";
 
 export const runtime = "nodejs";
 
@@ -75,19 +76,11 @@ async function readBearerToken(req: NextRequest): Promise<string | null> {
 }
 
 async function resolveComingCount(): Promise<number> {
-  // Read from PostgreSQL via backend (attendance migrated from Firebase RTDB)
   const BACKEND = process.env.BACKEND_INTERNAL_URL || "http://backend:3000";
-  try {
-    const res = await fetch(`${BACKEND}/live/attendance?v=0`, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = (await res.json()) as { attendance?: Record<string, { status?: string }> };
-    return Object.values(data.attendance || {}).filter((item) => item?.status === "coming").length;
-  } catch (e) {
-    console.error("[resolveComingCount] failed to fetch from backend, falling back to Firebase RTDB", e);
-    const snap = await adminDb().ref("attendanceState").get();
-    const attendance = (snap.val() || {}) as Record<string, { status?: string }>;
-    return Object.values(attendance).filter((item) => item?.status === "coming").length;
-  }
+  const res = await fetch(`${BACKEND}/live/attendance?v=0`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as { attendance?: Record<string, { status?: string }> };
+  return Object.values(data.attendance || {}).filter((item) => item?.status === "coming").length;
 }
 
 async function isMvpDateLocked(date: string): Promise<boolean> {
@@ -98,89 +91,85 @@ async function isMvpDateLocked(date: string): Promise<boolean> {
   return Boolean((value as { locked?: boolean }).locked);
 }
 
-async function evaluateTekerDonduCrossing(params: {
+// In-memory state for teker_dondu crossing detection (replaces Firebase RTDB transaction).
+// Node.js is single-threaded so synchronous access is atomic. State resets on restart,
+// which is acceptable — worst case a duplicate notification is sent after a deploy.
+const tekerDonduState = new Map<string, TekerStateNode>();
+
+function evaluateTekerDonduCrossing(params: {
   dateKey: string;
   comingCount: number;
-}): Promise<{
+}): {
   shouldSend: boolean;
   crossingCount: number;
   cooldownActive: boolean;
   cooldownRemainingMs: number;
-  /** When non-zero, the threshold was just crossed and the settle window ends at this timestamp. */
   pendingSettlesAt: number;
-}> {
-  const stateRef = adminDb().ref(`notifications/state/teker_dondu/${params.dateKey}`);
+} {
   const nowTs = Date.now();
-  let shouldSend = false;
-  let crossingCount = 0;
-  let cooldownActive = false;
-  let cooldownRemainingMs = 0;
-  let pendingSettlesAt = 0;
+  const current = tekerDonduState.get(params.dateKey) || {};
+  const previousAbove = current.aboveThreshold === true;
+  const nowAbove = params.comingCount >= TEKER_DONDU_THRESHOLD;
+  const previousCrossing = Number(current.crossingCount || 0);
+  const lastNotificationAt = Number(current.lastNotificationAt || 0);
+  const pendingSince = Number(current.pendingSince || 0);
+  const elapsedSinceNotif = lastNotificationAt > 0 ? nowTs - lastNotificationAt : Number.MAX_SAFE_INTEGER;
+  const inCooldown = elapsedSinceNotif < TEKER_DONDU_COOLDOWN_MS;
 
-  await stateRef.transaction(
-    (currentValue: TekerStateNode | null) => {
-      const current = (currentValue || {}) as TekerStateNode;
-      const previousAbove = current.aboveThreshold === true;
-      const nowAbove = params.comingCount >= TEKER_DONDU_THRESHOLD;
-      const previousCrossing = Number(current.crossingCount || 0);
-      const lastNotificationAt = Number(current.lastNotificationAt || 0);
-      const pendingSince = Number(current.pendingSince || 0);
-      const elapsedSinceNotif = lastNotificationAt > 0 ? nowTs - lastNotificationAt : Number.MAX_SAFE_INTEGER;
-      const inCooldown = elapsedSinceNotif < TEKER_DONDU_COOLDOWN_MS;
+  let newPendingSince: number;
+  if (!previousAbove && nowAbove) {
+    newPendingSince = nowTs;
+  } else if (previousAbove && nowAbove && pendingSince > 0) {
+    newPendingSince = pendingSince;
+  } else {
+    newPendingSince = 0;
+  }
 
-      // Determine the active pendingSince timestamp for this crossing:
-      //   - First time we cross above: record now as pendingSince.
-      //   - Still above and a pendingSince is already set: keep it.
-      //   - Dropped below (or no crossing): clear it.
-      let newPendingSince: number;
-      if (!previousAbove && nowAbove) {
-        // Fresh crossing — start the settle timer.
-        newPendingSince = nowTs;
-      } else if (previousAbove && nowAbove && pendingSince > 0) {
-        // Still above threshold, preserve the original crossing timestamp.
-        newPendingSince = pendingSince;
-      } else {
-        // Below threshold or already sent (pendingSince cleared after send).
-        newPendingSince = 0;
-      }
+  const settleElapsed = newPendingSince > 0 ? nowTs - newPendingSince : 0;
+  const settled = settleElapsed >= TEKER_DONDU_SETTLE_MS;
 
-      const settleElapsed = newPendingSince > 0 ? nowTs - newPendingSince : 0;
-      const settled = settleElapsed >= TEKER_DONDU_SETTLE_MS;
+  const shouldSend = nowAbove && settled && !inCooldown;
+  const cooldownActive = nowAbove && settled && inCooldown;
+  const cooldownRemainingMs = inCooldown ? Math.max(TEKER_DONDU_COOLDOWN_MS - elapsedSinceNotif, 0) : 0;
+  const crossingCount = shouldSend ? previousCrossing + 1 : previousCrossing;
+  const pendingSettlesAt = !settled && newPendingSince > 0 ? newPendingSince + TEKER_DONDU_SETTLE_MS : 0;
 
-      shouldSend = nowAbove && settled && !inCooldown;
-      cooldownActive = nowAbove && settled && inCooldown;
-      cooldownRemainingMs = inCooldown ? Math.max(TEKER_DONDU_COOLDOWN_MS - elapsedSinceNotif, 0) : 0;
-      crossingCount = shouldSend ? previousCrossing + 1 : previousCrossing;
-      // Expose the wall-clock time when the settle window ends so the client can
-      // schedule its follow-up call precisely.
-      pendingSettlesAt = !settled && newPendingSince > 0 ? newPendingSince + TEKER_DONDU_SETTLE_MS : 0;
-
-      return {
-        ...current,
-        aboveThreshold: nowAbove,
-        crossingCount,
-        // Clear pendingSince once we send, so a subsequent drop+rise starts fresh.
-        pendingSince: shouldSend ? 0 : newPendingSince,
-        lastComingCount: params.comingCount,
-        lastNotificationAt: shouldSend ? nowTs : lastNotificationAt || 0,
-        updatedAt: nowTs,
-      };
-    },
-    undefined,
-    false
-  );
+  tekerDonduState.set(params.dateKey, {
+    aboveThreshold: nowAbove,
+    crossingCount,
+    pendingSince: shouldSend ? 0 : newPendingSince,
+    lastComingCount: params.comingCount,
+    lastNotificationAt: shouldSend ? nowTs : lastNotificationAt || 0,
+    updatedAt: nowTs,
+  });
 
   return { shouldSend, crossingCount, cooldownActive, cooldownRemainingMs, pendingSettlesAt };
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const idToken = await readBearerToken(req);
-    if (!idToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authenticate: try HMAC session cookie first, fall back to Firebase ID token
+    let uid: string;
+    let displayName: string | undefined;
+
+    const sessionToken = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+    if (sessionToken) {
+      const session = verifySessionToken(sessionToken);
+      if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      uid = session.uid;
+      displayName = session.name || session.email || undefined;
+    } else {
+      const idToken = await readBearerToken(req);
+      if (!idToken) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      const decoded = await adminAuth().verifyIdToken(idToken);
+      uid = decoded.uid;
+      displayName = decoded.name || decoded.email || undefined;
     }
 
-    const decoded = await adminAuth().verifyIdToken(idToken);
     const body = (await req.json()) as EmitBody;
     if (!body || !isNotificationTopic(body.topic)) {
       return NextResponse.json(
@@ -200,7 +189,7 @@ export async function POST(req: NextRequest) {
           ? payloadData.dateKey
           : getIstanbulDateKey(new Date());
 
-      const crossing = await evaluateTekerDonduCrossing({
+      const crossing = evaluateTekerDonduCrossing({
         dateKey,
         comingCount,
       });
@@ -278,8 +267,8 @@ export async function POST(req: NextRequest) {
       title,
       body: messageBody,
       data: payloadData,
-      createdByUid: decoded.uid,
-      createdByName: decoded.name || decoded.email || undefined,
+      createdByUid: uid,
+      createdByName: displayName,
     });
 
     return NextResponse.json({

@@ -119,6 +119,10 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute window
 const RATE_LIMIT_MAX_REQUESTS = 30;      // max requests per window per IP
 
 function rateLimiter(req, res, next) {
+  // Skip rate limiting for /live/ polling endpoints — they are high-frequency by design
+  // and all frontend proxy traffic shares the same Docker-internal IP.
+  if (req.path.startsWith('/live/')) return next();
+
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
   const now = Date.now();
   let entry = rateLimitMap.get(ip);

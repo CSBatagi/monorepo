@@ -35,6 +35,7 @@ export function useLivePolling<T>({
   const versionRef = useRef(0);
   const mountedRef = useRef(true);
   const loadingRef = useRef(true);
+  const intervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(async (forceRefresh = false) => {
     if (!enabled) return;
@@ -76,7 +77,15 @@ export function useLivePolling<T>({
     }
   }, [url, enabled]);
 
-  const refetch = useCallback(() => fetchData(true), [fetchData]);
+  const refetch = useCallback(() => {
+    // Reset the polling interval so the next scheduled poll is pushed back,
+    // avoiding a redundant request right after this manual refetch.
+    if (intervalIdRef.current !== null) {
+      clearInterval(intervalIdRef.current);
+      intervalIdRef.current = setInterval(fetchData, intervalMs);
+    }
+    return fetchData(true);
+  }, [fetchData, intervalMs]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -90,11 +99,14 @@ export function useLivePolling<T>({
     fetchData();
 
     // Set up polling interval
-    const id = setInterval(fetchData, intervalMs);
+    intervalIdRef.current = setInterval(fetchData, intervalMs);
 
     return () => {
       mountedRef.current = false;
-      clearInterval(id);
+      if (intervalIdRef.current !== null) {
+        clearInterval(intervalIdRef.current);
+        intervalIdRef.current = null;
+      }
     };
   }, [url, intervalMs, enabled, fetchData]);
 

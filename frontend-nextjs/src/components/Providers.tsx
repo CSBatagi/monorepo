@@ -17,7 +17,7 @@ const FirebaseProviders = dynamic(
 
 /** Routes that require Firebase Auth / Realtime Database on the client. */
 const FIREBASE_ROUTES = [
-  "/attendance",
+  // "/attendance" — migrated to PostgreSQL polling + session auth
   // "/team-picker" — migrated to PostgreSQL polling, no longer needs Firebase SDK
   "/gecenin-mvpsi",
   "/notifications",
