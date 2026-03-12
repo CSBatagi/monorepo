@@ -75,9 +75,9 @@ export async function GET(req: NextRequest) {
     });
     clearTimeout(timeout);
 
-    if (res.status === 599) {
-      // Backend unreachable: try to build fallback from local runtime dir or static public data
-      if (debug) console.warn('[stats-proxy] Using local fallback datasets');
+    if (res.status === 599 || !res.ok) {
+      // Backend unreachable or returned an error: try to build fallback from local runtime dir or static public data
+      if (debug) console.warn('[stats-proxy] Backend unavailable/error (status:', res.status, '), using local fallback datasets');
       const fallback: any = { updated: false, serverTimestamp: persistedTs, backendUnavailable: true };
       const staticDir = path.join(process.cwd(), 'public', 'data');
       for (const base of STAT_FILES) {
@@ -90,13 +90,10 @@ export async function GET(req: NextRequest) {
         }
         if (content !== undefined) fallback[key] = content;
       }
+      // If we got at least some data from files, mark as updated so the client uses it
+      const hasAnyData = STAT_FILES.some(base => fallback[base.replace(/\.json$/, '')] !== undefined);
+      if (hasAnyData) fallback.updated = true;
       return new Response(JSON.stringify(fallback), { status: 200, headers:{'Content-Type':'application/json','Cache-Control':'no-store'} });
-    }
-    if (!res.ok) {
-      let raw='';
-      try { raw = await res.text(); } catch(_){}
-      if (debug) console.error('[stats-proxy] Backend non-OK', res.status, raw);
-      return new Response(JSON.stringify({ error: 'Backend request failed', status: res.status, backendBody: debug?raw:undefined }), { status: 500 });
     }
     let bodyText = await res.text();
     if (debug) console.log('[stats-proxy] Backend body length', bodyText.length);

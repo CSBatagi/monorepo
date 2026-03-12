@@ -66,8 +66,8 @@ async function fetchLastDataTimestampFromDB() {
     const r = await pool.query(query);
     return r.rows[0]?.last_change || null;
   } catch (e) {
-    // Fallback query if updated_at columns don't exist yet
-    console.warn('Extended timestamp query failed, falling back to matches.date or demos.date:', e.message);
+    // Fallback 1: updated_at columns might not exist yet
+    console.warn('[timestamp] Extended query failed, trying matches.date/demos.date:', e.message);
     try {
       const fallback = await pool.query(`SELECT COALESCE(
         (SELECT MAX(date) FROM matches),
@@ -76,8 +76,28 @@ async function fetchLastDataTimestampFromDB() {
       ) AS last_change;`);
       return fallback.rows[0]?.last_change || null;
     } catch (e2) {
-      console.error('Error fetching last data timestamp', e2);
-      return null;
+      // Fallback 2: matches/demos tables might not have date column
+      console.warn('[timestamp] Fallback 1 failed, trying demos.date only:', e2.message);
+      try {
+        const fallback2 = await pool.query(`SELECT COALESCE(MAX(date), '1970-01-01'::timestamp) AS last_change FROM demos;`);
+        return fallback2.rows[0]?.last_change || null;
+      } catch (e3) {
+        // Fallback 3: check if any table has rows at all
+        console.warn('[timestamp] Fallback 2 failed, trying table existence check:', e3.message);
+        try {
+          const exists = await pool.query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'matches') AS has_matches`);
+          if (exists.rows[0]?.has_matches) {
+            // Table exists but we couldn't read timestamp — return epoch so stats always regenerate
+            console.warn('[timestamp] matches table exists but timestamp queries failed. Using epoch fallback.');
+            return new Date('1970-01-01T00:00:00Z');
+          }
+          console.error('[timestamp] No matches table found — CSDM data may not be imported');
+          return null;
+        } catch (e4) {
+          console.error('[timestamp] All timestamp queries failed:', e4.message);
+          return null;
+        }
+      }
     }
   }
 }
@@ -309,20 +329,19 @@ app.get('/stats/incremental', async (req, res) => {
     const parsedClientTs = clientTsRaw ? new Date(clientTsRaw) : null;
     const clientTs = parsedClientTs && !Number.isNaN(parsedClientTs.getTime()) ? parsedClientTs : null;
     const { timestamp: serverLastTs, source: timestampSource } = await getDataTimestampWithFallback();
-    if (!serverLastTs) {
-      return res.status(500).json({
-        error: 'timestamp_unavailable',
-        timestampSource,
-        lastTimestampPollAt: lastTimestampPollAt ? lastTimestampPollAt.toISOString() : null,
-        lastTimestampPollError,
-      });
+    // If timestamp is unavailable, proceed with generation instead of hard-failing.
+    // Stats queries work independently of the timestamp — the timestamp only gates
+    // whether we *need* to regenerate. Without it, always regenerate (cold-start behavior).
+    const serverDate = serverLastTs ? new Date(serverLastTs) : null;
+    if (!serverDate) {
+      console.warn('[stats/incremental] Timestamp unavailable (source:', timestampSource, ') — treating as cold start, will generate stats');
     }
-    const serverDate = new Date(serverLastTs);
-    const needs = !clientTs || serverDate > clientTs;
+    const needs = !serverDate || !clientTs || serverDate > clientTs;
+    const effectiveTimestamp = serverDate || new Date();
     const sourceChanged =
-      !lastGeneratedServerTimestamp ||
+      !lastGeneratedServerTimestamp || !serverDate ||
       serverDate.getTime() !== new Date(lastGeneratedServerTimestamp).getTime();
-    let payload = { updated: false, serverTimestamp: serverDate.toISOString() };
+    let payload = { updated: false, serverTimestamp: effectiveTimestamp.toISOString() };
     if (needs) {
       // Regenerate when source actually changed, OR on cold start when we have no cached data.
       // The latter covers container restarts where lastGeneratedServerTimestamp was set but
@@ -333,19 +352,19 @@ app.get('/stats/incremental', async (req, res) => {
         }
         try {
           const result = await statsGenerationPromise;
-          lastGeneratedServerTimestamp = serverDate;
+          if (serverDate) lastGeneratedServerTimestamp = serverDate;
           lastGeneratedData = result.data;
           touchDataCacheTimer();
-          payload = { updated: true, serverTimestamp: serverDate.toISOString(), ...result.data };
+          payload = { updated: true, serverTimestamp: effectiveTimestamp.toISOString(), ...result.data };
         } catch (e) {
           console.error('Incremental generation failed', e);
           return res.status(500).json({ error: 'incremental_failed', details: e.message });
         }
       } else if (lastGeneratedData) {
-        payload = { updated: true, serverTimestamp: serverDate.toISOString(), ...lastGeneratedData };
+        payload = { updated: true, serverTimestamp: effectiveTimestamp.toISOString(), ...lastGeneratedData };
       } else {
         // Source unchanged but cache expired — frontend has data on disk, no need to regenerate
-        payload = { updated: false, serverTimestamp: serverDate.toISOString() };
+        payload = { updated: false, serverTimestamp: effectiveTimestamp.toISOString() };
       }
     }
     res.set('Cache-Control','no-store');
