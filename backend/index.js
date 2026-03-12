@@ -67,9 +67,13 @@ async function fetchLastDataTimestampFromDB() {
     return r.rows[0]?.last_change || null;
   } catch (e) {
     // Fallback query if updated_at columns don't exist yet
-    console.warn('Extended timestamp query failed, falling back to matches.date only:', e.message);
+    console.warn('Extended timestamp query failed, falling back to matches.date or demos.date:', e.message);
     try {
-      const fallback = await pool.query(`SELECT COALESCE(MAX(date), '1970-01-01'::timestamp) AS last_change FROM matches;`);
+      const fallback = await pool.query(`SELECT COALESCE(
+        (SELECT MAX(date) FROM matches),
+        (SELECT MAX(date) FROM demos),
+        '1970-01-01'::timestamp
+      ) AS last_change;`);
       return fallback.rows[0]?.last_change || null;
     } catch (e2) {
       console.error('Error fetching last data timestamp', e2);
@@ -526,6 +530,18 @@ if (!TEST_MODE) {
   // Auto-apply idempotent schema migrations on startup
   async function runMigrations() {
     const migrations = [
+      // --- matches.date and matches.map_name columns ---
+      // CS Demo Manager stores date and map_name in the demos table, but our stats
+      // queries expect them on matches.  Add the columns and backfill from demos,
+      // then keep them in sync via a trigger on demos INSERT/UPDATE.
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='matches' AND column_name='date') THEN ALTER TABLE matches ADD COLUMN date TIMESTAMPTZ; END IF; END $$`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='matches' AND column_name='map_name') THEN ALTER TABLE matches ADD COLUMN map_name CHARACTER VARYING; END IF; END $$`,
+      // Backfill any matches that have NULL date/map_name from the demos table
+      `UPDATE matches SET date = d.date, map_name = d.map_name FROM demos d WHERE d.checksum = matches.checksum AND (matches.date IS NULL OR matches.map_name IS NULL)`,
+      // Trigger function: when a demo is inserted or updated, copy date+map_name to matches
+      `CREATE OR REPLACE FUNCTION sync_demo_to_match() RETURNS TRIGGER AS $$ BEGIN UPDATE matches SET date = NEW.date, map_name = NEW.map_name WHERE checksum = NEW.checksum; RETURN NEW; END; $$ LANGUAGE plpgsql`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='demos_sync_to_matches') THEN CREATE TRIGGER demos_sync_to_matches AFTER INSERT OR UPDATE OF date, map_name ON demos FOR EACH ROW EXECUTE FUNCTION sync_demo_to_match(); END IF; END $$`,
+      // --- updated_at tracking ---
       `CREATE OR REPLACE FUNCTION update_timestamp() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql`,
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='matches' AND column_name='updated_at') THEN ALTER TABLE matches ADD COLUMN updated_at TIMESTAMP DEFAULT NOW(); END IF; END $$`,
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='players' AND column_name='updated_at') THEN ALTER TABLE players ADD COLUMN updated_at TIMESTAMP DEFAULT NOW(); END IF; END $$`,
