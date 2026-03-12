@@ -67,9 +67,13 @@ async function fetchLastDataTimestampFromDB() {
     return r.rows[0]?.last_change || null;
   } catch (e) {
     // Fallback query if updated_at columns don't exist yet
-    console.warn('Extended timestamp query failed, falling back to matches.date only:', e.message);
+    console.warn('Extended timestamp query failed, falling back to matches.date or demos.date:', e.message);
     try {
-      const fallback = await pool.query(`SELECT COALESCE(MAX(date), '1970-01-01'::timestamp) AS last_change FROM matches;`);
+      const fallback = await pool.query(`SELECT COALESCE(
+        (SELECT MAX(date) FROM matches),
+        (SELECT MAX(date) FROM demos),
+        '1970-01-01'::timestamp
+      ) AS last_change;`);
       return fallback.rows[0]?.last_change || null;
     } catch (e2) {
       console.error('Error fetching last data timestamp', e2);
@@ -83,12 +87,25 @@ async function fetchLastDataTimestampFromDB() {
 // All request handlers read from memory, ZERO DB cost per page load.
 const DB_POLL_INTERVAL_MS = 60 * 1000; // 60 seconds
 let cachedLastDataTimestamp = null; // in-memory cache of last DB data timestamp
+let lastTimestampPollAt = null;
+let lastTimestampPollError = null;
+let lastTimestampSource = 'uninitialized';
 
 async function pollDataTimestamp() {
+  lastTimestampPollAt = new Date();
   try {
     const ts = await fetchLastDataTimestampFromDB();
-    if (ts) cachedLastDataTimestamp = new Date(ts);
+    if (ts) {
+      cachedLastDataTimestamp = new Date(ts);
+      lastTimestampPollError = null;
+      lastTimestampSource = 'poller';
+    } else {
+      lastTimestampPollError = 'timestamp query returned no value';
+      lastTimestampSource = 'poller-empty';
+    }
   } catch (e) {
+    lastTimestampPollError = e.message;
+    lastTimestampSource = 'poller-error';
     console.error('[timestamp-poller] Error polling DB timestamp:', e.message);
   }
 }
@@ -97,6 +114,38 @@ async function pollDataTimestamp() {
 function getCachedDataTimestamp() {
   if (TEST_MODE) return fetchLastDataTimestampFromDB(); // test mode needs async per-call
   return cachedLastDataTimestamp;
+}
+
+async function getDataTimestampWithFallback() {
+  const cachedTs = TEST_MODE ? await getCachedDataTimestamp() : getCachedDataTimestamp();
+  if (cachedTs) {
+    return { timestamp: cachedTs, source: TEST_MODE ? 'test' : 'cache' };
+  }
+
+  if (!pool) {
+    return { timestamp: null, source: 'no-pool' };
+  }
+
+  try {
+    const freshTs = await fetchLastDataTimestampFromDB();
+    lastTimestampPollAt = new Date();
+    if (!freshTs) {
+      lastTimestampPollError = 'timestamp query returned no value';
+      lastTimestampSource = 'live-fallback-empty';
+      return { timestamp: null, source: 'live-fallback-empty' };
+    }
+
+    cachedLastDataTimestamp = new Date(freshTs);
+    lastTimestampPollError = null;
+    lastTimestampSource = 'live-fallback';
+    return { timestamp: cachedLastDataTimestamp, source: 'live-fallback' };
+  } catch (e) {
+    lastTimestampPollAt = new Date();
+    lastTimestampPollError = e.message;
+    lastTimestampSource = 'live-fallback-error';
+    console.error('[timestamp-poller] Live fallback failed:', e.message);
+    return { timestamp: null, source: 'live-fallback-error' };
+  }
 }
 
 // Start background poller (only in production)
@@ -214,7 +263,7 @@ let aggregateGenerationPromise = null; // concurrency lock
 
 app.get('/stats/aggregates', async (req, res) => {
   try {
-    const serverLastTs = TEST_MODE ? await getCachedDataTimestamp() : getCachedDataTimestamp();
+    const { timestamp: serverLastTs } = await getDataTimestampWithFallback();
     const serverDate = serverLastTs ? new Date(serverLastTs) : null;
     const dbUnchanged = serverDate && lastAggregateServerTimestamp &&
         serverDate.getTime() === new Date(lastAggregateServerTimestamp).getTime();
@@ -259,8 +308,15 @@ app.get('/stats/incremental', async (req, res) => {
     const clientTsRaw = typeof req.query.lastKnownTs === 'string' ? req.query.lastKnownTs : null;
     const parsedClientTs = clientTsRaw ? new Date(clientTsRaw) : null;
     const clientTs = parsedClientTs && !Number.isNaN(parsedClientTs.getTime()) ? parsedClientTs : null;
-    const serverLastTs = TEST_MODE ? await getCachedDataTimestamp() : getCachedDataTimestamp();
-    if (!serverLastTs) return res.status(500).json({ error: 'timestamp_unavailable' });
+    const { timestamp: serverLastTs, source: timestampSource } = await getDataTimestampWithFallback();
+    if (!serverLastTs) {
+      return res.status(500).json({
+        error: 'timestamp_unavailable',
+        timestampSource,
+        lastTimestampPollAt: lastTimestampPollAt ? lastTimestampPollAt.toISOString() : null,
+        lastTimestampPollError,
+      });
+    }
     const serverDate = new Date(serverLastTs);
     const needs = !clientTs || serverDate > clientTs;
     const sourceChanged =
@@ -344,6 +400,7 @@ app.post('/stats/force-regenerate', async (req, res) => {
 // Lightweight diagnostics endpoint to help debug missing data
 app.get('/stats/diagnostics', async (req, res) => {
   try {
+    const { timestamp: effectiveDataTimestamp, source: effectiveTimestampSource } = await getDataTimestampWithFallback();
     const seasonStart = cachedSeasonStart;
     const seasonStarts = cachedSeasonStarts;
     let counts = {};
@@ -365,7 +422,18 @@ app.get('/stats/diagnostics', async (req, res) => {
         errors: lastGeneratedData.__errors || []
       };
     }
-    res.json({ seasonStart, seasonStarts, lastGeneratedServerTimestamp, counts });
+    res.json({
+      seasonStart,
+      seasonStarts,
+      cachedLastDataTimestamp: cachedLastDataTimestamp ? cachedLastDataTimestamp.toISOString() : null,
+      effectiveDataTimestamp: effectiveDataTimestamp ? new Date(effectiveDataTimestamp).toISOString() : null,
+      effectiveTimestampSource,
+      lastTimestampPollAt: lastTimestampPollAt ? lastTimestampPollAt.toISOString() : null,
+      lastTimestampPollError,
+      lastTimestampSource,
+      lastGeneratedServerTimestamp,
+      counts,
+    });
   } catch (e) {
     res.status(500).json({ error: 'diagnostics_failed', details: e.message });
   }
@@ -464,6 +532,18 @@ if (!TEST_MODE) {
   // Auto-apply idempotent schema migrations on startup
   async function runMigrations() {
     const migrations = [
+      // --- matches.date and matches.map_name columns ---
+      // CS Demo Manager stores date and map_name in the demos table, but our stats
+      // queries expect them on matches.  Add the columns and backfill from demos,
+      // then keep them in sync via a trigger on demos INSERT/UPDATE.
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='matches' AND column_name='date') THEN ALTER TABLE matches ADD COLUMN date TIMESTAMPTZ; END IF; END $$`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='matches' AND column_name='map_name') THEN ALTER TABLE matches ADD COLUMN map_name CHARACTER VARYING; END IF; END $$`,
+      // Backfill any matches that have NULL date/map_name from the demos table
+      `UPDATE matches SET date = d.date, map_name = d.map_name FROM demos d WHERE d.checksum = matches.checksum AND (matches.date IS NULL OR matches.map_name IS NULL)`,
+      // Trigger function: when a demo is inserted or updated, copy date+map_name to matches
+      `CREATE OR REPLACE FUNCTION sync_demo_to_match() RETURNS TRIGGER AS $$ BEGIN UPDATE matches SET date = NEW.date, map_name = NEW.map_name WHERE checksum = NEW.checksum; RETURN NEW; END; $$ LANGUAGE plpgsql`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='demos_sync_to_matches') THEN CREATE TRIGGER demos_sync_to_matches AFTER INSERT OR UPDATE OF date, map_name ON demos FOR EACH ROW EXECUTE FUNCTION sync_demo_to_match(); END IF; END $$`,
+      // --- updated_at tracking ---
       `CREATE OR REPLACE FUNCTION update_timestamp() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql`,
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='matches' AND column_name='updated_at') THEN ALTER TABLE matches ADD COLUMN updated_at TIMESTAMP DEFAULT NOW(); END IF; END $$`,
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='players' AND column_name='updated_at') THEN ALTER TABLE players ADD COLUMN updated_at TIMESTAMP DEFAULT NOW(); END IF; END $$`,
@@ -491,6 +571,7 @@ if (!TEST_MODE) {
       cachedSeasonConfig = resolveSeasonConfig();
       cachedSeasonStart = cachedSeasonConfig.seasonStart;
       cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
+      await pollDataTimestamp();
       console.log('[startup] migrations applied, config loaded. Generating initial aggregates...');
       const agg = await generateAggregates(pool, { seasonStart: cachedSeasonStart, seasonStarts: cachedSeasonStarts });
       lastAggregateData = agg;

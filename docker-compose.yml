@@ -116,7 +116,7 @@ services:
       -c work_mem=2MB
       -c maintenance_work_mem=32MB
       -c effective_cache_size=128MB
-      -c max_connections=20
+      -c max_connections=50
       -c wal_buffers=1MB
       -c checkpoint_completion_target=0.9
     ports:
