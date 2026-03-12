@@ -10,6 +10,7 @@
  */
 
 const { adminDb, adminMessaging } = require('./firebaseAdmin');
+const notificationInboxStore = require('./notificationInboxStore');
 
 // ─── Constants ───
 
@@ -178,26 +179,16 @@ async function resolveRecipients(topic) {
 
 async function persistToInbox(params) {
   if (params.recipientUids.length === 0) return;
-  const database = adminDb();
-  const now = Date.now();
-  const updates = {};
-
-  for (const uid of params.recipientUids) {
-    const pushKey = database.ref(`notifications/inbox/${uid}`).push().key;
-    if (!pushKey) continue;
-    updates[`notifications/inbox/${uid}/${pushKey}`] = {
+  try {
+    await notificationInboxStore.persistToInbox({
+      recipientUids: params.recipientUids,
       topic: params.topic,
       title: params.title,
       body: params.body,
       data: params.data ? toStringMap(params.data) : null,
-      read: false,
-      createdAt: now,
       eventId: params.eventId || null,
-    };
-  }
-
-  try {
-    await database.ref().update(updates);
+      createdAt: Date.now(),
+    });
   } catch (err) {
     console.error('[notification-scheduler] persistToInbox failed:', err);
   }

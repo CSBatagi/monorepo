@@ -12,8 +12,6 @@ import React, {
 
 import { useSession } from "@/contexts/SessionContext";
 
-/* ─── types ─── */
-
 export type InboxNotification = {
   id: string;
   topic: string;
@@ -26,181 +24,186 @@ export type InboxNotification = {
 };
 
 interface NotificationContextType {
-  /** All inbox notifications, newest first */
   notifications: InboxNotification[];
-  /** Count of unread notifications */
   unreadCount: number;
-  /** Whether initial load is in progress */
   loading: boolean;
-  /** Mark a single notification as read */
   markAsRead: (id: string) => Promise<void>;
-  /** Mark all notifications as read */
   markAllAsRead: () => Promise<void>;
-  /** Delete a single notification */
   deleteNotification: (id: string) => Promise<void>;
-  /** Clear (delete) all notifications */
   clearAll: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
   notifications: [],
   unreadCount: 0,
-  loading: false, // false by default so NotificationBell works outside NotificationProvider
+  loading: false,
   markAsRead: async () => {},
   markAllAsRead: async () => {},
   deleteNotification: async () => {},
   clearAll: async () => {},
 });
 
+const MAX_INBOX_ITEMS = 100;
+const POLL_INTERVAL_MS = 15_000;
+
 export function useNotifications() {
   return useContext(NotificationContext);
 }
 
-/* ─── constants ─── */
-
-const MAX_INBOX_ITEMS = 100;
-
-/* ─── provider ─── */
-
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useSession();
   const uid = user?.uid ?? null;
+
   const [notifications, setNotifications] = useState<InboxNotification[]>([]);
   const [loading, setLoading] = useState(true);
-  // Keep a ref to firebase DB helpers so callbacks can use them without re-importing
-  const firebaseRef = useRef<{
-    db: import("firebase/database").Database;
-    ref: typeof import("firebase/database").ref;
-    update: typeof import("firebase/database").update;
-    remove: typeof import("firebase/database").remove;
-  } | null>(null);
+  const versionRef = useRef(0);
 
-  // Real-time subscription to user's inbox (lazy-loads Firebase SDK)
-  useEffect(() => {
-    if (!uid) {
+  const fetchInbox = useCallback(async (force = false) => {
+    if (!uid) return;
+
+    const version = force ? 0 : versionRef.current;
+    const response = await fetch(`/api/notifications/inbox?v=${version}&limit=${MAX_INBOX_ITEMS}`, {
+      cache: "no-store",
+    });
+
+    if (response.status === 304) {
+      setLoading(false);
+      return;
+    }
+
+    if (response.status === 401) {
+      versionRef.current = 0;
       setNotifications([]);
       setLoading(false);
       return;
     }
 
-    let unsubscribe: (() => void) | undefined;
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const payload = await response.json();
+    versionRef.current = Number(payload?.version || 0);
+    setNotifications(Array.isArray(payload?.notifications) ? payload.notifications : []);
+    setLoading(false);
+  }, [uid]);
+
+  useEffect(() => {
+    if (!uid) {
+      versionRef.current = 0;
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    (async () => {
-      const [{ db }, { ref, onValue, query, orderByChild, limitToLast, update, remove }] = await Promise.all([
-        import("@/lib/firebase"),
-        import("firebase/database"),
-      ]);
-      firebaseRef.current = { db, ref, update, remove };
-
-      if (cancelled) return;
-
-      setLoading(true);
-      const inboxRef = ref(db, `notifications/inbox/${uid}`);
-      const inboxQuery = query(
-        inboxRef,
-        orderByChild("createdAt"),
-        limitToLast(MAX_INBOX_ITEMS)
-      );
-
-      unsubscribe = onValue(
-        inboxQuery,
-        (snap) => {
-          if (!snap.exists()) {
-            setNotifications([]);
-            setLoading(false);
-            return;
-          }
-
-          const items: InboxNotification[] = [];
-          snap.forEach((child) => {
-            const val = child.val();
-            items.push({
-              id: child.key!,
-              topic: val.topic || "",
-              title: val.title || "",
-              body: val.body || "",
-              data: val.data || undefined,
-              read: val.read === true,
-              createdAt: val.createdAt || 0,
-              eventId: val.eventId || undefined,
-            });
-          });
-
-          // Sort newest first
-          items.sort((a, b) => b.createdAt - a.createdAt);
-          setNotifications(items);
-          setLoading(false);
-        },
-        (error) => {
-          console.error("[NotificationContext] inbox subscription error:", error);
+    setLoading(true);
+    const runFetch = async (force = false) => {
+      try {
+        await fetchInbox(force);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("[NotificationContext] inbox fetch failed:", error);
           setLoading(false);
         }
-      );
-    })();
+      }
+    };
+
+    void runFetch(true);
+    intervalId = setInterval(() => {
+      void runFetch(false);
+    }, POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
-      unsubscribe?.();
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [uid]);
+  }, [uid, fetchInbox]);
+
+  const markAsRead = useCallback(async (id: string) => {
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === id ? { ...notification, read: true } : notification
+      )
+    );
+
+    const response = await fetch(`/api/notifications/inbox/${id}`, {
+      method: "PATCH",
+    });
+    if (!response.ok) {
+      await fetchInbox(true);
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = await response.json().catch(() => null);
+    if (payload?.version) {
+      versionRef.current = Number(payload.version || versionRef.current);
+    }
+  }, [fetchInbox]);
+
+  const markAllAsRead = useCallback(async () => {
+    setNotifications((prev) => prev.map((notification) => ({ ...notification, read: true })));
+
+    const response = await fetch("/api/notifications/inbox/mark-all", {
+      method: "POST",
+    });
+    if (!response.ok) {
+      await fetchInbox(true);
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = await response.json().catch(() => null);
+    if (payload?.version) {
+      versionRef.current = Number(payload.version || versionRef.current);
+    }
+  }, [fetchInbox]);
+
+  const deleteNotification = useCallback(async (id: string) => {
+    setNotifications((prev) => prev.filter((notification) => notification.id !== id));
+
+    const response = await fetch(`/api/notifications/inbox/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      await fetchInbox(true);
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = await response.json().catch(() => null);
+    if (payload?.version) {
+      versionRef.current = Number(payload.version || versionRef.current);
+    }
+  }, [fetchInbox]);
+
+  const clearAll = useCallback(async () => {
+    setNotifications([]);
+
+    const response = await fetch("/api/notifications/inbox/clear", {
+      method: "POST",
+    });
+    if (!response.ok) {
+      await fetchInbox(true);
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = await response.json().catch(() => null);
+    if (payload?.version !== undefined) {
+      versionRef.current = Number(payload.version || 0);
+    }
+  }, [fetchInbox]);
 
   const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.read).length,
+    () => notifications.filter((notification) => !notification.read).length,
     [notifications]
   );
 
-  const markAsRead = useCallback(
-    async (id: string) => {
-      const fb = firebaseRef.current;
-      if (!uid || !fb) return;
-      await fb.update(fb.ref(fb.db, `notifications/inbox/${uid}/${id}`), {
-        read: true,
-      });
-    },
-    [uid]
-  );
-
-  const markAllAsRead = useCallback(async () => {
-    const fb = firebaseRef.current;
-    if (!uid || !fb || notifications.length === 0) return;
-    const updates: Record<string, boolean> = {};
-    for (const n of notifications) {
-      if (!n.read) {
-        updates[`${n.id}/read`] = true;
-      }
-    }
-    if (Object.keys(updates).length === 0) return;
-    await fb.update(fb.ref(fb.db, `notifications/inbox/${uid}`), updates);
-  }, [uid, notifications]);
-
-  const deleteNotification = useCallback(
-    async (id: string) => {
-      const fb = firebaseRef.current;
-      if (!uid || !fb) return;
-      await fb.remove(fb.ref(fb.db, `notifications/inbox/${uid}/${id}`));
-    },
-    [uid]
-  );
-
-  const clearAll = useCallback(async () => {
-    const fb = firebaseRef.current;
-    if (!uid || !fb) return;
-    await fb.remove(fb.ref(fb.db, `notifications/inbox/${uid}`));
-  }, [uid]);
-
-  const value = useMemo<NotificationContextType>(
-    () => ({
-      notifications,
-      unreadCount,
-      loading,
-      markAsRead,
-      markAllAsRead,
-      deleteNotification,
-      clearAll,
-    }),
-    [notifications, unreadCount, loading, markAsRead, markAllAsRead, deleteNotification, clearAll]
-  );
+  const value = useMemo<NotificationContextType>(() => ({
+    notifications,
+    unreadCount,
+    loading,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAll,
+  }), [notifications, unreadCount, loading, markAsRead, markAllAsRead, deleteNotification, clearAll]);
 
   return (
     <NotificationContext.Provider value={value}>

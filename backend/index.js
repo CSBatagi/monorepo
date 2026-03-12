@@ -179,6 +179,8 @@ if (!TEST_MODE) {
 const { generateAll, generateAggregates, clearHistoricalCache } = require('./statsGenerator');
 const notificationScheduler = require('./notificationScheduler');
 const liveRoutes = require('./liveRoutes');
+const notificationInboxRoutes = require('./notificationInboxRoutes');
+const notificationInboxStore = require('./notificationInboxStore');
 
 // --- Per-IP rate limiting ---
 // Simple in-memory rate limiter to prevent abuse. No external dependencies needed.
@@ -464,7 +466,9 @@ app.get('/stats/diagnostics', async (req, res) => {
 // GET endpoints are open (polling); POST endpoints are protected by auth middleware above.
 if (pool) {
   liveRoutes.setup(pool);
+  notificationInboxStore.setup(pool);
   app.use('/live', liveRoutes.router);
+  app.use('/live/notifications/inbox', notificationInboxRoutes.router);
 }
 
 // POST  endpoint to store a match json and stores in the memory until the GET end point is called
@@ -562,6 +566,9 @@ if (!TEST_MODE) {
       `INSERT INTO team_picker (id) VALUES (1) ON CONFLICT DO NOTHING`,
       `CREATE TABLE IF NOT EXISTS live_version (key TEXT PRIMARY KEY, version BIGINT NOT NULL DEFAULT 0)`,
       `INSERT INTO live_version (key, version) VALUES ('attendance', 0), ('team_picker', 0) ON CONFLICT DO NOTHING`,
+      `CREATE TABLE IF NOT EXISTS notification_inbox (id TEXT PRIMARY KEY, user_uid TEXT NOT NULL, topic TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, data JSONB, read BOOLEAN NOT NULL DEFAULT FALSE, created_at BIGINT NOT NULL, event_id TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+      `CREATE INDEX IF NOT EXISTS notification_inbox_user_created_idx ON notification_inbox (user_uid, created_at DESC)`,
+      `CREATE TABLE IF NOT EXISTS notification_inbox_version (user_uid TEXT PRIMARY KEY, version BIGINT NOT NULL DEFAULT 0, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
     ];
     for (const sql of migrations) {
       try { await pool.query(sql); } catch (e) { console.warn('[migration]', e.message); }

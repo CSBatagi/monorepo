@@ -111,12 +111,13 @@ Rate limiting is bypassed for `/live/*` routes (high-frequency polling by design
 - `admins` table
 - Migrate BatakAllStarsClient, SuperKupaBracket, AdminStatsButton
 
-## Phase 4: Notifications (P2)
+## Phase 4: Notifications (P2) - IN PROGRESS
 
 - Keep FCM for push delivery (no alternative)
-- Move preferences, inbox, subscriptions, events to PostgreSQL
-- Backend scheduler reads from PostgreSQL instead of RTDB
-- Only firebase-admin Messaging remains
+- Inbox storage/read state moved to PostgreSQL
+- Preferences, subscriptions, and event dedup are still in Firebase RTDB
+- Backend scheduler reads attendance count from PostgreSQL
+- firebase-admin remains for Auth verification, RTDB settings/event nodes, and FCM delivery
 
 ## Remaining Firebase Dependencies
 
@@ -126,7 +127,6 @@ Rate limiting is bypassed for `/live/*` routes (high-frequency polling by design
 |------|-----------------|---------|
 | `contexts/AuthContext.tsx` | Auth (client SDK) | Login/signup (email, Google OAuth), `onIdTokenChanged` syncs to session cookie |
 | `contexts/SessionContext.tsx` | Auth (dynamic `signOut` import) | Clears Firebase auth state on logout |
-| `contexts/NotificationContext.tsx` | RTDB (`onValue`, `update`, `remove`) | Real-time notification inbox: `notifications/inbox/{uid}` |
 | `components/GecenInMVPsiClient.tsx` | RTDB (`onValue`, `set`, `remove`) + Auth (`getIdToken`) | MVP voting: `mvpVotes/byDate`, `mvpVotes/lockedByDate` |
 | `components/AdminStatsButton.tsx` | RTDB (`get`) + Auth (`getIdToken`) | Admin check: `admins/{uid}`, stats regeneration |
 | `app/batak-allstars/BatakAllStarsClient.tsx` | RTDB (`onValue`, `set`) | Kaptanlik state: `kaptanlikState` |
@@ -139,7 +139,7 @@ Rate limiting is bypassed for `/live/*` routes (high-frequency polling by design
 
 | File | Firebase Feature | Purpose |
 |------|-----------------|---------|
-| `lib/serverNotifications.ts` | Admin RTDB + Messaging | Dispatch FCM messages, persist to inbox, event dedup |
+| `lib/serverNotifications.ts` | Admin RTDB + Messaging | Dispatch FCM messages, persist inbox rows to PostgreSQL, RTDB event dedup |
 | `lib/notificationScheduler.ts` | Admin RTDB | Reads `attendanceState` for timed notifications |
 | `api/notifications/emit/route.ts` | Admin Auth + RTDB | `verifyIdToken` fallback (for gecenin-mvpsi), `isMvpDateLocked` |
 | `api/admin/notifications/send/route.ts` | Admin Auth + RTDB | Admin broadcast: verifies token + checks `admins/{uid}` |

@@ -109,8 +109,8 @@ async function resolveRecipients(topic: NotificationTopic): Promise<ResolvedReci
 }
 
 /**
- * Persist a notification to each recipient's in-app inbox in RTDB.
- * Path: notifications/inbox/{uid}/{pushId}
+ * Persist a notification to each recipient's in-app inbox in PostgreSQL
+ * through the backend's inbox store.
  */
 async function persistToInbox(params: {
   recipientUids: string[];
@@ -122,26 +122,29 @@ async function persistToInbox(params: {
 }): Promise<void> {
   if (params.recipientUids.length === 0) return;
 
-  const database = adminDb();
-  const now = Date.now();
-  const updates: Record<string, unknown> = {};
-
-  for (const uid of params.recipientUids) {
-    const pushKey = database.ref(`notifications/inbox/${uid}`).push().key;
-    if (!pushKey) continue;
-    updates[`notifications/inbox/${uid}/${pushKey}`] = {
-      topic: params.topic,
-      title: params.title,
-      body: params.body,
-      data: params.data ? toStringMap(params.data) : null,
-      read: false,
-      createdAt: now,
-      eventId: params.eventId || null,
-    };
-  }
-
   try {
-    await database.ref().update(updates);
+    const backendBase = process.env.BACKEND_INTERNAL_URL || "http://backend:3000";
+    const authToken = process.env.AUTH_TOKEN || process.env.MATCHMAKING_TOKEN || "";
+    const response = await fetch(`${backendBase}/live/notifications/inbox/persist`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
+      cache: "no-store",
+      body: JSON.stringify({
+        recipientUids: params.recipientUids,
+        topic: params.topic,
+        title: params.title,
+        body: params.body,
+        data: params.data ? toStringMap(params.data) : null,
+        eventId: params.eventId || null,
+        createdAt: Date.now(),
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
   } catch (err) {
     console.error("[serverNotifications] persistToInbox failed:", err);
   }
