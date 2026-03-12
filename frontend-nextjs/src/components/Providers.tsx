@@ -7,6 +7,7 @@ import Layout from "@/components/Layout";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { SessionProvider } from "@/contexts/SessionContext";
 import AdminStatsButton from "@/components/AdminStatsButton";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 
 /**
  * Code-split: FirebaseProviders (and its firebase SDK deps) are only downloaded
@@ -45,14 +46,16 @@ export default function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
       <SessionProvider>
-        <Layout>
-          {firebase ? (
-            <FirebaseProviders>{content}</FirebaseProviders>
-          ) : (
-            content
-          )}
-          <AdminStatsButton />
-        </Layout>
+        <NotificationProvider>
+          <Layout>
+            {firebase ? (
+              <FirebaseProviders>{content}</FirebaseProviders>
+            ) : (
+              content
+            )}
+            <AdminStatsButton />
+          </Layout>
+        </NotificationProvider>
       </SessionProvider>
     </ThemeProvider>
   );

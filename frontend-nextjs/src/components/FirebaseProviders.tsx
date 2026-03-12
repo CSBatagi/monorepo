@@ -2,7 +2,6 @@
 
 import React, { ReactNode } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { NotificationProvider } from "@/contexts/NotificationContext";
 import NotificationForegroundHandler from "@/components/NotificationForegroundHandler";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 
@@ -18,11 +17,9 @@ import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 export default function FirebaseProviders({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
-      <NotificationProvider>
-        <EmailVerificationBanner />
-        {children}
-        <NotificationForegroundHandler />
-      </NotificationProvider>
+      <EmailVerificationBanner />
+      {children}
+      <NotificationForegroundHandler />
     </AuthProvider>
   );
 }

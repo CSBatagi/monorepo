@@ -137,8 +137,32 @@ export default function SonMacClient({
   dates: string[];
   seasonStarts: string[];
 }) {
-  const [data] = useState<Record<string, any>>(initialData);
-  const [dates] = useState<string[]>(initialDates);
+  const [data, setData] = useState<Record<string, any>>(initialData);
+  const [dates, setDates] = useState<string[]>(initialDates);
+
+  // Client-side refresh: fetch latest data on mount
+  React.useEffect(() => {
+    const lastKnownTs = typeof window !== "undefined" ? localStorage.getItem("stats_last_ts") : null;
+    const cacheBust = Date.now();
+    fetch(
+      `/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : "?"}_cb=${cacheBust}`,
+      { cache: "no-store", headers: { "Cache-Control": "no-store" } }
+    )
+      .then((r) => r.json())
+      .then((j) => {
+        const incoming = j?.sonmac_by_date_all || j?.sonmac_by_date;
+        if (j.updated && incoming && typeof incoming === "object" && Object.keys(incoming).length > 0) {
+          setData(incoming);
+          const newDates = Object.keys(incoming).sort((a, b) => b.localeCompare(a));
+          setDates(newDates);
+        }
+        if (j.serverTimestamp) {
+          localStorage.setItem("stats_last_ts", j.serverTimestamp);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const seasonOptions = useMemo(() => buildSeasonWindowOptions(seasonStarts || [], dates), [seasonStarts, dates]);
   const [selectedSeasonId, setSelectedSeasonId] = useState(seasonOptions[0]?.id || "all_time");
   const selectedSeason = useMemo(
@@ -150,8 +174,6 @@ export default function SonMacClient({
   const maps = data[selectedDate]?.maps || {};
   const mapNames = Object.keys(maps);
   const [selectedMap, setSelectedMap] = useState(mapNames[0] || "");
-
-  // Client no longer triggers refresh; server layout ensures up-to-date data per request.
 
   React.useEffect(() => {
     if (!seasonOptions.some((s) => s.id === selectedSeasonId)) {
