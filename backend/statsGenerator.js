@@ -53,6 +53,64 @@ function normalizedName(steamId, fallbackName) {
 function q(s){return s}
 const ALL_TIME_START = '1970-01-01';
 
+// CS Demo Manager stores date and map_name on the demos table, not matches.
+// Rewrite SQL so every reference to matches.date / m.date / matches.map_name / m.map_name
+// pulls the value from demos (joined via checksum) instead.
+function rewriteMatchDateToDemos(sql) {
+  let s = sql;
+
+  // CS Demo Manager stores date and map_name on demos, not matches.
+  // Step 1: Rewrite column references
+  s = s.replace(/\bmatches\.date\b/g, 'demos.date');
+  s = s.replace(/\bmatches\.map_name\b/g, 'demos.map_name');
+  s = s.replace(/\bm\.date\b/g, 'dm.date');
+  s = s.replace(/\bm\.map_name\b/g, 'dm.map_name');
+
+  // Bare "date" refs on matches table (no table prefix)
+  s = s.replace(/SELECT DISTINCT date::date AS match_date, ROW_NUMBER\(\) OVER \(ORDER BY date::date\) AS rn FROM matches/g,
+    'SELECT DISTINCT demos.date::date AS match_date, ROW_NUMBER() OVER (ORDER BY demos.date::date) AS rn FROM matches INNER JOIN demos ON demos.checksum = matches.checksum');
+  s = s.replace(/SELECT DISTINCT date::date AS match_date FROM matches/g,
+    'SELECT DISTINCT demos.date::date AS match_date FROM matches INNER JOIN demos ON demos.checksum = matches.checksum');
+  s = s.replace(/FROM matches WHERE date::/g, 'FROM matches INNER JOIN demos ON demos.checksum = matches.checksum WHERE demos.date::');
+
+  // Step 2: Add JOIN demos for unaliased matches (FROM matches / JOIN matches ON ...)
+  // Use negative lookahead to avoid double-joining
+  s = s.replace(
+    /INNER JOIN matches ON (\w+)\.match_checksum = matches\.checksum(?!\s*INNER JOIN demos)/g,
+    'INNER JOIN matches ON $1.match_checksum = matches.checksum INNER JOIN demos ON demos.checksum = matches.checksum'
+  );
+
+  // Step 3: Add JOIN demos for aliased matches (JOIN matches m ON ...)
+  s = s.replace(
+    /(INNER )?JOIN matches m ON (\w+)\.match_checksum = m\.checksum(?!\s*INNER JOIN demos)/g,
+    '$1JOIN matches m ON $2.match_checksum = m.checksum INNER JOIN demos dm ON dm.checksum = m.checksum'
+  );
+
+  // Step 4: "FROM matches m WHERE" → add aliased demos join
+  s = s.replace(
+    /FROM matches m(?!\s*INNER JOIN demos)\s+WHERE/g,
+    'FROM matches m INNER JOIN demos dm ON dm.checksum = m.checksum WHERE'
+  );
+
+  // Step 5: Catch-all for any remaining "FROM matches" not followed by JOIN demos.
+  // This handles: FROM matches), FROM matches ,, FROM matches ORDER, FROM matches\s), end of string
+  // We loop because a single pass may miss some.
+  for (let i = 0; i < 3; i++) {
+    s = s.replace(
+      /FROM matches(?!\s+m\b)(?!\s*INNER JOIN demos)(\s*[),\s]|$)/g,
+      'FROM matches INNER JOIN demos ON demos.checksum = matches.checksum$1'
+    );
+  }
+
+  // Clean up double demos joins
+  s = s.replace(/INNER JOIN demos ON demos\.checksum = matches\.checksum INNER JOIN demos ON demos\.checksum = matches\.checksum/g,
+    'INNER JOIN demos ON demos.checksum = matches.checksum');
+  s = s.replace(/INNER JOIN demos dm ON dm\.checksum = m\.checksum INNER JOIN demos dm ON dm\.checksum = m\.checksum/g,
+    'INNER JOIN demos dm ON dm.checksum = m.checksum');
+
+  return s;
+}
+
 function normalizeIsoDate(value) {
   if (typeof value !== 'string') return null;
   const dateOnly = value.split('T')[0]?.trim();
@@ -99,10 +157,10 @@ function buildSeasonPeriods(seasonStarts) {
 function buildSeasonAvgRangeQuery(startDate, endDate) {
   const startExpr = startDate
     ? `'${startDate}'::date`
-    : `(SELECT COALESCE(MIN(matches.date::date), '${ALL_TIME_START}'::date) FROM matches)`;
+    : `(SELECT COALESCE(MIN(demos.date::date), '${ALL_TIME_START}'::date) FROM demos)`;
   const endExpr = endDate
     ? `'${endDate}'::date`
-    : `(SELECT COALESCE(MAX(matches.date::date), CURRENT_DATE) FROM matches)`;
+    : `(SELECT COALESCE(MAX(demos.date::date), CURRENT_DATE) FROM demos)`;
 
   return q(`
     WITH season_window AS (
@@ -137,7 +195,8 @@ function buildSeasonAvgRangeQuery(startDate, endDate) {
         ROUND((COUNT(CASE WHEN matches.winner_name = p1.team_name THEN 1 END)::numeric / COUNT(*) * 100),2) AS win_rate_percentage
       FROM players p1
       INNER JOIN matches ON p1.match_checksum = matches.checksum
-      WHERE matches.date::date BETWEEN (SELECT season_start FROM season_window) AND (SELECT season_end FROM season_window)
+      INNER JOIN demos ON demos.checksum = matches.checksum
+      WHERE demos.date::date BETWEEN (SELECT season_start FROM season_window) AND (SELECT season_end FROM season_window)
       GROUP BY p1.steam_id
     ),
     clutch_agg AS (
@@ -147,7 +206,8 @@ function buildSeasonAvgRangeQuery(startDate, endDate) {
         COUNT(CASE WHEN c.won THEN 1 END)::numeric AS total_clutches_won
       FROM clutches c
       INNER JOIN matches m ON c.match_checksum = m.checksum
-      WHERE m.date::date BETWEEN (SELECT season_start FROM season_window) AND (SELECT season_end FROM season_window)
+      INNER JOIN demos dm ON dm.checksum = m.checksum
+      WHERE dm.date::date BETWEEN (SELECT season_start FROM season_window) AND (SELECT season_end FROM season_window)
       GROUP BY c.clutcher_steam_id
     )
     SELECT
@@ -334,8 +394,8 @@ function applySeasonEndBounds(query, seasonEnd) {
   const boundedEndExpr = `'${seasonEnd}'::date`;
   return query
     .split('(SELECT latest_match_date FROM match_date_info)').join(boundedEndExpr)
-    .split('WHERE matches.date::date >= (SELECT seasonstart FROM season_start_info)').join(`WHERE matches.date::date >= (SELECT seasonstart FROM season_start_info) AND matches.date::date <= ${boundedEndExpr}`)
-    .split('WHERE m.date::date >= (SELECT seasonstart FROM season_start_info)').join(`WHERE m.date::date >= (SELECT seasonstart FROM season_start_info) AND m.date::date <= ${boundedEndExpr}`);
+    .split('WHERE demos.date::date >= (SELECT seasonstart FROM season_start_info)').join(`WHERE demos.date::date >= (SELECT seasonstart FROM season_start_info) AND demos.date::date <= ${boundedEndExpr}`)
+    .split('WHERE dm.date::date >= (SELECT seasonstart FROM season_start_info)').join(`WHERE dm.date::date >= (SELECT seasonstart FROM season_start_info) AND dm.date::date <= ${boundedEndExpr}`);
 }
 
 // Build queries per invocation so updated seasonStart is reflected.
@@ -360,9 +420,14 @@ function buildQueries(seasonStart, seasonEnd = null){
     playerWallbangCollateral: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), wallbangs AS ( SELECT k.killer_steam_id AS steam_id, COUNT(*) AS wallbang_kills FROM kills k INNER JOIN season_matches ON k.match_checksum = season_matches.checksum WHERE k.killer_steam_id IS NOT NULL AND k.penetrated_objects > 0 GROUP BY k.killer_steam_id ), collaterals AS ( SELECT k.killer_steam_id AS steam_id, SUM(k.kill_count - 1) AS collateral_kills FROM ( SELECT killer_steam_id, match_checksum, round_number, tick, COUNT(*) AS kill_count FROM kills k INNER JOIN season_matches ON k.match_checksum = season_matches.checksum WHERE k.killer_steam_id IS NOT NULL GROUP BY killer_steam_id, match_checksum, round_number, tick HAVING COUNT(*) > 1 ) k GROUP BY k.killer_steam_id ) SELECT COALESCE(w.steam_id, c.steam_id) AS steam_id, COALESCE(w.wallbang_kills, 0) AS wallbang_kills, COALESCE(c.collateral_kills, 0) AS collateral_kills FROM wallbangs w FULL OUTER JOIN collaterals c ON w.steam_id = c.steam_id`),
     playerClutches: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ) SELECT c.clutcher_steam_id AS steam_id, c.opponent_count, COUNT(*) AS total, COUNT(*) FILTER (WHERE c.won) AS won, COUNT(*) FILTER (WHERE NOT c.won) AS lost, AVG(c.clutcher_kill_count) AS avg_kills, COUNT(*) FILTER (WHERE c.has_clutcher_survived AND NOT c.won) AS saved FROM clutches c INNER JOIN season_matches ON c.match_checksum = season_matches.checksum GROUP BY c.clutcher_steam_id, c.opponent_count`)
   };
-  if (!seasonEnd) return queries;
-  const bounded = {};
+  // Rewrite all queries to use demos.date/demos.map_name instead of matches.date/matches.map_name
+  const rewritten = {};
   for (const [key, value] of Object.entries(queries)) {
+    rewritten[key] = rewriteMatchDateToDemos(value);
+  }
+  if (!seasonEnd) return rewritten;
+  const bounded = {};
+  for (const [key, value] of Object.entries(rewritten)) {
     bounded[key] = applySeasonEndBounds(value, seasonEnd);
   }
   return bounded;
