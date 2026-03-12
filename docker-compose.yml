@@ -53,6 +53,7 @@ services:
       SEASON_START_FILE: /app/config/season_start.json
       PLAYERS_FILE: /app/players.json
       NODE_OPTIONS: "--max-old-space-size=128"
+      FIREBASE_DATABASE_URL: "https://csbatagirealtimedb-default-rtdb.europe-west1.firebasedatabase.app"
     env_file:
       - path: .backend_secrets
         required: true
