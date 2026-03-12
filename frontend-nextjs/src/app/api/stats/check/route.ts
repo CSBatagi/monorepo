@@ -39,6 +39,17 @@ async function readPersistedTimestamp(runtimeDir: string): Promise<string | null
   }
 }
 
+async function hasRuntimeStatFiles(runtimeDir: string): Promise<boolean> {
+  for (const base of STAT_FILES) {
+    try {
+      await fs.stat(path.join(runtimeDir, base));
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 export async function GET(req: NextRequest) {
   // Return cached response if within cooldown window — prevents backend hammering
   const now = Date.now();
@@ -55,7 +66,8 @@ export async function GET(req: NextRequest) {
   const clientTs = url.searchParams.get('lastKnownTs');
   const debug = url.searchParams.get('debug') === '1';
   const persistedTs = await readPersistedTimestamp(runtimeDir);
-  const effectiveLastKnownTs = clientTs || persistedTs;
+  const hasRuntimeFiles = await hasRuntimeStatFiles(runtimeDir);
+  const effectiveLastKnownTs = clientTs || (hasRuntimeFiles ? persistedTs : null);
   try {
     const checkUrl = new URL('/stats/incremental', backendBase);
     if (effectiveLastKnownTs) checkUrl.searchParams.set('lastKnownTs', effectiveLastKnownTs);
