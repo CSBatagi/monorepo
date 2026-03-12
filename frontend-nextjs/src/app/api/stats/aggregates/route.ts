@@ -7,7 +7,7 @@ const AGG_FILES = ['season_avg.json','season_avg_periods.json','last10.json'];
 let lastAggregateTime = 0;
 let cachedAggregateResponse: string | null = null;
 let aggCacheTimer: ReturnType<typeof setTimeout> | null = null;
-const AGG_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes — reduced backend load on 1 GB VM
+const AGG_COOLDOWN_MS = 60 * 1000; // 60 seconds — backend call is cheap (in-memory check), keep cooldown short for data freshness
 
 export async function GET(req: NextRequest) {
   // Return cached response if within cooldown
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const url = `${backendBase}/stats/aggregates?_cb=${Date.now()}`;
   let data: any = null;
   const ac = new AbortController();
-  const timeout = setTimeout(() => ac.abort(), 5000);
+  const timeout = setTimeout(() => ac.abort(), 15000); // 15s — cold-start generation can take 10s+ on 1 GB VM
   try {
     const res = await fetch(url, { cache: 'no-store', headers:{'Cache-Control':'no-store'}, signal: ac.signal });
     if (!res.ok) {
@@ -37,9 +37,16 @@ export async function GET(req: NextRequest) {
   await fs.mkdir(runtimeDir,{recursive:true});
   for (const base of AGG_FILES) {
     const key = base.replace(/\.json$/, '');
-    if (data[key] !== undefined) {
-      try { await fs.writeFile(path.join(runtimeDir, base), JSON.stringify(data[key]), 'utf-8'); } catch {}
+    if (data[key] === undefined) continue;
+    const newVal = data[key];
+    const isEmpty = (Array.isArray(newVal) && newVal.length === 0) ||
+      (typeof newVal === 'object' && newVal !== null && !Array.isArray(newVal) && Object.keys(newVal).length === 0);
+    if (isEmpty) {
+      // Don't overwrite a valid file with empty data from a failed query
+      const target = path.join(runtimeDir, base);
+      try { await fs.stat(target); continue; } catch { /* file doesn't exist yet, write empty */ }
     }
+    try { await fs.writeFile(path.join(runtimeDir, base), JSON.stringify(data[key]), 'utf-8'); } catch {}
   }
   const responseBody = JSON.stringify(data);
   cachedAggregateResponse = responseBody;

@@ -24,7 +24,7 @@ const TIMESTAMP_FILE = 'last_timestamp.txt';
 // --- Response cache / cooldown (mirrors the aggregates route pattern) ---
 // Prevents thundering-herd: multiple client useEffect mounts all arrive within
 // milliseconds of each other; only the first one actually hits the backend.
-const CHECK_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes — stats change infrequently; saves memory on 1 GB VM
+const CHECK_COOLDOWN_MS = 90 * 1000; // 90 seconds — backend check is cheap (in-memory timestamp), keep short for data freshness
 let cachedCheckResponse: string | null = null;
 let checkCacheTimer: ReturnType<typeof setTimeout> | null = null;
 let lastCheckTime = 0;

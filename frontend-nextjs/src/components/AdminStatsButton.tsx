@@ -1,41 +1,30 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useSession } from '@/contexts/SessionContext';
 import { useState, useEffect } from 'react';
-import { ref, get } from 'firebase/database';
-import { db } from '@/lib/firebase';
 
 export default function AdminStatsButton() {
-  const { user } = useAuth();
+  const { user, ready } = useSession();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
 
-  // Check admin status from Firebase Realtime Database
+  // Check admin status via lightweight API (uses session cookie, no Firebase SDK needed)
   useEffect(() => {
-    async function checkAdminStatus() {
-      if (!user) {
-        setIsAdmin(false);
-        setCheckingAdmin(false);
-        return;
-      }
-
-      try {
-        // Check if user's UID is in /admins/{uid} node
-        const adminRef = ref(db, `admins/${user.uid}`);
-        const snapshot = await get(adminRef);
-        setIsAdmin(snapshot.exists() && snapshot.val() === true);
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-      } finally {
-        setCheckingAdmin(false);
-      }
+    if (!ready) return;
+    if (!user) {
+      setIsAdmin(false);
+      setCheckingAdmin(false);
+      return;
     }
 
-    checkAdminStatus();
-  }, [user]);
+    fetch('/api/admin/check')
+      .then(r => r.json())
+      .then(data => setIsAdmin(data.isAdmin === true))
+      .catch(() => setIsAdmin(false))
+      .finally(() => setCheckingAdmin(false));
+  }, [user, ready]);
 
   // Don't show anything while checking or if not admin
   if (checkingAdmin || !isAdmin) return null;
@@ -49,14 +38,8 @@ export default function AdminStatsButton() {
     setMessage('⏳ Veritabanından istatistikler çekiliyor...');
 
     try {
-      // Get Firebase ID token for server-side admin verification
-      const idToken = await user!.getIdToken();
       const response = await fetch('/api/admin/regenerate-stats', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
-        },
       });
 
       const data = await response.json();

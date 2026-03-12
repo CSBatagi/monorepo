@@ -33,8 +33,8 @@ if (!TEST_MODE) {
     database: process.env.DB_DATABASE,
     password: process.env.DB_PASSWORD,
     port: 5432,
-    max: 5,                        // Reduced for 1 GB VM — queries run in smaller batches now
-    idleTimeoutMillis: 15000,      // Close idle connections after 15s to free memory sooner
+    max: 10,                       // Needs headroom for staggered stats batches (4) + aggregates + live routes + scheduler
+    idleTimeoutMillis: 30000,      // Close idle connections after 30s
     connectionTimeoutMillis: 30000 // Allow time for connections when parallel queries contend
   });
 }
@@ -198,7 +198,9 @@ function touchDataCacheTimer() {
   if (dataCacheTimer) clearTimeout(dataCacheTimer);
   dataCacheTimer = setTimeout(() => {
     lastGeneratedData = null;
-    lastAggregateData = null;
+    // NOTE: Do NOT clear lastAggregateData here. It's small (~50-100 KB) and
+    // needed by the /stats/aggregates endpoint to keep serving season_avg + last10
+    // data between regeneration cycles. Clearing it caused pages to go blank.
     dataCacheTimer = null;
   }, DATA_CACHE_TTL_MS);
 }
@@ -266,10 +268,10 @@ app.get('/stats/incremental', async (req, res) => {
       serverDate.getTime() !== new Date(lastGeneratedServerTimestamp).getTime();
     let payload = { updated: false, serverTimestamp: serverDate.toISOString() };
     if (needs) {
-      // Regenerate only when source timestamp actually changed (or on cold start).
-      // If source hasn't changed but in-memory cache expired (5-min TTL), skip regeneration —
-      // the frontend already has the data persisted on disk. Avoids expensive SQL on 1 GB VM.
-      if (sourceChanged) {
+      // Regenerate when source actually changed, OR on cold start when we have no cached data.
+      // The latter covers container restarts where lastGeneratedServerTimestamp was set but
+      // dataCacheTimer already cleared lastGeneratedData — without this, pages go blank.
+      if (sourceChanged || !lastGeneratedData) {
         if (!statsGenerationPromise) {
           statsGenerationPromise = runStatsUpdateScript().finally(()=>{ statsGenerationPromise=null; });
         }
@@ -480,17 +482,24 @@ if (!TEST_MODE) {
     console.log('[migration] schema migrations applied');
   }
 
-  // Lightweight startup: run migrations and load config, but defer heavy generation
-  // to the first request. This keeps memory low during boot on 1 GB VMs.
+  // Run migrations, load config, then generate aggregates in the background.
+  // Generating aggregates on startup ensures season_avg + last10 data is available
+  // immediately instead of waiting for the first client request to trigger it.
   async function warmStartup() {
     try {
       await runMigrations();
       cachedSeasonConfig = resolveSeasonConfig();
       cachedSeasonStart = cachedSeasonConfig.seasonStart;
       cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
-      console.log('[startup] migrations applied, config loaded. Heavy generation deferred to first request.');
+      console.log('[startup] migrations applied, config loaded. Generating initial aggregates...');
+      const agg = await generateAggregates(pool, { seasonStart: cachedSeasonStart, seasonStarts: cachedSeasonStarts });
+      lastAggregateData = agg;
+      const ts = cachedLastDataTimestamp;
+      if (ts) lastAggregateServerTimestamp = new Date(ts);
+      touchDataCacheTimer();
+      console.log('[startup] initial aggregates generation complete');
     } catch (e) {
-      console.warn('[startup] warmStartup failed', e.message);
+      console.warn('[startup] warmStartup failed (will retry on first request)', e.message);
     }
   }
   warmStartup();

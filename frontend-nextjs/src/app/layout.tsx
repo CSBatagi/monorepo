@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 
 let lastServerKnownTs: string | null = null; // per server runtime
 let lastRefreshTime = 0; // epoch ms of last backend call
-const REFRESH_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes - saves CPU/memory on 1 GB VM; stats rarely change faster
+const REFRESH_COOLDOWN_MS = 90 * 1000; // 90 seconds — backend check is cheap (in-memory timestamp), keep short for data freshness
 const REFRESH_TIMEOUT_MS = 30000; // 30s — runs post-response via after(), so longer timeout is safe; stats generation on 1 GB VM can take 10-20s
 let refreshInFlight: Promise<void> | null = null;
 const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');

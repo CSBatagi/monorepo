@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/authSession';
 
 // Stat files that need to be written
 const STAT_FILES = [
@@ -22,24 +23,33 @@ const STAT_FILES = [
 
 export async function POST(req: NextRequest) {
   try {
-    // --- Auth: verify Firebase ID token + admin role in RTDB ---
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.warn('[regenerate-stats] Rejected: no auth header');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const idToken = authHeader.slice('Bearer '.length).trim();
-    if (!idToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // --- Auth: session cookie (preferred) or Firebase ID token (legacy) ---
+    let uid: string | null = null;
+
+    // Try session cookie first (works on all pages, no Firebase SDK needed)
+    const sessionCookie = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+    if (sessionCookie) {
+      const payload = verifySessionToken(sessionCookie);
+      if (payload?.uid) uid = payload.uid;
     }
 
-    let uid: string;
-    try {
-      const decoded = await adminAuth().verifyIdToken(idToken);
-      uid = decoded.uid;
-    } catch (verifyErr: any) {
-      console.warn('[regenerate-stats] Invalid Firebase token:', verifyErr.message);
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    // Fall back to Firebase ID token (legacy path)
+    if (!uid) {
+      const authHeader = req.headers.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        const idToken = authHeader.slice('Bearer '.length).trim();
+        try {
+          const decoded = await adminAuth().verifyIdToken(idToken);
+          uid = decoded.uid;
+        } catch (verifyErr: any) {
+          console.warn('[regenerate-stats] Invalid Firebase token:', verifyErr.message);
+        }
+      }
+    }
+
+    if (!uid) {
+      console.warn('[regenerate-stats] Rejected: no valid auth');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check admin status in Firebase RTDB

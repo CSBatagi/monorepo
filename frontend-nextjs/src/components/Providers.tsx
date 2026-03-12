@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import Layout from "@/components/Layout";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { SessionProvider } from "@/contexts/SessionContext";
+import AdminStatsButton from "@/components/AdminStatsButton";
 
 /**
  * Code-split: FirebaseProviders (and its firebase SDK deps) are only downloaded
@@ -50,6 +51,7 @@ export default function Providers({ children }: { children: ReactNode }) {
           ) : (
             content
           )}
+          <AdminStatsButton />
         </Layout>
       </SessionProvider>
     </ThemeProvider>

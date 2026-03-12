@@ -3,7 +3,6 @@
 import React, { ReactNode } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
-import AdminStatsButton from "@/components/AdminStatsButton";
 import NotificationForegroundHandler from "@/components/NotificationForegroundHandler";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 
@@ -12,6 +11,9 @@ import EmailVerificationBanner from "@/components/EmailVerificationBanner";
  *
  * This wrapper is dynamically imported (code-split) so that pages which don't
  * need Firebase (stats pages) never download the Firebase SDK (~200-400 KB).
+ *
+ * NOTE: AdminStatsButton was moved to Providers.tsx so it renders on ALL pages
+ * (it uses session auth, not Firebase Auth).
  */
 export default function FirebaseProviders({ children }: { children: ReactNode }) {
   return (
@@ -19,7 +21,6 @@ export default function FirebaseProviders({ children }: { children: ReactNode })
       <NotificationProvider>
         <EmailVerificationBanner />
         {children}
-        <AdminStatsButton />
         <NotificationForegroundHandler />
       </NotificationProvider>
     </AuthProvider>

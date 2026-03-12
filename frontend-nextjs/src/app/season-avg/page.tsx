@@ -10,7 +10,7 @@ export default async function SeasonAvgPage() {
   const aggregatesUrl = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/stats/aggregates?_cb=${Date.now()}`;
   try {
     const ac = new AbortController();
-    const timeout = setTimeout(() => ac.abort(), 2000);
+    const timeout = setTimeout(() => ac.abort(), 8000);
     const res = await fetch(aggregatesUrl, { cache: "no-store", signal: ac.signal });
     clearTimeout(timeout);
     if (res.ok) {

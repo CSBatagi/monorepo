@@ -8,7 +8,7 @@ export default async function Last10Page() {
   const aggregatesUrl = `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/stats/aggregates?_cb=${Date.now()}`;
   try {
     const ac = new AbortController();
-    const to = setTimeout(()=>ac.abort(), 2000);
+    const to = setTimeout(()=>ac.abort(), 8000);
     const res = await fetch(aggregatesUrl, { cache:'no-store', signal: ac.signal });
     clearTimeout(to);
     if (res.ok) {
