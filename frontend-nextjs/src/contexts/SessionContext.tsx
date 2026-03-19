@@ -8,6 +8,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 
 // Cookie name must match authSession.ts (can't import it here — it uses Node crypto)
 const SESSION_COOKIE = "csbatagi_session";
@@ -70,11 +71,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   // Start null to match SSR (document not available) — avoids hydration mismatch
   const [user, setUser] = useState<SessionUser | null>(null);
   const [ready, setReady] = useState(false);
+  const pathname = usePathname();
 
+  // Re-read the cookie on mount AND on every client-side navigation so the UI
+  // stays in sync with cookie changes (e.g. set after auto-login, cleared on logout).
   useEffect(() => {
     setUser(decodeCookie());
     setReady(true);
-  }, []);
+  }, [pathname]);
 
   const logout = useCallback(async () => {
     await fetch("/api/session/logout", { method: "POST" }).catch(() => {});

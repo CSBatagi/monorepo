@@ -258,6 +258,26 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
     return <div className="text-center py-10">Loading page data...</div>;
   }
 
+  if (!user) {
+    return (
+      <div className="text-center py-10">
+        <p className={`text-lg mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+          Katılım durumunu görmek için giriş yapmanız gerekiyor.
+        </p>
+        <a
+          href="/login?next=/attendance"
+          className={`inline-block px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+            isDark
+              ? 'bg-blue-600/80 hover:bg-blue-500 text-white border border-blue-500/30'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
+        >
+          Giriş Yap
+        </a>
+      </div>
+    );
+  }
+
   const getCombinedPlayerData = () => {
     const combined = players.map(p => ({
       ...p,

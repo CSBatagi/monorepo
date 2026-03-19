@@ -1,7 +1,10 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { SESSION_COOKIE_NAME } from "./src/lib/authSession";
+// Inlined to avoid pulling crypto.createHmac into the Edge Runtime bundle
+// (authSession.ts imports node:crypto which is unavailable in Edge Runtime).
+// Must match SESSION_COOKIE_NAME in src/lib/authSession.ts.
+const SESSION_COOKIE_NAME = "csbatagi_session";
 
 /**
  * Decode the JWT payload (without signature verification — Edge Runtime

@@ -189,7 +189,15 @@ export default function Header() {
               <div className="flex items-center space-x-2">
                 {user.picture && <Image src={user.picture} alt="User" width={28} height={28} className="rounded-full" />}
               </div>
-            ) : null}
+            ) : (
+              <button onClick={handleSignInClick} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                isDark
+                  ? 'bg-blue-600/80 hover:bg-blue-500 border border-blue-500/30'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}>
+                Giriş
+              </button>
+            )}
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu" className={`p-2 rounded-md transition-colors ${
               isDark ? 'hover:bg-dark-border' : 'hover:bg-gray-700'
             }`}>
