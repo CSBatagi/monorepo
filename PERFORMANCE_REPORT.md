@@ -39,12 +39,13 @@ Leaves ~490-600 MB headroom (including OS).
 
 ### 2. Backend Memory Reduction
 
-- **Connection pool**: reduced from 15 to 5 (`index.js`)
+- **Connection pool**: reduced from 15 to 10; idle timeout raised to 120s to keep connections alive between 60s polls (`index.js`)
 - **V8 heap**: capped at 128 MB via `NODE_OPTIONS`
 - **Query batching**: 11 parallel DB queries staggered into 3 batches of 3-4 (`statsGenerator.js`)
 - **Period processing**: changed from `Promise.all` to sequential loop
-- **Data cache TTL**: `lastGeneratedData` and `lastAggregateData` expire after 5 minutes
-- **Deferred startup**: no longer runs `generateAggregates` on boot
+- **In-memory stats cache**: `lastGeneratedData` (~4 MB) and `lastAggregateData` (~50-100 KB) kept permanently in memory — no TTL. Overwritten when DB timestamp changes; only null after a container restart.
+- **PG buffer keepalive**: 60s poller touches `live_version` table to keep attendance pages in PG buffer cache
+- Startup runs `generateAggregates` so aggregate data is available immediately
 - Docker memory limit: 256M
 
 ### 3. Frontend Memory Reduction

@@ -34,7 +34,7 @@ if (!TEST_MODE) {
     password: process.env.DB_PASSWORD,
     port: 5432,
     max: 10,                       // Needs headroom for staggered stats batches (4) + aggregates + live routes + scheduler
-    idleTimeoutMillis: 30000,      // Close idle connections after 30s
+    idleTimeoutMillis: 120000,     // Keep connections alive between 60s polls (was 30s — shorter than poll interval, so every poll created a new connection)
     connectionTimeoutMillis: 30000 // Allow time for connections when parallel queries contend
   });
 }
@@ -121,6 +121,12 @@ async function pollDataTimestamp() {
     } else {
       lastTimestampPollError = 'timestamp query returned no value';
       lastTimestampSource = 'poller-empty';
+    }
+    // Keep live_version + attendance table pages warm in PG buffer cache.
+    // Without this, after days of inactivity PG evicts these pages and the
+    // first /live/attendance request stalls waiting for disk I/O.
+    if (pool) {
+      pool.query(`SELECT version FROM live_version WHERE key = 'attendance'`).catch(() => {});
     }
   } catch (e) {
     lastTimestampPollError = e.message;
@@ -260,20 +266,7 @@ async function runStatsUpdateScript() {
 // Concurrency lock so only one generation runs at a time
 let statsGenerationPromise = null;
 let lastGeneratedServerTimestamp = null; // tracks last successful generation based on server data timestamp
-let lastGeneratedData = null; // cache of last generated datasets so we can resend when not updated (for volume backfill)
-let dataCacheTimer = null;
-const DATA_CACHE_TTL_MS = 5 * 60 * 1000; // Clear cached data after 5 min to free memory on 1 GB VM
-
-function touchDataCacheTimer() {
-  if (dataCacheTimer) clearTimeout(dataCacheTimer);
-  dataCacheTimer = setTimeout(() => {
-    lastGeneratedData = null;
-    // NOTE: Do NOT clear lastAggregateData here. It's small (~50-100 KB) and
-    // needed by the /stats/aggregates endpoint to keep serving season_avg + last10
-    // data between regeneration cycles. Clearing it caused pages to go blank.
-    dataCacheTimer = null;
-  }, DATA_CACHE_TTL_MS);
-}
+let lastGeneratedData = null; // cache of last generated datasets — kept in memory permanently (~4 MB, 3% of 128 MB heap)
 
 
 // Aggregates endpoint: recompute only when DB data has changed (or on cold start).
@@ -312,7 +305,6 @@ app.get('/stats/aggregates', async (req, res) => {
     const agg = await aggregateGenerationPromise;
     if (serverDate) lastAggregateServerTimestamp = serverDate;
     lastAggregateData = agg;
-    touchDataCacheTimer();
     res.set('Cache-Control','no-store');
     res.json({ updated: true, serverTimestamp: (serverDate || new Date()).toISOString(), ...agg });
   } catch (e) {
@@ -344,9 +336,8 @@ app.get('/stats/incremental', async (req, res) => {
       serverDate.getTime() !== new Date(lastGeneratedServerTimestamp).getTime();
     let payload = { updated: false, serverTimestamp: effectiveTimestamp.toISOString() };
     if (needs) {
-      // Regenerate when source actually changed, OR on cold start when we have no cached data.
-      // The latter covers container restarts where lastGeneratedServerTimestamp was set but
-      // dataCacheTimer already cleared lastGeneratedData — without this, pages go blank.
+      // Regenerate when source actually changed, OR on cold start when we have no cached data
+      // (e.g. after a container restart).
       if (sourceChanged || !lastGeneratedData) {
         if (!statsGenerationPromise) {
           statsGenerationPromise = runStatsUpdateScript().finally(()=>{ statsGenerationPromise=null; });
@@ -355,7 +346,6 @@ app.get('/stats/incremental', async (req, res) => {
           const result = await statsGenerationPromise;
           if (serverDate) lastGeneratedServerTimestamp = serverDate;
           lastGeneratedData = result.data;
-          touchDataCacheTimer();
           payload = { updated: true, serverTimestamp: effectiveTimestamp.toISOString(), ...result.data };
         } catch (e) {
           console.error('Incremental generation failed', e);
@@ -363,9 +353,6 @@ app.get('/stats/incremental', async (req, res) => {
         }
       } else if (lastGeneratedData) {
         payload = { updated: true, serverTimestamp: effectiveTimestamp.toISOString(), ...lastGeneratedData };
-      } else {
-        // Source unchanged but cache expired — frontend has data on disk, no need to regenerate
-        payload = { updated: false, serverTimestamp: effectiveTimestamp.toISOString() };
       }
     }
     res.set('Cache-Control','no-store');
@@ -591,7 +578,6 @@ if (!TEST_MODE) {
       lastAggregateData = agg;
       const ts = cachedLastDataTimestamp;
       if (ts) lastAggregateServerTimestamp = new Date(ts);
-      touchDataCacheTimer();
       console.log('[startup] initial aggregates generation complete');
     } catch (e) {
       console.warn('[startup] warmStartup failed (will retry on first request)', e.message);

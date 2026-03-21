@@ -72,7 +72,7 @@ Update all of the following together:
 The platform runs on a 1 GB RAM GCP VM. Key optimizations:
 
 - **PostgreSQL**: tuned to `shared_buffers=32MB`, `work_mem=2MB`, `max_connections=20` (Docker limit: 192M).
-- **Backend**: connection pool reduced to 5, V8 heap capped at 128 MB (Docker limit: 256M). Stats queries run in staggered batches of 3-4 instead of 11 parallel. Data cache expires after 5 minutes to free memory.
+- **Backend**: connection pool of 10 (idle timeout: 120s to survive between 60s polls), V8 heap capped at 128 MB (Docker limit: 256M). Stats queries run in staggered batches of 3-4 instead of 11 parallel. Stats cache (`lastGeneratedData` ~4 MB, `lastAggregateData` ~50-100 KB) kept permanently in memory — overwritten when DB data changes, only null on container restart.
 - **Frontend**: V8 heap capped at 160 MB (Docker limit: 256M). Session auth uses HMAC-SHA256 tokens (`authSession.ts`) instead of firebase-admin for the hot path. firebase-admin only loads lazily for the notification scheduler and admin routes.
 - **Caddy**: gzip/zstd compression enabled. Static assets (`/_next/static/*`, `/images/*`) get long-lived cache headers.
 - **Incremental refresh cooldown**: 5 minutes (layout.tsx). JSON files written without pretty-printing.
@@ -84,7 +84,7 @@ The platform runs on a 1 GB RAM GCP VM. Key optimizations:
   - `GET /stats/aggregates` — recomputes season_avg + last10 on demand
   - `POST /stats/force-regenerate` — admin-only, clears all caches and regenerates everything
   - `GET /stats/diagnostics` — returns cached dataset sizes and season config
-- Backend polls the DB timestamp every 60s in the background. Page loads never hit the DB directly.
+- Backend polls the DB timestamp every 60s in the background and touches `live_version` to keep attendance table pages in PG buffer cache. Page loads never hit the DB directly.
 - Historical (completed) season data is cached in memory and only recomputed on force-regenerate.
 
 ## Live State (Attendance + Team Picker)
