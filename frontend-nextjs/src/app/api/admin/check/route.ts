@@ -12,12 +12,12 @@ export async function GET(req: NextRequest) {
   }
 
   const payload = verifySessionToken(cookie);
-  if (!payload?.uid) {
+  if (!payload?.email) {
     return NextResponse.json({ isAdmin: false });
   }
 
   try {
-    const res = await fetch(`${BACKEND}/admin/check/${payload.uid}`, { cache: 'no-store' });
+    const res = await fetch(`${BACKEND}/admin/check/${encodeURIComponent(payload.email)}`, { cache: 'no-store' });
     const data = await res.json();
     return NextResponse.json({ isAdmin: !!data.isAdmin });
   } catch {
