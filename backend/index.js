@@ -449,13 +449,29 @@ app.get('/stats/diagnostics', async (req, res) => {
 // NOTE: Auth middleware for POST requests has been moved above (before route definitions)
 // to ensure ALL POST endpoints including /stats/force-regenerate are protected.
 
-// --- Live state routes (attendance + team picker) ---
+// --- Live state routes (attendance + team picker + MVP + batak) ---
 // GET endpoints are open (polling); POST endpoints are protected by auth middleware above.
 if (pool) {
   liveRoutes.setup(pool);
   notificationInboxStore.setup(pool);
   app.use('/live', liveRoutes.router);
   app.use('/live/notifications/inbox', notificationInboxRoutes.router);
+
+  // Admin check — lightweight GET, no auth middleware (only returns boolean)
+  app.get('/admin/check/:uid', async (req, res) => {
+    try {
+      const { uid } = req.params;
+      if (!uid) return res.json({ isAdmin: false });
+      const r = await pool.query(
+        `SELECT is_admin FROM admins WHERE uid = $1 AND is_admin = true`,
+        [uid]
+      );
+      res.json({ isAdmin: r.rows.length > 0 });
+    } catch (e) {
+      console.error('[admin/check]', e.message);
+      res.json({ isAdmin: false });
+    }
+  });
 }
 
 // POST  endpoint to store a match json and stores in the memory until the GET end point is called
@@ -552,13 +568,18 @@ if (!TEST_MODE) {
       `CREATE TABLE IF NOT EXISTS team_picker (id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1), team_a_players JSONB NOT NULL DEFAULT '{}', team_b_players JSONB NOT NULL DEFAULT '{}', team_a_name_mode TEXT NOT NULL DEFAULT 'generic', team_b_name_mode TEXT NOT NULL DEFAULT 'generic', team_a_captain TEXT NOT NULL DEFAULT '', team_b_captain TEXT NOT NULL DEFAULT '', team_a_kabile TEXT NOT NULL DEFAULT '', team_b_kabile TEXT NOT NULL DEFAULT '', maps JSONB NOT NULL DEFAULT '{}', overrides JSONB NOT NULL DEFAULT '{}', updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       `INSERT INTO team_picker (id) VALUES (1) ON CONFLICT DO NOTHING`,
       `CREATE TABLE IF NOT EXISTS live_version (key TEXT PRIMARY KEY, version BIGINT NOT NULL DEFAULT 0)`,
-      `INSERT INTO live_version (key, version) VALUES ('attendance', 0), ('team_picker', 0), ('mvp_votes', 0) ON CONFLICT DO NOTHING`,
+      `INSERT INTO live_version (key, version) VALUES ('attendance', 0), ('team_picker', 0), ('mvp_votes', 0), ('batak_captains', 0), ('batak_super_kupa', 0) ON CONFLICT DO NOTHING`,
       `CREATE TABLE IF NOT EXISTS notification_inbox (id TEXT PRIMARY KEY, user_uid TEXT NOT NULL, topic TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, data JSONB, read BOOLEAN NOT NULL DEFAULT FALSE, created_at BIGINT NOT NULL, event_id TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       `CREATE INDEX IF NOT EXISTS notification_inbox_user_created_idx ON notification_inbox (user_uid, created_at DESC)`,
       `CREATE TABLE IF NOT EXISTS notification_inbox_version (user_uid TEXT PRIMARY KEY, version BIGINT NOT NULL DEFAULT 0, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       // MVP voting tables — replaces Firebase RTDB mvpVotes/*
       `CREATE TABLE IF NOT EXISTS mvp_votes (date TEXT NOT NULL, voter_steam_id TEXT NOT NULL, voted_for_steam_id TEXT NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (date, voter_steam_id))`,
       `CREATE TABLE IF NOT EXISTS mvp_locks (date TEXT PRIMARY KEY, locked BOOLEAN NOT NULL DEFAULT TRUE, locked_by_uid TEXT, locked_by_name TEXT, locked_at BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+      // Batak AllStars tables — replaces Firebase RTDB batakAllStars/*
+      `CREATE TABLE IF NOT EXISTS batak_captains (date TEXT NOT NULL, team_key TEXT NOT NULL, steam_id TEXT NOT NULL, steam_name TEXT, team_name TEXT, set_by_uid TEXT, set_by_name TEXT, set_at BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (date, team_key))`,
+      `CREATE TABLE IF NOT EXISTS batak_super_kupa (slot TEXT PRIMARY KEY, player1_steam_id TEXT NOT NULL, player1_name TEXT NOT NULL, player1_league TEXT NOT NULL, player2_steam_id TEXT NOT NULL, player2_name TEXT NOT NULL, player2_league TEXT NOT NULL, winner_steam_id TEXT, score TEXT, date TEXT, set_by_uid TEXT, set_by_name TEXT, set_at BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+      // Admin table — replaces Firebase RTDB admins/{uid}
+      `CREATE TABLE IF NOT EXISTS admins (uid TEXT PRIMARY KEY, is_admin BOOLEAN NOT NULL DEFAULT TRUE, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
     ];
     for (const sql of migrations) {
       try { await pool.query(sql); } catch (e) { console.warn('[migration]', e.message); }

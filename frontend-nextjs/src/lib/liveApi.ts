@@ -75,3 +75,46 @@ export function submitMvpVote(date: string, voterSteamId: string, votedForSteamI
 export function toggleMvpLock(date: string, lock: boolean, lockedByUid?: string, lockedByName?: string) {
   return livePost('mvp-votes', { action: 'lock', date, lock, lockedByUid, lockedByName });
 }
+
+// --- Batak Captains ---
+
+export function setCaptain(fields: {
+  date: string;
+  teamKey: string;
+  steamId: string;
+  steamName?: string;
+  teamName?: string;
+  setByUid?: string;
+  setByName?: string;
+  setAt?: number;
+}) {
+  return livePost('batak-captains', { action: 'set', ...fields });
+}
+
+// --- Super Kupa ---
+
+export function setSuperKupaMatch(fields: {
+  slot: string;
+  player1SteamId: string;
+  player1Name: string;
+  player1League: string;
+  player2SteamId: string;
+  player2Name: string;
+  player2League: string;
+  winnerSteamId: string;
+  score: string;
+  date?: string;
+  setByUid?: string;
+  setByName?: string;
+  setAt?: number;
+}) {
+  return livePost('batak-super-kupa', { action: 'set', ...fields });
+}
+
+export function deleteSuperKupaMatch(slot: string) {
+  return livePost('batak-super-kupa', { action: 'delete', slot });
+}
+
+export function resetSuperKupa() {
+  return livePost('batak-super-kupa', { action: 'reset' });
+}

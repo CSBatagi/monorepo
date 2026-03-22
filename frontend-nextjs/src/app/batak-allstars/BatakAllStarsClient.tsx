@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { db } from '@/lib/firebase';
-import { off, onValue, ref, set } from 'firebase/database';
+import { useSession } from '@/contexts/SessionContext';
+import { useLivePolling } from '@/lib/useLivePolling';
+import { setCaptain } from '@/lib/liveApi';
 import { ArrowUp, ArrowDown, Circle, Sparkles, CheckCircle, BarChart3, Trophy } from 'lucide-react';
 
 import {
@@ -25,8 +25,6 @@ import {
 import SuperKupaBracket from './SuperKupaBracket';
 
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || 'osirikler';
-
-const KAPTANLIK_DB_PATH = 'kaptanlikState';
 
 const SEASON_LENGTH = 15; // Number of matches in a season
 
@@ -218,7 +216,7 @@ export default function BatakAllStarsClient({
   players: unknown;
   config: AllStarsConfig | null;
 }) {
-  const { user } = useAuth();
+  const { user } = useSession();
 
   const effectiveConfig: AllStarsConfig = useMemo(() => {
     return (
@@ -243,8 +241,24 @@ export default function BatakAllStarsClient({
   }, [nightAvg, seasonStart]);
   const [selectedDate, setSelectedDate] = useState<string>('');
 
-  const [captainsByDate, setCaptainsByDate] = useState<CaptainsByDateSnapshot | null>(null);
-  const [kaptanlikVolunteers, setKaptanlikVolunteers] = useState<Record<string, KaptanlikVolunteer>>({});
+  const { data: captainsData, refetch: refetchCaptains } = useLivePolling<{
+    captainsByDate: CaptainsByDateSnapshot;
+  }>({
+    url: '/api/live/batak-captains',
+    intervalMs: 5000,
+    initialData: { captainsByDate: {} },
+  });
+  const captainsByDate = captainsData.captainsByDate || null;
+
+  // Kaptanlik volunteers from attendance data (replaces broken Firebase kaptanlikState read)
+  const { data: attendanceData } = useLivePolling<{
+    kaptanlik?: Record<string, KaptanlikVolunteer>;
+  }>({
+    url: '/api/live/attendance',
+    intervalMs: 5000,
+    initialData: {},
+  });
+  const kaptanlikVolunteers = attendanceData.kaptanlik || {};
 
   const nightRows = useMemo(() => {
     const rows = (selectedDate && nightAvg?.[selectedDate]) ? nightAvg[selectedDate] : [];
@@ -280,38 +294,6 @@ export default function BatakAllStarsClient({
   
   // Selected progress bar index (null = show all/latest, 1-based number = show standings up to that match)
   const [selectedProgressIndex, setSelectedProgressIndex] = useState<number | null>(null);
-
-  // Load all captains once for standings/tokens.
-  useEffect(() => {
-    const baseRef = ref(db, 'batakAllStars/captainsByDate');
-    const unsub = onValue(
-      baseRef,
-      (snap) => {
-        const val = (snap.val() || null) as CaptainsByDateSnapshot | null;
-        setCaptainsByDate(val);
-      },
-      () => {
-        // ignore
-      }
-    );
-    return () => off(baseRef, 'value', unsub);
-  }, []);
-
-  // Load kaptanlik volunteers from attendance page
-  useEffect(() => {
-    const kaptanlikRef = ref(db, KAPTANLIK_DB_PATH);
-    const unsub = onValue(
-      kaptanlikRef,
-      (snap) => {
-        const val = (snap.val() || {}) as Record<string, KaptanlikVolunteer>;
-        setKaptanlikVolunteers(val);
-      },
-      () => {
-        // ignore
-      }
-    );
-    return () => off(kaptanlikRef, 'value', unsub);
-  }, []);
 
   const standingsData = useMemo(() => {
     if (!effectiveConfig) return null;
@@ -465,45 +447,22 @@ export default function BatakAllStarsClient({
     }
   }, [availableDates, seasonStart, selectedDate]);
 
-  // Load saved captain for the selected date
+  // Derive saved captains from global captainsByDate for the selected date
   useEffect(() => {
     setMessage(null);
-    setSavedCaptains({ team1: null, team2: null });
     setCaptainSteamIds({ team1: '', team2: '' });
 
-    if (!selectedDate) return;
+    if (!selectedDate || !captainsByDate) {
+      setSavedCaptains({ team1: null, team2: null });
+      return;
+    }
 
-    const team1Ref = ref(db, `batakAllStars/captainsByDate/${selectedDate}/team1`);
-    const team2Ref = ref(db, `batakAllStars/captainsByDate/${selectedDate}/team2`);
-
-    const unsub1 = onValue(
-      team1Ref,
-      (snap) => {
-        const val = (snap.val() || null) as CaptainRecord | null;
-        setSavedCaptains((prev) => ({ ...prev, team1: val }));
-        setCaptainSteamIds((prev) => ({ ...prev, team1: val?.steamId || '' }));
-      },
-      () => {
-        // ignore
-      }
-    );
-    const unsub2 = onValue(
-      team2Ref,
-      (snap) => {
-        const val = (snap.val() || null) as CaptainRecord | null;
-        setSavedCaptains((prev) => ({ ...prev, team2: val }));
-        setCaptainSteamIds((prev) => ({ ...prev, team2: val?.steamId || '' }));
-      },
-      () => {
-        // ignore
-      }
-    );
-
-    return () => {
-      off(team1Ref, 'value', unsub1);
-      off(team2Ref, 'value', unsub2);
-    };
-  }, [selectedDate]);
+    const dateData = captainsByDate[selectedDate];
+    const t1 = dateData?.team1 || null;
+    const t2 = dateData?.team2 || null;
+    setSavedCaptains({ team1: t1, team2: t2 });
+    setCaptainSteamIds({ team1: t1?.steamId || '', team2: t2?.steamId || '' });
+  }, [selectedDate, captainsByDate]);
 
   const handleSaveTeamCaptain = async (teamKey: TeamKey) => {
     if (!user) {
@@ -542,21 +501,21 @@ export default function BatakAllStarsClient({
     }
 
     const captainName = roster.find((p) => p.steamId === chosenSteamId)?.name;
-    const record: CaptainRecord = {
-      steamId: chosenSteamId,
-      steamName: captainName,
-      date: selectedDate,
-      teamKey,
-      teamName,
-      setByUid: user.uid,
-      setByName: user.displayName || user.email || undefined,
-      setAt: Date.now(),
-    };
 
     setSavingTeam((prev) => ({ ...prev, [teamKey]: true }));
     setMessage(null);
     try {
-      await set(ref(db, `batakAllStars/captainsByDate/${selectedDate}/${teamKey}`), record);
+      await setCaptain({
+        date: selectedDate,
+        teamKey,
+        steamId: chosenSteamId,
+        steamName: captainName,
+        teamName,
+        setByUid: user.uid,
+        setByName: user.name || user.email || undefined,
+        setAt: Date.now(),
+      });
+      await refetchCaptains();
       setMessage('Kaydedildi.');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'bilinmeyen hata';

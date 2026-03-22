@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { adminAuth } from "@/lib/firebaseAdmin";
 import { emitNotificationEvent } from "@/lib/serverNotifications";
+
+const BACKEND = process.env.BACKEND_INTERNAL_URL || "http://backend:3000";
 
 export const runtime = "nodejs";
 
@@ -24,8 +26,11 @@ export async function POST(req: NextRequest) {
     }
 
     const decoded = await adminAuth().verifyIdToken(idToken);
-    const adminSnap = await adminDb().ref(`admins/${decoded.uid}`).get();
-    if (!adminSnap.exists() || adminSnap.val() !== true) {
+
+    // Check admin status via backend PG
+    const adminRes = await fetch(`${BACKEND}/admin/check/${decoded.uid}`, { cache: "no-store" });
+    const adminData = await adminRes.json();
+    if (!adminData.isAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

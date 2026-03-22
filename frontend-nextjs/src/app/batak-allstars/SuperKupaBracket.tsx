@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSession } from '@/contexts/SessionContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { db } from '@/lib/firebase';
-import { off, onValue, ref, remove, set } from 'firebase/database';
+import { useLivePolling } from '@/lib/useLivePolling';
+import { setSuperKupaMatch, deleteSuperKupaMatch, resetSuperKupa } from '@/lib/liveApi';
 import { Trophy, Crown, Swords, Shield, Star, Trash2 } from 'lucide-react';
 
 import {
@@ -18,8 +18,6 @@ import {
 } from '@/lib/batakAllStars';
 
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || 'osirikler';
-
-const SUPER_KUPA_DB_PATH = 'batakAllStars/superKupa';
 
 type MatchSlot = 'semi1' | 'semi2' | 'final';
 
@@ -221,21 +219,18 @@ export default function SuperKupaBracket({
   config: AllStarsConfig;
   playersIndex: PlayersIndex;
 }) {
-  const { user } = useAuth();
+  const { user } = useSession();
   const { isDark } = useTheme();
 
-  // Firebase real-time data
-  const [superKupaData, setSuperKupaData] = useState<SuperKupaData | null>(null);
-
-  useEffect(() => {
-    const dbRef = ref(db, SUPER_KUPA_DB_PATH);
-    const unsub = onValue(
-      dbRef,
-      (snap) => setSuperKupaData((snap.val() || null) as SuperKupaData | null),
-      () => { /* ignore */ },
-    );
-    return () => off(dbRef, 'value', unsub);
-  }, []);
+  // PostgreSQL-backed polling (replaces Firebase onValue listener)
+  const { data: superKupaPolled, refetch: refetchSuperKupa } = useLivePolling<{
+    bracket: SuperKupaData | null;
+  }>({
+    url: '/api/live/batak-super-kupa',
+    intervalMs: 5000,
+    initialData: { bracket: null },
+  });
+  const superKupaData = superKupaPolled.bracket;
 
   // Derive participants from standings
   const participants = useMemo(() => {
@@ -295,7 +290,8 @@ export default function SuperKupaBracket({
 
       if (!p1 || !p2) throw new Error('Her iki oyuncu da belli olmalı.');
 
-      const record: SuperKupaMatchResult = {
+      await setSuperKupaMatch({
+        slot,
         player1SteamId: p1.steamId,
         player1Name: p1.name,
         player1League: p1.leagueName,
@@ -306,26 +302,22 @@ export default function SuperKupaBracket({
         score,
         date: new Date().toISOString().split('T')[0],
         setByUid: user.uid,
-        setByName: user.displayName || user.email || undefined,
+        setByName: user.name || user.email || undefined,
         setAt: Date.now(),
-      };
-
-      await set(ref(db, `${SUPER_KUPA_DB_PATH}/${slot}`), record);
+      });
+      await refetchSuperKupa();
     },
-    [user, semi1Player1, semi1Player2, semi2Player1, semi2Player2, semi1Winner, semi2Winner],
+    [user, semi1Player1, semi1Player2, semi2Player1, semi2Player2, semi1Winner, semi2Winner, refetchSuperKupa],
   );
 
-  // Delete a single match result
+  // Delete a single match result (cascade handled in backend)
   const handleDeleteResult = useCallback(
     async (slot: MatchSlot) => {
       if (!user) throw new Error('Giriş gerekli.');
-      await remove(ref(db, `${SUPER_KUPA_DB_PATH}/${slot}`));
-      // If deleting a semi-final, also clear the final since it depends on the winner
-      if (slot === 'semi1' || slot === 'semi2') {
-        await remove(ref(db, `${SUPER_KUPA_DB_PATH}/final`));
-      }
+      await deleteSuperKupaMatch(slot);
+      await refetchSuperKupa();
     },
-    [user],
+    [user, refetchSuperKupa],
   );
 
   // Reset all results
@@ -342,11 +334,12 @@ export default function SuperKupaBracket({
     }
     setResettingAll(true);
     try {
-      await remove(ref(db, SUPER_KUPA_DB_PATH));
+      await resetSuperKupa();
+      await refetchSuperKupa();
     } finally {
       setResettingAll(false);
     }
-  }, [user]);
+  }, [user, refetchSuperKupa]);
 
   const allEmpty = !semi1Player1 && !semi1Player2 && !semi2Player1 && !semi2Player2;
 
@@ -614,7 +607,6 @@ export default function SuperKupaBracket({
               <li>Yarı Final 1: 1. Lig lideri vs 4. Lig lideri</li>
               <li>Yarı Final 2: 2. Lig lideri vs 3. Lig lideri</li>
               <li>Katılımcılar güncel lig sıralamasına göre belirlenir.</li>
-              <li>Sonuçlar Firebase içinde tutulur: <span className="font-mono">batakAllStars/superKupa/</span></li>
             </ul>
           </div>
         </>

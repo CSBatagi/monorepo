@@ -22,9 +22,9 @@ const FIREBASE_ROUTES = [
   // "/attendance" — migrated to PostgreSQL polling + session auth
   // "/team-picker" — migrated to PostgreSQL polling, no longer needs Firebase SDK
   // "/gecenin-mvpsi" — migrated to PostgreSQL polling + session auth
+  // "/batak-allstars" — migrated to PostgreSQL polling + session auth
   "/notifications",
   "/login",
-  "/batak-allstars",
 ];
 
 function needsFirebase(pathname: string): boolean {

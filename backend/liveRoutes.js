@@ -468,4 +468,169 @@ router.post('/mvp-votes/lock', async (req, res) => {
   }
 });
 
+// ─── Batak Captains ──────────────────────────────────────────────────────────
+
+router.get('/batak-captains', async (req, res) => {
+  try {
+    const clientVersion = parseInt(req.query.v) || 0;
+    const serverVersion = await getVersion('batak_captains');
+    if (clientVersion && clientVersion >= serverVersion) {
+      return res.status(304).end();
+    }
+
+    const rows = await pool.query(
+      `SELECT date, team_key, steam_id, steam_name, team_name, set_by_uid, set_by_name, set_at FROM batak_captains ORDER BY date, team_key`
+    );
+
+    const captainsByDate = {};
+    for (const r of rows.rows) {
+      if (!captainsByDate[r.date]) captainsByDate[r.date] = {};
+      captainsByDate[r.date][r.team_key] = {
+        steamId: r.steam_id,
+        steamName: r.steam_name || undefined,
+        date: r.date,
+        teamKey: r.team_key,
+        teamName: r.team_name || undefined,
+        setByUid: r.set_by_uid || undefined,
+        setByName: r.set_by_name || undefined,
+        setAt: r.set_at ? Number(r.set_at) : undefined,
+      };
+    }
+
+    res.json({ version: serverVersion, captainsByDate });
+  } catch (e) {
+    console.error('[live/batak-captains GET]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/batak-captains/set', async (req, res) => {
+  try {
+    const { date, teamKey, steamId, steamName, teamName, setByUid, setByName, setAt } = req.body;
+    if (!date || !teamKey || !steamId) {
+      return res.status(400).json({ error: 'date, teamKey, steamId required' });
+    }
+
+    await pool.query(
+      `INSERT INTO batak_captains (date, team_key, steam_id, steam_name, team_name, set_by_uid, set_by_name, set_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+       ON CONFLICT (date, team_key) DO UPDATE SET
+         steam_id = $3, steam_name = $4, team_name = $5,
+         set_by_uid = $6, set_by_name = $7, set_at = $8,
+         updated_at = NOW()`,
+      [date, teamKey, steamId, steamName || null, teamName || null, setByUid || null, setByName || null, setAt || null]
+    );
+
+    await bumpVersion('batak_captains');
+    const version = await getVersion('batak_captains');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/batak-captains/set POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Batak Super Kupa ────────────────────────────────────────────────────────
+
+router.get('/batak-super-kupa', async (req, res) => {
+  try {
+    const clientVersion = parseInt(req.query.v) || 0;
+    const serverVersion = await getVersion('batak_super_kupa');
+    if (clientVersion && clientVersion >= serverVersion) {
+      return res.status(304).end();
+    }
+
+    const rows = await pool.query(`SELECT * FROM batak_super_kupa`);
+
+    const bracket = {};
+    for (const r of rows.rows) {
+      bracket[r.slot] = {
+        player1SteamId: r.player1_steam_id,
+        player1Name: r.player1_name,
+        player1League: r.player1_league,
+        player2SteamId: r.player2_steam_id,
+        player2Name: r.player2_name,
+        player2League: r.player2_league,
+        winnerSteamId: r.winner_steam_id || undefined,
+        score: r.score || undefined,
+        date: r.date || undefined,
+        setByUid: r.set_by_uid || undefined,
+        setByName: r.set_by_name || undefined,
+        setAt: r.set_at ? Number(r.set_at) : undefined,
+      };
+    }
+
+    res.json({ version: serverVersion, bracket });
+  } catch (e) {
+    console.error('[live/batak-super-kupa GET]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/batak-super-kupa/set', async (req, res) => {
+  try {
+    const { slot, player1SteamId, player1Name, player1League,
+            player2SteamId, player2Name, player2League,
+            winnerSteamId, score, date, setByUid, setByName, setAt } = req.body;
+    if (!slot || !player1SteamId || !player2SteamId) {
+      return res.status(400).json({ error: 'slot, player1SteamId, player2SteamId required' });
+    }
+
+    await pool.query(
+      `INSERT INTO batak_super_kupa (slot, player1_steam_id, player1_name, player1_league,
+         player2_steam_id, player2_name, player2_league, winner_steam_id, score, date,
+         set_by_uid, set_by_name, set_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
+       ON CONFLICT (slot) DO UPDATE SET
+         player1_steam_id=$2, player1_name=$3, player1_league=$4,
+         player2_steam_id=$5, player2_name=$6, player2_league=$7,
+         winner_steam_id=$8, score=$9, date=$10,
+         set_by_uid=$11, set_by_name=$12, set_at=$13, updated_at=NOW()`,
+      [slot, player1SteamId, player1Name || '', player1League || '',
+       player2SteamId, player2Name || '', player2League || '',
+       winnerSteamId || null, score || null, date || null,
+       setByUid || null, setByName || null, setAt || null]
+    );
+
+    await bumpVersion('batak_super_kupa');
+    const version = await getVersion('batak_super_kupa');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/batak-super-kupa/set POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/batak-super-kupa/delete', async (req, res) => {
+  try {
+    const { slot } = req.body;
+    if (!slot) return res.status(400).json({ error: 'slot required' });
+
+    await pool.query(`DELETE FROM batak_super_kupa WHERE slot = $1`, [slot]);
+    // Cascade: deleting a semi-final also clears the final
+    if (slot === 'semi1' || slot === 'semi2') {
+      await pool.query(`DELETE FROM batak_super_kupa WHERE slot = 'final'`);
+    }
+
+    await bumpVersion('batak_super_kupa');
+    const version = await getVersion('batak_super_kupa');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/batak-super-kupa/delete POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/batak-super-kupa/reset', async (req, res) => {
+  try {
+    await pool.query(`DELETE FROM batak_super_kupa`);
+    await bumpVersion('batak_super_kupa');
+    const version = await getVersion('batak_super_kupa');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/batak-super-kupa/reset POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = { router, setup };

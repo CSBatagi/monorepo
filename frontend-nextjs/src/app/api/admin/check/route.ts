@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/authSession';
-import { adminDb } from '@/lib/firebaseAdmin';
+
+const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
 
 export const runtime = 'nodejs';
 
@@ -16,9 +17,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const snap = await adminDb().ref(`admins/${payload.uid}`).get();
-    const isAdmin = snap.exists() && snap.val() === true;
-    return NextResponse.json({ isAdmin });
+    const res = await fetch(`${BACKEND}/admin/check/${payload.uid}`, { cache: 'no-store' });
+    const data = await res.json();
+    return NextResponse.json({ isAdmin: !!data.isAdmin });
   } catch {
     return NextResponse.json({ isAdmin: false });
   }

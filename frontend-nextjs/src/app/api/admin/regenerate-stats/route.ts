@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
-import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { adminAuth } from '@/lib/firebaseAdmin';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/authSession';
+
+const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
 
 // Stat files that need to be written
 const STAT_FILES = [
@@ -52,14 +54,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check admin status in Firebase RTDB
-    const adminSnap = await adminDb().ref(`admins/${uid}`).get();
-    if (!adminSnap.exists() || adminSnap.val() !== true) {
+    // Check admin status via backend PG
+    const adminRes = await fetch(`${BACKEND}/admin/check/${uid}`, { cache: 'no-store' });
+    const adminData = await adminRes.json();
+    if (!adminData.isAdmin) {
       console.warn(`[regenerate-stats] Non-admin uid ${uid} tried to regenerate stats`);
       return NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
     }
 
-    const backendUrl = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
+    const backendUrl = BACKEND;
     const apiToken = process.env.MATCHMAKING_TOKEN;
     
     // Call backend to force stats regeneration (reuses the same MATCHMAKING_TOKEN other routes use)
