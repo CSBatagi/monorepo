@@ -109,15 +109,25 @@ let cachedLastDataTimestamp = null; // in-memory cache of last DB data timestamp
 let lastTimestampPollAt = null;
 let lastTimestampPollError = null;
 let lastTimestampSource = 'uninitialized';
+let statsRefreshManagerReady = false;
+let backendListening = false;
+let prewarmFrontendStatsSnapshot = async () => false;
 
 async function pollDataTimestamp() {
   lastTimestampPollAt = new Date();
   try {
+    const previousTs = cachedLastDataTimestamp ? new Date(cachedLastDataTimestamp) : null;
     const ts = await fetchLastDataTimestampFromDB();
     if (ts) {
       cachedLastDataTimestamp = new Date(ts);
       lastTimestampPollError = null;
       lastTimestampSource = 'poller';
+      const changed =
+        !previousTs ||
+        previousTs.getTime() !== cachedLastDataTimestamp.getTime();
+      if (changed && statsRefreshManagerReady) {
+        void triggerBackgroundStatsRefresh('timestamp-poller', cachedLastDataTimestamp);
+      }
     } else {
       lastTimestampPollError = 'timestamp query returned no value';
       lastTimestampSource = 'poller-empty';
@@ -270,6 +280,50 @@ let lastGeneratedServerTimestamp = null; // tracks last successful generation ba
 let lastGeneratedData = null; // cache of last generated datasets — kept in memory permanently (~4 MB, 3% of 128 MB heap)
 
 
+let frontendPrewarmPromise = null;
+
+function applyGeneratedSnapshot(data, serverDate) {
+  lastGeneratedData = data;
+  lastAggregateData = pickAggregateSnapshot(data);
+  if (serverDate) {
+    lastGeneratedServerTimestamp = new Date(serverDate);
+    lastAggregateServerTimestamp = new Date(serverDate);
+  }
+}
+
+async function triggerBackgroundStatsRefresh(reason, targetTimestamp = null) {
+  const serverDate = targetTimestamp ? new Date(targetTimestamp) : (cachedLastDataTimestamp ? new Date(cachedLastDataTimestamp) : null);
+  const hasFreshCache = Boolean(
+    serverDate &&
+    lastGeneratedData &&
+    lastGeneratedServerTimestamp &&
+    serverDate.getTime() === new Date(lastGeneratedServerTimestamp).getTime()
+  );
+  if (hasFreshCache) {
+    return false;
+  }
+
+  if (!statsGenerationPromise) {
+    console.log(`[stats-refresh] ${reason}: starting background full stats refresh`);
+    statsGenerationPromise = runStatsUpdateScript().finally(() => { statsGenerationPromise = null; });
+  } else {
+    console.log(`[stats-refresh] ${reason}: reusing in-flight stats refresh`);
+  }
+
+  try {
+    const result = await statsGenerationPromise;
+    applyGeneratedSnapshot(result.data, serverDate);
+    if (backendListening) {
+      void prewarmFrontendStatsSnapshot();
+    }
+    console.log(`[stats-refresh] ${reason}: background full stats refresh complete`);
+    return true;
+  } catch (e) {
+    console.error(`[stats-refresh] ${reason}: background full stats refresh failed`, e.message);
+    return false;
+  }
+}
+
 function pickAggregateSnapshot(fullData) {
   if (!fullData || typeof fullData !== 'object') return null;
   return {
@@ -358,8 +412,7 @@ app.get('/stats/incremental', async (req, res) => {
         }
         try {
           const result = await statsGenerationPromise;
-          if (serverDate) lastGeneratedServerTimestamp = serverDate;
-          lastGeneratedData = result.data;
+          applyGeneratedSnapshot(result.data, serverDate);
           payload = { updated: true, serverTimestamp: effectiveTimestamp.toISOString(), ...result.data };
         } catch (e) {
           console.error('Incremental generation failed', e);
@@ -399,8 +452,7 @@ app.post('/stats/force-regenerate', async (req, res) => {
     await pollDataTimestamp();
     const serverLastTs = cachedLastDataTimestamp;
     if (serverLastTs) {
-      lastGeneratedServerTimestamp = new Date(serverLastTs);
-      lastGeneratedData = result.data;
+      applyGeneratedSnapshot(result.data, serverLastTs);
     }
     
     // Return FULL data so frontend can write JSON files
@@ -624,19 +676,18 @@ if (!TEST_MODE) {
       const startedAt = Date.now();
       const result = await runStatsUpdateScript();
       const ts = cachedLastDataTimestamp;
-      if (ts) {
-        lastGeneratedServerTimestamp = new Date(ts);
-        lastAggregateServerTimestamp = new Date(ts);
-      }
-      lastGeneratedData = result.data;
-      lastAggregateData = pickAggregateSnapshot(result.data);
+      applyGeneratedSnapshot(result.data, ts);
       console.log(`[startup] initial full stats generation complete in ${Date.now() - startedAt}ms`);
     } catch (e) {
       console.warn('[startup] warmStartup failed (will retry on first request)', e.message);
     }
   }
 
-  async function prewarmFrontendStatsSnapshot() {
+  prewarmFrontendStatsSnapshot = async function prewarmFrontendStatsSnapshotImpl() {
+    if (frontendPrewarmPromise) {
+      return frontendPrewarmPromise;
+    }
+
     const frontendBase = process.env.FRONTEND_INTERNAL_URL || 'http://frontend-nextjs:3000';
     const authToken = process.env.MATCHMAKING_TOKEN;
     const attempts = Number(process.env.FRONTEND_PREWARM_ATTEMPTS || 15);
@@ -648,50 +699,58 @@ if (!TEST_MODE) {
       return false;
     }
 
-    for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      try {
-        const ac = new AbortController();
-        const timeout = setTimeout(() => ac.abort(), timeoutMs);
-        let res;
+    frontendPrewarmPromise = (async () => {
+      for (let attempt = 1; attempt <= attempts; attempt += 1) {
         try {
-          res = await fetch(`${frontendBase}/api/internal/stats/prewarm`, {
-            method: 'POST',
-            signal: ac.signal,
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${authToken}`,
-            },
-          });
-        } finally {
-          clearTimeout(timeout);
+          const ac = new AbortController();
+          const timeout = setTimeout(() => ac.abort(), timeoutMs);
+          let res;
+          try {
+            res = await fetch(`${frontendBase}/api/internal/stats/prewarm`, {
+              method: 'POST',
+              signal: ac.signal,
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${authToken}`,
+              },
+            });
+          } finally {
+            clearTimeout(timeout);
+          }
+          if (res.ok) {
+            const body = await res.json().catch(() => null);
+            console.log('[startup] frontend stats snapshot prewarmed', {
+              attempt,
+              updated: body?.updated ?? null,
+              filesWritten: Array.isArray(body?.filesWritten) ? body.filesWritten.length : 0,
+              serverTimestamp: body?.serverTimestamp ?? null,
+            });
+            return true;
+          }
+          const text = await res.text().catch(() => '');
+          console.warn(`[startup] frontend stats prewarm attempt ${attempt}/${attempts} failed with status ${res.status}: ${text}`);
+        } catch (e) {
+          console.warn(`[startup] frontend stats prewarm attempt ${attempt}/${attempts} failed: ${e.name === 'AbortError' ? `timeout after ${timeoutMs}ms` : e.message}`);
         }
-        if (res.ok) {
-          const body = await res.json().catch(() => null);
-          console.log('[startup] frontend stats snapshot prewarmed', {
-            attempt,
-            updated: body?.updated ?? null,
-            filesWritten: Array.isArray(body?.filesWritten) ? body.filesWritten.length : 0,
-            serverTimestamp: body?.serverTimestamp ?? null,
-          });
-          return true;
+        if (attempt < attempts) {
+          await sleep(retryMs);
         }
-        const text = await res.text().catch(() => '');
-        console.warn(`[startup] frontend stats prewarm attempt ${attempt}/${attempts} failed with status ${res.status}: ${text}`);
-      } catch (e) {
-        console.warn(`[startup] frontend stats prewarm attempt ${attempt}/${attempts} failed: ${e.name === 'AbortError' ? `timeout after ${timeoutMs}ms` : e.message}`);
       }
-      if (attempt < attempts) {
-        await sleep(retryMs);
-      }
-    }
 
-    console.warn('[startup] frontend stats snapshot prewarm exhausted; runtime-data will refresh on normal traffic');
-    return false;
-  }
+      console.warn('[startup] frontend stats snapshot prewarm exhausted; runtime-data will refresh on normal traffic');
+      return false;
+    })().finally(() => {
+      frontendPrewarmPromise = null;
+    });
+
+    return frontendPrewarmPromise;
+  };
 
   (async () => {
     await warmStartup();
     app.listen(port, () => {
+      backendListening = true;
+      statsRefreshManagerReady = true;
       console.log(`Middleware is running on port ${port}`);
 
       // Start the notification scheduler after the server is listening.

@@ -9,7 +9,7 @@ const TIMESTAMP_FILE = 'last_timestamp.txt';
 // --- Response cache / cooldown ---
 // Prevents thundering-herd: multiple client useEffect mounts all arrive within
 // milliseconds of each other; only the first one actually hits the backend.
-const CHECK_COOLDOWN_MS = 90 * 1000; // 90 seconds
+const CHECK_COOLDOWN_MS = 10 * 1000; // 10 seconds keeps mount storms deduped without hiding fresh stats for long
 let cachedCheckResponse: string | null = null;
 let checkCacheTimer: ReturnType<typeof setTimeout> | null = null;
 let lastCheckTime = 0;
