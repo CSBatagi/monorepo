@@ -3,6 +3,7 @@ import React, { useState, useMemo } from "react";
 import SeasonStatsTable from "./SeasonStatsTable";
 import { buildSeasonWindowOptions, filterDatesBySeason } from "@/lib/seasonRanges";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useStatsRefresh } from "@/lib/useStatsRefresh";
 
 type RoundInfo = {
   round_number?: number;
@@ -141,29 +142,17 @@ export default function SonMacClient({
   const [dates, setDates] = useState<string[]>(initialDates);
   const initialDataEmpty = !initialData || Object.keys(initialData).length === 0;
 
-  // Client-side refresh: fetch latest data on mount
-  React.useEffect(() => {
-    const lastKnownTs = typeof window !== "undefined" ? localStorage.getItem("stats_last_ts") : null;
-    const cacheBust = Date.now();
-    fetch(
-      `/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : "?"}_cb=${cacheBust}`,
-      { cache: "no-store", headers: { "Cache-Control": "no-store" } }
-    )
-      .then((r) => r.json())
-      .then((j) => {
-        const incoming = j?.sonmac_by_date_all || j?.sonmac_by_date;
-        const hasIncomingData = incoming && typeof incoming === "object" && Object.keys(incoming).length > 0;
-        if ((j.updated || initialDataEmpty) && hasIncomingData) {
-          setData(incoming);
-          const newDates = Object.keys(incoming).sort((a, b) => b.localeCompare(a));
-          setDates(newDates);
-        }
-        if (j.serverTimestamp) {
-          localStorage.setItem("stats_last_ts", j.serverTimestamp);
-        }
-      })
-      .catch(() => {});
-  }, []);
+  useStatsRefresh({
+    onData: (j) => {
+      const incoming = j?.sonmac_by_date_all || j?.sonmac_by_date;
+      const hasIncomingData = incoming && typeof incoming === "object" && Object.keys(incoming).length > 0;
+      if (hasIncomingData) {
+        setData(incoming);
+        const newDates = Object.keys(incoming).sort((a, b) => b.localeCompare(a));
+        setDates(newDates);
+      }
+    },
+  });
 
   const seasonOptions = useMemo(() => buildSeasonWindowOptions(seasonStarts || [], dates), [seasonStarts, dates]);
   const [selectedSeasonId, setSelectedSeasonId] = useState(seasonOptions[0]?.id || "all_time");

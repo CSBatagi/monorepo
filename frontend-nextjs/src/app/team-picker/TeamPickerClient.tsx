@@ -277,19 +277,19 @@ const TeamPickerClient: React.FC = () => {
     let cancelled = false;
     const fetchStats = async () => {
       try {
-        // Use /api/stats/aggregates (backed by backend memory) instead of
-        // /api/data/* (disk-only, may be stale/missing after container restart).
-        // This is consistent with how last10, season-avg, and other pages fetch data.
-        const res = await fetch(`/api/stats/aggregates?_cb=${Date.now()}`, { cache: 'no-store' });
+        // Use /api/stats/check (backed by backend memory) for stats data.
+        // The endpoint returns { updated: false } when nothing changed — only
+        // overwrite local state when the response actually contains data keys.
+        const res = await fetch(`/api/stats/check?_cb=${Date.now()}`, { cache: 'no-store' });
         const data = await res.json();
         if (cancelled) return;
-        setLast10Stats(Array.isArray(data?.last10) ? data.last10 : []);
-        setSeasonStats(Array.isArray(data?.season_avg) ? data.season_avg : []);
+        if (data.updated) {
+          if ('last10' in data) setLast10Stats(Array.isArray(data.last10) ? data.last10 : []);
+          if ('season_avg' in data) setSeasonStats(Array.isArray(data.season_avg) ? data.season_avg : []);
+        }
         setLoadingStats(false);
       } catch {
         if (!cancelled) {
-          setLast10Stats([]);
-          setSeasonStats([]);
           setLoadingStats(false);
         }
       }
@@ -329,8 +329,7 @@ const TeamPickerClient: React.FC = () => {
       try {
         // map_stats is read from disk (runtime-data/map_stats.json), kept fresh by
         // layout.tsx after() hook. Unlike last10/season_avg, map_stats is not available
-        // via /api/stats/aggregates, and /api/stats/check only returns data when there
-        // are new stats — so disk is the correct source here.
+        // via /api/stats/check when there are no new stats — so disk is the correct source here.
         const res = await fetch('/api/data/map_stats');
         let data: any = null;
         try { data = await res.json(); } catch { data = null; }

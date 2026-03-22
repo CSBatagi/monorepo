@@ -5,6 +5,7 @@ import SeasonStatsTable, { columns } from "@/components/SeasonStatsTable";
 import { RadarGraphs } from "@/components/SeasonAvgRadarGraphs";
 import H2HClient from "@/components/H2HClient";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useStatsRefresh } from "@/lib/useStatsRefresh";
 
 type PeriodMeta = {
   id: string;
@@ -64,35 +65,22 @@ export default function SeasonAvgTabsClient({
     return [];
   }, [periodPayload, selectedPeriod]);
 
-  useEffect(() => {
-    if (selectedData.length > 0) return;
-    let cancelled = false;
-    setLoading(true);
-    (async () => {
-      try {
-        const res = await fetch(`/api/stats/aggregates?_cb=${Date.now()}`, { cache: "no-store" });
-        if (!res.ok) return;
-        const payload = await res.json();
-        if (cancelled) return;
-        if (payload?.season_avg_periods?.data) {
-          setPeriodPayload(payload.season_avg_periods);
-          if (payload.season_avg_periods.current_period) {
-            setSelectedPeriod(payload.season_avg_periods.current_period);
-          }
-        } else if (Array.isArray(payload?.season_avg)) {
-          const fallback = buildFallbackPayload(payload.season_avg);
-          setPeriodPayload(fallback);
-          setSelectedPeriod(fallback.current_period || "season_current");
+  useStatsRefresh({
+    enabled: selectedData.length === 0,
+    onData: (payload) => {
+      if (payload?.season_avg_periods?.data) {
+        setPeriodPayload(payload.season_avg_periods);
+        if (payload.season_avg_periods.current_period) {
+          setSelectedPeriod(payload.season_avg_periods.current_period);
         }
-      } catch (_) {
-      } finally {
-        if (!cancelled) setLoading(false);
+      } else if (Array.isArray(payload?.season_avg)) {
+        const fallback = buildFallbackPayload(payload.season_avg);
+        setPeriodPayload(fallback);
+        setSelectedPeriod(fallback.current_period || "season_current");
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedData.length]);
+    },
+    onSettled: () => setLoading(false),
+  });
 
   const { isDark } = useTheme();
 

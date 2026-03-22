@@ -7,6 +7,7 @@ import H2HClient from "./H2HClient";
 import { RadarGraphs } from "./SeasonAvgRadarGraphs";
 import { buildSeasonWindowOptions, filterDatesBySeason } from "@/lib/seasonRanges";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useStatsRefresh } from "@/lib/useStatsRefresh";
 
 const nightAvgColumns = [
   { key: "name", label: "Oyuncu" },
@@ -63,31 +64,18 @@ export default function NightAvgTableClient({
   const data = dataMap[selectedDate] || [];
   const { isDark } = useTheme();
 
-  useEffect(() => {
-    const lastKnownTs = typeof window !== "undefined" ? localStorage.getItem("stats_last_ts") : null;
-    const cacheBust = Date.now();
-    fetch(
-      `/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : "?"}_cb=${cacheBust}`,
-      { cache: "no-store", headers: { "Cache-Control": "no-store" } }
-    )
-      .then((r) => r.json())
-      .then((j) => {
-        const incoming = j?.night_avg_all || j?.night_avg;
-        if (j.updated && incoming) {
-          setDataMap(incoming);
-          const newDates = Object.keys(incoming).sort((a, b) => b.localeCompare(a));
-          setDates(newDates);
-          setSelectedDate((prev) => (newDates.includes(prev) ? prev : (newDates[0] || "")));
-        }
-        if (j.serverTimestamp) {
-          localStorage.setItem("stats_last_ts", j.serverTimestamp);
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-      });
-  }, []);
+  useStatsRefresh({
+    onData: (j) => {
+      const incoming = j?.night_avg_all || j?.night_avg;
+      if (incoming) {
+        setDataMap(incoming);
+        const newDates = Object.keys(incoming).sort((a, b) => b.localeCompare(a));
+        setDates(newDates);
+        setSelectedDate((prev) => (newDates.includes(prev) ? prev : (newDates[0] || "")));
+      }
+    },
+    onSettled: () => setLoading(false),
+  });
 
   React.useEffect(() => {
     setActiveTab("table");

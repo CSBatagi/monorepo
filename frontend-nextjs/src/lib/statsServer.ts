@@ -4,7 +4,7 @@
 import { readJson } from './dataReader';
 
 const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
-const TIMEOUT_MS = 3000;
+const TIMEOUT_MS = 15000; // 15s — cold-start generation takes 10-20s on the 1 GB VM
 
 // Module-level cache: avoid hitting backend for every concurrent SSR render.
 // Refreshed when a new request arrives and at least 10s have passed.

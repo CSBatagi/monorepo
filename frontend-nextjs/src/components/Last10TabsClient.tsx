@@ -4,28 +4,22 @@ import SeasonStatsTable, { columns } from "@/components/SeasonStatsTable";
 import H2HClient from "@/components/H2HClient";
 import { RadarGraphs } from "./SeasonAvgRadarGraphs";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useStatsRefresh } from "@/lib/useStatsRefresh";
 
 export default function Last10TabsClient({ data: initialData }: { data: any[] }) {
   const [activeTab, setActiveTab] = useState<"table" | "graph" | "head2head">("table");
   const [data, setData] = useState<any[]>(initialData || []);
   const [loading, setLoading] = useState<boolean>(!initialData || initialData.length === 0);
 
-  useEffect(() => {
-    if (data.length > 0) return; // already have
-    let cancelled = false;
-    const fetchFresh = async () => {
-      try {
-        const res = await fetch(`/api/stats/aggregates?_cb=${Date.now()}`, { cache:'no-store' });
-        if (!res.ok) throw new Error('agg fail');
-        const j = await res.json();
-        if (!cancelled && Array.isArray(j.last10) && j.last10.length) {
-          setData(j.last10);
-        }
-      } catch(_) {} finally { if(!cancelled) setLoading(false); }
-    };
-    fetchFresh();
-    return () => { cancelled = true; };
-  }, [data.length]);
+  useStatsRefresh({
+    enabled: data.length === 0,
+    onData: (j) => {
+      if (Array.isArray(j.last10) && j.last10.length) {
+        setData(j.last10);
+      }
+    },
+    onSettled: () => setLoading(false),
+  });
 
   const { isDark } = useTheme();
 

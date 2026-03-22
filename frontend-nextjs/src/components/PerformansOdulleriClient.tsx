@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import AwardsListClient from "./AwardsListClient";
 import { buildSeasonWindowOptions, filterDataBySeason } from "@/lib/seasonRanges";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useStatsRefresh } from "@/lib/useStatsRefresh";
 
 interface PlayerAward {
   name: string;
@@ -114,26 +115,14 @@ export default function PerformansOdulleriClient({
 }) {
   const [allData, setAllData] = useState<Record<string, any[]>>(initialData);
 
-  // Client-side refresh: fetch latest data on mount
-  useEffect(() => {
-    const lastKnownTs = typeof window !== "undefined" ? localStorage.getItem("stats_last_ts") : null;
-    const cacheBust = Date.now();
-    fetch(
-      `/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : "?"}_cb=${cacheBust}`,
-      { cache: "no-store", headers: { "Cache-Control": "no-store" } }
-    )
-      .then((r) => r.json())
-      .then((j) => {
-        const incoming = j?.night_avg_all || j?.night_avg;
-        if (j.updated && incoming && typeof incoming === "object" && Object.keys(incoming).length > 0) {
-          setAllData(incoming);
-        }
-        if (j.serverTimestamp) {
-          localStorage.setItem("stats_last_ts", j.serverTimestamp);
-        }
-      })
-      .catch(() => {});
-  }, []);
+  useStatsRefresh({
+    onData: (j) => {
+      const incoming = j?.night_avg_all || j?.night_avg;
+      if (incoming && typeof incoming === "object" && Object.keys(incoming).length > 0) {
+        setAllData(incoming);
+      }
+    },
+  });
 
   const allDates = useMemo(() => Object.keys(allData || {}).sort(), [allData]);
   const seasonOptions = useMemo(() => buildSeasonWindowOptions(seasonStarts || [], allDates), [seasonStarts, allDates]);

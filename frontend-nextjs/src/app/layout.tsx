@@ -6,6 +6,7 @@ import Providers from "@/components/Providers";
 import fs from 'fs/promises';
 import path from 'path';
 import { after } from 'next/server';
+import { writeStatsSnapshot, persistTimestamp } from '@/lib/statsSnapshot';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,9 +34,6 @@ const tsPersistPath = path.join(runtimeDir, 'last_timestamp.txt');
 async function loadPersistedTs(){
   try { const raw = await fs.readFile(tsPersistPath,'utf-8'); lastServerKnownTs = raw.trim() || null; } catch {}
 }
-async function persistTs(ts:string){
-  try { await fs.mkdir(path.dirname(tsPersistPath), { recursive:true }); await fs.writeFile(tsPersistPath, ts,'utf-8'); } catch {}
-}
 
 async function incrementalRefresh() {
   // Cooldown: skip backend call if we checked recently
@@ -58,31 +56,10 @@ async function incrementalRefresh() {
       if (!data) return;
       if (data.serverTimestamp) {
         lastServerKnownTs = data.serverTimestamp;
-        await persistTs(lastServerKnownTs as string);
+        await persistTimestamp(runtimeDir, lastServerKnownTs as string);
       }
       if (data.updated) {
-        await fs.mkdir(runtimeDir,{recursive:true});
-        const statFiles = [
-          'season_avg.json',
-          'season_avg_periods.json',
-          'last10.json',
-          'night_avg.json',
-          'night_avg_all.json',
-          'sonmac_by_date.json',
-          'sonmac_by_date_all.json',
-          'duello_son_mac.json',
-          'duello_sezon.json',
-          'performance_data.json',
-          'players_stats.json',
-          'players_stats_periods.json',
-          'map_stats.json',
-        ];
-        for (const base of statFiles) {
-          const key = base.replace(/\.json$/, '');
-          if (data[key] !== undefined) {
-            try { await fs.writeFile(path.join(runtimeDir, base), JSON.stringify(data[key]),'utf-8'); } catch {}
-          }
-        }
+        await writeStatsSnapshot(data, runtimeDir);
       }
     } catch {}
     finally {

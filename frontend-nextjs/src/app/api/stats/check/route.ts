@@ -1,30 +1,15 @@
 import { NextRequest } from 'next/server';
 import path from 'path';
 import fs from 'fs/promises';
+import { STAT_FILES } from '@/lib/statsSnapshot';
 
-// Files we care about (same list as backend generates)
-const STAT_FILES = [
-  'season_avg.json',
-  'season_avg_periods.json',
-  'night_avg.json',
-  'night_avg_all.json',
-  'last10.json',
-  'sonmac_by_date.json',
-  'sonmac_by_date_all.json',
-  'duello_son_mac.json',
-  'duello_sezon.json',
-  'performance_data.json',
-  'players_stats.json',
-  'players_stats_periods.json',
-  'map_stats.json'
-];
-const BACKEND_TIMEOUT_MS = 30000; // 30s — stats generation on 1 GB VM can take 10-20s; short timeout causes data to stay stale until next cooldown window
+const BACKEND_TIMEOUT_MS = 30000; // 30s — stats generation on 1 GB VM can take 10-20s
 const TIMESTAMP_FILE = 'last_timestamp.txt';
 
-// --- Response cache / cooldown (mirrors the aggregates route pattern) ---
+// --- Response cache / cooldown ---
 // Prevents thundering-herd: multiple client useEffect mounts all arrive within
 // milliseconds of each other; only the first one actually hits the backend.
-const CHECK_COOLDOWN_MS = 90 * 1000; // 90 seconds — backend check is cheap (in-memory timestamp), keep short for data freshness
+const CHECK_COOLDOWN_MS = 90 * 1000; // 90 seconds
 let cachedCheckResponse: string | null = null;
 let checkCacheTimer: ReturnType<typeof setTimeout> | null = null;
 let lastCheckTime = 0;
@@ -71,7 +56,6 @@ export async function GET(req: NextRequest) {
   try {
     const checkUrl = new URL('/stats/incremental', backendBase);
     if (effectiveLastKnownTs) checkUrl.searchParams.set('lastKnownTs', effectiveLastKnownTs);
-    // Add cache buster to avoid intermediary caching
     checkUrl.searchParams.set('_cb', Date.now().toString());
     if (debug) console.log('[stats-proxy] Fetching backend', checkUrl.toString());
 
@@ -88,21 +72,19 @@ export async function GET(req: NextRequest) {
     clearTimeout(timeout);
 
     if (res.status === 599 || !res.ok) {
-      // Backend unreachable or returned an error: try to build fallback from local runtime dir or static public data
+      // Backend unreachable: build fallback from local runtime-data or static public data
       if (debug) console.warn('[stats-proxy] Backend unavailable/error (status:', res.status, '), using local fallback datasets');
       const fallback: any = { updated: false, serverTimestamp: persistedTs, backendUnavailable: true };
       const staticDir = path.join(process.cwd(), 'public', 'data');
       for (const base of STAT_FILES) {
         const key = base.replace(/\.json$/, '');
         let content: any = undefined;
-        // Try runtime first
         try { const raw = await fs.readFile(path.join(runtimeDir, base), 'utf-8'); content = JSON.parse(raw); } catch {}
         if (content === undefined) {
           try { const raw = await fs.readFile(path.join(staticDir, base), 'utf-8'); content = JSON.parse(raw); } catch {}
         }
         if (content !== undefined) fallback[key] = content;
       }
-      // If we got at least some data from files, mark as updated so the client uses it
       const hasAnyData = STAT_FILES.some(base => fallback[base.replace(/\.json$/, '')] !== undefined);
       if (hasAnyData) fallback.updated = true;
       return new Response(JSON.stringify(fallback), { status: 200, headers:{'Content-Type':'application/json','Cache-Control':'no-store'} });
@@ -114,49 +96,11 @@ export async function GET(req: NextRequest) {
       if (debug) console.error('[stats-proxy] JSON parse error', e.message);
       return new Response(JSON.stringify({ error: 'Invalid JSON from backend', details: e.message, raw: debug?bodyText:undefined }), { status: 500 });
     }
-    // Persist only when data changed, or backfill missing files.
-    await fs.mkdir(runtimeDir, { recursive: true });
-    const serverTimestamp = typeof data.serverTimestamp === 'string' ? data.serverTimestamp : null;
-    const canSkipFullRewrite = Boolean(serverTimestamp && serverTimestamp === persistedTs);
-    if (data.updated) {
-      for (const base of STAT_FILES) {
-        const key = base.replace(/\.json$/, '');
-        if (data[key] === undefined) continue;
-        const target = path.join(runtimeDir, base);
-        if (canSkipFullRewrite) {
-          // Timestamp did not change, so avoid expensive rewrites.
-          try { await fs.stat(target); continue; } catch {}
-        }
-        // Guard: don't overwrite a valid file with empty data from a failed query.
-        // If new data is an empty object/array but existing file has real content, skip.
-        const newVal = data[key];
-        const isEmpty = (Array.isArray(newVal) && newVal.length === 0) ||
-          (typeof newVal === 'object' && newVal !== null && !Array.isArray(newVal) && Object.keys(newVal).length === 0);
-        if (isEmpty) {
-          try { await fs.stat(target); continue; } catch { /* file doesn't exist yet, write empty */ }
-        }
-        try { await fs.writeFile(target, JSON.stringify(data[key]), 'utf-8'); } catch {}
-      }
-    } else {
-      // Backfill any missing file from payload (if present) or leave as-is
-      for (const base of STAT_FILES) {
-        const key = base.replace(/\.json$/, '');
-        if (data[key] === undefined) continue;
-        const target = path.join(runtimeDir, base);
-        try { await fs.stat(target); } catch { try { await fs.writeFile(target, JSON.stringify(data[key]),'utf-8'); } catch {} }
-      }
-    }
-    if (serverTimestamp && serverTimestamp !== persistedTs) {
-      try {
-        await fs.writeFile(path.join(runtimeDir, TIMESTAMP_FILE), serverTimestamp, 'utf-8');
-      } catch {}
-    }
+    // Disk writes are handled by layout.tsx after() hook — this route is a pure proxy+cache.
     if (debug) console.log('[stats-proxy] Success updated=', data.updated);
-    // Cache the response to avoid repeated backend calls within the cooldown window
     const responseBody = JSON.stringify(data);
     cachedCheckResponse = responseBody;
     lastCheckTime = Date.now();
-    // Free cached string after cooldown expires to avoid holding memory indefinitely
     if (checkCacheTimer) clearTimeout(checkCacheTimer);
     checkCacheTimer = setTimeout(() => { cachedCheckResponse = null; checkCacheTimer = null; }, CHECK_COOLDOWN_MS + 5000);
     return new Response(responseBody, { status: 200, headers: { 'Content-Type': 'application/json','Cache-Control':'no-store, no-cache, must-revalidate','Pragma':'no-cache','Expires':'0' } });

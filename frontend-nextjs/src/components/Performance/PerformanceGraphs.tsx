@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Line } from 'react-chartjs-2';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useStatsRefresh } from '@/lib/useStatsRefresh';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -47,66 +48,60 @@ const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] 
     const [activeTab, setActiveTab] = useState<'graph' | 'table'>('graph');
   const [loading, setLoading] = useState<boolean>(initialData.length === 0);
     const [error, setError] = useState<string | null>(null);
-  
-    useEffect(() => {
-      // If we already have initial data, we still attempt a background refresh but avoid blocking UI
-      const fetchData = async () => {
-        try {
-          // Prefer runtime-data via stats proxy: if missing, trigger stats check and then try runtime path
-          let response = await fetch('/api/stats/check?includeAll=1&_cb=' + Date.now(), { cache: 'no-store' });
-          let data: PlayerPerformance[] | null = null;
-          if (response.ok) {
-            try {
-              const payload = await response.json();
-              if (Array.isArray(payload.performance_data)) {
-                data = payload.performance_data;
-              }
-            } catch(_) {}
-          }
-          if (!data) {
-            // API didn't return performance_data (e.g. updated:false with no payload).
-            // Keep the server-rendered initialData rather than fetching the stale static file.
-            if (initialData.length > 0) {
-              data = initialData;
-            } else {
-              // True cold start with no initialData — last resort static fallback
-              response = await fetch('/data/performance_data.json?_cb=' + Date.now());
-              if (response.ok) {
-                data = await response.json();
-              }
-            }
-          }
-          const perfArray: PlayerPerformance[] = data || [];
-          perfArray.sort((a, b) => a.name.localeCompare(b.name));
-  
-          const dateSet = new Set<string>();
-          perfArray.forEach(player => {
-            player.performance.forEach(entry => {
-              dateSet.add(entry.match_date);
-            });
-          });
-          const sortedDates = Array.from(dateSet).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-          
-          const colors: { [key: string]: string } = {};
-          perfArray.forEach(player => {
-            colors[player.name] = stringToColor(player.name + 'salt');
-          });
-          setPerformanceData(perfArray);
-          setUniqueDates(sortedDates);
-          setVisiblePlayers(perfArray.map(p => p.name)); // Initially all players are visible
-          setPlayerColors(colors);
-        } catch (e) {
-            if (e instanceof Error) {
-                setError(e.message);
-            } else {
-                setError('An unknown error occurred');
-            }
-        } finally {
-            setLoading(false);
+
+    const applyPerfData = (perfArray: PlayerPerformance[]) => {
+      perfArray.sort((a, b) => a.name.localeCompare(b.name));
+      const dateSet = new Set<string>();
+      perfArray.forEach(player => {
+        player.performance.forEach(entry => {
+          dateSet.add(entry.match_date);
+        });
+      });
+      const sortedDates = Array.from(dateSet).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+      const colors: { [key: string]: string } = {};
+      perfArray.forEach(player => {
+        colors[player.name] = stringToColor(player.name + 'salt');
+      });
+      setPerformanceData(perfArray);
+      setUniqueDates(sortedDates);
+      setVisiblePlayers(perfArray.map(p => p.name));
+      setPlayerColors(colors);
+    };
+
+    useStatsRefresh({
+      onData: (payload) => {
+        if (Array.isArray(payload.performance_data) && payload.performance_data.length > 0) {
+          applyPerfData(payload.performance_data);
+        } else if (initialData.length > 0) {
+          // API didn't return performance_data; use SSR initialData
+          applyPerfData(initialData);
         }
-      };
-  
-      fetchData();
+      },
+      onSettled: () => setLoading(false),
+    });
+
+    // Last-resort static fallback for true cold start (no SSR data, hook returned nothing)
+    useEffect(() => {
+      if (performanceData.length > 0 || initialData.length > 0) return;
+      // Give the hook a moment, then try static file
+      const timer = setTimeout(async () => {
+        if (performanceData.length > 0) return;
+        try {
+          const res = await fetch('/data/performance_data.json?_cb=' + Date.now());
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+              applyPerfData(data);
+            }
+          }
+        } catch (e) {
+          if (e instanceof Error) setError(e.message);
+          else setError('An unknown error occurred');
+        } finally {
+          setLoading(false);
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
   

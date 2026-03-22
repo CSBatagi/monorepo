@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import SteamAvatar from "@/components/SteamAvatar";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useStatsRefresh } from "@/lib/useStatsRefresh";
 
 type PlayerListItem = {
   name: string;
@@ -239,31 +240,21 @@ export default function OyuncularClient({
     }
   }, [activeSteamId, tabs]);
 
-  useEffect(() => {
-    const lastKnownTs = typeof window !== "undefined" ? localStorage.getItem("stats_last_ts") : null;
-    const url = `/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : "?"}_cb=${Date.now()}`;
-    fetch(url, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((j) => {
-        if (j?.players_stats_periods?.data) {
-          setPeriodPayload(j.players_stats_periods);
-          if (j.players_stats_periods.current_period) {
-            setSelectedPeriod(j.players_stats_periods.current_period);
-          }
-        } else if (Array.isArray(j.players_stats)) {
-          const fallback = buildFallbackPeriods(j.players_stats);
-          setPeriodPayload(fallback);
-          setSelectedPeriod(fallback.current_period || "season_current");
+  useStatsRefresh({
+    onData: (j) => {
+      if (j?.players_stats_periods?.data) {
+        setPeriodPayload(j.players_stats_periods);
+        if (j.players_stats_periods.current_period) {
+          setSelectedPeriod(j.players_stats_periods.current_period);
         }
-        if (j.serverTimestamp) {
-          try {
-            localStorage.setItem("stats_last_ts", j.serverTimestamp);
-          } catch {}
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      } else if (Array.isArray(j.players_stats)) {
+        const fallback = buildFallbackPeriods(j.players_stats);
+        setPeriodPayload(fallback);
+        setSelectedPeriod(fallback.current_period || "season_current");
+      }
+    },
+    onSettled: () => setLoading(false),
+  });
 
   const statsById = useMemo(() => {
     const map = new Map<string, any>();

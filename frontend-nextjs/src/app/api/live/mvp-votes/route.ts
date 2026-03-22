@@ -29,7 +29,8 @@ async function proxyPost(path: string, body: any) {
     },
     body: JSON.stringify(body),
   });
-  return res.json();
+  const data = await res.json();
+  return { data, status: res.status };
 }
 
 export async function POST(req: NextRequest) {
@@ -43,8 +44,8 @@ export async function POST(req: NextRequest) {
     if (!validActions.includes(action)) {
       return NextResponse.json({ error: 'invalid action' }, { status: 400 });
     }
-    const data = await proxyPost(action, body);
-    return NextResponse.json(data);
+    const { data, status } = await proxyPost(action, body);
+    return NextResponse.json(data, { status });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 502 });
   }

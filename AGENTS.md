@@ -12,7 +12,7 @@
 
 - Season boundaries are sourced from `frontend-nextjs/public/data/season_start.json`.
 - Runtime JSON persistence uses `frontend-nextjs/runtime-data/` (or `STATS_DATA_DIR`).
-- Main backend stats routes are `/stats/incremental`, `/stats/aggregates`, `/stats/force-regenerate`, `/stats/diagnostics`.
+- Main backend stats routes are `/stats/incremental`, `/stats/force-regenerate`, `/stats/diagnostics`.
 - If you add/rename a stats file, update all sync points listed in `docs/development/stats-runtime.md`.
 - Session auth uses HMAC-SHA256 tokens (`authSession.ts`), NOT firebase-admin session cookies.
 - Notification scheduler runs in the **backend** (`backend/notificationScheduler.js`), not in Next.js. Push delivery uses `web-push` (VAPID), not Firebase Cloud Messaging.

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useStatsRefresh } from '@/lib/useStatsRefresh';
 
 function DuelloGrid({ data, isDark }: { data: any; isDark: boolean }) {
   if (!data || !data.playerRows || !data.playerCols || !data.duels) {
@@ -137,25 +138,17 @@ export default function DuelloTabsClient({ sonmacData: initialSonmac, sezonData:
   const { isDark } = useTheme();
 
   // Fetch potential fresher data (incl. first load if files missing)
-  useEffect(() => {
-    const lastKnownTs = typeof window !== 'undefined' ? localStorage.getItem('stats_last_ts') : null;
-    const url = `/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : '?'}_cb=${Date.now()}`;
-    fetch(url, { cache: 'no-store' })
-      .then(r => r.json())
-      .then(j => {
-        if (j.duello_son_mac && j.duello_son_mac.playerRows) {
-          setSonmacData(j.duello_son_mac);
-        }
-        if (j.duello_sezon && j.duello_sezon.playerRows) {
-          setSezonData(j.duello_sezon);
-        }
-        if (j.serverTimestamp) {
-          try { localStorage.setItem('stats_last_ts', j.serverTimestamp); } catch {}
-        }
-        setLoading(false);
-      })
-      .catch(() => {});
-  }, []);
+  useStatsRefresh({
+    onData: (j) => {
+      if (j.duello_son_mac && j.duello_son_mac.playerRows) {
+        setSonmacData(j.duello_son_mac);
+      }
+      if (j.duello_sezon && j.duello_sezon.playerRows) {
+        setSezonData(j.duello_sezon);
+      }
+    },
+    onSettled: () => setLoading(false),
+  });
 
   useEffect(() => {
     if (process.env.NODE_ENV !== 'production') {

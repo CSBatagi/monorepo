@@ -1,44 +1,14 @@
 import SeasonAvgTabsClient from "@/components/SeasonAvgTabsClient";
-import { readJson } from "@/lib/dataReader";
+import { fetchStats } from "@/lib/statsServer";
 
 export const revalidate = 60; // seconds – data changes only when stats regenerate
 
 export default async function SeasonAvgPage() {
-  let data: any[] = [];
-  let periodData: any = null;
-
-  const aggregatesUrl = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/stats/aggregates?_cb=${Date.now()}`;
-  try {
-    const ac = new AbortController();
-    const timeout = setTimeout(() => ac.abort(), 8000);
-    const res = await fetch(aggregatesUrl, { cache: "no-store", signal: ac.signal });
-    clearTimeout(timeout);
-    if (res.ok) {
-      const fetched: any = await res.json();
-      if (Array.isArray(fetched?.season_avg)) data = fetched.season_avg;
-      if (fetched?.season_avg_periods && typeof fetched.season_avg_periods === "object") {
-        periodData = fetched.season_avg_periods;
-      }
-    }
-  } catch (_) {
-    // fallback to files below
-  }
-
-  if (!periodData) {
-    try {
-      const filePayload = await readJson("season_avg_periods.json");
-      if (filePayload && typeof filePayload === "object" && filePayload.data) {
-        periodData = filePayload;
-      }
-    } catch {}
-  }
-
-  if (!data.length) {
-    try {
-      const fileData = await readJson("season_avg.json");
-      if (Array.isArray(fileData)) data = fileData;
-    } catch {}
-  }
+  const stats = await fetchStats('season_avg', 'season_avg_periods');
+  let data: any[] = Array.isArray(stats.season_avg) ? stats.season_avg : [];
+  let periodData: any = (stats.season_avg_periods && typeof stats.season_avg_periods === "object" && stats.season_avg_periods.data)
+    ? stats.season_avg_periods
+    : null;
 
   if (periodData?.current_period && Array.isArray(periodData?.data?.[periodData.current_period]) && !data.length) {
     data = periodData.data[periodData.current_period];
