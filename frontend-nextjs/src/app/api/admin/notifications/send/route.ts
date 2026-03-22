@@ -20,12 +20,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const session = verifySessionToken(cookie);
-    if (!session?.uid) {
+    if (!session?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check admin status via backend PG
-    const adminRes = await fetch(`${BACKEND}/admin/check/${session.uid}`, { cache: "no-store" });
+    const adminRes = await fetch(`${BACKEND}/admin/check/${encodeURIComponent(session.email)}`, { cache: "no-store" });
     const adminData = await adminRes.json();
     if (!adminData.isAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

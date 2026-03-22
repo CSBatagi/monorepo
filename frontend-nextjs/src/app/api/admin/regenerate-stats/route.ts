@@ -25,24 +25,24 @@ const STAT_FILES = [
 export async function POST(req: NextRequest) {
   try {
     // --- Auth: session cookie only ---
-    let uid: string | null = null;
+    let email: string | null = null;
 
     const sessionCookie = req.cookies.get(SESSION_COOKIE_NAME)?.value;
     if (sessionCookie) {
       const payload = verifySessionToken(sessionCookie);
-      if (payload?.uid) uid = payload.uid;
+      if (payload?.email) email = payload.email;
     }
 
-    if (!uid) {
+    if (!email) {
       console.warn('[regenerate-stats] Rejected: no valid auth');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check admin status via backend PG
-    const adminRes = await fetch(`${BACKEND}/admin/check/${uid}`, { cache: 'no-store' });
+    const adminRes = await fetch(`${BACKEND}/admin/check/${encodeURIComponent(email)}`, { cache: 'no-store' });
     const adminData = await adminRes.json();
     if (!adminData.isAdmin) {
-      console.warn(`[regenerate-stats] Non-admin uid ${uid} tried to regenerate stats`);
+      console.warn(`[regenerate-stats] Non-admin ${email} tried to regenerate stats`);
       return NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
     }
 
