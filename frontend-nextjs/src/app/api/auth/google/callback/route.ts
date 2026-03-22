@@ -9,7 +9,7 @@ import {
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
 function getGoogleClientId(): string {
-  return process.env.GOOGLE_CLIENT_ID || "";
+  return process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 }
 
 function getGoogleClientSecret(): string {
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
   const clientSecret = getGoogleClientSecret();
 
   if (!clientId || !clientSecret) {
-    console.error("[auth/google/callback] Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
+    console.error("[auth/google/callback] Missing NEXT_PUBLIC_GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
     return NextResponse.redirect(
       new URL(`/login?error=server_config&next=${encodeURIComponent(nextPath)}`, req.url)
     );

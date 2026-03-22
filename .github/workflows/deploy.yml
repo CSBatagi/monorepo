@@ -54,9 +54,8 @@ jobs:
             echo "AUTH_TOKEN=${{secrets.AUTH_TOKEN}}" >> .frontend_secrets
             echo "SERVERACPASS=${{ secrets.SERVERACPASS }}" >> .frontend_secrets
             echo "STEAM_API_KEY=${{ secrets.STEAM_API_KEY }}" >> .frontend_secrets
-            echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .frontend_secrets
+            echo "NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}" >> .frontend_secrets
             echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .frontend_secrets
-            echo "NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .frontend_secrets
             echo "VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" >> .frontend_secrets
             echo "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" >> .frontend_secrets
             echo "VAPID_SUBJECT=mailto:csbatagi@gmail.com" >> .frontend_secrets

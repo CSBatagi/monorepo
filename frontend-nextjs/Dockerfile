@@ -21,6 +21,10 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 # ENV NEXT_TELEMETRY_DISABLED=1
 
+# Public Google Client ID – needed at build time so Next.js bakes it into the client bundle.
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
+
 # Debug: confirm next binary exists before building
 RUN ls -l node_modules/.bin || true && ls -l node_modules/next/dist/bin || true && node -v && npm -v && npx next --version
 RUN npm run build
