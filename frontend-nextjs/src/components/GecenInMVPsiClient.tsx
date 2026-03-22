@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSession } from '@/contexts/SessionContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { db } from '@/lib/firebase';
-import { off, onValue, ref, set } from 'firebase/database';
+import { useLivePolling } from '@/lib/useLivePolling';
+import { submitMvpVote, toggleMvpLock } from '@/lib/liveApi';
 import { buildPlayersIndex, displayNameForSteamId } from '@/lib/batakAllStars';
 import { Trophy } from 'lucide-react';
 
@@ -66,7 +66,7 @@ export default function GecenInMVPsiClient({
   players: any[];
   seasonStart: string | null;
 }) {
-  const { user } = useAuth();
+  const { user } = useSession();
   const { isDark } = useTheme();
 
   const availableDates = useMemo(() => {
@@ -76,8 +76,15 @@ export default function GecenInMVPsiClient({
   }, [nightAvg, seasonStart]);
 
   const [selectedDate, setSelectedDate] = useState<string>('');
-  const [votesByDate, setVotesByDate] = useState<VotesByDate>({});
-  const [lockedByDate, setLockedByDate] = useState<LockedByDateSnapshot>({});
+  const { data: mvpData, refetch } = useLivePolling<{
+    votesByDate: VotesByDate;
+    lockedByDate: LockedByDateSnapshot;
+  }>({
+    url: '/api/live/mvp-votes',
+    initialData: { votesByDate: {}, lockedByDate: {} },
+  });
+  const votesByDate = mvpData.votesByDate;
+  const lockedByDate = mvpData.lockedByDate;
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -102,38 +109,6 @@ export default function GecenInMVPsiClient({
       setSelectedDate(availableDates[0]);
     }
   }, [availableDates, selectedDate]);
-
-  // Listen to all votes from Firebase
-  useEffect(() => {
-    const baseRef = ref(db, 'mvpVotes/votesByDate');
-    const unsub = onValue(
-      baseRef,
-      (snap) => {
-        const val = (snap.val() || {}) as VotesByDate;
-        setVotesByDate(val);
-      },
-      () => {
-        // ignore errors
-      }
-    );
-    return () => off(baseRef, 'value', unsub);
-  }, []);
-
-  // Listen to locked dates from Firebase
-  useEffect(() => {
-    const baseRef = ref(db, 'mvpVotes/lockedByDate');
-    const unsub = onValue(
-      baseRef,
-      (snap) => {
-        const val = (snap.val() || {}) as LockedByDateSnapshot;
-        setLockedByDate(val);
-      },
-      () => {
-        // ignore errors
-      }
-    );
-    return () => off(baseRef, 'value', unsub);
-  }, []);
 
   const isDateLocked = useMemo(() => {
     if (!selectedDate) return false;
@@ -251,8 +226,8 @@ export default function GecenInMVPsiClient({
     setMessage(null);
 
     try {
-      const voteRef = ref(db, `mvpVotes/votesByDate/${selectedDate}/${voterSteamId}`);
-      await set(voteRef, votedForSteamId);
+      await submitMvpVote(selectedDate, voterSteamId, votedForSteamId);
+      await refetch();
       setMessage('Oy kaydedildi!');
       setTimeout(() => setMessage(null), 2000);
     } catch (error) {
@@ -285,27 +260,18 @@ export default function GecenInMVPsiClient({
     setSaving(true);
     setMessage(null);
     try {
-      const lockRef = ref(db, `mvpVotes/lockedByDate/${date}`);
-      if (shouldLock) {
-        await set(lockRef, {
-          locked: true,
-          lockedAt: Date.now(),
-          lockedByUid: user.uid,
-          lockedByName: user.displayName || user.email || undefined,
-        });
+      await toggleMvpLock(date, shouldLock, user.uid, user.name || user.email || undefined);
+      await refetch();
 
+      if (shouldLock) {
         try {
           const winnerSummary =
             winners.length > 0
               ? winners.map((w) => `${w.name} (${w.count} oy)`).join(" & ")
               : "Sonuç hesaplanamadı";
-          const idToken = await user.getIdToken();
           await fetch('/api/notifications/emit', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${idToken}`,
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               topic: 'mvp_poll_locked',
               eventId: `mvp_poll_locked:${date}`,
@@ -326,8 +292,6 @@ export default function GecenInMVPsiClient({
 
         setMessage('Kaydedildi ve kilitlendi.');
       } else {
-        // Setting null removes the node in Realtime Database
-        await set(lockRef, null);
         setMessage('Kilit kaldırıldı.');
       }
       setTimeout(() => setMessage(null), 2000);

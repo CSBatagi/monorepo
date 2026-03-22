@@ -12,16 +12,20 @@ Our PostgreSQL is on the **same VM** (Docker internal network). Queries take <1m
 
 ## Current Firebase RTDB Paths
 
-| Path | Used By | Priority |
-|------|---------|----------|
-| `attendanceState` | AttendanceClient, TeamPickerClient, Backend scheduler | P0 |
-| `emojiState` | AttendanceClient | P0 |
-| `kaptanlikState` | AttendanceClient, BatakAllStarsClient | P0 |
-| `teamPickerState/*` | TeamPickerClient | P0 |
-| `mvpVotes/*` | GecenInMVPsiClient | P1 |
-| `batakAllStars/*` | BatakAllStarsClient, SuperKupaBracket | P2 |
-| `notifications/*` | NotificationContext, Backend scheduler | P2 |
-| `admins/{uid}` | AdminStatsButton, Admin API routes | P2 |
+| Path | Status | Used By |
+|------|--------|---------|
+| `attendanceState` | **MIGRATED** (P0) — no readers/writers left except stale scheduler | — |
+| `emojiState` | **MIGRATED** (P0) — zero references in code | — |
+| `kaptanlikState` | **BROKEN** — BatakAllStarsClient reads it, but nothing writes to it anymore | BatakAllStarsClient (read-only) |
+| `teamPickerState/*` | **MIGRATED** (P0) — zero references in code | — |
+| `mvpVotes/votesByDate/*` | **MIGRATED** (P1) — PG `mvp_votes` table | — |
+| `mvpVotes/lockedByDate/*` | **MIGRATED** (P1) — PG `mvp_locks` table | — |
+| `batakAllStars/captainsByDate/*` | Active | BatakAllStarsClient |
+| `batakAllStars/superKupa/*` | Active | SuperKupaBracket |
+| `notifications/preferences/*` | Active | notifications/page.tsx, serverNotifications.ts, backend scheduler |
+| `notifications/subscriptions/*` | Active | notifications/page.tsx, serverNotifications.ts, backend scheduler |
+| `notifications/events/*` | Active | serverNotifications.ts, backend scheduler (dedup) |
+| `admins/{uid}` | Active | admin/check/route.ts, admin/regenerate-stats/route.ts, admin/notifications/send/route.ts |
 
 ## Real-time Strategy
 
@@ -31,6 +35,14 @@ Replace Firebase RTDB listeners with **short polling** (3s interval).
 - Uses a `version` counter per table — if version unchanged, server returns `304`
 - Total latency: ~5-10ms (local Docker network) vs 100-300ms (Firebase RTDB)
 - No extra memory for WebSocket connections on the 1 GB VM
+
+## SSR Stats Data Path (unified)
+
+All stats pages now use a unified SSR data path via `fetchStats()` in `lib/statsServer.ts`:
+- **SSR**: Calls backend directly (server-to-server) via `/stats/incremental` → serves from in-memory cache
+- **Client**: `/api/stats/check` as a refresh-if-newer enhancement (not primary source)
+- **Disk fallback**: `readJson()` if backend unreachable (written by `layout.tsx` `after()` hook)
+- Module-level 10s cache prevents redundant backend calls during concurrent SSR renders
 
 ## Phase 1: Attendance + Team Picker (P0) — COMPLETE
 
@@ -71,7 +83,7 @@ INSERT INTO live_version (key, version) VALUES ('attendance', 0), ('team_picker'
 
 ### Backend Routes
 
-- `GET /live/attendance` — returns attendance rows + version
+- `GET /live/attendance` — returns attendance rows + version (includes `kaptanlik` volunteer data)
 - `POST /live/attendance/:steamId` — update one player's status/emoji/kaptan
 - `POST /live/attendance/bulk` — bulk update multiple players
 - `POST /live/attendance/reset` — clear all attendance
@@ -98,40 +110,240 @@ Rate limiting is bypassed for `/live/*` routes (high-frequency polling by design
 - `/attendance` removed from `FIREBASE_ROUTES` — zero Firebase SDK on this page ✅
 - `/team-picker` removed from `FIREBASE_ROUTES` — zero Firebase SDK on this page ✅
 
-## Phase 2: MVP Voting (P1)
+### Known Issue: `kaptanlikState` RTDB path is now dead
 
-- `mvp_votes` table (date, voter, voted_for)
-- `mvp_locks` table (date, locked, locked_by)
-- Backend CRUD routes
-- Migrate GecenInMVPsiClient
+After Phase 1 migration, `AttendanceClient.tsx` writes kaptanlik volunteer data exclusively to PostgreSQL (the `is_kaptan` and `kaptan_timestamp` columns in the `attendance` table). However, nothing writes to the `kaptanlikState` RTDB path anymore.
 
-## Phase 3: Batak + Admin (P2)
+`BatakAllStarsClient.tsx` still reads `kaptanlikState` from RTDB (line 302) to show kaptanlik volunteers in the "Kaptanlik Durumu" tab. **This read returns stale/empty data.**
 
-- `batak_captains` + `batak_super_kupa` tables
-- `admins` table
-- Migrate BatakAllStarsClient, SuperKupaBracket, AdminStatsButton
+**Fix needed in Phase 3:** Migrate `BatakAllStarsClient.tsx` to read kaptanlik data from PG via `/api/live/attendance` instead of RTDB.
 
-## Phase 4: Notifications (P2) - IN PROGRESS
+### Known Issue: Frontend notification scheduler reads stale `attendanceState`
 
-- Keep FCM for push delivery (no alternative)
-- Inbox storage/read state moved to PostgreSQL
-- Preferences, subscriptions, and event dedup are still in Firebase RTDB
-- Backend scheduler reads attendance count from PostgreSQL
-- firebase-admin remains for Auth verification, RTDB settings/event nodes, and FCM delivery
+`lib/notificationScheduler.ts` (line 67) reads `attendanceState` from Firebase RTDB unconditionally. Since nothing writes to this RTDB path anymore, it returns stale data. The backend scheduler (`backend/notificationScheduler.js`) correctly reads from PG as the primary source.
 
-## Remaining Firebase Dependencies
+**Fix needed in Phase 4:** Migrate `lib/notificationScheduler.ts` to read from PG backend via HTTP, matching how the backend scheduler works.
 
-### Client-Side (loaded only on FIREBASE_ROUTES: `/gecenin-mvpsi`, `/notifications`, `/login`, `/batak-allstars`)
+## Phase 2: MVP Voting (P1) — COMPLETE
+
+### Current State
+
+MVP voting is entirely on Firebase RTDB with no backend routes:
+
+- **Client reads/writes:** `GecenInMVPsiClient.tsx`
+  - `mvpVotes/votesByDate` — `onValue` subscription for all votes (line 108)
+  - `mvpVotes/votesByDate/{date}/{voterSteamId}` — `set()` to cast vote (line 254)
+  - `mvpVotes/lockedByDate` — `onValue` subscription for lock state (line 124)
+  - `mvpVotes/lockedByDate/{date}` — `set()`/`remove()` to lock/unlock (line 288)
+- **Server-side:** `api/notifications/emit/route.ts`
+  - `mvpVotes/lockedByDate/{date}` — `get()` to verify MVP is locked before sending notification (line 87)
+
+### Data Structures
+
+```
+mvpVotes/votesByDate/{YYYY-MM-DD}/{voterSteamId} = "votedForSteamId"
+mvpVotes/lockedByDate/{YYYY-MM-DD} = { locked: true, lockedAt: number, lockedByUid: string, lockedByName: string } | true (legacy)
+```
+
+### Migration Plan
+
+1. **Database tables:**
+   ```sql
+   CREATE TABLE IF NOT EXISTS mvp_votes (
+     date TEXT NOT NULL,
+     voter_steam_id TEXT NOT NULL,
+     voted_for_steam_id TEXT NOT NULL,
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     PRIMARY KEY (date, voter_steam_id)
+   );
+
+   CREATE TABLE IF NOT EXISTS mvp_locks (
+     date TEXT PRIMARY KEY,
+     locked BOOLEAN NOT NULL DEFAULT TRUE,
+     locked_by_uid TEXT,
+     locked_by_name TEXT,
+     locked_at BIGINT,
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   );
+
+   INSERT INTO live_version (key, version) VALUES ('mvp_votes', 0) ON CONFLICT DO NOTHING;
+   ```
+
+2. **Backend routes (in `liveRoutes.js`):**
+   - `GET /live/mvp-votes` — returns all votes + locks + version
+   - `POST /live/mvp-votes/vote` — cast/update a vote
+   - `POST /live/mvp-votes/lock` — lock/unlock a date
+   - `GET /live/mvp-votes/is-locked/:date` — server-side lock check (replaces RTDB read in emit route)
+
+3. **Frontend migration:**
+   - Replace `onValue` subscriptions with `useLivePolling('/api/live/mvp-votes', 3000)`
+   - Replace `set(ref(db, ...))` calls with HTTP POST via `liveApi.ts` helpers
+   - Remove `firebase/database` import from `GecenInMVPsiClient.tsx`
+   - Update `api/notifications/emit/route.ts` to call backend HTTP instead of RTDB
+   - Remove `/gecenin-mvpsi` from `FIREBASE_ROUTES` (will still need Auth for voter identity — use session cookie instead)
+
+4. **Data migration script:** One-time read of `mvpVotes/*` from RTDB → INSERT INTO PG tables.
+
+## Phase 3: Batak AllStars + Admin (P2)
+
+### Current State
+
+**BatakAllStarsClient.tsx** uses 3 Firebase RTDB paths:
+- `batakAllStars/captainsByDate` — read all captain assignments (`onValue`, line 286)
+- `batakAllStars/captainsByDate/{date}/{team1|team2}` — read/write per-date captain (`onValue` + `set`, lines 476-477, 559)
+- `kaptanlikState` — **BROKEN READ** (nothing writes here anymore, line 302)
+
+**SuperKupaBracket.tsx** uses 1 Firebase RTDB path:
+- `batakAllStars/superKupa` — read/write bracket results (`onValue` + `set` + `remove`, lines 231, 313, 322, 345)
+
+**Admin check** uses `admins/{uid}` (Firebase RTDB boolean):
+- `api/admin/check/route.ts` — server-side admin check via HMAC session (line 19)
+- `api/admin/regenerate-stats/route.ts` — admin check (line 56)
+- `api/admin/notifications/send/route.ts` — admin check (line 27)
+- `notifications/page.tsx` — client-side admin check (line 164)
+
+**Note:** `AdminStatsButton.tsx` does NOT use Firebase directly anymore. It calls `/api/admin/check` (session cookie) and `/api/admin/regenerate-stats` (session cookie). The Firebase dependency is only in the server-side routes.
+
+### Captain Performance Computation
+
+Captain wins/losses are **NOT stored** in Firebase. They are **computed at runtime** from:
+- `sonmac_by_date.json` (match results) — determines team compositions and map wins
+- `night_avg.json` (player stats) — HLTV2 and ADR for captain performance deltas
+- `batakAllStars/captainsByDate` (RTDB) — only stores which player was captain on which date/team
+
+The computation logic is in `lib/batakAllStars.ts`:
+- `computeStandings()` — computes points from HLTV2 + win-rate bonus per night
+- `computeCaptainPerformance()` — computes HLTV2/ADR deltas on captained nights
+- `computeCaptainTokens()` — counts captain appearances (used for dropping worst nights)
+
+### Migration Plan
+
+1. **Database tables:**
+   ```sql
+   CREATE TABLE IF NOT EXISTS batak_captains (
+     date TEXT NOT NULL,
+     team TEXT NOT NULL CHECK (team IN ('team1', 'team2')),
+     steam_id TEXT NOT NULL,
+     name TEXT NOT NULL,
+     assigned_by TEXT,
+     assigned_at BIGINT,
+     PRIMARY KEY (date, team)
+   );
+
+   CREATE TABLE IF NOT EXISTS batak_super_kupa (
+     slot TEXT PRIMARY KEY CHECK (slot IN ('semi1', 'semi2', 'final')),
+     data JSONB NOT NULL,
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   );
+
+   CREATE TABLE IF NOT EXISTS admins (
+     uid TEXT PRIMARY KEY,
+     is_admin BOOLEAN NOT NULL DEFAULT TRUE,
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   );
+
+   INSERT INTO live_version (key, version) VALUES ('batak_captains', 0), ('batak_super_kupa', 0) ON CONFLICT DO NOTHING;
+   ```
+
+2. **Backend routes:**
+   - `GET /live/batak-captains` — returns all captain assignments + version
+   - `POST /live/batak-captains/assign` — assign a captain for a date/team
+   - `GET /live/batak-super-kupa` — returns bracket data + version
+   - `POST /live/batak-super-kupa/save` — save a match result
+   - `POST /live/batak-super-kupa/clear` — clear a slot (cascade to final)
+   - `POST /live/batak-super-kupa/reset` — reset all bracket
+   - `GET /live/admin/check` — check if current user is admin (from PG `admins` table)
+
+3. **Frontend migration:**
+   - Replace `onValue` subscriptions with `useLivePolling`
+   - Replace `set`/`remove` calls with HTTP POST via `liveApi.ts`
+   - **Fix broken kaptanlik read:** read from `/api/live/attendance` (PG) instead of RTDB `kaptanlikState`
+   - Remove `firebase/database` imports from BatakAllStarsClient.tsx and SuperKupaBracket.tsx
+   - Update admin API routes to check PG `admins` table instead of RTDB `admins/{uid}`
+   - Update `notifications/page.tsx` admin check to use `/api/live/admin/check`
+   - Remove `/batak-allstars` from `FIREBASE_ROUTES`
+
+4. **Data migration scripts:**
+   - Read `batakAllStars/captainsByDate` from RTDB → INSERT INTO `batak_captains`
+   - Read `batakAllStars/superKupa` from RTDB → INSERT INTO `batak_super_kupa`
+   - Read `admins/*` from RTDB → INSERT INTO `admins`
+
+## Phase 4: Notifications (P2) — PARTIALLY COMPLETE
+
+### Current State
+
+| Feature | Storage | Status |
+|---------|---------|--------|
+| Notification inbox (in-app messages) | **PostgreSQL** (`notification_inbox` + `notification_inbox_version` tables) | **MIGRATED** ✅ |
+| Push delivery | **Firebase Cloud Messaging** (`adminMessaging().sendEachForMulticast()`) | Stays on FCM (no alternative) |
+| Preferences (per-user topic toggles) | **Firebase RTDB** (`notifications/preferences/{uid}`) | **NOT migrated** |
+| Subscriptions (FCM tokens per device) | **Firebase RTDB** (`notifications/subscriptions/{uid}/{deviceId}`) | **NOT migrated** |
+| Event dedup (idempotency log) | **Firebase RTDB** (`notifications/events/{eventId}`) | **NOT migrated** |
+| Attendance count for scheduler | **PostgreSQL** (backend scheduler, line 311) | **MIGRATED** in backend, **BROKEN** in frontend scheduler |
+
+### Backend Notification Infrastructure (already in PG)
+
+- `backend/notificationInboxStore.js` — PG tables: `notification_inbox`, `notification_inbox_version`
+- `backend/notificationInboxRoutes.js` — Express routes: `/list`, `/persist`, `/mark-all`, `/clear`, `/:id/read`, `/:id/delete`
+- Frontend inbox API routes proxy to backend: `api/notifications/inbox/*` → `backend /live/notifications/inbox/*`
+- `backend/notificationScheduler.js` — reads attendance from PG (line 311), falls back to RTDB only when `dbPool` is null
+
+### Remaining Migration
+
+1. **Database tables:**
+   ```sql
+   CREATE TABLE IF NOT EXISTS notification_preferences (
+     uid TEXT PRIMARY KEY,
+     enabled BOOLEAN NOT NULL DEFAULT TRUE,
+     topics JSONB NOT NULL DEFAULT '{}',
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   );
+
+   CREATE TABLE IF NOT EXISTS notification_subscriptions (
+     uid TEXT NOT NULL,
+     device_id TEXT NOT NULL,
+     token TEXT NOT NULL,
+     enabled BOOLEAN NOT NULL DEFAULT TRUE,
+     platform TEXT,
+     user_agent TEXT,
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     PRIMARY KEY (uid, device_id)
+   );
+
+   CREATE TABLE IF NOT EXISTS notification_events (
+     event_id TEXT PRIMARY KEY,
+     sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     topic TEXT,
+     recipient_count INT
+   );
+   ```
+
+2. **Backend routes:**
+   - `GET /live/notifications/preferences/:uid` — get user's notification preferences
+   - `POST /live/notifications/preferences/:uid` — save preferences
+   - `GET /live/notifications/subscriptions/:uid/:deviceId` — get device subscription
+   - `POST /live/notifications/subscriptions/:uid/:deviceId` — register/update device
+   - `DELETE /live/notifications/subscriptions/:uid/:deviceId` — unregister device
+
+3. **Server-side migration:**
+   - Update `serverNotifications.ts` to resolve recipients from PG instead of RTDB
+   - Update `backend/notificationScheduler.js` to resolve recipients from PG (remove RTDB fallback)
+   - Update event dedup to use PG `notification_events` table instead of RTDB transactions
+   - **Fix `lib/notificationScheduler.ts`** to read attendance from PG backend (currently reads stale RTDB data)
+
+4. **Frontend migration:**
+   - Update `notifications/page.tsx` to read/write preferences and subscriptions via HTTP
+   - Remove `firebase/database` and `get`/`onValue`/`set`/`remove` imports
+   - Remove `/notifications` from `FIREBASE_ROUTES` (will still need FCM `getToken` for push registration)
+
+## Remaining Firebase Dependencies (after all phases complete)
+
+### Client-Side (loaded only on FIREBASE_ROUTES: `/login` only)
 
 | File | Firebase Feature | Purpose |
 |------|-----------------|---------|
 | `contexts/AuthContext.tsx` | Auth (client SDK) | Login/signup (email, Google OAuth), `onIdTokenChanged` syncs to session cookie |
 | `contexts/SessionContext.tsx` | Auth (dynamic `signOut` import) | Clears Firebase auth state on logout |
-| `components/GecenInMVPsiClient.tsx` | RTDB (`onValue`, `set`, `remove`) + Auth (`getIdToken`) | MVP voting: `mvpVotes/byDate`, `mvpVotes/lockedByDate` |
-| `components/AdminStatsButton.tsx` | RTDB (`get`) + Auth (`getIdToken`) | Admin check: `admins/{uid}`, stats regeneration |
-| `app/batak-allstars/BatakAllStarsClient.tsx` | RTDB (`onValue`, `set`) | Kaptanlik state: `kaptanlikState` |
-| `app/batak-allstars/SuperKupaBracket.tsx` | RTDB (`onValue`, `set`, `remove`) | Tournament bracket: `batakAllStars/superKupa` |
-| `app/notifications/page.tsx` | RTDB + Auth + Messaging (`getToken`) | FCM registration, notification preferences |
 | `components/NotificationForegroundHandler.tsx` | Messaging (`onMessage`) | Foreground push notification display |
 | `public/firebase-messaging-sw.js` | Messaging (service worker) | Background push notification handling |
 
@@ -139,22 +351,28 @@ Rate limiting is bypassed for `/live/*` routes (high-frequency polling by design
 
 | File | Firebase Feature | Purpose |
 |------|-----------------|---------|
-| `lib/serverNotifications.ts` | Admin RTDB + Messaging | Dispatch FCM messages, persist inbox rows to PostgreSQL, RTDB event dedup |
-| `lib/notificationScheduler.ts` | Admin RTDB | Reads `attendanceState` for timed notifications |
-| `api/notifications/emit/route.ts` | Admin Auth + RTDB | `verifyIdToken` fallback (for gecenin-mvpsi), `isMvpDateLocked` |
-| `api/admin/notifications/send/route.ts` | Admin Auth + RTDB | Admin broadcast: verifies token + checks `admins/{uid}` |
-| `api/admin/regenerate-stats/route.ts` | Admin Auth + RTDB | Admin stats regen: verifies token + checks `admins/{uid}` |
+| `lib/serverNotifications.ts` | Admin Messaging only | Dispatch FCM messages via `adminMessaging().sendEachForMulticast()` |
+| `backend/notificationScheduler.js` | Admin Messaging only | Dispatch timed FCM notifications |
 
 ### Config Files
 
 | File | Purpose |
 |------|---------|
-| `lib/firebase.ts` | Client SDK init (app, auth, db, googleProvider) |
-| `lib/firebaseAdmin.ts` | Admin SDK init (adminAuth, adminDb, adminMessaging) |
-| `components/FirebaseProviders.tsx` | Code-split wrapper, only loaded for FIREBASE_ROUTES |
+| `lib/firebase.ts` | Client SDK init (app, auth, ~~db~~, googleProvider) — RTDB `db` export can be removed when all phases done |
+| `lib/firebaseAdmin.ts` | Admin SDK init (adminAuth, ~~adminDb~~, adminMessaging) — `adminDb` can be removed when all phases done |
+| `backend/firebaseAdmin.js` | Backend SDK init (~~adminDb~~, adminMessaging) — `adminDb` can be removed when all phases done |
+| `components/FirebaseProviders.tsx` | Code-split wrapper — may be simplified to Auth-only when RTDB is fully removed |
 
 ### What Will Always Stay on Firebase
 
 - **Firebase Auth** — login flow (email + Google OAuth). HMAC session cookie minimizes runtime impact
 - **FCM push delivery** — `adminMessaging().sendEachForMulticast()`. No self-hosted alternative without significant infra
-- **Service worker** — `firebase-messaging-sw.js` for background push notifications
+- **Service worker** — `firebase-messaging-sw.js` for background push notification handling
+
+## Migration Priority Order
+
+1. **Phase 2 (MVP Voting)** — COMPLETE. `/gecenin-mvpsi` removed from FIREBASE_ROUTES.
+2. **Phase 3 (Batak + Admin)** — fixes the broken `kaptanlikState` read. Removes `/batak-allstars` from FIREBASE_ROUTES.
+3. **Phase 4 (Notifications)** — most complex, requires migrating preferences/subscriptions/events dedup. Removes `/notifications` from FIREBASE_ROUTES.
+
+After all phases: only `/login` needs Firebase client SDK (for Auth). All RTDB usage is eliminated.

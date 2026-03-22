@@ -552,10 +552,13 @@ if (!TEST_MODE) {
       `CREATE TABLE IF NOT EXISTS team_picker (id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1), team_a_players JSONB NOT NULL DEFAULT '{}', team_b_players JSONB NOT NULL DEFAULT '{}', team_a_name_mode TEXT NOT NULL DEFAULT 'generic', team_b_name_mode TEXT NOT NULL DEFAULT 'generic', team_a_captain TEXT NOT NULL DEFAULT '', team_b_captain TEXT NOT NULL DEFAULT '', team_a_kabile TEXT NOT NULL DEFAULT '', team_b_kabile TEXT NOT NULL DEFAULT '', maps JSONB NOT NULL DEFAULT '{}', overrides JSONB NOT NULL DEFAULT '{}', updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       `INSERT INTO team_picker (id) VALUES (1) ON CONFLICT DO NOTHING`,
       `CREATE TABLE IF NOT EXISTS live_version (key TEXT PRIMARY KEY, version BIGINT NOT NULL DEFAULT 0)`,
-      `INSERT INTO live_version (key, version) VALUES ('attendance', 0), ('team_picker', 0) ON CONFLICT DO NOTHING`,
+      `INSERT INTO live_version (key, version) VALUES ('attendance', 0), ('team_picker', 0), ('mvp_votes', 0) ON CONFLICT DO NOTHING`,
       `CREATE TABLE IF NOT EXISTS notification_inbox (id TEXT PRIMARY KEY, user_uid TEXT NOT NULL, topic TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, data JSONB, read BOOLEAN NOT NULL DEFAULT FALSE, created_at BIGINT NOT NULL, event_id TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       `CREATE INDEX IF NOT EXISTS notification_inbox_user_created_idx ON notification_inbox (user_uid, created_at DESC)`,
       `CREATE TABLE IF NOT EXISTS notification_inbox_version (user_uid TEXT PRIMARY KEY, version BIGINT NOT NULL DEFAULT 0, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+      // MVP voting tables — replaces Firebase RTDB mvpVotes/*
+      `CREATE TABLE IF NOT EXISTS mvp_votes (date TEXT NOT NULL, voter_steam_id TEXT NOT NULL, voted_for_steam_id TEXT NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (date, voter_steam_id))`,
+      `CREATE TABLE IF NOT EXISTS mvp_locks (date TEXT PRIMARY KEY, locked BOOLEAN NOT NULL DEFAULT TRUE, locked_by_uid TEXT, locked_by_name TEXT, locked_at BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
     ];
     for (const sql of migrations) {
       try { await pool.query(sql); } catch (e) { console.warn('[migration]', e.message); }

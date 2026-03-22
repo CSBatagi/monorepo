@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { adminAuth } from "@/lib/firebaseAdmin";
 import {
   type NotificationData,
   emitNotificationEvent,
@@ -84,11 +84,17 @@ async function resolveComingCount(): Promise<number> {
 }
 
 async function isMvpDateLocked(date: string): Promise<boolean> {
-  const snap = await adminDb().ref(`mvpVotes/lockedByDate/${date}`).get();
-  const value = snap.val();
-  if (value === true) return true;
-  if (!value || typeof value !== "object") return false;
-  return Boolean((value as { locked?: boolean }).locked);
+  const BACKEND = process.env.BACKEND_INTERNAL_URL || "http://backend:3000";
+  try {
+    const res = await fetch(`${BACKEND}/live/mvp-votes?v=0`, { cache: "no-store" });
+    if (!res.ok) return false;
+    const data = await res.json();
+    const v = data.lockedByDate?.[date];
+    if (v === true) return true;
+    return !!(v && typeof v === "object" && v.locked);
+  } catch {
+    return false;
+  }
 }
 
 // In-memory state for teker_dondu crossing detection (replaces Firebase RTDB transaction).

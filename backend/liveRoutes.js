@@ -363,4 +363,109 @@ router.post('/team-picker/reset', async (req, res) => {
   }
 });
 
+// ─── MVP Votes ───────────────────────────────────────────────────────────────
+
+router.get('/mvp-votes', async (req, res) => {
+  try {
+    const clientVersion = parseInt(req.query.v) || 0;
+    const serverVersion = await getVersion('mvp_votes');
+    if (clientVersion && clientVersion >= serverVersion) {
+      return res.status(304).end();
+    }
+
+    const [votesRes, locksRes] = await Promise.all([
+      pool.query(`SELECT date, voter_steam_id, voted_for_steam_id FROM mvp_votes`),
+      pool.query(`SELECT date, locked, locked_by_uid, locked_by_name, locked_at FROM mvp_locks WHERE locked = true`),
+    ]);
+
+    // Transform votes to { [date]: { [voterSteamId]: votedForSteamId } }
+    const votesByDate = {};
+    for (const r of votesRes.rows) {
+      if (!votesByDate[r.date]) votesByDate[r.date] = {};
+      votesByDate[r.date][r.voter_steam_id] = r.voted_for_steam_id;
+    }
+
+    // Transform locks to { [date]: { locked: true, lockedAt, ... } }
+    const lockedByDate = {};
+    for (const r of locksRes.rows) {
+      lockedByDate[r.date] = {
+        locked: true,
+        lockedAt: r.locked_at ? Number(r.locked_at) : null,
+        lockedByUid: r.locked_by_uid || null,
+        lockedByName: r.locked_by_name || null,
+      };
+    }
+
+    res.json({ version: serverVersion, votesByDate, lockedByDate });
+  } catch (e) {
+    console.error('[live/mvp-votes GET]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/mvp-votes/vote', async (req, res) => {
+  try {
+    const { date, voterSteamId, votedForSteamId } = req.body;
+    if (!date || !voterSteamId || !votedForSteamId) {
+      return res.status(400).json({ error: 'date, voterSteamId, and votedForSteamId required' });
+    }
+    if (voterSteamId === votedForSteamId) {
+      return res.status(400).json({ error: 'self-vote not allowed' });
+    }
+
+    // Check if date is locked
+    const lockCheck = await pool.query(`SELECT locked FROM mvp_locks WHERE date = $1 AND locked = true`, [date]);
+    if (lockCheck.rows.length > 0) {
+      return res.status(403).json({ error: 'date is locked' });
+    }
+
+    await pool.query(
+      `INSERT INTO mvp_votes (date, voter_steam_id, voted_for_steam_id, updated_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (date, voter_steam_id) DO UPDATE SET
+         voted_for_steam_id = $3,
+         updated_at = NOW()`,
+      [date, voterSteamId, votedForSteamId]
+    );
+    await bumpVersion('mvp_votes');
+    const version = await getVersion('mvp_votes');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/mvp-votes/vote POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/mvp-votes/lock', async (req, res) => {
+  try {
+    const { date, lock, lockedByUid, lockedByName } = req.body;
+    if (!date) {
+      return res.status(400).json({ error: 'date required' });
+    }
+
+    if (lock) {
+      await pool.query(
+        `INSERT INTO mvp_locks (date, locked, locked_by_uid, locked_by_name, locked_at, updated_at)
+         VALUES ($1, true, $2, $3, $4, NOW())
+         ON CONFLICT (date) DO UPDATE SET
+           locked = true,
+           locked_by_uid = $2,
+           locked_by_name = $3,
+           locked_at = $4,
+           updated_at = NOW()`,
+        [date, lockedByUid || null, lockedByName || null, Date.now()]
+      );
+    } else {
+      await pool.query(`DELETE FROM mvp_locks WHERE date = $1`, [date]);
+    }
+
+    await bumpVersion('mvp_votes');
+    const version = await getVersion('mvp_votes');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/mvp-votes/lock POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = { router, setup };

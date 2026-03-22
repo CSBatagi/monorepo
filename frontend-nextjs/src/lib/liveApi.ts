@@ -65,3 +65,13 @@ export function updatePlayerOverride(steamId: string, stats: Record<string, numb
 export function resetTeamPicker() {
   return livePost('team-picker', { action: 'reset' });
 }
+
+// --- MVP Votes ---
+
+export function submitMvpVote(date: string, voterSteamId: string, votedForSteamId: string) {
+  return livePost('mvp-votes', { action: 'vote', date, voterSteamId, votedForSteamId });
+}
+
+export function toggleMvpLock(date: string, lock: boolean, lockedByUid?: string, lockedByName?: string) {
+  return livePost('mvp-votes', { action: 'lock', date, lock, lockedByUid, lockedByName });
+}
