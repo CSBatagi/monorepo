@@ -275,27 +275,17 @@ const TeamPickerClient: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    const fetchStats = async (retries = 2) => {
+    const fetchStats = async () => {
       try {
-        const [l10Res, seasonRes] = await Promise.all([
-          fetch('/api/data/last10'),
-          fetch('/api/data/season_avg')
-        ]);
-        let l10Data: any[] = [];
-        let seasonData: any[] = [];
-        try { l10Data = await l10Res.json(); } catch { l10Data = []; }
-        try { seasonData = await seasonRes.json(); } catch { seasonData = []; }
-        // If data not ready yet, retry after delay (background refresh may still be running)
-        if (((l10Data?.length ?? 0) === 0 || (seasonData?.length ?? 0) === 0) && retries > 0) {
-          await new Promise(r => setTimeout(r, 3000));
-          if (!cancelled) return fetchStats(retries - 1);
-          return;
-        }
-        if (!cancelled) {
-          setLast10Stats(Array.isArray(l10Data) ? l10Data : []);
-          setSeasonStats(Array.isArray(seasonData) ? seasonData : []);
-          setLoadingStats(false);
-        }
+        // Use /api/stats/aggregates (backed by backend memory) instead of
+        // /api/data/* (disk-only, may be stale/missing after container restart).
+        // This is consistent with how last10, season-avg, and other pages fetch data.
+        const res = await fetch(`/api/stats/aggregates?_cb=${Date.now()}`, { cache: 'no-store' });
+        const data = await res.json();
+        if (cancelled) return;
+        setLast10Stats(Array.isArray(data?.last10) ? data.last10 : []);
+        setSeasonStats(Array.isArray(data?.season_avg) ? data.season_avg : []);
+        setLoadingStats(false);
       } catch {
         if (!cancelled) {
           setLast10Stats([]);
@@ -334,20 +324,21 @@ const TeamPickerClient: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    const fetchMapStats = async (retries = 2) => {
+    const fetchMapStats = async () => {
       setLoadingMapStats(true);
       try {
-        const res = await fetch('/api/data/map_stats');
-        let data: any = null;
-        try { data = await res.json(); } catch { data = null; }
-        const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.map_stats) ? data.map_stats : [];
-        if ((!list || list.length === 0) && retries > 0) {
-          // Data not ready yet (background refresh in progress); retry after short delay
-          await new Promise(r => setTimeout(r, 3000));
-          if (!cancelled) return fetchMapStats(retries - 1);
-          return;
+        // Use /api/stats/check (backed by backend memory) for map_stats,
+        // consistent with how duello, performance, and other pages fetch data.
+        const lastKnownTs = typeof window !== 'undefined' ? localStorage.getItem('stats_last_ts') : null;
+        const url = `/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : '?'}_cb=${Date.now()}`;
+        const res = await fetch(url, { cache: 'no-store' });
+        const data = await res.json();
+        if (cancelled) return;
+        const list: any[] = Array.isArray(data?.map_stats) ? data.map_stats : [];
+        setMapStats(list);
+        if (data?.serverTimestamp) {
+          try { localStorage.setItem('stats_last_ts', data.serverTimestamp); } catch {}
         }
-        if (!cancelled) setMapStats(Array.isArray(list) ? list : []);
       } catch {
         if (!cancelled) setMapStats([]);
       } finally {
