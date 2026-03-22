@@ -270,6 +270,19 @@ let lastGeneratedServerTimestamp = null; // tracks last successful generation ba
 let lastGeneratedData = null; // cache of last generated datasets — kept in memory permanently (~4 MB, 3% of 128 MB heap)
 
 
+function pickAggregateSnapshot(fullData) {
+  if (!fullData || typeof fullData !== 'object') return null;
+  return {
+    season_avg: fullData.season_avg,
+    season_avg_periods: fullData.season_avg_periods,
+    last10: fullData.last10,
+  };
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // Aggregates endpoint: recompute only when DB data has changed (or on cold start).
 // Uses the same in-memory cached timestamp as /stats/incremental to avoid unnecessary DB work.
 let lastAggregateServerTimestamp = null; // tracks DB timestamp of last aggregate generation
@@ -597,9 +610,9 @@ if (!TEST_MODE) {
     console.log('[migration] schema migrations applied');
   }
 
-  // Run migrations, load config, then generate aggregates in the background.
-  // Generating aggregates on startup ensures season_avg + last10 data is available
-  // immediately instead of waiting for the first client request to trigger it.
+  // Run migrations, load config, then fully warm stats before the backend starts
+  // accepting traffic. This avoids making the first post-deploy user request pay
+  // the heavy generation cost for sonmac/night_avg and friends.
   async function warmStartup() {
     try {
       await runMigrations();
@@ -607,27 +620,91 @@ if (!TEST_MODE) {
       cachedSeasonStart = cachedSeasonConfig.seasonStart;
       cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
       await pollDataTimestamp();
-      console.log('[startup] migrations applied, config loaded. Generating initial aggregates...');
-      const agg = await generateAggregates(pool, { seasonStart: cachedSeasonStart, seasonStarts: cachedSeasonStarts });
-      lastAggregateData = agg;
+      console.log('[startup] migrations applied, config loaded. Generating initial full stats snapshot...');
+      const startedAt = Date.now();
+      const result = await runStatsUpdateScript();
       const ts = cachedLastDataTimestamp;
-      if (ts) lastAggregateServerTimestamp = new Date(ts);
-      console.log('[startup] initial aggregates generation complete');
+      if (ts) {
+        lastGeneratedServerTimestamp = new Date(ts);
+        lastAggregateServerTimestamp = new Date(ts);
+      }
+      lastGeneratedData = result.data;
+      lastAggregateData = pickAggregateSnapshot(result.data);
+      console.log(`[startup] initial full stats generation complete in ${Date.now() - startedAt}ms`);
     } catch (e) {
       console.warn('[startup] warmStartup failed (will retry on first request)', e.message);
     }
   }
-  warmStartup();
-  app.listen(port, () => {
-    console.log(`Middleware is running on port ${port}`);
 
-    // Start the notification scheduler after the server is listening.
-    // It uses getCachedDataTimestamp() (in-memory, no DB cost) to detect stats changes.
-    notificationScheduler.start({
-      getCachedDataTimestamp: () => cachedLastDataTimestamp,
-      pool,
+  async function prewarmFrontendStatsSnapshot() {
+    const frontendBase = process.env.FRONTEND_INTERNAL_URL || 'http://frontend-nextjs:3000';
+    const authToken = process.env.MATCHMAKING_TOKEN;
+    const attempts = Number(process.env.FRONTEND_PREWARM_ATTEMPTS || 15);
+    const retryMs = Number(process.env.FRONTEND_PREWARM_RETRY_MS || 5000);
+    const timeoutMs = Number(process.env.FRONTEND_PREWARM_TIMEOUT_MS || 10000);
+
+    if (!authToken) {
+      console.warn('[startup] frontend stats prewarm skipped: MATCHMAKING_TOKEN is not configured');
+      return false;
+    }
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        const ac = new AbortController();
+        const timeout = setTimeout(() => ac.abort(), timeoutMs);
+        let res;
+        try {
+          res = await fetch(`${frontendBase}/api/internal/stats/prewarm`, {
+            method: 'POST',
+            signal: ac.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${authToken}`,
+            },
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+        if (res.ok) {
+          const body = await res.json().catch(() => null);
+          console.log('[startup] frontend stats snapshot prewarmed', {
+            attempt,
+            updated: body?.updated ?? null,
+            filesWritten: Array.isArray(body?.filesWritten) ? body.filesWritten.length : 0,
+            serverTimestamp: body?.serverTimestamp ?? null,
+          });
+          return true;
+        }
+        const text = await res.text().catch(() => '');
+        console.warn(`[startup] frontend stats prewarm attempt ${attempt}/${attempts} failed with status ${res.status}: ${text}`);
+      } catch (e) {
+        console.warn(`[startup] frontend stats prewarm attempt ${attempt}/${attempts} failed: ${e.name === 'AbortError' ? `timeout after ${timeoutMs}ms` : e.message}`);
+      }
+      if (attempt < attempts) {
+        await sleep(retryMs);
+      }
+    }
+
+    console.warn('[startup] frontend stats snapshot prewarm exhausted; runtime-data will refresh on normal traffic');
+    return false;
+  }
+
+  (async () => {
+    await warmStartup();
+    app.listen(port, () => {
+      console.log(`Middleware is running on port ${port}`);
+
+      // Start the notification scheduler after the server is listening.
+      // It uses getCachedDataTimestamp() (in-memory, no DB cost) to detect stats changes.
+      notificationScheduler.start({
+        getCachedDataTimestamp: () => cachedLastDataTimestamp,
+        pool,
+      });
+
+      // Best-effort: once the backend cache is hot, refresh frontend runtime-data too.
+      void prewarmFrontendStatsSnapshot();
     });
-  });
+  })();
 }
  
 module.exports = app;

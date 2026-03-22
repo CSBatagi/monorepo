@@ -139,17 +139,50 @@ jobs:
             echo "No services need to be updated"
           fi
 
-      - name: Prune old Docker images
-        run: |
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="sudo docker image prune -af --filter 'until=48h'" \
-            --ssh-key-expire-after=1m
-
       - name: Invalidate stats timestamp if config data changed
         if: steps.changes.outputs.config_data == 'true'
         run: |
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
             --command="sudo docker compose -f ~/docker-compose.yml exec -T backend bash -c 'rm -f /app/last_timestamp.txt' && sudo docker compose -f ~/docker-compose.yml restart backend" \
+            --ssh-key-expire-after=1m
+
+      - name: Wait for backend stats warmup
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
+            --ssh-key-expire-after=2m \
+            --command="bash -s" <<'EOF'
+          for i in $(seq 1 48); do
+            if sudo docker compose -f ~/docker-compose.yml exec -T backend node -e 'fetch("http://127.0.0.1:3000/stats/diagnostics", { cache: "no-store" }).then(r => r.json()).then(d => { const sonmac = Number(d?.counts?.sonmac_all_dates || 0); const night = Number(d?.counts?.night_avg_all_dates || 0); if (sonmac > 0 && night > 0) { console.log(JSON.stringify({ ready: true, sonmac_all_dates: sonmac, night_avg_all_dates: night, effectiveDataTimestamp: d.effectiveDataTimestamp, lastGeneratedServerTimestamp: d.lastGeneratedServerTimestamp })); process.exit(0); } console.error(JSON.stringify(d)); process.exit(1); }).catch(e => { console.error(e.message); process.exit(1); })'; then
+              exit 0
+            fi
+            echo "Waiting for backend stats warmup ($i/48)..."
+            sleep 5
+          done
+          echo "Backend stats warmup timed out" >&2
+          exit 1
+          EOF
+
+      - name: Prewarm frontend stats snapshot
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
+            --ssh-key-expire-after=2m \
+            --command="bash -s" <<'EOF'
+          for i in $(seq 1 24); do
+            if sudo docker compose -f ~/docker-compose.yml exec -T frontend-nextjs node -e 'const token = process.env.MATCHMAKING_TOKEN; if (!token) { console.error("MATCHMAKING_TOKEN missing in frontend container"); process.exit(1); } fetch("http://127.0.0.1:3000/api/internal/stats/prewarm", { method: "POST", headers: { Authorization: `Bearer ${token}` } }).then(async r => { const text = await r.text(); console.log(text); if (!r.ok) process.exit(1); }).catch(e => { console.error(e.message); process.exit(1); })' && \
+               sudo docker compose -f ~/docker-compose.yml exec -T frontend-nextjs sh -lc 'test -s /app/runtime-data/last_timestamp.txt && test -s /app/runtime-data/sonmac_by_date_all.json && test -s /app/runtime-data/night_avg_all.json'; then
+              exit 0
+            fi
+            echo "Waiting for frontend stats snapshot prewarm ($i/24)..."
+            sleep 5
+          done
+          echo "Frontend stats snapshot prewarm timed out" >&2
+          exit 1
+          EOF
+
+      - name: Prune old Docker images
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
+            --command="sudo docker image prune -af --filter 'until=48h'" \
             --ssh-key-expire-after=1m
 
       - name: Run database migrations if changed
