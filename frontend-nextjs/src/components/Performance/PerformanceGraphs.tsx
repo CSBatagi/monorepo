@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useStatsRefresh } from '@/lib/useStatsRefresh';
@@ -50,23 +50,30 @@ const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] 
     const [error, setError] = useState<string | null>(null);
 
     const applyPerfData = (perfArray: PlayerPerformance[]) => {
-      perfArray.sort((a, b) => a.name.localeCompare(b.name));
+      const sortedPlayers = [...perfArray].sort((a, b) => a.name.localeCompare(b.name));
       const dateSet = new Set<string>();
-      perfArray.forEach(player => {
+      sortedPlayers.forEach(player => {
         player.performance.forEach(entry => {
           dateSet.add(entry.match_date);
         });
       });
       const sortedDates = Array.from(dateSet).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
       const colors: { [key: string]: string } = {};
-      perfArray.forEach(player => {
+      sortedPlayers.forEach(player => {
         colors[player.name] = stringToColor(player.name + 'salt');
       });
-      setPerformanceData(perfArray);
+      setPerformanceData(sortedPlayers);
       setUniqueDates(sortedDates);
-      setVisiblePlayers(perfArray.map(p => p.name));
+      setVisiblePlayers(sortedPlayers.map(p => p.name));
       setPlayerColors(colors);
     };
+
+    useEffect(() => {
+      if (initialData.length > 0) {
+        applyPerfData(initialData);
+      }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialData]);
 
     useStatsRefresh({
       onData: (payload) => {
@@ -154,10 +161,13 @@ const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] 
 
     const chartOptions = {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: {
                 position: 'top' as const,
                 labels: {
+                    boxWidth: 10,
+                    boxHeight: 10,
                     color: isDark ? '#e5e7eb' : undefined,
                 },
             },
@@ -199,6 +209,10 @@ const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] 
             },
             x: {
                 ticks: {
+                    autoSkip: true,
+                    maxRotation: 0,
+                    minRotation: 0,
+                    maxTicksLimit: 8,
                     color: isDark ? '#9ca3af' : undefined,
                 },
                 grid: {
@@ -269,7 +283,9 @@ const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] 
             {activeTab === 'graph' && (
                 <div>
                     {visiblePlayers.length > 0 ? (
-                        <Line options={chartOptions} data={chartData} />
+                        <div className={`relative h-[360px] sm:h-[460px] lg:h-[560px] w-full rounded-xl border p-3 sm:p-4 ${isDark ? 'border-dark-border bg-dark-card' : 'border-gray-200 bg-white'}`}>
+                            <Line options={chartOptions} data={chartData} />
+                        </div>
                     ) : (
                         <p className="text-center text-gray-500">No players selected to display on the graph.</p>
                     )}
@@ -310,4 +326,4 @@ const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] 
   );
 };
 
-export default PerformanceGraphs; 
+export default PerformanceGraphs;
