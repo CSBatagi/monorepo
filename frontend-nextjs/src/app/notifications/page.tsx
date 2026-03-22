@@ -232,9 +232,22 @@ export default function NotificationsPage() {
         return Uint8Array.from(raw, (char) => char.charCodeAt(0));
       };
 
+      const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+
+      // If there's an existing subscription with a different VAPID key (e.g. old Firebase key),
+      // unsubscribe first so we can re-subscribe with the new key.
+      const existingSub = await registration.pushManager.getSubscription();
+      if (existingSub) {
+        try {
+          await existingSub.unsubscribe();
+        } catch (e) {
+          console.warn("Failed to unsubscribe old push subscription", e);
+        }
+      }
+
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey,
       });
 
       // Store the full PushSubscription JSON as the "token"
