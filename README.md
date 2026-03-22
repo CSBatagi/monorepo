@@ -40,4 +40,4 @@ Open `http://localhost:3000`.
 - Runtime stats architecture uses `/stats/incremental` and `/stats/aggregates`.
 - Season boundaries live in `frontend-nextjs/public/data/season_start.json`.
 - Deployed on a 1 GB RAM GCP VM with Docker memory limits. See `PERFORMANCE_REPORT.md` for the memory budget.
-- Session auth uses lightweight HMAC tokens; firebase-admin only loads for the notification scheduler.
+- Session auth uses lightweight HMAC tokens; push notifications use standard Web Push (VAPID).

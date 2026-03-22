@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getMessaging, getToken, isSupported } from "firebase/messaging";
 
 import { useSession } from "@/contexts/SessionContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { app } from "@/lib/firebase";
 import {
   getNotificationPreferences,
   saveNotificationPreferences,
@@ -121,9 +119,7 @@ export default function NotificationsPage() {
       setNotificationPermission(Notification.permission);
     }
 
-    isSupported()
-      .then((supported) => setIsMessagingAvailable(supported))
-      .catch(() => setIsMessagingAvailable(false));
+    setIsMessagingAvailable('PushManager' in window && 'serviceWorker' in navigator);
   }, []);
 
   // Load preferences + device registration from PG via HTTP
@@ -197,20 +193,20 @@ export default function NotificationsPage() {
 
     try {
       if (!isMessagingAvailable) {
-        setMessage("Bu cihaz/tarayıcı Firebase push desteklemiyor.");
+        setMessage("Bu cihaz/tarayici push desteklemiyor.");
         return;
       }
 
       if (!("serviceWorker" in navigator) || typeof Notification === "undefined") {
-        setMessage("Tarayıcı service worker veya notification API desteklemiyor.");
+        setMessage("Tarayici service worker veya notification API desteklemiyor.");
         return;
       }
 
       const configResp = await fetch("/api/notifications/public-config", { cache: "no-store" });
       const configJson = await configResp.json();
-      const vapidKey = configJson?.vapidKey as string | null;
-      if (!vapidKey) {
-        setMessage("VAPID key ayarlanmamış. FIREBASE_VAPID_KEY eksik.");
+      const vapidPublicKey = configJson?.vapidKey as string | null;
+      if (!vapidPublicKey) {
+        setMessage("VAPID key ayarlanmamis. VAPID_PUBLIC_KEY eksik.");
         return;
       }
 
@@ -224,17 +220,25 @@ export default function NotificationsPage() {
         return;
       }
 
-      const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-      const messaging = getMessaging(app);
-      const token = await getToken(messaging, {
-        vapidKey,
-        serviceWorkerRegistration: registration,
+      const registration = await navigator.serviceWorker.register("/push-sw.js");
+      // Wait for the service worker to be ready
+      await navigator.serviceWorker.ready;
+
+      // Convert base64url VAPID key to Uint8Array for Web Push API
+      const urlBase64ToUint8Array = (base64String: string) => {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(base64);
+        return Uint8Array.from(raw, (char) => char.charCodeAt(0));
+      };
+
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
       });
 
-      if (!token) {
-        setMessage("FCM token alınamadı.");
-        return;
-      }
+      // Store the full PushSubscription JSON as the "token"
+      const subscriptionJson = JSON.stringify(subscription);
 
       const currentPrefs = prefs || { ...DEFAULT_PREFERENCES };
       await Promise.all([
@@ -244,7 +248,7 @@ export default function NotificationsPage() {
         }),
         registerDevice({
           deviceId,
-          token,
+          token: subscriptionJson,
           platform: detectPlatform(),
           userAgent:
             typeof navigator !== "undefined"
@@ -254,10 +258,10 @@ export default function NotificationsPage() {
       ]);
 
       setDeviceRegistered(true);
-      setMessage("Bu cihaz bildirime açıldı.");
+      setMessage("Bu cihaz bildirime acildi.");
     } catch (error: any) {
       console.error("Failed to register push notifications", error);
-      setMessage(error?.message || "Bildirim kaydı başarısız.");
+      setMessage(error?.message || "Bildirim kaydi basarisiz.");
     } finally {
       setSaving(false);
     }

@@ -18,7 +18,7 @@ Provide a mobile-app-like experience for a private group (20-30 users) on Androi
 
 - Match/stats source data: Postgres (`backend` service).
 - Generated stats datasets: produced by backend and persisted in `frontend-nextjs/runtime-data/`.
-- Live social/game-night state: Firebase Realtime Database (attendance, MVP voting, team picker, admins).
+- Live social/game-night state: PostgreSQL (attendance, MVP voting, team picker, admins) via short polling.
 
 ### Stats Publishing Flow
 
@@ -32,22 +32,20 @@ Provide a mobile-app-like experience for a private group (20-30 users) on Androi
   - `frontend-nextjs/src/app/api/stats/aggregates/route.ts`
   - `frontend-nextjs/src/app/api/admin/regenerate-stats/route.ts`
 
-### Firebase Realtime Features Already in Use
+### Realtime Features (all migrated to PostgreSQL)
 
-- Attendance page writes/reads `attendanceState` (`src/app/attendance/AttendanceClient.tsx`; server wrapper in `page.tsx` provides player data via ISR).
-- MVP page writes/reads:
-  - `mvpVotes/votesByDate`
-  - `mvpVotes/lockedByDate`
-  (`src/components/GecenInMVPsiClient.tsx`)
-- Admin gate already exists via `admins/{uid}` (`src/components/AdminStatsButton.tsx`).
+- Attendance page writes/reads via `/live/attendance` (PostgreSQL polling).
+- MVP page writes/reads via `/live/mvp-votes` (PostgreSQL polling).
+- Admin gate via `/live/admin/check` (PostgreSQL `admins` table).
 
-## Gaps Before Mobile Notification Rollout
+## Notification System Status
 
-- There is a service worker file (`public/firebase-messaging-sw.js`), but:
-  - No active registration flow in React code.
-  - No token collection/storage flow (`getToken` not used).
-  - No server-side sender path for FCM.
-  - No user notification preferences/toggles model.
+Push notifications are fully implemented using **standard Web Push (VAPID)**:
+- Service worker: `public/push-sw.js`
+- Device registration: Push API `pushManager.subscribe()` with VAPID key
+- Token storage: PostgreSQL `notification_subscriptions` table
+- Backend dispatch: `web-push` npm package
+- Preferences: PostgreSQL `notification_preferences` table
 - PWA metadata exists (`public/manifest.json`), but install/push integration is incomplete.
 
 ## Recommended Product Strategy
@@ -75,43 +73,14 @@ If you need richer native capabilities later, wrap the same web app with Capacit
 - `timed_reminders`
 - `admin_custom_message`
 
-### Realtime DB Namespaces
+### PostgreSQL Tables
 
-Use dedicated nodes to avoid conflict with stats and existing app state:
+Notification data is stored in PostgreSQL:
 
-- `notifications/subscriptions/{uid}/{deviceId}`
-- `notifications/preferences/{uid}`
-- `notifications/events/{eventId}`
-- `notifications/adminMessages/{messageId}` (optional log/audit)
-
-### Suggested Preferences Shape
-
-`notifications/preferences/{uid}`:
-
-```json
-{
-  "enabled": true,
-  "topics": {
-    "teker_dondu_reached": true,
-    "mvp_poll_locked": true,
-    "admin_custom_message": true
-  },
-  "updatedAt": 1730000000000
-}
-```
-
-### Suggested Subscription Shape
-
-`notifications/subscriptions/{uid}/{deviceId}`:
-
-```json
-{
-  "token": "<fcm-token>",
-  "platform": "android|ios|web",
-  "enabled": true,
-  "lastSeenAt": 1730000000000
-}
-```
+- `notification_subscriptions` — device push subscriptions (PushSubscription JSON)
+- `notification_preferences` — per-user topic toggles
+- `notification_events` — idempotency log for deduplication
+- `notification_inbox` — in-app notification messages
 
 ## Trigger Rules
 
@@ -143,8 +112,8 @@ Use dedicated nodes to avoid conflict with stats and existing app state:
 
 ## Security and Operations Notes
 
-- Keep Firebase sender credentials in secret env files only (do not hardcode in source).
-- Require admin checks for custom message dispatch (reuse `admins/{uid}`).
+- Keep VAPID keys and OAuth credentials in secret env files only (do not hardcode in source).
+- Require admin checks for custom message dispatch (reuse `admins` PG table).
 - Add idempotency checks (`notifications/events/{eventId}`) before sending push.
 - Add basic delivery logging (success/failure counts) for debugging.
 
@@ -155,7 +124,7 @@ Use dedicated nodes to avoid conflict with stats and existing app state:
    - Register service worker from React app.
 2. Device registration + user toggles
    - Request notification permission.
-   - Store FCM token and preferences in RTDB.
+   - Store PushSubscription and preferences in PostgreSQL.
    - Add settings UI for on/off per notification type.
 3. Event dispatch
    - Add sender service and dedupe by `eventId`.
@@ -172,7 +141,7 @@ Use dedicated nodes to avoid conflict with stats and existing app state:
 
 Timed rules live in:
 
-- `frontend-nextjs/src/lib/notificationScheduleRules.ts`
+- `backend/notificationScheduler.js` (the `TIMED_NOTIFICATION_RULES` array)
 
 Current rules:
 
@@ -207,7 +176,7 @@ Current rules:
 
 - Admin dispatch endpoint: `frontend-nextjs/src/app/api/admin/notifications/send/route.ts`
 - UI sender form: `frontend-nextjs/src/app/notifications/page.tsx`
-- AuthZ source: `admins/{uid}` in Firebase Realtime DB
+- AuthZ source: `admins` table in PostgreSQL, checked via `/api/live/admin/check`
 
 ## Scheduler Polling + Cost
 
@@ -215,14 +184,14 @@ Current rules:
 - Started after the Express server is listening; uses the backend's in-memory cached DB timestamp for stats-update checks (zero HTTP cost).
 - Main loop interval is every 60 seconds (`SCHEDULER_INTERVAL_MS = 60_000`).
 - Work per loop:
-  - Timed rules: one RTDB read (`attendanceState`) to compute `comingCount`.
+  - Timed rules: reads attendance count from PostgreSQL.
   - Stats update: compares the cached DB timestamp (updated by the backend's 60s poller) — no network call needed.
-- Duplicate sends are blocked by `notifications/events/{eventId}` transaction guard.
-- firebase-admin loads in the backend process alongside the stats generator. The frontend no longer needs firebase-admin for the scheduler.
+- Duplicate sends are blocked by `notification_events` table in PostgreSQL.
+- Push delivery uses `web-push` (VAPID) — lightweight, no Firebase SDK needed.
 - Can be disabled via `ENABLE_NOTIFICATION_SCHEDULER=false` env var on the backend.
-- Requires Firebase credentials (`FIREBASE_ADMIN_SERVICE_ACCOUNT_JSON`, `FIREBASE_DATABASE_URL`) in the backend environment. These are shared from `.frontend_secrets` via docker-compose.
+- Requires VAPID keys (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`) in the backend environment. These are shared from `.frontend_secrets` via docker-compose.
 
-For your user size (20-30 people), this is lightweight and should not bottleneck GCP. Load is dominated by small RTDB reads and in-memory timestamp comparisons.
+For your user size (20-30 people), this is lightweight and should not bottleneck GCP. Load is dominated by small PostgreSQL reads and in-memory timestamp comparisons.
 
 ## Acceptance Criteria for MVP
 

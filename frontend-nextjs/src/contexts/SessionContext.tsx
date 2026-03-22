@@ -25,7 +25,7 @@ interface SessionContextType {
   user: SessionUser | null;
   /** True once the cookie has been read on the client */
   ready: boolean;
-  /** Sign out: clears server session + Firebase auth state, then redirects to /login */
+  /** Sign out: clears server session, then redirects to /login */
   logout: () => Promise<void>;
 }
 
@@ -82,12 +82,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await fetch("/api/session/logout", { method: "POST" }).catch(() => {});
-    // Clear Firebase auth state if SDK was loaded in this session
-    try {
-      const { auth } = await import("@/lib/firebase");
-      const { signOut } = await import("firebase/auth");
-      await signOut(auth);
-    } catch {}
     setUser(null);
     window.location.href = "/login";
   }, []);

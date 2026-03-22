@@ -50,14 +50,13 @@ Leaves ~490-600 MB headroom (including OS).
 
 ### 3. Frontend Memory Reduction
 
-- **HMAC session tokens** (`authSession.ts`): replaced firebase-admin in the login/session flow with lightweight HMAC-SHA256 JWT. firebase-admin no longer loads on every request.
-- **V8 heap**: 128 MB (`docker-entrypoint.sh`) — firebase-admin no longer loads on startup (scheduler moved to backend)
+- **HMAC session tokens** (`authSession.ts`): lightweight HMAC-SHA256 JWT for login/session flow. No heavy SDK in the request hot path.
+- **V8 heap**: 128 MB (`docker-entrypoint.sh`)
 - **Notification scheduler**: moved to the backend process (see below)
-- **Lazy Firebase SDK**: `FirebaseProviders` is code-split via `next/dynamic`. Stats pages never download the Firebase client SDK (~200-400 KB JS saved).
-- **SessionContext**: lightweight cookie-based user context replaces Firebase Auth in shared components (Header, Layout)
+- **SessionContext**: lightweight cookie-based user context for shared components (Header, Layout)
 - **Incremental refresh cooldown**: 90 seconds (`layout.tsx`). JSON files written without pretty-printing.
 - **Unified SSR data path**: all stats pages use `fetchStats()` (`lib/statsServer.ts`) which fetches from backend memory server-to-server (10s module cache). Falls back to disk files only when backend is unreachable. Eliminates stale-disk-read bugs where some pages showed fresh data and others didn't.
-- **Duplicate firebase config**: deleted `lib/firebase.ts` (root-level duplicate with debug console.log)
+- **No Firebase SDK**: Firebase client and admin SDKs fully removed. Zero JS bundles downloaded for Firebase. Auth uses Google OAuth + HMAC sessions. Push notifications use standard Web Push (VAPID).
 - **Server-side player data**: `attendance/page.tsx` is a server component that reads `players.json` from disk (ISR, revalidate 60s). The client component (`AttendanceClient.tsx`) receives players as props — no client-side fetch waterfall.
 - Docker memory limit: 256M
 
@@ -73,15 +72,14 @@ All `/api/data/*` routes now return `Cache-Control: public, s-maxage=60, stale-w
 
 ## Session Authentication
 
-The login flow no longer uses firebase-admin to verify tokens. Instead:
+The login flow uses Google OAuth 2.0:
 
-1. Client sends Firebase ID token to `/api/session/login`
-2. Server decodes the token payload (base64url), extracts `uid`, `email`, `name`
-3. Server creates an HMAC-SHA256 signed session token using `MATCHMAKING_TOKEN` as secret
-4. Token stored as `csbatagi_session` cookie (5-day expiry)
-5. Edge middleware validates the HMAC signature and expiry on each request
-
-This eliminates ~30-50 MB of firebase-admin memory from the request hot path.
+1. Client redirects to Google OAuth consent screen
+2. Google redirects back to `/api/auth/google/callback` with authorization code
+3. Server exchanges code for tokens, extracts user info from ID token
+4. Server creates an HMAC-SHA256 signed session token using `MATCHMAKING_TOKEN` as secret
+5. Token stored as `csbatagi_session` cookie (5-day expiry)
+6. Edge middleware validates the HMAC signature and expiry on each request
 
 ## Notification Scheduler
 
@@ -89,11 +87,11 @@ The scheduler runs in the **backend** Express process (`backend/notificationSche
 
 - Started after the Express server is listening (`index.js`)
 - Runs every 60 seconds
-- firebase-admin loads in the backend process (shared memory with stats generation)
-- Timed rules check Istanbul time and read attendance count from Firebase RTDB
+- Push delivery uses `web-push` (VAPID) — lightweight, no Firebase SDK
+- Timed rules check Istanbul time and read attendance count from PostgreSQL
 - Stats-update check uses the backend's in-memory cached DB timestamp (zero DB/HTTP cost)
 - Can be disabled via `ENABLE_NOTIFICATION_SCHEDULER=false`
-- Requires Firebase credentials in the backend env (`.frontend_secrets` is shared via docker-compose)
+- Requires VAPID keys in the backend env (`.frontend_secrets` is shared via docker-compose)
 
 ## Remaining Optimization Opportunities
 

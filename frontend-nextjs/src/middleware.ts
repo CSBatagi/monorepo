@@ -8,7 +8,7 @@ const SESSION_COOKIE_NAME = "csbatagi_session";
 
 /**
  * Decode the JWT payload (without signature verification — Edge Runtime
- * cannot run firebase-admin) and check the `exp` claim.
+ * cannot run Node.js crypto.createHmac) and check the `exp` claim.
  * Returns true when the cookie is missing, malformed, or expired.
  */
 function isSessionMissingOrExpired(cookie: string | undefined): boolean {
@@ -31,7 +31,7 @@ function isPublicPath(pathname: string) {
     pathname.startsWith("/images") ||
     pathname.startsWith("/data") ||
     pathname === "/manifest.json" ||
-    pathname === "/firebase-messaging-sw.js" ||
+    pathname === "/push-sw.js" ||
     pathname === "/favicon.ico"
   );
 }

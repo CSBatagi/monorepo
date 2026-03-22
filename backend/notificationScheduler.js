@@ -5,12 +5,12 @@
  * 1. Timed rule checks (attendance reminders on specific days/times)
  * 2. Stats-update notifications (when DB data changes)
  *
- * Dispatch uses PG-based dedup + resolve recipients + FCM, matching
+ * Dispatch uses PG-based dedup + resolve recipients + Web Push, matching
  * the notificationRoutes.js emit endpoint logic.
  */
 
 const notificationRoutes = require('./notificationRoutes');
-const { adminMessaging } = require('./firebaseAdmin');
+const { sendPushNotifications } = require('./webPush');
 const notificationInboxStore = require('./notificationInboxStore');
 
 // ─── Constants ───
@@ -127,14 +127,6 @@ function toStringMap(data) {
   return out;
 }
 
-function chunk(items, size) {
-  const out = [];
-  for (let i = 0; i < items.length; i += size) {
-    out.push(items.slice(i, i + size));
-  }
-  return out;
-}
-
 // ─── Notification dispatch (PG-based) ───
 
 // Pool is injected via start().
@@ -184,45 +176,27 @@ async function emitNotificationEvent(params) {
       return { eventId: safeEventId, duplicate: false, dispatch: { recipientCount: 0, successCount: 0, failureCount: 0, errors: [] } };
     }
 
-    // FCM dispatch
-    const messageData = {
-      topic: params.topic,
+    // Web Push dispatch
+    const payload = {
       title: params.title,
       body: params.body,
       icon: '/images/BatakLogo192.png',
-      ...toStringMap({ ...(params.data || {}), eventId: params.eventId }),
+      data: {
+        topic: params.topic,
+        ...toStringMap({ ...(params.data || {}), eventId: params.eventId }),
+        link: typeof params.data?.link === 'string' && params.data.link.length > 0
+          ? params.data.link : '/',
+      },
     };
 
-    const messaging = adminMessaging();
-    const tokenChunks = chunk(tokens, 500);
-    let successCount = 0;
-    let failureCount = 0;
-    const errors = [];
-
-    for (const tokenChunk of tokenChunks) {
-      const response = await messaging.sendEachForMulticast({
-        tokens: tokenChunk,
-        data: messageData,
-        webpush: {
-          fcmOptions: {
-            link: typeof params.data?.link === 'string' && params.data.link.length > 0
-              ? params.data.link : '/',
-          },
-        },
-      });
-
-      successCount += response.successCount;
-      failureCount += response.failureCount;
-      response.responses.forEach((entry) => {
-        if (!entry.success && entry.error) errors.push(entry.error.message);
-      });
-    }
+    // tokens contain JSON-stringified PushSubscription objects
+    const pushResult = await sendPushNotifications(tokens, payload);
 
     const result = {
       recipientCount: tokens.length,
-      successCount,
-      failureCount,
-      errors: [...new Set(errors)].slice(0, 20),
+      successCount: pushResult.successCount,
+      failureCount: pushResult.failureCount,
+      errors: pushResult.errors,
     };
 
     await dbPool.query(

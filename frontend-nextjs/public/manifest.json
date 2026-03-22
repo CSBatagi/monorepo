@@ -5,7 +5,7 @@
   "display": "standalone",
   "background_color": "#1e293b",
   "theme_color": "#2563eb",
-  "description": "Attendance and team picker for CSBatagi, with Firebase sync.",
+  "description": "Attendance and team picker for CSBatagi.",
   "icons": [
     {
       "src": "images/BatakLogo192.png",

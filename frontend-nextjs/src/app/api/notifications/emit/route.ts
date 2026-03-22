@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { adminAuth } from "@/lib/firebaseAdmin";
 import { isNotificationTopic, type NotificationData } from "@/lib/serverNotifications";
 import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/authSession";
 
@@ -63,12 +62,6 @@ function getIstanbulDateKey(now: Date): string {
   }).formatToParts(now);
   const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${map.year}-${map.month}-${map.day}`;
-}
-
-async function readBearerToken(req: NextRequest): Promise<string | null> {
-  const header = req.headers.get("authorization");
-  if (!header || !header.startsWith("Bearer ")) return null;
-  return header.slice("Bearer ".length).trim() || null;
 }
 
 async function resolveComingCount(): Promise<number> {
@@ -165,27 +158,20 @@ async function emitViaBackend(params: {
 
 export async function POST(req: NextRequest) {
   try {
-    // Authenticate: try HMAC session cookie first, fall back to Firebase ID token
+    // Authenticate via HMAC session cookie
     let uid: string;
     let displayName: string | undefined;
 
     const sessionToken = req.cookies.get(SESSION_COOKIE_NAME)?.value;
-    if (sessionToken) {
-      const session = verifySessionToken(sessionToken);
-      if (!session) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      uid = session.uid;
-      displayName = session.name || session.email || undefined;
-    } else {
-      const idToken = await readBearerToken(req);
-      if (!idToken) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      const decoded = await adminAuth().verifyIdToken(idToken);
-      uid = decoded.uid;
-      displayName = decoded.name || decoded.email || undefined;
+    if (!sessionToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const session = verifySessionToken(sessionToken);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    uid = session.uid;
+    displayName = session.name || session.email || undefined;
 
     const body = (await req.json()) as EmitBody;
     if (!body || !isNotificationTopic(body.topic)) {

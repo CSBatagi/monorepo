@@ -1,173 +1,86 @@
 "use client";
 
-import React, { Suspense, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import React, { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTheme } from "@/contexts/ThemeContext";
 
+const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  access_denied: "Google ile giris reddedildi.",
+  token_exchange: "Google ile giris sirasinda bir hata olustu. Tekrar deneyin.",
+  server_config: "Sunucu yapilandirma hatasi. Yoneticiyle iletisime gecin.",
+  missing_code: "Google'dan yetkilendirme kodu alinamadi.",
+  no_id_token: "Google'dan kimlik bilgisi alinamadi.",
+  bad_token: "Gecersiz kimlik bilgisi.",
+  missing_uid: "Kullanici kimligi bulunamadi.",
+  unexpected: "Beklenmeyen bir hata olustu. Tekrar deneyin.",
+};
+
 function LoginPageInner() {
-  const { user, loading, emailSignIn, emailSignUp, signInWithGoogle } = useAuth();
   const { isDark } = useTheme();
   const params = useSearchParams();
-  const router = useRouter();
   const nextParam = params.get("next") || "/";
-  const [error, setError] = React.useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [signupEmail, setSignupEmail] = React.useState("");
-  const [signupPassword, setSignupPassword] = React.useState("");
+  const errorCode = params.get("error");
 
-  useEffect(() => {
-    let cancelled = false;
+  const errorMessage = errorCode ? ERROR_MESSAGES[errorCode] || `Hata: ${errorCode}` : null;
 
-    async function finalizeLogin() {
-      if (loading || !user) return;
-      try {
-        const idToken = await user.getIdToken();
-        await fetch('/api/session/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken }),
-        });
-      } catch {}
-      if (!cancelled) {
-        router.replace(nextParam);
-      }
+  const handleGoogleLogin = () => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      console.error("NEXT_PUBLIC_GOOGLE_CLIENT_ID is not set");
+      return;
     }
 
-    void finalizeLogin();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, loading, router, nextParam]);
+    const redirectUri = `${window.location.origin}/api/auth/google/callback`;
 
-  const handleEmailAuth = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      const form = e.currentTarget;
-      const email = (form.elements.namedItem("email") as HTMLInputElement).value;
-      const password = (form.elements.namedItem("password") as HTMLInputElement).value;
-      await emailSignIn(email, password);
-    } catch (err: any) {
-      setError(err.message || "Email veya şifre hatalı");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    const authUrl = new URL(GOOGLE_AUTH_URL);
+    authUrl.searchParams.set("client_id", clientId);
+    authUrl.searchParams.set("redirect_uri", redirectUri);
+    authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set("scope", "openid email profile");
+    authUrl.searchParams.set("prompt", "select_account");
+    authUrl.searchParams.set("state", nextParam);
 
-  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      await emailSignUp(signupEmail, signupPassword);
-      alert("Kayıt başarılı! Lütfen email adresinizi doğrulayın.");
-    } catch (err: any) {
-      setError(err.message || "Kayıt başarısız");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleGoogle = async () => {
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      await signInWithGoogle();
-    } catch (err: any) {
-      setError(err.message || "Google ile giriş başarısız");
-    } finally {
-      setIsSubmitting(false);
-    }
+    window.location.href = authUrl.toString();
   };
 
   return (
     <div className={`min-h-screen flex items-center justify-center p-6 ${isDark ? 'bg-dark-bg' : 'bg-gray-50'}`}>
       <div className={`w-full max-w-md rounded-xl shadow-md p-6 ${isDark ? 'bg-dark-surface border border-dark-border' : 'bg-white'}`}>
-        <h1 className={`text-2xl font-semibold text-center mb-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>CS Batağı – Giriş</h1>
-        <p className={`text-center text-sm mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Giriş yapınca tüm sayfalara erişebileceksiniz.</p>
+        <h1 className={`text-2xl font-semibold text-center mb-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
+          CS Batagi - Giris
+        </h1>
+        <p className={`text-center text-sm mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+          Giris yapinca tum sayfalara erisebileceksiniz.
+        </p>
 
-        <button
-          onClick={handleGoogle}
-          disabled={isSubmitting}
-          className={`w-full mb-4 flex items-center justify-center gap-2 border rounded-md py-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-            isDark ? 'border-dark-border hover:bg-dark-card text-gray-200' : 'border-gray-300 hover:bg-gray-100'
-          }`}
-        >
-          <span className="text-xl">🔐</span>
-          <span>Google ile Giriş Yap</span>
-        </button>
-
-        {error && (
+        {errorMessage && (
           <div className={`mb-4 p-3 rounded-md text-sm ${isDark ? 'bg-red-900/30 border border-red-800/50 text-red-300' : 'bg-red-100 border border-red-400 text-red-700'}`}>
-            {error}
+            {errorMessage}
           </div>
         )}
 
-        <div className="relative flex items-center justify-center my-4">
-          <span className={`absolute left-0 right-0 border-t ${isDark ? 'border-dark-border' : ''}`} />
-          <span className={`relative px-3 text-xs ${isDark ? 'bg-dark-surface text-gray-500' : 'bg-white text-gray-500'}`}>veya</span>
-        </div>
+        <button
+          onClick={handleGoogleLogin}
+          className={`w-full flex items-center justify-center gap-3 border rounded-md py-3 text-base font-medium transition-colors ${
+            isDark
+              ? 'border-dark-border hover:bg-dark-card text-gray-200'
+              : 'border-gray-300 hover:bg-gray-100'
+          }`}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          <span>Google ile Giris Yap</span>
+        </button>
 
-        <form onSubmit={handleEmailAuth} className="space-y-3">
-          <div>
-            <label className={`block text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
-            <input name="email" type="email" required disabled={isSubmitting} className={`mt-1 w-full border rounded-md px-3 py-2 disabled:opacity-50 ${
-              isDark ? 'bg-dark-card border-dark-border text-gray-100' : 'text-black'
-            }`} />
-          </div>
-          <div>
-            <label className={`block text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Şifre</label>
-            <input name="password" type="password" required disabled={isSubmitting} className={`mt-1 w-full border rounded-md px-3 py-2 disabled:opacity-50 ${
-              isDark ? 'bg-dark-card border-dark-border text-gray-100' : 'text-black'
-            }`} />
-          </div>
-          <button type="submit" disabled={isSubmitting} className={`w-full py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed ${
-            isDark ? 'bg-blue-600/80 hover:bg-blue-500 text-white border border-blue-500/30' : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}>
-            {isSubmitting ? "Giriş yapılıyor..." : "Email ile Giriş"}
-          </button>
-        </form>
-
-        <div className={`my-4 text-center text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Hesabınız yok mu?</div>
-
-        <form onSubmit={handleSignUp} className="space-y-3">
-          <div>
-            <label className={`block text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
-            <input 
-              value={signupEmail}
-              onChange={(e) => setSignupEmail(e.target.value)}
-              type="email" 
-              required 
-              disabled={isSubmitting}
-              className={`mt-1 w-full border rounded-md px-3 py-2 disabled:opacity-50 ${
-                isDark ? 'bg-dark-card border-dark-border text-gray-100' : 'text-black'
-              }`}
-            />
-          </div>
-          <div>
-            <label className={`block text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Şifre (en az 6 karakter)</label>
-            <input 
-              value={signupPassword}
-              onChange={(e) => setSignupPassword(e.target.value)}
-              type="password" 
-              required 
-              minLength={6}
-              disabled={isSubmitting}
-              className={`mt-1 w-full border rounded-md px-3 py-2 disabled:opacity-50 ${
-                isDark ? 'bg-dark-card border-dark-border text-gray-100' : 'text-black'
-              }`}
-            />
-          </div>
-          <button type="submit" disabled={isSubmitting} className={`w-full py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed ${
-            isDark ? 'bg-gray-700 hover:bg-gray-600 text-white border border-gray-600/50' : 'bg-gray-800 text-white hover:bg-gray-900'
-          }`}>
-            {isSubmitting ? "Kayıt olunuyor..." : "Email ile Kayıt Ol"}
-          </button>
-        </form>
-
-        <p className={`text-xs text-center mt-4 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Girişten sonra yönlendirileceğiniz yer: {nextParam}</p>
+        <p className={`text-xs text-center mt-6 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+          Giristen sonra yonlendirileceginiz yer: {nextParam}
+        </p>
       </div>
     </div>
   );

@@ -298,46 +298,49 @@ All Firebase RTDB notification paths migrated to PostgreSQL:
 11. **liveApi helpers**: `getNotificationPreferences`, `saveNotificationPreferences`, `getDeviceRegistration`, `registerDevice`, `unregisterDevice`
 12. **Migration script**: `backend/scripts/migrate-notifications.js` — one-time RTDB → PG for preferences, subscriptions, events (last 7 days)
 
-## Remaining Firebase Dependencies (after all phases complete)
+## Phase 5: Complete Firebase Removal — COMPLETE
 
-### Client-Side (loaded only on FIREBASE_ROUTES: `/login` only)
+All remaining Firebase dependencies have been eliminated:
 
-| File | Firebase Feature | Purpose |
-|------|-----------------|---------|
-| `contexts/AuthContext.tsx` | Auth (client SDK) | Login/signup (email, Google OAuth), `onIdTokenChanged` syncs to session cookie |
-| `contexts/SessionContext.tsx` | Auth (dynamic `signOut` import) | Clears Firebase auth state on logout |
-| `notifications/page.tsx` | Messaging (`getToken`, `app`) | FCM push token acquisition for device registration |
-| `components/NotificationForegroundHandler.tsx` | Messaging (`onMessage`) | Foreground push notification display |
-| `public/firebase-messaging-sw.js` | Messaging (service worker) | Background push notification handling |
+| Component | Old (Firebase) | New (Standard Web) |
+|-----------|---------------|-------------------|
+| **Authentication** | Firebase Auth (client SDK + admin session cookies) | Google OAuth 2.0 + HMAC-SHA256 session cookies |
+| **Push notifications** | Firebase Cloud Messaging (FCM) + `firebase-admin` | Standard Web Push API with VAPID (`web-push` npm) |
+| **Service worker** | `firebase-messaging-sw.js` (FCM SDK in SW) | `push-sw.js` (vanilla Push API) |
+| **Frontend SDK** | `firebase` npm package (~200-400 KB JS) | Removed entirely |
+| **Backend SDK** | `firebase-admin` npm package (~50+ deps) | `web-push` npm package (~5 deps) |
 
-### Server-Side (loaded lazily via `firebaseAdmin.ts`)
+### Deleted Files
+- `frontend-nextjs/src/lib/firebase.ts`
+- `frontend-nextjs/src/lib/firebaseAdmin.ts`
+- `frontend-nextjs/src/contexts/AuthContext.tsx`
+- `frontend-nextjs/src/components/FirebaseProviders.tsx`
+- `frontend-nextjs/src/components/LoginModal.tsx`
+- `frontend-nextjs/src/components/EmailVerificationBanner.tsx`
+- `frontend-nextjs/src/app/api/session/login/route.ts`
+- `frontend-nextjs/public/firebase-messaging-sw.js`
+- `backend/firebaseAdmin.js`
+- `backend/scripts/migrate-*.js` (one-time migration scripts)
 
-| File | Firebase Feature | Purpose |
-|------|-----------------|---------|
-| `backend/notificationScheduler.js` | Admin Messaging only | Dispatch timed FCM notifications |
-| `backend/notificationRoutes.js` | Admin Messaging only | Dispatch FCM messages via unified emit endpoint |
+### New Files
+- `backend/webPush.js` — VAPID-based push notification sender
+- `frontend-nextjs/public/push-sw.js` — standard Push API service worker
+- `frontend-nextjs/src/app/api/auth/google/callback/route.ts` — Google OAuth callback
 
-### Config Files
+### Required Secrets (GitHub Actions)
+- `VAPID_PUBLIC_KEY` — Web Push VAPID public key
+- `VAPID_PRIVATE_KEY` — Web Push VAPID private key
+- `GOOGLE_CLIENT_ID` — Google OAuth client ID
+- `GOOGLE_CLIENT_SECRET` — Google OAuth client secret
 
-| File | Purpose |
-|------|---------|
-| `lib/firebase.ts` | Client SDK init (app, auth, ~~db~~, googleProvider) — RTDB `db` export can be removed now |
-| `lib/firebaseAdmin.ts` | Admin SDK init (adminAuth, ~~adminDb~~, adminMessaging) — `adminDb` can be removed now |
-| `backend/firebaseAdmin.js` | Backend SDK init (~~adminDb~~, adminMessaging) — `adminDb` can be removed now |
-| `components/FirebaseProviders.tsx` | Code-split wrapper — can be simplified to Auth-only since RTDB is fully removed |
-
-### What Will Always Stay on Firebase
-
-- **Firebase Auth** — login flow (email + Google OAuth). HMAC session cookie minimizes runtime impact
-- **FCM push delivery** — `adminMessaging().sendEachForMulticast()`. No self-hosted alternative without significant infra
-- **Service worker** — `firebase-messaging-sw.js` for background push notification handling
-- **FCM client token** — `getToken()` from `firebase/messaging` on `/notifications` page for push registration
+Generate VAPID keys with: `npx web-push generate-vapid-keys`
 
 ## Migration Priority Order
 
 1. **Phase 1 (Attendance + Team Picker)** — COMPLETE.
-2. **Phase 2 (MVP Voting)** — COMPLETE. `/gecenin-mvpsi` removed from FIREBASE_ROUTES.
-3. **Phase 3 (Batak + Admin)** — COMPLETE. Fixed broken `kaptanlikState` read. `/batak-allstars` removed from FIREBASE_ROUTES. Admin routes use PG.
-4. **Phase 4 (Notifications)** — COMPLETE. `/notifications` removed from FIREBASE_ROUTES. Unified backend emit endpoint. Dead frontend scheduler deleted.
+2. **Phase 2 (MVP Voting)** — COMPLETE.
+3. **Phase 3 (Batak + Admin)** — COMPLETE.
+4. **Phase 4 (Notifications storage)** — COMPLETE. All notification data in PostgreSQL.
+5. **Phase 5 (Firebase removal)** — COMPLETE. Auth → Google OAuth. FCM → Web Push (VAPID). All Firebase SDKs removed.
 
-**All RTDB usage is eliminated.** Only `/login` needs Firebase client SDK (for Auth). The `/notifications` page imports `firebase/messaging` + `app` for FCM push token only (not RTDB).
+**Firebase is fully removed. No Firebase SDK, credentials, or services are used anywhere.**

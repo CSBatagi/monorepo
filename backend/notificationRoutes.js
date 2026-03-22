@@ -10,7 +10,7 @@
  */
 
 const express = require('express');
-const { adminMessaging } = require('./firebaseAdmin');
+const { sendPushNotifications } = require('./webPush');
 const notificationInboxStore = require('./notificationInboxStore');
 
 const router = express.Router();
@@ -27,14 +27,6 @@ function toStringMap(data) {
   const out = {};
   for (const [key, value] of Object.entries(data)) {
     out[key] = String(value);
-  }
-  return out;
-}
-
-function chunk(items, size) {
-  const out = [];
-  for (let i = 0; i < items.length; i += size) {
-    out.push(items.slice(i, i + size));
   }
   return out;
 }
@@ -175,9 +167,9 @@ async function resolveRecipients(topic) {
   return { tokens: [...tokens], recipientUids: [...recipientUids] };
 }
 
-// ─── FCM Dispatch ───
+// ─── Web Push Dispatch ───
 
-async function dispatchFcm(params) {
+async function dispatchPush(params) {
   const { tokens, recipientUids } = await resolveRecipients(params.topic);
 
   // Persist to in-app inbox (fire-and-forget)
@@ -198,45 +190,27 @@ async function dispatchFcm(params) {
     return { recipientCount: 0, successCount: 0, failureCount: 0, errors: [] };
   }
 
-  const messageData = {
-    topic: params.topic,
+  const payload = {
     title: params.title,
     body: params.body,
     icon: '/images/BatakLogo192.png',
-    ...toStringMap(params.data),
+    data: {
+      topic: params.topic,
+      ...toStringMap(params.data),
+      link: typeof params.data?.link === 'string' && params.data.link.length > 0
+        ? params.data.link : '/',
+    },
   };
 
-  const messaging = adminMessaging();
-  const tokenChunks = chunk(tokens, 500);
-  let successCount = 0;
-  let failureCount = 0;
-  const errors = [];
-
-  for (const tokenChunk of tokenChunks) {
-    const response = await messaging.sendEachForMulticast({
-      tokens: tokenChunk,
-      data: messageData,
-      webpush: {
-        fcmOptions: {
-          link: typeof params.data?.link === 'string' && params.data.link.length > 0
-            ? params.data.link : '/',
-        },
-      },
-    });
-
-    successCount += response.successCount;
-    failureCount += response.failureCount;
-    response.responses.forEach((entry) => {
-      if (!entry.success && entry.error) errors.push(entry.error.message);
-    });
-  }
+  // tokens contain JSON-stringified PushSubscription objects
+  const result = await sendPushNotifications(tokens, payload);
 
   await inboxPromise;
   return {
     recipientCount: tokens.length,
-    successCount,
-    failureCount,
-    errors: [...new Set(errors)].slice(0, 20),
+    successCount: result.successCount,
+    failureCount: result.failureCount,
+    errors: result.errors,
   };
 }
 
@@ -275,7 +249,7 @@ router.post('/emit', async (req, res) => {
     }
 
     // Dispatch
-    const result = await dispatchFcm({
+    const result = await dispatchPush({
       topic,
       title,
       body,

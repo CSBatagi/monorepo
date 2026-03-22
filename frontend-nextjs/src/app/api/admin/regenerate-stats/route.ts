@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
-import { adminAuth } from '@/lib/firebaseAdmin';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/authSession';
 
 const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
@@ -25,28 +24,13 @@ const STAT_FILES = [
 
 export async function POST(req: NextRequest) {
   try {
-    // --- Auth: session cookie (preferred) or Firebase ID token (legacy) ---
+    // --- Auth: session cookie only ---
     let uid: string | null = null;
 
-    // Try session cookie first (works on all pages, no Firebase SDK needed)
     const sessionCookie = req.cookies.get(SESSION_COOKIE_NAME)?.value;
     if (sessionCookie) {
       const payload = verifySessionToken(sessionCookie);
       if (payload?.uid) uid = payload.uid;
-    }
-
-    // Fall back to Firebase ID token (legacy path)
-    if (!uid) {
-      const authHeader = req.headers.get('authorization');
-      if (authHeader?.startsWith('Bearer ')) {
-        const idToken = authHeader.slice('Bearer '.length).trim();
-        try {
-          const decoded = await adminAuth().verifyIdToken(idToken);
-          uid = decoded.uid;
-        } catch (verifyErr: any) {
-          console.warn('[regenerate-stats] Invalid Firebase token:', verifyErr.message);
-        }
-      }
     }
 
     if (!uid) {
