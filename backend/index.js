@@ -572,7 +572,8 @@ if (!TEST_MODE) {
       `INSERT INTO team_picker (id) VALUES (1) ON CONFLICT DO NOTHING`,
       `CREATE TABLE IF NOT EXISTS live_version (key TEXT PRIMARY KEY, version BIGINT NOT NULL DEFAULT 0)`,
       `INSERT INTO live_version (key, version) VALUES ('attendance', 0), ('team_picker', 0), ('mvp_votes', 0), ('batak_captains', 0), ('batak_super_kupa', 0) ON CONFLICT DO NOTHING`,
-      `CREATE TABLE IF NOT EXISTS notification_inbox (id TEXT PRIMARY KEY, user_uid TEXT NOT NULL, topic TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, data JSONB, read BOOLEAN NOT NULL DEFAULT FALSE, created_at BIGINT NOT NULL, event_id TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+      `CREATE TABLE IF NOT EXISTS notification_inbox (id TEXT PRIMARY KEY, user_uid TEXT NOT NULL, topic TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, data JSONB, read BOOLEAN NOT NULL DEFAULT FALSE, deleted BOOLEAN NOT NULL DEFAULT FALSE, created_at BIGINT NOT NULL, event_id TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notification_inbox' AND column_name='deleted') THEN ALTER TABLE notification_inbox ADD COLUMN deleted BOOLEAN NOT NULL DEFAULT FALSE; END IF; END $$`,
       `CREATE INDEX IF NOT EXISTS notification_inbox_user_created_idx ON notification_inbox (user_uid, created_at DESC)`,
       `CREATE TABLE IF NOT EXISTS notification_inbox_version (user_uid TEXT PRIMARY KEY, version BIGINT NOT NULL DEFAULT 0, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       // MVP voting tables — replaces Firebase RTDB mvpVotes/*

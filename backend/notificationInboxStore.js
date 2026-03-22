@@ -62,7 +62,7 @@ async function listInbox(userUid, limit = 100) {
       `SELECT id, topic, title, body, data, read, created_at, event_id FROM (
          SELECT id, topic, title, body, data, read, created_at, event_id
          FROM notification_inbox
-         WHERE user_uid = $1
+         WHERE user_uid = $1 AND deleted = FALSE
        UNION ALL
          SELECT e.event_id AS id, e.topic, e.title, e.body, e.data, FALSE AS read,
                 (EXTRACT(EPOCH FROM e.created_at) * 1000)::bigint AS created_at,
@@ -109,8 +109,8 @@ async function persistToInbox(params) {
     for (const userUid of recipientUids) {
       await client.query(
         `INSERT INTO notification_inbox
-          (id, user_uid, topic, title, body, data, read, created_at, event_id, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb, FALSE, $7, $8, NOW())`,
+          (id, user_uid, topic, title, body, data, read, deleted, created_at, event_id, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, FALSE, FALSE, $7, $8, NOW())`,
         [crypto.randomUUID(), userUid, topic, title, body, JSON.stringify(data), createdAt, eventId]
       );
       await bumpVersion(userUid, client);
@@ -131,7 +131,7 @@ async function markAsRead(userUid, notificationId) {
   const result = await db.query(
     `UPDATE notification_inbox
      SET read = TRUE, updated_at = NOW()
-     WHERE user_uid = $1 AND id = $2 AND read = FALSE`,
+     WHERE user_uid = $1 AND id = $2 AND deleted = FALSE AND read = FALSE`,
     [userUid, notificationId]
   );
   if (result.rowCount > 0) {
@@ -149,8 +149,8 @@ async function markAsRead(userUid, notificationId) {
     const e = eventRow.rows[0];
     await db.query(
       `INSERT INTO notification_inbox
-        (id, user_uid, topic, title, body, data, read, created_at, event_id, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb, TRUE, $7, $8, NOW())
+        (id, user_uid, topic, title, body, data, read, deleted, created_at, event_id, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, TRUE, FALSE, $7, $8, NOW())
        ON CONFLICT DO NOTHING`,
       [crypto.randomUUID(), userUid, e.topic, e.title, e.body,
        JSON.stringify(e.data), Math.floor(new Date(e.created_at).getTime()), e.event_id]
@@ -167,7 +167,7 @@ async function markAllAsRead(userUid) {
   const result = await db.query(
     `UPDATE notification_inbox
      SET read = TRUE, updated_at = NOW()
-     WHERE user_uid = $1 AND read = FALSE`,
+     WHERE user_uid = $1 AND deleted = FALSE AND read = FALSE`,
     [userUid]
   );
   // Also materialize any unread broadcast events as read personal entries
@@ -185,8 +185,8 @@ async function markAllAsRead(userUid) {
   for (const e of broadcastRows.rows) {
     await db.query(
       `INSERT INTO notification_inbox
-        (id, user_uid, topic, title, body, data, read, created_at, event_id, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb, TRUE, $7, $8, NOW())
+        (id, user_uid, topic, title, body, data, read, deleted, created_at, event_id, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, TRUE, FALSE, $7, $8, NOW())
        ON CONFLICT DO NOTHING`,
       [crypto.randomUUID(), userUid, e.topic, e.title, e.body,
        JSON.stringify(e.data), Math.floor(new Date(e.created_at).getTime()), e.event_id]
@@ -202,27 +202,70 @@ async function markAllAsRead(userUid) {
 async function deleteNotification(userUid, notificationId) {
   const db = getPool();
   const result = await db.query(
-    `DELETE FROM notification_inbox
-     WHERE user_uid = $1 AND id = $2`,
+    `UPDATE notification_inbox
+     SET deleted = TRUE, updated_at = NOW()
+     WHERE user_uid = $1 AND id = $2 AND deleted = FALSE`,
     [userUid, notificationId]
   );
   if (result.rowCount > 0) {
     await bumpVersion(userUid, db);
+    return { deleted: true };
   }
-  return { deleted: result.rowCount > 0 };
+
+  const eventRow = await db.query(
+    `SELECT event_id, topic, title, body, data, created_at
+     FROM notification_events WHERE event_id = $1 AND status = 'sent'`,
+    [notificationId]
+  );
+  if (eventRow.rows.length > 0) {
+    const e = eventRow.rows[0];
+    await db.query(
+      `INSERT INTO notification_inbox
+        (id, user_uid, topic, title, body, data, read, deleted, created_at, event_id, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, TRUE, TRUE, $7, $8, NOW())`,
+      [crypto.randomUUID(), userUid, e.topic, e.title, e.body,
+       JSON.stringify(e.data), Math.floor(new Date(e.created_at).getTime()), e.event_id]
+    );
+    await bumpVersion(userUid, db);
+    return { deleted: true };
+  }
+
+  return { deleted: false };
 }
 
 async function clearInbox(userUid) {
   const db = getPool();
   const result = await db.query(
-    `DELETE FROM notification_inbox
-     WHERE user_uid = $1`,
+    `UPDATE notification_inbox
+     SET deleted = TRUE, updated_at = NOW()
+     WHERE user_uid = $1 AND deleted = FALSE`,
     [userUid]
   );
-  if (result.rowCount > 0) {
+  const broadcastRows = await db.query(
+    `SELECT e.event_id, e.topic, e.title, e.body, e.data, e.created_at
+     FROM notification_events e
+     WHERE e.status = 'sent'
+       AND NOT EXISTS (
+         SELECT 1 FROM notification_inbox i
+         WHERE i.user_uid = $1 AND i.event_id = e.event_id
+       )
+       AND e.created_at > NOW() - INTERVAL '30 days'`,
+    [userUid]
+  );
+  for (const e of broadcastRows.rows) {
+    await db.query(
+      `INSERT INTO notification_inbox
+        (id, user_uid, topic, title, body, data, read, deleted, created_at, event_id, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, TRUE, TRUE, $7, $8, NOW())`,
+      [crypto.randomUUID(), userUid, e.topic, e.title, e.body,
+       JSON.stringify(e.data), Math.floor(new Date(e.created_at).getTime()), e.event_id]
+    );
+  }
+  const totalDeleted = (result.rowCount || 0) + broadcastRows.rows.length;
+  if (totalDeleted > 0) {
     await bumpVersion(userUid, db);
   }
-  return { deleted: result.rowCount };
+  return { deleted: totalDeleted };
 }
 
 async function hasUnseenBroadcasts(userUid) {

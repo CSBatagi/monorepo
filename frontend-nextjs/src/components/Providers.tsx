@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { SessionProvider } from "@/contexts/SessionContext";
 import AdminStatsButton from "@/components/AdminStatsButton";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import AutoPushRegistration from "@/components/AutoPushRegistration";
 
 export default function Providers({ children }: { children: ReactNode }) {
   const content = (
@@ -18,6 +19,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <SessionProvider>
         <NotificationProvider>
+          <AutoPushRegistration />
           <Layout>
             {content}
             <AdminStatsButton />

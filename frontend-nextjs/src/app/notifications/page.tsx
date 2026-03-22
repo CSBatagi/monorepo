@@ -11,6 +11,7 @@ import {
   registerDevice,
   unregisterDevice,
 } from "@/lib/liveApi";
+import { getOrCreateDeviceId, setAutoPushOptOut } from "@/lib/pushRegistrationState";
 
 type TopicKey =
   | "teker_dondu_reached"
@@ -62,21 +63,6 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
     admin_custom_message: true,
   },
 };
-
-function getOrCreateDeviceId(): string {
-  if (typeof window === "undefined") return "server";
-  const key = "csbatagi_device_id";
-  const existing = window.localStorage.getItem(key);
-  if (existing) return existing;
-
-  const randomId =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-
-  window.localStorage.setItem(key, randomId);
-  return randomId;
-}
 
 function detectPlatform(): "ios" | "android" | "web" {
   if (typeof navigator === "undefined") return "web";
@@ -270,6 +256,7 @@ export default function NotificationsPage() {
         }),
       ]);
 
+      setAutoPushOptOut(user.uid, deviceId, false);
       setDeviceRegistered(true);
       setMessage("Bu cihaz bildirime acildi.");
     } catch (error: any) {
@@ -286,6 +273,7 @@ export default function NotificationsPage() {
     setMessage("");
     try {
       await unregisterDevice(deviceId);
+      setAutoPushOptOut(user.uid, deviceId, true);
       setDeviceRegistered(false);
       setMessage("Bu cihaz bildirim listesinden çıkarıldı.");
     } catch (error) {
