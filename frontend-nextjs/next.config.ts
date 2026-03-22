@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   basePath: currentBasePath,
   env: {
     NEXT_PUBLIC_BASE_PATH: currentBasePath, // Expose basePath to the client
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
   },
   experimental: {
     optimizePackageImports: ['lucide-react'],
