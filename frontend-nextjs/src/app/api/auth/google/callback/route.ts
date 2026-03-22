@@ -16,10 +16,14 @@ function getGoogleClientSecret(): string {
   return process.env.GOOGLE_CLIENT_SECRET || "";
 }
 
-function getRedirectUri(req: NextRequest): string {
+function getOrigin(req: NextRequest): string {
   const proto = req.headers.get("x-forwarded-proto") || "https";
-  const host = req.headers.get("host") || "localhost:3000";
-  return `${proto}://${host}/api/auth/google/callback`;
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "localhost:3000";
+  return `${proto}://${host}`;
+}
+
+function getRedirectUri(req: NextRequest): string {
+  return `${getOrigin(req)}/api/auth/google/callback`;
 }
 
 /**
@@ -40,13 +44,13 @@ export async function GET(req: NextRequest) {
   if (error) {
     console.warn("[auth/google/callback] OAuth error:", error);
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error)}&next=${encodeURIComponent(nextPath)}`, req.url)
+      new URL(`/login?error=${encodeURIComponent(error)}&next=${encodeURIComponent(nextPath)}`, getOrigin(req))
     );
   }
 
   if (!code) {
     return NextResponse.redirect(
-      new URL(`/login?error=missing_code&next=${encodeURIComponent(nextPath)}`, req.url)
+      new URL(`/login?error=missing_code&next=${encodeURIComponent(nextPath)}`, getOrigin(req))
     );
   }
 
@@ -56,7 +60,7 @@ export async function GET(req: NextRequest) {
   if (!clientId || !clientSecret) {
     console.error("[auth/google/callback] Missing NEXT_PUBLIC_GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
     return NextResponse.redirect(
-      new URL(`/login?error=server_config&next=${encodeURIComponent(nextPath)}`, req.url)
+      new URL(`/login?error=server_config&next=${encodeURIComponent(nextPath)}`, getOrigin(req))
     );
   }
 
@@ -78,7 +82,7 @@ export async function GET(req: NextRequest) {
       const errorBody = await tokenRes.text();
       console.error("[auth/google/callback] Token exchange failed:", tokenRes.status, errorBody);
       return NextResponse.redirect(
-        new URL(`/login?error=token_exchange&next=${encodeURIComponent(nextPath)}`, req.url)
+        new URL(`/login?error=token_exchange&next=${encodeURIComponent(nextPath)}`, getOrigin(req))
       );
     }
 
@@ -88,7 +92,7 @@ export async function GET(req: NextRequest) {
     if (!idToken) {
       console.error("[auth/google/callback] No id_token in response");
       return NextResponse.redirect(
-        new URL(`/login?error=no_id_token&next=${encodeURIComponent(nextPath)}`, req.url)
+        new URL(`/login?error=no_id_token&next=${encodeURIComponent(nextPath)}`, getOrigin(req))
       );
     }
 
@@ -98,7 +102,7 @@ export async function GET(req: NextRequest) {
     const parts = idToken.split(".");
     if (parts.length !== 3) {
       return NextResponse.redirect(
-        new URL(`/login?error=bad_token&next=${encodeURIComponent(nextPath)}`, req.url)
+        new URL(`/login?error=bad_token&next=${encodeURIComponent(nextPath)}`, getOrigin(req))
       );
     }
 
@@ -114,7 +118,7 @@ export async function GET(req: NextRequest) {
     const uid = payload.sub;
     if (!uid) {
       return NextResponse.redirect(
-        new URL(`/login?error=missing_uid&next=${encodeURIComponent(nextPath)}`, req.url)
+        new URL(`/login?error=missing_uid&next=${encodeURIComponent(nextPath)}`, getOrigin(req))
       );
     }
 
@@ -127,7 +131,8 @@ export async function GET(req: NextRequest) {
     });
 
     // Redirect to the destination with the session cookie set
-    const response = NextResponse.redirect(new URL(nextPath, req.url));
+    const origin = getOrigin(req);
+    const response = NextResponse.redirect(new URL(nextPath, origin));
     response.cookies.set({
       name: SESSION_COOKIE_NAME,
       value: sessionToken,
@@ -142,7 +147,7 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error("[auth/google/callback] Unexpected error:", err);
     return NextResponse.redirect(
-      new URL(`/login?error=unexpected&next=${encodeURIComponent(nextPath)}`, req.url)
+      new URL(`/login?error=unexpected&next=${encodeURIComponent(nextPath)}`, getOrigin(req))
     );
   }
 }
