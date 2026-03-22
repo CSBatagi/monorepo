@@ -1,5 +1,6 @@
 import PerformansOdulleriClient from "@/components/PerformansOdulleriClient";
 import { readJson } from "@/lib/dataReader";
+import { fetchStats } from "@/lib/statsServer";
 import { normalizeSeasonStarts } from "@/lib/seasonRanges";
 
 export const revalidate = 60; // seconds – data changes only when stats regenerate
@@ -11,16 +12,13 @@ export default async function PerformansOdulleriPage() {
     [seasonStartRaw?.season_start].filter(Boolean) as string[]
   );
 
+  const stats = await fetchStats('night_avg_all', 'night_avg');
   let allData: Record<string, any[]> = {};
-  try {
-    const all = await readJson("night_avg_all.json");
-    if (all && typeof all === "object" && !Array.isArray(all)) allData = all;
-  } catch {}
-  if (!Object.keys(allData).length) {
-    try {
-      const current = await readJson("night_avg.json");
-      if (current && typeof current === "object" && !Array.isArray(current)) allData = current;
-    } catch {}
+  if (stats.night_avg_all && typeof stats.night_avg_all === "object" && !Array.isArray(stats.night_avg_all)) {
+    allData = stats.night_avg_all;
+  }
+  if (!Object.keys(allData).length && stats.night_avg && typeof stats.night_avg === "object" && !Array.isArray(stats.night_avg)) {
+    allData = stats.night_avg;
   }
 
   return (

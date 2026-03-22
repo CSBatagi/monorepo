@@ -2,12 +2,12 @@
 
 ## Runtime Flow
 
-1. Root layout's `after()` hook calls `incrementalRefresh()` (cooldown: 5 minutes) which fetches backend `GET /stats/incremental`.
-2. Backend compares latest DB match timestamp (polls DB every 60s in background).
-3. If updated, backend regenerates incremental datasets once and returns changed payload.
-4. Frontend persists payload into `frontend-nextjs/runtime-data/` (or `STATS_DATA_DIR`).
-5. Aggregates are refreshed through `/api/stats/aggregates` -> backend `GET /stats/aggregates`.
-6. All data API routes (`/api/data/*`) serve from runtime-data with `Cache-Control: public, s-maxage=60, stale-while-revalidate=300`.
+1. **SSR (server rendering)**: All stats pages call `fetchStats()` (`lib/statsServer.ts`) which fetches from backend memory (server-to-server). Falls back to disk (`runtime-data/`) if backend unreachable. 10s module-level cache prevents repeated backend calls across concurrent SSR renders.
+2. **Client refresh**: Client components call `/api/stats/check` (incremental, only returns data when changed) or `/api/stats/aggregates` (always returns last10/season_avg/season_avg_periods) as a refresh-if-newer enhancement.
+3. **Disk write-through**: Root layout's `after()` hook calls `incrementalRefresh()` (cooldown: 90s) which fetches backend `GET /stats/incremental` and persists JSON files to `runtime-data/`. These serve as the fallback layer for SSR when backend is down.
+4. Backend compares latest DB match timestamp (polls DB every 60s in background).
+5. If updated, backend regenerates datasets once and caches in memory permanently (`lastGeneratedData`).
+6. `/api/data/*` routes serve from `runtime-data/` on disk — used only by team-picker for `map_stats`.
 
 ## Canonical Season Config
 
@@ -62,10 +62,11 @@ Current usage pattern:
 Update all of the following together:
 
 - `backend/generate-stats-from-prod.js`
-- `frontend-nextjs/src/app/layout.tsx`
+- `frontend-nextjs/src/app/layout.tsx` (after() hook disk write-through)
 - `frontend-nextjs/src/app/api/stats/check/route.ts`
 - `frontend-nextjs/src/app/api/admin/regenerate-stats/route.ts`
-- `frontend-nextjs/src/lib/dataReader.ts`
+- `frontend-nextjs/src/lib/dataReader.ts` (disk fallback defaults)
+- `frontend-nextjs/src/lib/statsServer.ts` (SSR backend fetch — key names must match backend dataset keys)
 
 ## Memory Optimizations (1 GB VM)
 

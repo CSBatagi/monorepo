@@ -55,8 +55,8 @@ Leaves ~490-600 MB headroom (including OS).
 - **Notification scheduler**: moved to the backend process (see below)
 - **Lazy Firebase SDK**: `FirebaseProviders` is code-split via `next/dynamic`. Stats pages never download the Firebase client SDK (~200-400 KB JS saved).
 - **SessionContext**: lightweight cookie-based user context replaces Firebase Auth in shared components (Header, Layout)
-- **Incremental refresh cooldown**: increased from 60s to 5 minutes (`layout.tsx`)
-- **JSON writes**: removed pretty-printing (`JSON.stringify(data)` instead of `JSON.stringify(data, null, 2)`)
+- **Incremental refresh cooldown**: 90 seconds (`layout.tsx`). JSON files written without pretty-printing.
+- **Unified SSR data path**: all stats pages use `fetchStats()` (`lib/statsServer.ts`) which fetches from backend memory server-to-server (10s module cache). Falls back to disk files only when backend is unreachable. Eliminates stale-disk-read bugs where some pages showed fresh data and others didn't.
 - **Duplicate firebase config**: deleted `lib/firebase.ts` (root-level duplicate with debug console.log)
 - **Server-side player data**: `attendance/page.tsx` is a server component that reads `players.json` from disk (ISR, revalidate 60s). The client component (`AttendanceClient.tsx`) receives players as props — no client-side fetch waterfall.
 - Docker memory limit: 256M

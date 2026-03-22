@@ -327,18 +327,16 @@ const TeamPickerClient: React.FC = () => {
     const fetchMapStats = async () => {
       setLoadingMapStats(true);
       try {
-        // Use /api/stats/check (backed by backend memory) for map_stats,
-        // consistent with how duello, performance, and other pages fetch data.
-        const lastKnownTs = typeof window !== 'undefined' ? localStorage.getItem('stats_last_ts') : null;
-        const url = `/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : '?'}_cb=${Date.now()}`;
-        const res = await fetch(url, { cache: 'no-store' });
-        const data = await res.json();
+        // map_stats is read from disk (runtime-data/map_stats.json), kept fresh by
+        // layout.tsx after() hook. Unlike last10/season_avg, map_stats is not available
+        // via /api/stats/aggregates, and /api/stats/check only returns data when there
+        // are new stats — so disk is the correct source here.
+        const res = await fetch('/api/data/map_stats');
+        let data: any = null;
+        try { data = await res.json(); } catch { data = null; }
         if (cancelled) return;
-        const list: any[] = Array.isArray(data?.map_stats) ? data.map_stats : [];
-        setMapStats(list);
-        if (data?.serverTimestamp) {
-          try { localStorage.setItem('stats_last_ts', data.serverTimestamp); } catch {}
-        }
+        const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.map_stats) ? data.map_stats : [];
+        setMapStats(Array.isArray(list) ? list : []);
       } catch {
         if (!cancelled) setMapStats([]);
       } finally {

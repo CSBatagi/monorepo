@@ -1,11 +1,13 @@
 import OyuncularClient from "./OyuncularClient";
 import { readJson } from "@/lib/dataReader";
+import { fetchStats } from "@/lib/statsServer";
 
 export const revalidate = 60; // seconds – data changes only when stats regenerate
 
 export default async function OyuncularPage() {
-  const playersStats = (await readJson("players_stats.json")) || [];
-  const playersStatsPeriods = (await readJson("players_stats_periods.json")) || null;
+  const stats = await fetchStats('players_stats', 'players_stats_periods');
+  const playersStats = stats.players_stats || [];
+  const playersStatsPeriods = stats.players_stats_periods || null;
   const playersList = (await readJson("players.json")) || [];
 
   const fallbackPeriods =
