@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { adminAuth } from "@/lib/firebaseAdmin";
-import {
-  type NotificationData,
-  emitNotificationEvent,
-  isNotificationTopic,
-} from "@/lib/serverNotifications";
+import { isNotificationTopic, type NotificationData } from "@/lib/serverNotifications";
 import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/authSession";
 
 export const runtime = "nodejs";
 
+const BACKEND = process.env.BACKEND_INTERNAL_URL || "http://backend:3000";
+const AUTH_TOKEN = () => process.env.AUTH_TOKEN || process.env.MATCHMAKING_TOKEN || "";
+
 const ISTANBUL_TZ = "Europe/Istanbul";
 const TEKER_DONDU_THRESHOLD = 10;
 const TEKER_DONDU_COOLDOWN_MS = 60_000;
-// How long the count must stay at or above the threshold before the notification fires.
-// This prevents a scroll-through (no_response → coming → not_coming) from triggering.
 const TEKER_DONDU_SETTLE_MS = 10_000;
 
 const DEFAULT_MESSAGES: Record<string, { title: string; body: string }> = {
@@ -23,8 +20,8 @@ const DEFAULT_MESSAGES: Record<string, { title: string; body: string }> = {
     body: "As bayrakları",
   },
   mvp_poll_locked: {
-    title: "🏆 Gecenin MVP'si belirlendi",
-    body: "🏆 MVP oylaması tamamlandı.",
+    title: "\u{1F3C6} Gecenin MVP'si belirlendi",
+    body: "\u{1F3C6} MVP oylaması tamamlandı.",
   },
   stats_updated: {
     title: "Yeni statlar basıldı",
@@ -53,7 +50,6 @@ type TekerStateNode = {
   crossingCount?: number;
   lastNotificationAt?: number;
   lastComingCount?: number;
-  /** Timestamp (ms) when the count first crossed the threshold in the current crossing. */
   pendingSince?: number;
   updatedAt?: number;
 };
@@ -76,7 +72,6 @@ async function readBearerToken(req: NextRequest): Promise<string | null> {
 }
 
 async function resolveComingCount(): Promise<number> {
-  const BACKEND = process.env.BACKEND_INTERNAL_URL || "http://backend:3000";
   const res = await fetch(`${BACKEND}/live/attendance?v=0`, { cache: "no-store" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = (await res.json()) as { attendance?: Record<string, { status?: string }> };
@@ -84,7 +79,6 @@ async function resolveComingCount(): Promise<number> {
 }
 
 async function isMvpDateLocked(date: string): Promise<boolean> {
-  const BACKEND = process.env.BACKEND_INTERNAL_URL || "http://backend:3000";
   try {
     const res = await fetch(`${BACKEND}/live/mvp-votes?v=0`, { cache: "no-store" });
     if (!res.ok) return false;
@@ -97,9 +91,6 @@ async function isMvpDateLocked(date: string): Promise<boolean> {
   }
 }
 
-// In-memory state for teker_dondu crossing detection (replaces Firebase RTDB transaction).
-// Node.js is single-threaded so synchronous access is atomic. State resets on restart,
-// which is acceptable — worst case a duplicate notification is sent after a deploy.
 const tekerDonduState = new Map<string, TekerStateNode>();
 
 function evaluateTekerDonduCrossing(params: {
@@ -150,6 +141,26 @@ function evaluateTekerDonduCrossing(params: {
   });
 
   return { shouldSend, crossingCount, cooldownActive, cooldownRemainingMs, pendingSettlesAt };
+}
+
+async function emitViaBackend(params: {
+  eventId: string;
+  topic: string;
+  title: string;
+  body: string;
+  data?: NotificationData;
+  createdByUid?: string;
+  createdByName?: string;
+}): Promise<any> {
+  const res = await fetch(`${BACKEND}/live/notifications/emit`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${AUTH_TOKEN()}`,
+    },
+    body: JSON.stringify(params),
+  });
+  return res.json();
 }
 
 export async function POST(req: NextRequest) {
@@ -215,8 +226,6 @@ export async function POST(req: NextRequest) {
           reason,
           comingCount,
           cooldownRemainingMs: crossing.cooldownRemainingMs,
-          // When settle_pending, tell the client exactly when to retry so it can
-          // schedule a follow-up call without polling.
           ...(crossing.pendingSettlesAt > 0 && { settlesAt: crossing.pendingSettlesAt }),
         });
       }
@@ -265,9 +274,9 @@ export async function POST(req: NextRequest) {
         : null;
     const title = body.title?.trim() || fallback.title;
     const messageBody =
-      body.body?.trim() || (winnerSummary ? `🏆 ${winnerSummary}` : fallback.body);
+      body.body?.trim() || (winnerSummary ? `\u{1F3C6} ${winnerSummary}` : fallback.body);
 
-    const result = await emitNotificationEvent({
+    const result = await emitViaBackend({
       eventId,
       topic,
       title,
@@ -281,7 +290,11 @@ export async function POST(req: NextRequest) {
       ok: true,
       duplicate: result.duplicate,
       eventId: result.eventId,
-      ...(result.dispatch || {}),
+      ...(result.recipientCount !== undefined ? {
+        recipientCount: result.recipientCount,
+        successCount: result.successCount,
+        failureCount: result.failureCount,
+      } : {}),
     });
   } catch (error: any) {
     console.error("[notifications/emit] failed", error);

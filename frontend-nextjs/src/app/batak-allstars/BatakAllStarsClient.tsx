@@ -1138,9 +1138,6 @@ export default function BatakAllStarsClient({
         </div>
       )}
 
-      <div className="text-xs text-gray-500">
-        Kaptanlar Firebase içinde tutulur: <span className="font-mono">batakAllStars/captainsByDate/&lt;YYYY-MM-DD&gt;/team1</span> ve <span className="font-mono">.../team2</span>.
-      </div>
     </div>
   );
 }

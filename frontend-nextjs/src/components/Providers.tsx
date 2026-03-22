@@ -23,7 +23,7 @@ const FIREBASE_ROUTES = [
   // "/team-picker" — migrated to PostgreSQL polling, no longer needs Firebase SDK
   // "/gecenin-mvpsi" — migrated to PostgreSQL polling + session auth
   // "/batak-allstars" — migrated to PostgreSQL polling + session auth
-  "/notifications",
+  // "/notifications" — migrated to PostgreSQL + session auth (FCM getToken uses firebase/messaging via app import)
   "/login",
 ];
 

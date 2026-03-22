@@ -187,6 +187,7 @@ const notificationScheduler = require('./notificationScheduler');
 const liveRoutes = require('./liveRoutes');
 const notificationInboxRoutes = require('./notificationInboxRoutes');
 const notificationInboxStore = require('./notificationInboxStore');
+const notificationRoutes = require('./notificationRoutes');
 
 // --- Per-IP rate limiting ---
 // Simple in-memory rate limiter to prevent abuse. No external dependencies needed.
@@ -454,8 +455,10 @@ app.get('/stats/diagnostics', async (req, res) => {
 if (pool) {
   liveRoutes.setup(pool);
   notificationInboxStore.setup(pool);
+  notificationRoutes.setup(pool);
   app.use('/live', liveRoutes.router);
   app.use('/live/notifications/inbox', notificationInboxRoutes.router);
+  app.use('/live/notifications', notificationRoutes.router);
 
   // Admin check — lightweight GET, no auth middleware (only returns boolean)
   app.get('/admin/check/:uid', async (req, res) => {
@@ -580,6 +583,12 @@ if (!TEST_MODE) {
       `CREATE TABLE IF NOT EXISTS batak_super_kupa (slot TEXT PRIMARY KEY, player1_steam_id TEXT NOT NULL, player1_name TEXT NOT NULL, player1_league TEXT NOT NULL, player2_steam_id TEXT NOT NULL, player2_name TEXT NOT NULL, player2_league TEXT NOT NULL, winner_steam_id TEXT, score TEXT, date TEXT, set_by_uid TEXT, set_by_name TEXT, set_at BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       // Admin table — replaces Firebase RTDB admins/{uid}
       `CREATE TABLE IF NOT EXISTS admins (uid TEXT PRIMARY KEY, is_admin BOOLEAN NOT NULL DEFAULT TRUE, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+      // Notification preferences — replaces Firebase RTDB notifications/preferences/{uid}
+      `CREATE TABLE IF NOT EXISTS notification_preferences (uid TEXT PRIMARY KEY, enabled BOOLEAN NOT NULL DEFAULT TRUE, topics JSONB NOT NULL DEFAULT '{}', updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+      // Notification subscriptions — replaces Firebase RTDB notifications/subscriptions/{uid}/{deviceId}
+      `CREATE TABLE IF NOT EXISTS notification_subscriptions (uid TEXT NOT NULL, device_id TEXT NOT NULL, token TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT TRUE, platform TEXT, user_agent TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (uid, device_id))`,
+      // Notification events — replaces Firebase RTDB notifications/events/{eventId}
+      `CREATE TABLE IF NOT EXISTS notification_events (event_id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'pending', topic TEXT, title TEXT, body TEXT, data JSONB, created_by_uid TEXT, created_by_name TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), sent_at TIMESTAMPTZ, failed_at TIMESTAMPTZ, recipient_count INT, success_count INT, failure_count INT, errors JSONB, error TEXT)`,
     ];
     for (const sql of migrations) {
       try { await pool.query(sql); } catch (e) { console.warn('[migration]', e.message); }

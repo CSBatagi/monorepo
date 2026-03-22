@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { adminAuth } from "@/lib/firebaseAdmin";
-import { emitNotificationEvent } from "@/lib/serverNotifications";
+import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/authSession";
 
 const BACKEND = process.env.BACKEND_INTERNAL_URL || "http://backend:3000";
+const AUTH_TOKEN = () => process.env.AUTH_TOKEN || process.env.MATCHMAKING_TOKEN || "";
 
 export const runtime = "nodejs";
 
@@ -12,23 +12,20 @@ type SendBody = {
   body?: string;
 };
 
-async function readBearerToken(req: NextRequest): Promise<string | null> {
-  const header = req.headers.get("authorization");
-  if (!header || !header.startsWith("Bearer ")) return null;
-  return header.slice("Bearer ".length).trim() || null;
-}
-
 export async function POST(req: NextRequest) {
   try {
-    const idToken = await readBearerToken(req);
-    if (!idToken) {
+    // Authenticate via session cookie
+    const cookie = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+    if (!cookie) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const session = verifySessionToken(cookie);
+    if (!session?.uid) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = await adminAuth().verifyIdToken(idToken);
-
     // Check admin status via backend PG
-    const adminRes = await fetch(`${BACKEND}/admin/check/${decoded.uid}`, { cache: "no-store" });
+    const adminRes = await fetch(`${BACKEND}/admin/check/${session.uid}`, { cache: "no-store" });
     const adminData = await adminRes.json();
     if (!adminData.isAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -45,21 +42,39 @@ export async function POST(req: NextRequest) {
     }
 
     const eventId = `admin_custom_message:${Date.now()}`;
-    const result = await emitNotificationEvent({
-      eventId,
-      topic: "admin_custom_message",
-      title,
-      body: messageBody,
-      data: { eventId, link: "/" },
-      createdByUid: decoded.uid,
-      createdByName: decoded.name || decoded.email || undefined,
+
+    // Dispatch via unified backend emit endpoint
+    const emitRes = await fetch(`${BACKEND}/live/notifications/emit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${AUTH_TOKEN()}`,
+      },
+      body: JSON.stringify({
+        eventId,
+        topic: "admin_custom_message",
+        title,
+        body: messageBody,
+        data: { eventId, link: "/" },
+        createdByUid: session.uid,
+        createdByName: session.name || session.email || undefined,
+      }),
     });
+
+    const result = await emitRes.json();
+    if (!emitRes.ok) {
+      return NextResponse.json(
+        { error: result.error || "emit_failed" },
+        { status: emitRes.status }
+      );
+    }
 
     return NextResponse.json({
       ok: true,
       duplicate: result.duplicate,
       eventId: result.eventId,
-      ...(result.dispatch || {}),
+      successCount: result.successCount,
+      failureCount: result.failureCount,
     });
   } catch (error: any) {
     console.error("[admin/notifications/send] failed", error);

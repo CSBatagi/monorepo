@@ -118,3 +118,51 @@ export function deleteSuperKupaMatch(slot: string) {
 export function resetSuperKupa() {
   return livePost('batak-super-kupa', { action: 'reset' });
 }
+
+// --- Notification Preferences ---
+
+export async function getNotificationPreferences(): Promise<{ enabled: boolean; topics: Record<string, boolean> }> {
+  const res = await fetch('/api/notifications/preferences', { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function saveNotificationPreferences(prefs: { enabled: boolean; topics: Record<string, boolean> }): Promise<void> {
+  const res = await fetch('/api/notifications/preferences', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(prefs),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
+// --- Notification Subscriptions ---
+
+export async function getDeviceRegistration(deviceId: string): Promise<{ registered: boolean; enabled?: boolean }> {
+  const res = await fetch(`/api/notifications/subscriptions?deviceId=${encodeURIComponent(deviceId)}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function registerDevice(params: {
+  deviceId: string;
+  token: string;
+  platform: string;
+  userAgent: string;
+}): Promise<void> {
+  const res = await fetch('/api/notifications/subscriptions', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
+export async function unregisterDevice(deviceId: string): Promise<void> {
+  const res = await fetch('/api/notifications/subscriptions', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deviceId }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}

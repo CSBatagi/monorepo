@@ -16,16 +16,16 @@ Our PostgreSQL is on the **same VM** (Docker internal network). Queries take <1m
 |------|--------|---------|
 | `attendanceState` | **MIGRATED** (P0) — no readers/writers left except stale scheduler | — |
 | `emojiState` | **MIGRATED** (P0) — zero references in code | — |
-| `kaptanlikState` | **BROKEN** — BatakAllStarsClient reads it, but nothing writes to it anymore | BatakAllStarsClient (read-only) |
+| `kaptanlikState` | **MIGRATED** (P2) — BatakAllStarsClient now reads from PG attendance endpoint | — |
 | `teamPickerState/*` | **MIGRATED** (P0) — zero references in code | — |
 | `mvpVotes/votesByDate/*` | **MIGRATED** (P1) — PG `mvp_votes` table | — |
 | `mvpVotes/lockedByDate/*` | **MIGRATED** (P1) — PG `mvp_locks` table | — |
-| `batakAllStars/captainsByDate/*` | Active | BatakAllStarsClient |
-| `batakAllStars/superKupa/*` | Active | SuperKupaBracket |
-| `notifications/preferences/*` | Active | notifications/page.tsx, serverNotifications.ts, backend scheduler |
-| `notifications/subscriptions/*` | Active | notifications/page.tsx, serverNotifications.ts, backend scheduler |
-| `notifications/events/*` | Active | serverNotifications.ts, backend scheduler (dedup) |
-| `admins/{uid}` | Active | admin/check/route.ts, admin/regenerate-stats/route.ts, admin/notifications/send/route.ts |
+| `batakAllStars/captainsByDate/*` | **MIGRATED** (P2) — PG `batak_captains` table | — |
+| `batakAllStars/superKupa/*` | **MIGRATED** (P2) — PG `batak_super_kupa` table | — |
+| `notifications/preferences/*` | **MIGRATED** (P2) — PG `notification_preferences` table | — |
+| `notifications/subscriptions/*` | **MIGRATED** (P2) — PG `notification_subscriptions` table | — |
+| `notifications/events/*` | **MIGRATED** (P2) — PG `notification_events` table | — |
+| `admins/{uid}` | **MIGRATED** (P2) — PG `admins` table, admin routes use backend HTTP | — |
 
 ## Real-time Strategy
 
@@ -184,7 +184,7 @@ mvpVotes/lockedByDate/{YYYY-MM-DD} = { locked: true, lockedAt: number, lockedByU
 
 4. **Data migration script:** One-time read of `mvpVotes/*` from RTDB → INSERT INTO PG tables.
 
-## Phase 3: Batak AllStars + Admin (P2)
+## Phase 3: Batak AllStars + Admin (P2) — COMPLETE
 
 ### Current State
 
@@ -268,73 +268,35 @@ The computation logic is in `lib/batakAllStars.ts`:
    - Read `batakAllStars/superKupa` from RTDB → INSERT INTO `batak_super_kupa`
    - Read `admins/*` from RTDB → INSERT INTO `admins`
 
-## Phase 4: Notifications (P2) — PARTIALLY COMPLETE
+## Phase 4: Notifications (P2) — COMPLETE
 
-### Current State
+### Summary
+
+All Firebase RTDB notification paths migrated to PostgreSQL:
 
 | Feature | Storage | Status |
 |---------|---------|--------|
 | Notification inbox (in-app messages) | **PostgreSQL** (`notification_inbox` + `notification_inbox_version` tables) | **MIGRATED** ✅ |
 | Push delivery | **Firebase Cloud Messaging** (`adminMessaging().sendEachForMulticast()`) | Stays on FCM (no alternative) |
-| Preferences (per-user topic toggles) | **Firebase RTDB** (`notifications/preferences/{uid}`) | **NOT migrated** |
-| Subscriptions (FCM tokens per device) | **Firebase RTDB** (`notifications/subscriptions/{uid}/{deviceId}`) | **NOT migrated** |
-| Event dedup (idempotency log) | **Firebase RTDB** (`notifications/events/{eventId}`) | **NOT migrated** |
-| Attendance count for scheduler | **PostgreSQL** (backend scheduler, line 311) | **MIGRATED** in backend, **BROKEN** in frontend scheduler |
+| Preferences (per-user topic toggles) | **PostgreSQL** (`notification_preferences` table) | **MIGRATED** ✅ |
+| Subscriptions (FCM tokens per device) | **PostgreSQL** (`notification_subscriptions` table) | **MIGRATED** ✅ |
+| Event dedup (idempotency log) | **PostgreSQL** (`notification_events` table) | **MIGRATED** ✅ |
+| Attendance count for scheduler | **PostgreSQL** (backend scheduler, PG only) | **MIGRATED** ✅ |
 
-### Backend Notification Infrastructure (already in PG)
+### What Changed
 
-- `backend/notificationInboxStore.js` — PG tables: `notification_inbox`, `notification_inbox_version`
-- `backend/notificationInboxRoutes.js` — Express routes: `/list`, `/persist`, `/mark-all`, `/clear`, `/:id/read`, `/:id/delete`
-- Frontend inbox API routes proxy to backend: `api/notifications/inbox/*` → `backend /live/notifications/inbox/*`
-- `backend/notificationScheduler.js` — reads attendance from PG (line 311), falls back to RTDB only when `dbPool` is null
-
-### Remaining Migration
-
-1. **Database tables:**
-   ```sql
-   CREATE TABLE IF NOT EXISTS notification_preferences (
-     uid TEXT PRIMARY KEY,
-     enabled BOOLEAN NOT NULL DEFAULT TRUE,
-     topics JSONB NOT NULL DEFAULT '{}',
-     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-   );
-
-   CREATE TABLE IF NOT EXISTS notification_subscriptions (
-     uid TEXT NOT NULL,
-     device_id TEXT NOT NULL,
-     token TEXT NOT NULL,
-     enabled BOOLEAN NOT NULL DEFAULT TRUE,
-     platform TEXT,
-     user_agent TEXT,
-     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-     PRIMARY KEY (uid, device_id)
-   );
-
-   CREATE TABLE IF NOT EXISTS notification_events (
-     event_id TEXT PRIMARY KEY,
-     sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-     topic TEXT,
-     recipient_count INT
-   );
-   ```
-
-2. **Backend routes:**
-   - `GET /live/notifications/preferences/:uid` — get user's notification preferences
-   - `POST /live/notifications/preferences/:uid` — save preferences
-   - `GET /live/notifications/subscriptions/:uid/:deviceId` — get device subscription
-   - `POST /live/notifications/subscriptions/:uid/:deviceId` — register/update device
-   - `DELETE /live/notifications/subscriptions/:uid/:deviceId` — unregister device
-
-3. **Server-side migration:**
-   - Update `serverNotifications.ts` to resolve recipients from PG instead of RTDB
-   - Update `backend/notificationScheduler.js` to resolve recipients from PG (remove RTDB fallback)
-   - Update event dedup to use PG `notification_events` table instead of RTDB transactions
-   - **Fix `lib/notificationScheduler.ts`** to read attendance from PG backend (currently reads stale RTDB data)
-
-4. **Frontend migration:**
-   - Update `notifications/page.tsx` to read/write preferences and subscriptions via HTTP
-   - Remove `firebase/database` and `get`/`onValue`/`set`/`remove` imports
-   - Remove `/notifications` from `FIREBASE_ROUTES` (will still need FCM `getToken` for push registration)
+1. **3 new PG tables**: `notification_preferences`, `notification_subscriptions`, `notification_events`
+2. **`backend/notificationRoutes.js`** (new): preferences/subscriptions CRUD + unified `POST /emit` endpoint (PG dedup → PG resolve recipients → FCM dispatch → PG inbox)
+3. **`notifications/page.tsx`**: `useAuth()` → `useSession()`, all 6 RTDB operations → liveApi HTTP helpers
+4. **`api/admin/notifications/send/route.ts`**: session cookie auth, dispatch proxied to backend emit
+5. **`api/notifications/emit/route.ts`**: dispatch proxied to backend emit (keeps teker_dondu crossing detection + MVP lock check in Next.js)
+6. **`backend/notificationScheduler.js`**: RTDB resolve/dedup → PG resolve/dedup, removed `adminDb` import, removed RTDB attendance fallback
+7. **`serverNotifications.ts`**: stripped to types + `isNotificationTopic()` only (~35 lines). All dispatch logic removed.
+8. **Deleted dead code**: `lib/notificationScheduler.ts`, `lib/notificationScheduleRules.ts` (never called — scheduler runs in backend)
+9. **`/notifications` removed from FIREBASE_ROUTES** — zero Firebase SDK on this page (except `firebase/messaging` for FCM push token via `app` import)
+10. **Next.js proxy routes**: `api/notifications/preferences/route.ts`, `api/notifications/subscriptions/route.ts`
+11. **liveApi helpers**: `getNotificationPreferences`, `saveNotificationPreferences`, `getDeviceRegistration`, `registerDevice`, `unregisterDevice`
+12. **Migration script**: `backend/scripts/migrate-notifications.js` — one-time RTDB → PG for preferences, subscriptions, events (last 7 days)
 
 ## Remaining Firebase Dependencies (after all phases complete)
 
@@ -344,6 +306,7 @@ The computation logic is in `lib/batakAllStars.ts`:
 |------|-----------------|---------|
 | `contexts/AuthContext.tsx` | Auth (client SDK) | Login/signup (email, Google OAuth), `onIdTokenChanged` syncs to session cookie |
 | `contexts/SessionContext.tsx` | Auth (dynamic `signOut` import) | Clears Firebase auth state on logout |
+| `notifications/page.tsx` | Messaging (`getToken`, `app`) | FCM push token acquisition for device registration |
 | `components/NotificationForegroundHandler.tsx` | Messaging (`onMessage`) | Foreground push notification display |
 | `public/firebase-messaging-sw.js` | Messaging (service worker) | Background push notification handling |
 
@@ -351,28 +314,30 @@ The computation logic is in `lib/batakAllStars.ts`:
 
 | File | Firebase Feature | Purpose |
 |------|-----------------|---------|
-| `lib/serverNotifications.ts` | Admin Messaging only | Dispatch FCM messages via `adminMessaging().sendEachForMulticast()` |
 | `backend/notificationScheduler.js` | Admin Messaging only | Dispatch timed FCM notifications |
+| `backend/notificationRoutes.js` | Admin Messaging only | Dispatch FCM messages via unified emit endpoint |
 
 ### Config Files
 
 | File | Purpose |
 |------|---------|
-| `lib/firebase.ts` | Client SDK init (app, auth, ~~db~~, googleProvider) — RTDB `db` export can be removed when all phases done |
-| `lib/firebaseAdmin.ts` | Admin SDK init (adminAuth, ~~adminDb~~, adminMessaging) — `adminDb` can be removed when all phases done |
-| `backend/firebaseAdmin.js` | Backend SDK init (~~adminDb~~, adminMessaging) — `adminDb` can be removed when all phases done |
-| `components/FirebaseProviders.tsx` | Code-split wrapper — may be simplified to Auth-only when RTDB is fully removed |
+| `lib/firebase.ts` | Client SDK init (app, auth, ~~db~~, googleProvider) — RTDB `db` export can be removed now |
+| `lib/firebaseAdmin.ts` | Admin SDK init (adminAuth, ~~adminDb~~, adminMessaging) — `adminDb` can be removed now |
+| `backend/firebaseAdmin.js` | Backend SDK init (~~adminDb~~, adminMessaging) — `adminDb` can be removed now |
+| `components/FirebaseProviders.tsx` | Code-split wrapper — can be simplified to Auth-only since RTDB is fully removed |
 
 ### What Will Always Stay on Firebase
 
 - **Firebase Auth** — login flow (email + Google OAuth). HMAC session cookie minimizes runtime impact
 - **FCM push delivery** — `adminMessaging().sendEachForMulticast()`. No self-hosted alternative without significant infra
 - **Service worker** — `firebase-messaging-sw.js` for background push notification handling
+- **FCM client token** — `getToken()` from `firebase/messaging` on `/notifications` page for push registration
 
 ## Migration Priority Order
 
-1. **Phase 2 (MVP Voting)** — COMPLETE. `/gecenin-mvpsi` removed from FIREBASE_ROUTES.
-2. **Phase 3 (Batak + Admin)** — fixes the broken `kaptanlikState` read. Removes `/batak-allstars` from FIREBASE_ROUTES.
-3. **Phase 4 (Notifications)** — most complex, requires migrating preferences/subscriptions/events dedup. Removes `/notifications` from FIREBASE_ROUTES.
+1. **Phase 1 (Attendance + Team Picker)** — COMPLETE.
+2. **Phase 2 (MVP Voting)** — COMPLETE. `/gecenin-mvpsi` removed from FIREBASE_ROUTES.
+3. **Phase 3 (Batak + Admin)** — COMPLETE. Fixed broken `kaptanlikState` read. `/batak-allstars` removed from FIREBASE_ROUTES. Admin routes use PG.
+4. **Phase 4 (Notifications)** — COMPLETE. `/notifications` removed from FIREBASE_ROUTES. Unified backend emit endpoint. Dead frontend scheduler deleted.
 
-After all phases: only `/login` needs Firebase client SDK (for Auth). All RTDB usage is eliminated.
+**All RTDB usage is eliminated.** Only `/login` needs Firebase client SDK (for Auth). The `/notifications` page imports `firebase/messaging` + `app` for FCM push token only (not RTDB).

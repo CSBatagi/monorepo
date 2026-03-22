@@ -5,11 +5,12 @@
  * 1. Timed rule checks (attendance reminders on specific days/times)
  * 2. Stats-update notifications (when DB data changes)
  *
- * This was previously in the Next.js frontend process, which forced firebase-admin
- * to stay loaded there (~50 MB RSS). Moving it here keeps the frontend lean.
+ * Dispatch uses PG-based dedup + resolve recipients + FCM, matching
+ * the notificationRoutes.js emit endpoint logic.
  */
 
-const { adminDb, adminMessaging } = require('./firebaseAdmin');
+const notificationRoutes = require('./notificationRoutes');
+const { adminMessaging } = require('./firebaseAdmin');
 const notificationInboxStore = require('./notificationInboxStore');
 
 // ─── Constants ───
@@ -18,18 +19,7 @@ const ISTANBUL_TZ = 'Europe/Istanbul';
 const SCHEDULER_INTERVAL_MS = 60_000;  // 60 seconds
 const STATS_CHECK_COOLDOWN_MS = 60_000;
 
-// ─── Notification topics ───
-
-const NOTIFICATION_TOPICS = [
-  'teker_dondu_reached',
-  'mvp_poll_locked',
-  'stats_updated',
-  'timed_reminders',
-  'admin_custom_message',
-];
-
 // ─── Timed notification rules ───
-// Ported from frontend-nextjs/src/lib/notificationScheduleRules.ts
 
 const TIMED_NOTIFICATION_RULES = [
   {
@@ -96,7 +86,6 @@ const TIMED_NOTIFICATION_RULES = [
 
 let lastStatsCheckAt = 0;
 let lastKnownStatsTimestamp = null;
-let warnedMissingFirebase = false;
 let schedulerStarted = false;
 let schedulerTimer = null;
 
@@ -146,181 +135,121 @@ function chunk(items, size) {
   return out;
 }
 
-// ─── Notification dispatch (ported from serverNotifications.ts) ───
+// ─── Notification dispatch (PG-based) ───
 
-async function resolveRecipients(topic) {
-  const db = adminDb();
-  const [prefSnap, subsSnap] = await Promise.all([
-    db.ref('notifications/preferences').get(),
-    db.ref('notifications/subscriptions').get(),
-  ]);
-
-  const preferences = prefSnap.val() || {};
-  const subscriptions = subsSnap.val() || {};
-  const tokens = new Set();
-  const recipientUids = new Set();
-
-  for (const [uid, userDevices] of Object.entries(subscriptions)) {
-    const userPref = preferences[uid];
-    const topicEnabled = userPref?.topics?.[topic] !== false;
-    if (!topicEnabled) continue;
-
-    let hasActiveDevice = false;
-    for (const device of Object.values(userDevices || {})) {
-      if (!device || device.enabled !== true || !device.token) continue;
-      tokens.add(device.token);
-      hasActiveDevice = true;
-    }
-    if (hasActiveDevice) recipientUids.add(uid);
-  }
-
-  return { tokens: [...tokens], recipientUids: [...recipientUids] };
-}
-
-async function persistToInbox(params) {
-  if (params.recipientUids.length === 0) return;
-  try {
-    await notificationInboxStore.persistToInbox({
-      recipientUids: params.recipientUids,
-      topic: params.topic,
-      title: params.title,
-      body: params.body,
-      data: params.data ? toStringMap(params.data) : null,
-      eventId: params.eventId || null,
-      createdAt: Date.now(),
-    });
-  } catch (err) {
-    console.error('[notification-scheduler] persistToInbox failed:', err);
-  }
-}
-
-async function dispatchTopicNotification(params) {
-  const { tokens, recipientUids } = await resolveRecipients(params.topic);
-
-  const inboxPromise = persistToInbox({
-    recipientUids,
-    topic: params.topic,
-    title: params.title,
-    body: params.body,
-    data: params.data,
-    eventId: typeof params.data?.eventId === 'string' ? params.data.eventId : undefined,
-  });
-
-  if (tokens.length === 0) {
-    await inboxPromise;
-    return { recipientCount: 0, successCount: 0, failureCount: 0, errors: [] };
-  }
-
-  const messageData = {
-    topic: params.topic,
-    title: params.title,
-    body: params.body,
-    icon: '/images/BatakLogo192.png',
-    ...toStringMap(params.data),
-  };
-
-  const messaging = adminMessaging();
-  const tokenChunks = chunk(tokens, 500);
-  let successCount = 0;
-  let failureCount = 0;
-  const errors = [];
-
-  for (const tokenChunk of tokenChunks) {
-    const response = await messaging.sendEachForMulticast({
-      tokens: tokenChunk,
-      data: messageData,
-      webpush: {
-        fcmOptions: {
-          link: typeof params.data?.link === 'string' && params.data.link.length > 0
-            ? params.data.link : '/',
-        },
-      },
-    });
-
-    successCount += response.successCount;
-    failureCount += response.failureCount;
-    response.responses.forEach((entry) => {
-      if (!entry.success && entry.error) errors.push(entry.error.message);
-    });
-  }
-
-  await inboxPromise;
-  return { recipientCount: tokens.length, successCount, failureCount, errors: [...new Set(errors)].slice(0, 20) };
-}
+// Pool is injected via start().
+let dbPool = null;
 
 async function emitNotificationEvent(params) {
   const safeEventId = normalizeEventId(params.eventId);
-  const eventRef = adminDb().ref(`notifications/events/${safeEventId}`);
-  const tx = await eventRef.transaction(
-    (current) => {
-      if (current?.status === 'sent') return;
-      if (current?.status === 'pending' && typeof current?.createdAt === 'number' && Date.now() - current.createdAt < 30000) return;
-      return {
-        eventId: safeEventId,
-        topic: params.topic,
-        status: 'pending',
-        createdAt: Date.now(),
-        createdByUid: params.createdByUid || 'scheduler',
-        createdByName: params.createdByName || 'notification-scheduler',
-        title: params.title,
-        body: params.body,
-        data: params.data || null,
-      };
-    },
-    undefined,
-    false
+
+  // PG dedup: try to claim this event
+  const insertResult = await dbPool.query(
+    `INSERT INTO notification_events (event_id, status, topic, title, body, data, created_by_uid, created_by_name, created_at)
+     VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, NOW())
+     ON CONFLICT (event_id) DO UPDATE
+       SET status = 'pending', topic = $2, title = $3, body = $4, data = $5, created_by_uid = $6, created_by_name = $7, created_at = NOW()
+       WHERE notification_events.status != 'sent'
+         AND notification_events.created_at < NOW() - INTERVAL '30 seconds'
+     RETURNING event_id`,
+    [safeEventId, params.topic, params.title, params.body, JSON.stringify(params.data || null), params.createdByUid || 'scheduler', params.createdByName || 'notification-scheduler']
   );
 
-  if (!tx.committed) return { eventId: safeEventId, duplicate: true };
+  if (insertResult.rows.length === 0) {
+    return { eventId: safeEventId, duplicate: true };
+  }
 
   try {
-    const result = await dispatchTopicNotification({
+    // Resolve recipients from PG
+    const { tokens, recipientUids } = await notificationRoutes.resolveRecipients(params.topic);
+
+    // Persist to inbox
+    if (recipientUids.length > 0) {
+      await notificationInboxStore.persistToInbox({
+        recipientUids,
+        topic: params.topic,
+        title: params.title,
+        body: params.body,
+        data: params.data ? toStringMap(params.data) : null,
+        eventId: safeEventId,
+        createdAt: Date.now(),
+      }).catch(err => console.error('[notification-scheduler] persistToInbox failed:', err));
+    }
+
+    if (tokens.length === 0) {
+      await dbPool.query(
+        `UPDATE notification_events SET status = 'sent', sent_at = NOW(), recipient_count = 0, success_count = 0, failure_count = 0 WHERE event_id = $1`,
+        [safeEventId]
+      );
+      return { eventId: safeEventId, duplicate: false, dispatch: { recipientCount: 0, successCount: 0, failureCount: 0, errors: [] } };
+    }
+
+    // FCM dispatch
+    const messageData = {
       topic: params.topic,
       title: params.title,
       body: params.body,
-      data: { ...(params.data || {}), eventId: params.eventId },
-    });
-    await eventRef.update({
-      status: 'sent',
-      sentAt: Date.now(),
-      recipientCount: result.recipientCount,
-      successCount: result.successCount,
-      failureCount: result.failureCount,
-      errors: result.errors,
-    });
+      icon: '/images/BatakLogo192.png',
+      ...toStringMap({ ...(params.data || {}), eventId: params.eventId }),
+    };
+
+    const messaging = adminMessaging();
+    const tokenChunks = chunk(tokens, 500);
+    let successCount = 0;
+    let failureCount = 0;
+    const errors = [];
+
+    for (const tokenChunk of tokenChunks) {
+      const response = await messaging.sendEachForMulticast({
+        tokens: tokenChunk,
+        data: messageData,
+        webpush: {
+          fcmOptions: {
+            link: typeof params.data?.link === 'string' && params.data.link.length > 0
+              ? params.data.link : '/',
+          },
+        },
+      });
+
+      successCount += response.successCount;
+      failureCount += response.failureCount;
+      response.responses.forEach((entry) => {
+        if (!entry.success && entry.error) errors.push(entry.error.message);
+      });
+    }
+
+    const result = {
+      recipientCount: tokens.length,
+      successCount,
+      failureCount,
+      errors: [...new Set(errors)].slice(0, 20),
+    };
+
+    await dbPool.query(
+      `UPDATE notification_events SET status = 'sent', sent_at = NOW(), recipient_count = $2, success_count = $3, failure_count = $4, errors = $5
+       WHERE event_id = $1`,
+      [safeEventId, result.recipientCount, result.successCount, result.failureCount, JSON.stringify(result.errors)]
+    );
+
     return { eventId: safeEventId, duplicate: false, dispatch: result };
   } catch (dispatchError) {
-    await eventRef.update({
-      status: 'failed',
-      failedAt: Date.now(),
-      error: dispatchError?.message || 'dispatch_failed',
-    });
+    await dbPool.query(
+      `UPDATE notification_events SET status = 'failed', failed_at = NOW(), error = $2 WHERE event_id = $1`,
+      [safeEventId, dispatchError?.message || 'dispatch_failed']
+    ).catch(() => {});
     throw dispatchError;
   }
 }
 
 // ─── Scheduler checks ───
 
-// Pool is injected via start() — used for attendance count (migrated from Firebase RTDB to PostgreSQL).
-let dbPool = null;
-
 async function resolveComingCount() {
-  // Attendance data lives in PostgreSQL now (Firebase RTDB is no longer written to).
-  if (dbPool) {
-    try {
-      const r = await dbPool.query(`SELECT COUNT(*) AS cnt FROM attendance WHERE status = 'coming'`);
-      return parseInt(r.rows[0]?.cnt, 10) || 0;
-    } catch (e) {
-      console.error('[notification-scheduler] resolveComingCount DB error:', e.message);
-      return 0;
-    }
-  }
-  // Fallback to Firebase RTDB for backward compatibility (should not happen in production)
+  if (!dbPool) return 0;
   try {
-    const snap = await adminDb().ref('attendanceState').get();
-    const attendance = snap.val() || {};
-    return Object.values(attendance).filter((item) => item?.status === 'coming').length;
-  } catch {
+    const r = await dbPool.query(`SELECT COUNT(*) AS cnt FROM attendance WHERE status = 'coming'`);
+    return parseInt(r.rows[0]?.cnt, 10) || 0;
+  } catch (e) {
+    console.error('[notification-scheduler] resolveComingCount DB error:', e.message);
     return 0;
   }
 }
@@ -395,22 +324,11 @@ async function runStatsUpdateCheck() {
  * Start the notification scheduler.
  * @param {Object} options
  * @param {Function} options.getCachedDataTimestamp — returns the cached DB timestamp (from index.js)
- * @param {Object}   options.pool — PostgreSQL pool for attendance queries
+ * @param {Object}   options.pool — PostgreSQL pool for attendance queries and notification dispatch
  */
 function start(options = {}) {
   if (process.env.ENABLE_NOTIFICATION_SCHEDULER === 'false') {
     console.log('[notification-scheduler] Disabled via ENABLE_NOTIFICATION_SCHEDULER=false');
-    return;
-  }
-
-  // Check if Firebase credentials are available
-  const hasCreds = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_JSON || process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_BASE64;
-  const hasDbUrl = process.env.FIREBASE_DATABASE_URL || process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
-  if (!hasCreds || !hasDbUrl) {
-    if (!warnedMissingFirebase) {
-      warnedMissingFirebase = true;
-      console.warn('[notification-scheduler] Firebase credentials not configured; scheduler disabled.');
-    }
     return;
   }
 
@@ -419,6 +337,11 @@ function start(options = {}) {
 
   getTimestampFn = options.getCachedDataTimestamp || null;
   dbPool = options.pool || null;
+
+  if (!dbPool) {
+    console.warn('[notification-scheduler] No pool provided; scheduler disabled.');
+    return;
+  }
 
   console.log('[notification-scheduler] Starting (interval: %dms)', SCHEDULER_INTERVAL_MS);
 

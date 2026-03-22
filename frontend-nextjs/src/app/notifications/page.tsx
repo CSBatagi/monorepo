@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { get, onValue, ref, remove, set } from "firebase/database";
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
 
-import { useAuth } from "@/contexts/AuthContext";
+import { useSession } from "@/contexts/SessionContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { app, db } from "@/lib/firebase";
+import { app } from "@/lib/firebase";
+import {
+  getNotificationPreferences,
+  saveNotificationPreferences,
+  getDeviceRegistration,
+  registerDevice,
+  unregisterDevice,
+} from "@/lib/liveApi";
 
 type TopicKey =
   | "teker_dondu_reached"
@@ -18,7 +24,6 @@ type TopicKey =
 type NotificationPreferences = {
   enabled: boolean;
   topics: Record<TopicKey, boolean>;
-  updatedAt: number;
 };
 
 const TOPIC_META: Array<{ key: TopicKey; label: string; description: string }> = [
@@ -58,7 +63,6 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
     timed_reminders: true,
     admin_custom_message: true,
   },
-  updatedAt: Date.now(),
 };
 
 function getOrCreateDeviceId(): string {
@@ -85,7 +89,7 @@ function detectPlatform(): "ios" | "android" | "web" {
 }
 
 export default function NotificationsPage() {
-  const { user } = useAuth();
+  const { user } = useSession();
   const { isDark } = useTheme();
 
   const [deviceId, setDeviceId] = useState("");
@@ -122,6 +126,7 @@ export default function NotificationsPage() {
       .catch(() => setIsMessagingAvailable(false));
   }, []);
 
+  // Load preferences + device registration from PG via HTTP
   useEffect(() => {
     if (!user || !deviceId) {
       setLoading(false);
@@ -129,53 +134,53 @@ export default function NotificationsPage() {
     }
 
     setLoading(true);
-    const prefRef = ref(db, `notifications/preferences/${user.uid}`);
-    const deviceRef = ref(db, `notifications/subscriptions/${user.uid}/${deviceId}`);
+    let cancelled = false;
 
-    const unsubscribePrefs = onValue(prefRef, (snap) => {
-      if (snap.exists()) {
-        const raw = snap.val() as Partial<NotificationPreferences>;
+    (async () => {
+      try {
+        const [prefsData, deviceData] = await Promise.all([
+          getNotificationPreferences(),
+          getDeviceRegistration(deviceId),
+        ]);
+
+        if (cancelled) return;
+
         setPrefs({
-          enabled: raw.enabled ?? DEFAULT_PREFERENCES.enabled,
-          updatedAt: raw.updatedAt ?? Date.now(),
+          enabled: prefsData.enabled ?? DEFAULT_PREFERENCES.enabled,
           topics: {
             ...DEFAULT_PREFERENCES.topics,
-            ...(raw.topics || {}),
+            ...(prefsData.topics || {}),
           },
         });
-      } else {
-        setPrefs({ ...DEFAULT_PREFERENCES, updatedAt: Date.now() });
+        setDeviceRegistered(deviceData.registered && deviceData.enabled === true);
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Failed to load notification settings", err);
+        setPrefs({ ...DEFAULT_PREFERENCES });
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
-    });
+    })();
 
-    const unsubscribeDevice = onValue(deviceRef, (snap) => {
-      setDeviceRegistered(snap.exists() && snap.val()?.enabled === true);
-    });
-
-    return () => {
-      unsubscribePrefs();
-      unsubscribeDevice();
-    };
+    return () => { cancelled = true; };
   }, [user, deviceId]);
 
+  // Admin check via PG backend
   useEffect(() => {
     if (!user) return;
-    get(ref(db, `admins/${user.uid}`))
-      .then((snap) => {
-        setIsAdmin(snap.exists() && snap.val() === true);
-      })
+    fetch("/api/admin/check", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => setIsAdmin(!!data.isAdmin))
       .catch(() => setIsAdmin(false));
   }, [user]);
 
-  async function savePreferences(nextPrefs: NotificationPreferences) {
+  async function handleSavePreferences(nextPrefs: NotificationPreferences) {
     if (!user) return;
     setSaving(true);
     setMessage("");
     try {
-      const payload = { ...nextPrefs, updatedAt: Date.now() };
-      await set(ref(db, `notifications/preferences/${user.uid}`), payload);
-      setPrefs(payload);
+      await saveNotificationPreferences({ enabled: nextPrefs.enabled, topics: nextPrefs.topics });
+      setPrefs(nextPrefs);
       setMessage("Bildirim tercihleri güncellendi.");
     } catch (error) {
       console.error("Failed to save notification preferences", error);
@@ -231,22 +236,20 @@ export default function NotificationsPage() {
         return;
       }
 
-      const currentPrefs = prefs || { ...DEFAULT_PREFERENCES, updatedAt: Date.now() };
+      const currentPrefs = prefs || { ...DEFAULT_PREFERENCES };
       await Promise.all([
-        set(ref(db, `notifications/preferences/${user.uid}`), {
+        saveNotificationPreferences({
           ...currentPrefs,
           enabled: true,
-          updatedAt: Date.now(),
         }),
-        set(ref(db, `notifications/subscriptions/${user.uid}/${deviceId}`), {
+        registerDevice({
+          deviceId,
           token,
-          enabled: true,
           platform: detectPlatform(),
           userAgent:
             typeof navigator !== "undefined"
               ? navigator.userAgent.slice(0, 200)
               : "unknown",
-          updatedAt: Date.now(),
         }),
       ]);
 
@@ -265,7 +268,7 @@ export default function NotificationsPage() {
     setSaving(true);
     setMessage("");
     try {
-      await remove(ref(db, `notifications/subscriptions/${user.uid}/${deviceId}`));
+      await unregisterDevice(deviceId);
       setDeviceRegistered(false);
       setMessage("Bu cihaz bildirim listesinden çıkarıldı.");
     } catch (error) {
@@ -286,13 +289,9 @@ export default function NotificationsPage() {
     setAdminSending(true);
     setAdminResult("");
     try {
-      const idToken = await user.getIdToken();
       const resp = await fetch("/api/admin/notifications/send", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: adminTitle.trim(),
           body: adminBody.trim(),
@@ -316,7 +315,7 @@ export default function NotificationsPage() {
     }
   }
 
-  const effectivePrefs = prefs || { ...DEFAULT_PREFERENCES, updatedAt: Date.now() };
+  const effectivePrefs = prefs || { ...DEFAULT_PREFERENCES };
 
   return (
     <div id="page-notifications" className="max-w-3xl mx-auto space-y-6">
@@ -368,7 +367,7 @@ export default function NotificationsPage() {
                   for (const t of TOPIC_META) {
                     nextTopics[t.key] = true;
                   }
-                  savePreferences({
+                  handleSavePreferences({
                     ...effectivePrefs,
                     enabled: true,
                     topics: nextTopics,
@@ -386,7 +385,7 @@ export default function NotificationsPage() {
                   for (const t of TOPIC_META) {
                     nextTopics[t.key] = false;
                   }
-                  savePreferences({
+                  handleSavePreferences({
                     ...effectivePrefs,
                     enabled: true,
                     topics: nextTopics,
@@ -406,7 +405,7 @@ export default function NotificationsPage() {
                 key={topic.key}
                 type="button"
                 onClick={() =>
-                  savePreferences({
+                  handleSavePreferences({
                     ...effectivePrefs,
                     enabled: true,
                     topics: {
