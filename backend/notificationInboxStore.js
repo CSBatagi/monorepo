@@ -225,6 +225,22 @@ async function clearInbox(userUid) {
   return { deleted: result.rowCount };
 }
 
+async function hasUnseenBroadcasts(userUid) {
+  const db = getPool();
+  const r = await db.query(
+    `SELECT 1 FROM notification_events e
+     WHERE e.status = 'sent'
+       AND NOT EXISTS (
+         SELECT 1 FROM notification_inbox i
+         WHERE i.user_uid = $1 AND i.event_id = e.event_id
+       )
+       AND e.created_at > NOW() - INTERVAL '30 days'
+     LIMIT 1`,
+    [userUid]
+  );
+  return r.rows.length > 0;
+}
+
 module.exports = {
   setup,
   getVersion,
@@ -234,4 +250,5 @@ module.exports = {
   markAllAsRead,
   deleteNotification,
   clearInbox,
+  hasUnseenBroadcasts,
 };

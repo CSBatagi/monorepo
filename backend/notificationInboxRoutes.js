@@ -14,8 +14,13 @@ router.post('/list', async (req, res) => {
     }
 
     const serverVersion = await store.getVersion(userUid);
+    // Version match only means no personal inbox changes. We must also check
+    // for new broadcast events in notification_events that this user hasn't seen.
     if (clientVersion > 0 && clientVersion >= serverVersion) {
-      return res.status(304).end();
+      const hasNew = await store.hasUnseenBroadcasts(userUid);
+      if (!hasNew) {
+        return res.status(304).end();
+      }
     }
 
     const payload = await store.listInbox(userUid, limit);
