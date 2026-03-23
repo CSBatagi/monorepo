@@ -6,7 +6,7 @@ import Providers from "@/components/Providers";
 import fs from 'fs/promises';
 import path from 'path';
 import { after } from 'next/server';
-import { writeStatsSnapshot, persistTimestamp } from '@/lib/statsSnapshot';
+import { writeStatsSnapshotWithStatus, persistTimestamp } from '@/lib/statsSnapshot';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,10 +56,16 @@ async function incrementalRefresh() {
       if (!data) return;
       if (data.serverTimestamp) {
         lastServerKnownTs = data.serverTimestamp;
-        await persistTimestamp(runtimeDir, lastServerKnownTs as string);
       }
       if (data.updated) {
-        await writeStatsSnapshot(data, runtimeDir);
+        const writeResult = await writeStatsSnapshotWithStatus(data, runtimeDir);
+        if (data.serverTimestamp && writeResult.complete) {
+          await persistTimestamp(runtimeDir, data.serverTimestamp);
+        } else if (!writeResult.complete) {
+          console.warn('[stats-refresh] runtime snapshot preserved old files; skipping timestamp persist', {
+            preservedExistingDueToEmpty: writeResult.preservedExistingDueToEmpty,
+          });
+        }
       }
     } catch {}
     finally {

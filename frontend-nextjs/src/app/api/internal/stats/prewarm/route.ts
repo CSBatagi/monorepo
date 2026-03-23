@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
-import { STAT_FILES, writeStatsSnapshot, persistTimestamp } from '@/lib/statsSnapshot';
+import { STAT_FILES, writeStatsSnapshotWithStatus, persistTimestamp } from '@/lib/statsSnapshot';
 
 const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
 const AUTH_TOKEN = process.env.MATCHMAKING_TOKEN;
@@ -82,8 +82,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid backend prewarm payload' }, { status: 502 });
     }
 
-    const filesWritten = data.updated ? await writeStatsSnapshot(data, runtimeDir) : [];
-    if (data.serverTimestamp) {
+    const writeResult = data.updated
+      ? await writeStatsSnapshotWithStatus(data, runtimeDir)
+      : { written: [], preservedExistingDueToEmpty: [], complete: true };
+    if (data.serverTimestamp && writeResult.complete) {
       await persistTimestamp(runtimeDir, data.serverTimestamp);
     }
 
@@ -91,7 +93,9 @@ export async function POST(req: NextRequest) {
       success: true,
       updated: Boolean(data.updated),
       hadRuntimeFiles,
-      filesWritten,
+      filesWritten: writeResult.written,
+      snapshotComplete: writeResult.complete,
+      preservedExistingDueToEmpty: writeResult.preservedExistingDueToEmpty,
       serverTimestamp: data.serverTimestamp || null,
     });
   } catch (error: any) {

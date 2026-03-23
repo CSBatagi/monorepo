@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/authSession';
-import { writeStatsSnapshot, persistTimestamp } from '@/lib/statsSnapshot';
+import { writeStatsSnapshotWithStatus, persistTimestamp } from '@/lib/statsSnapshot';
 
 const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
 
@@ -52,13 +52,17 @@ export async function POST(req: NextRequest) {
 
     // Write all JSON files to runtime-data directory
     const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
-    const filesWritten = await writeStatsSnapshot(data, runtimeDir);
-    await persistTimestamp(runtimeDir, data.serverTimestamp || new Date().toISOString());
+    const writeResult = await writeStatsSnapshotWithStatus(data, runtimeDir);
+    if (writeResult.complete) {
+      await persistTimestamp(runtimeDir, data.serverTimestamp || new Date().toISOString());
+    }
 
     return NextResponse.json({
       success: true,
       message: 'Stats regenerated and files written successfully',
-      filesWritten,
+      filesWritten: writeResult.written,
+      snapshotComplete: writeResult.complete,
+      preservedExistingDueToEmpty: writeResult.preservedExistingDueToEmpty,
       serverTimestamp: data.serverTimestamp,
     });
   } catch (error: any) {

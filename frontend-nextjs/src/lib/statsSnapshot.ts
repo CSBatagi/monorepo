@@ -19,6 +19,12 @@ export const STAT_FILES = [
   'map_stats.json',
 ];
 
+export interface StatsSnapshotWriteResult {
+  written: string[];
+  preservedExistingDueToEmpty: string[];
+  complete: boolean;
+}
+
 /**
  * Write stat datasets from a backend response to runtime-data/ on disk.
  * Skips empty arrays/objects to avoid overwriting valid files with failed-query blanks.
@@ -28,8 +34,17 @@ export async function writeStatsSnapshot(
   data: Record<string, any>,
   runtimeDir: string,
 ): Promise<string[]> {
+  const result = await writeStatsSnapshotWithStatus(data, runtimeDir);
+  return result.written;
+}
+
+export async function writeStatsSnapshotWithStatus(
+  data: Record<string, any>,
+  runtimeDir: string,
+): Promise<StatsSnapshotWriteResult> {
   await fs.mkdir(runtimeDir, { recursive: true });
   const written: string[] = [];
+  const preservedExistingDueToEmpty: string[] = [];
   for (const base of STAT_FILES) {
     const key = base.replace(/\.json$/, '');
     if (data[key] === undefined) continue;
@@ -40,14 +55,24 @@ export async function writeStatsSnapshot(
       (typeof val === 'object' && val !== null && !Array.isArray(val) && Object.keys(val).length === 0);
     if (isEmpty) {
       const target = path.join(runtimeDir, base);
-      try { await fs.stat(target); continue; } catch { /* file doesn't exist yet, write empty */ }
+      try {
+        await fs.stat(target);
+        preservedExistingDueToEmpty.push(base);
+        continue;
+      } catch {
+        /* file doesn't exist yet, write empty */
+      }
     }
     try {
       await fs.writeFile(path.join(runtimeDir, base), JSON.stringify(val), 'utf-8');
       written.push(base);
     } catch {}
   }
-  return written;
+  return {
+    written,
+    preservedExistingDueToEmpty,
+    complete: preservedExistingDueToEmpty.length === 0,
+  };
 }
 
 /** Persist the backend serverTimestamp to last_timestamp.txt */
