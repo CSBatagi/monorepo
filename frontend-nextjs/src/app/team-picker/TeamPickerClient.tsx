@@ -203,7 +203,15 @@ const MapSelection: React.FC<MapSelectionProps> = ({ teamAName, teamBName, mapsS
 
 const SERVERACPASS = process.env.NEXT_PUBLIC_SERVERACPASS;
 
-const TeamPickerClient: React.FC = () => {
+interface TeamPickerClientProps {
+  initialLast10Stats: any[];
+  initialSeasonStats: any[];
+}
+
+const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
+  initialLast10Stats,
+  initialSeasonStats,
+}) => {
   const { user, ready } = useSession();
   const authLoading = !ready;
 
@@ -232,9 +240,11 @@ const TeamPickerClient: React.FC = () => {
   const loadingTeamA = loadingTeamPickerPoll;
   const loadingTeamB = loadingTeamPickerPoll;
 
-  const [last10Stats, setLast10Stats] = useState<any[]>([]);
-  const [seasonStats, setSeasonStats] = useState<any[]>([]);
-  const [loadingStats, setLoadingStats] = useState<boolean>(true);
+  const [last10Stats, setLast10Stats] = useState<any[]>(initialLast10Stats);
+  const [seasonStats, setSeasonStats] = useState<any[]>(initialSeasonStats);
+  const [loadingStats, setLoadingStats] = useState<boolean>(
+    initialLast10Stats.length === 0 && initialSeasonStats.length === 0
+  );
   const [mapStats, setMapStats] = useState<any[]>([]);
   const [loadingMapStats, setLoadingMapStats] = useState<boolean>(true);
   const [mapNameLookup, setMapNameLookup] = useState<Record<string, string>>({});
