@@ -85,7 +85,7 @@ const TIMED_NOTIFICATION_RULES = [
 // ─── State ───
 
 let lastStatsCheckAt = 0;
-let lastKnownStatsTimestamp = null;
+let lastKnownStatsVersion = null;
 let schedulerStarted = false;
 let schedulerTimer = null;
 
@@ -258,35 +258,33 @@ async function runTimedRuleCheck() {
 }
 
 /**
- * Stats update check — uses the getCachedDataTimestamp function from the main
+ * Stats update check — uses the getPublishedStatsVersion function from the main
  * backend process (injected via start()) instead of fetching from an HTTP endpoint.
  */
-let getTimestampFn = null;
+let getVersionFn = null;
 
 async function runStatsUpdateCheck() {
   const now = Date.now();
   if (now - lastStatsCheckAt < STATS_CHECK_COOLDOWN_MS) return;
   lastStatsCheckAt = now;
 
-  if (!getTimestampFn) return;
-  const serverTs = getTimestampFn();
-  if (!serverTs) return;
+  if (!getVersionFn) return;
+  const publishedVersion = Number(getVersionFn() || 0);
+  if (!publishedVersion) return;
+  if (lastKnownStatsVersion && publishedVersion === lastKnownStatsVersion) return;
 
-  const serverTimestamp = new Date(serverTs).toISOString();
-  if (lastKnownStatsTimestamp && serverTimestamp === lastKnownStatsTimestamp) return;
-
-  const wasNull = !lastKnownStatsTimestamp;
-  lastKnownStatsTimestamp = serverTimestamp;
+  const wasNull = !lastKnownStatsVersion;
+  lastKnownStatsVersion = publishedVersion;
 
   // Don't send notification on first startup (initial load)
   if (wasNull) return;
 
   await emitNotificationEvent({
-    eventId: `stats_updated:${serverTimestamp}`,
+    eventId: `stats_updated:v${publishedVersion}`,
     topic: 'stats_updated',
     title: 'Yeni statlar basıldı',
     body: 'Veritabanı güncellendi. Son istatistikler hazır.',
-    data: { serverTimestamp, link: '/season-avg' },
+    data: { statsVersion: publishedVersion, link: '/season-avg' },
     createdByUid: 'scheduler',
     createdByName: 'notification-scheduler',
   });
@@ -297,7 +295,7 @@ async function runStatsUpdateCheck() {
 /**
  * Start the notification scheduler.
  * @param {Object} options
- * @param {Function} options.getCachedDataTimestamp — returns the cached DB timestamp (from index.js)
+ * @param {Function} options.getPublishedStatsVersion — returns the cached published stats version (from index.js)
  * @param {Object}   options.pool — PostgreSQL pool for attendance queries and notification dispatch
  */
 function start(options = {}) {
@@ -309,7 +307,7 @@ function start(options = {}) {
   if (schedulerStarted) return;
   schedulerStarted = true;
 
-  getTimestampFn = options.getCachedDataTimestamp || null;
+  getVersionFn = options.getPublishedStatsVersion || null;
   dbPool = options.pool || null;
 
   if (!dbPool) {

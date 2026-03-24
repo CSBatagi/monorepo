@@ -6,7 +6,7 @@ import Providers from "@/components/Providers";
 import fs from 'fs/promises';
 import path from 'path';
 import { after } from 'next/server';
-import { writeStatsSnapshotWithStatus, persistTimestamp } from '@/lib/statsSnapshot';
+import { readSnapshotMetadata, writeStatsSnapshotWithStatus, persistSnapshotMetadata } from '@/lib/statsSnapshot';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,15 +24,15 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
-let lastServerKnownTs: string | null = null; // per server runtime
+let lastKnownStatsVersion = 0;
 let lastRefreshTime = 0; // epoch ms of last backend call
 const REFRESH_COOLDOWN_MS = 90 * 1000; // 90 seconds — backend check is cheap (in-memory timestamp), keep short for data freshness
 const REFRESH_TIMEOUT_MS = 30000; // 30s — runs post-response via after(), so longer timeout is safe; stats generation on 1 GB VM can take 10-20s
 let refreshInFlight: Promise<void> | null = null;
 const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
-const tsPersistPath = path.join(runtimeDir, 'last_timestamp.txt');
-async function loadPersistedTs(){
-  try { const raw = await fs.readFile(tsPersistPath,'utf-8'); lastServerKnownTs = raw.trim() || null; } catch {}
+async function loadPersistedMetadata(){
+  const metadata = await readSnapshotMetadata(runtimeDir);
+  lastKnownStatsVersion = metadata?.statsVersion || 0;
 }
 
 async function incrementalRefresh() {
@@ -44,7 +44,7 @@ async function incrementalRefresh() {
   refreshInFlight = (async () => {
     const backendBase = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
     const url = new URL('/stats/incremental', backendBase);
-    if (lastServerKnownTs) url.searchParams.set('lastKnownTs', lastServerKnownTs);
+    if (lastKnownStatsVersion > 0) url.searchParams.set('lastKnownVersion', String(lastKnownStatsVersion));
     url.searchParams.set('_cb', Date.now().toString());
 
     const ac = new AbortController();
@@ -54,13 +54,14 @@ async function incrementalRefresh() {
       if (!res.ok) return;
       const data: any = await res.json().catch(()=>null);
       if (!data) return;
-      if (data.serverTimestamp) {
-        lastServerKnownTs = data.serverTimestamp;
-      }
+      lastKnownStatsVersion = Number(data.statsVersion || lastKnownStatsVersion || 0);
       if (data.updated) {
         const writeResult = await writeStatsSnapshotWithStatus(data, runtimeDir);
-        if (data.serverTimestamp && writeResult.complete) {
-          await persistTimestamp(runtimeDir, data.serverTimestamp);
+        if (writeResult.complete) {
+          await persistSnapshotMetadata(runtimeDir, {
+            statsVersion: Number(data.statsVersion || 0),
+            serverTimestamp: typeof data.serverTimestamp === 'string' ? data.serverTimestamp : null,
+          });
         } else if (!writeResult.complete) {
           console.warn('[stats-refresh] runtime snapshot preserved old files; skipping timestamp persist', {
             preservedExistingDueToEmpty: writeResult.preservedExistingDueToEmpty,
@@ -78,9 +79,8 @@ async function incrementalRefresh() {
 }
 
 // Load persisted timestamp once (module scope ensures single flight)
-if (!lastServerKnownTs) {
-  // Fire and forget; layout will continue and incrementalRefresh will use null on first run
-  loadPersistedTs();
+if (!lastKnownStatsVersion) {
+  loadPersistedMetadata();
 }
 
 export default async function RootLayout({

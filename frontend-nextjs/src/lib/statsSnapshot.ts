@@ -25,6 +25,13 @@ export interface StatsSnapshotWriteResult {
   complete: boolean;
 }
 
+export interface StatsSnapshotMetadata {
+  statsVersion: number;
+  serverTimestamp: string | null;
+}
+
+export const SNAPSHOT_META_FILE = 'stats_meta.json';
+
 /**
  * Write stat datasets from a backend response to runtime-data/ on disk.
  * Skips empty arrays/objects to avoid overwriting valid files with failed-query blanks.
@@ -75,10 +82,36 @@ export async function writeStatsSnapshotWithStatus(
   };
 }
 
-/** Persist the backend serverTimestamp to last_timestamp.txt */
-export async function persistTimestamp(runtimeDir: string, ts: string): Promise<void> {
+export async function readSnapshotMetadata(runtimeDir: string): Promise<StatsSnapshotMetadata | null> {
+  try {
+    const raw = await fs.readFile(path.join(runtimeDir, SNAPSHOT_META_FILE), 'utf-8');
+    const parsed = JSON.parse(raw);
+    return {
+      statsVersion: Number(parsed?.statsVersion || 0),
+      serverTimestamp: typeof parsed?.serverTimestamp === 'string' ? parsed.serverTimestamp : null,
+    };
+  } catch {
+    try {
+      const rawTs = await fs.readFile(path.join(runtimeDir, 'last_timestamp.txt'), 'utf-8');
+      const ts = rawTs.trim();
+      return ts ? { statsVersion: 0, serverTimestamp: ts } : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+export async function persistSnapshotMetadata(runtimeDir: string, metadata: StatsSnapshotMetadata): Promise<void> {
   try {
     await fs.mkdir(runtimeDir, { recursive: true });
-    await fs.writeFile(path.join(runtimeDir, 'last_timestamp.txt'), ts, 'utf-8');
+    await fs.writeFile(path.join(runtimeDir, SNAPSHOT_META_FILE), JSON.stringify(metadata), 'utf-8');
+    if (metadata.serverTimestamp) {
+      await fs.writeFile(path.join(runtimeDir, 'last_timestamp.txt'), metadata.serverTimestamp, 'utf-8');
+    }
   } catch {}
+}
+
+/** Backward-compatible wrapper used by older callers during the versioning transition. */
+export async function persistTimestamp(runtimeDir: string, ts: string): Promise<void> {
+  await persistSnapshotMetadata(runtimeDir, { statsVersion: 0, serverTimestamp: ts });
 }

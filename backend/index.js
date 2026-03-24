@@ -26,6 +26,21 @@ const validate = ajv.compile(schema);
 
 let pool = null;
 const TEST_MODE = process.env.NODE_ENV === 'test';
+const STATS_SOURCE_TABLES = [
+  'demos',
+  'matches',
+  'players',
+  'teams',
+  'rounds',
+  'kills',
+  'clutches',
+  'damages',
+  'shots',
+  'player_blinds',
+  'smokes_start',
+];
+const STATS_POLL_INTERVAL_MS = Number(process.env.STATS_POLL_INTERVAL_MS || 15000);
+const STATS_QUIET_PERIOD_MS = Number(process.env.STATS_QUIET_PERIOD_MS || 30000);
 if (!TEST_MODE) {
   pool = new Pool({
     user: process.env.DB_USER,
@@ -39,98 +54,97 @@ if (!TEST_MODE) {
   });
 }
 
-// Utility: get last updated date from critical tables (matches & players)
-// This queries the DB directly – should only be called by the background poller,
-// never in request hot paths.
-async function fetchLastDataTimestampFromDB() {
+function normalizeStatsStateRow(row) {
+  if (!row) return null;
+  return {
+    dirty: Boolean(row.dirty),
+    status: row.status || 'idle',
+    sourceTable: row.source_table || null,
+    currentVersion: Number(row.current_version || 0),
+    lastMutationAt: row.last_mutation_at ? new Date(row.last_mutation_at) : null,
+    lastCompletedAt: row.last_completed_at ? new Date(row.last_completed_at) : null,
+    updatedAt: row.updated_at ? new Date(row.updated_at) : null,
+    lastError: row.last_error || null,
+  };
+}
+
+function writeTestStatsState(state) {
+  if (!TEST_MODE || !state) return;
+  global.__testStatsState = {
+    dirty: Boolean(state.dirty),
+    status: state.status || 'idle',
+    source_table: state.sourceTable || null,
+    current_version: Number(state.currentVersion || 0),
+    last_mutation_at: state.lastMutationAt ? new Date(state.lastMutationAt) : null,
+    last_completed_at: state.lastCompletedAt ? new Date(state.lastCompletedAt) : null,
+    updated_at: state.updatedAt ? new Date(state.updatedAt) : null,
+    last_error: state.lastError || null,
+  };
+}
+
+async function fetchStatsRefreshStateFromDB() {
   if (TEST_MODE) {
-    // In test mode return a deterministic moving timestamp (increments per call)
-    if (!global.__testLastTs) {
-      global.__testLastTs = new Date(Date.now() - 60000); // 1 min ago
-    } else {
-      // Advance 1 second to emulate potential change
-      global.__testLastTs = new Date(global.__testLastTs.getTime() + 1000);
+    if (!global.__testStatsState) {
+      const completedAt = new Date(Date.now() - 60000);
+      global.__testStatsState = {
+        dirty: false,
+        status: 'idle',
+        source_table: 'test',
+        current_version: 1,
+        last_mutation_at: completedAt,
+        last_completed_at: completedAt,
+        updated_at: completedAt,
+        last_error: null,
+      };
     }
-    return global.__testLastTs;
+    return normalizeStatsStateRow(global.__testStatsState);
   }
-  // Check demos.date (for new entries) and updated_at columns (for modifications).
-  // Uses GREATEST to pick the most recent change across all tracked tables.
-  // NOTE: Uses subqueries instead of LEFT JOIN ON TRUE to avoid cartesian product.
-  const query = `
-    SELECT GREATEST(
-      COALESCE((SELECT MAX(date) FROM demos), '1970-01-01'::timestamp),
-      COALESCE((SELECT MAX(updated_at) FROM matches), '1970-01-01'::timestamp),
-      COALESCE((SELECT MAX(updated_at) FROM players), '1970-01-01'::timestamp)
-    ) AS last_change;`;
+
   try {
-    const r = await pool.query(query);
-    return r.rows[0]?.last_change || null;
+    const result = await pool.query(`
+      SELECT dirty, status, source_table, current_version, last_mutation_at, last_completed_at, updated_at, last_error
+      FROM stats_refresh_state
+      WHERE id = 1
+      LIMIT 1;
+    `);
+    return normalizeStatsStateRow(result.rows[0] || null);
   } catch (e) {
-    // Fallback 1: updated_at columns might not exist yet
-    console.warn('[timestamp] Extended query failed, trying demos.date:', e.message);
-    try {
-      const fallback = await pool.query(`SELECT COALESCE(
-        (SELECT MAX(date) FROM demos),
-        '1970-01-01'::timestamp
-      ) AS last_change;`);
-      return fallback.rows[0]?.last_change || null;
-    } catch (e2) {
-      // Fallback 2: matches/demos tables might not have date column
-      console.warn('[timestamp] Fallback 1 failed, trying demos.date only:', e2.message);
-      try {
-        const fallback2 = await pool.query(`SELECT COALESCE(MAX(date), '1970-01-01'::timestamp) AS last_change FROM demos;`);
-        return fallback2.rows[0]?.last_change || null;
-      } catch (e3) {
-        // Fallback 3: check if any table has rows at all
-        console.warn('[timestamp] Fallback 2 failed, trying table existence check:', e3.message);
-        try {
-          const exists = await pool.query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'matches') AS has_matches`);
-          if (exists.rows[0]?.has_matches) {
-            // Table exists but we couldn't read timestamp — return epoch so stats always regenerate
-            console.warn('[timestamp] matches table exists but timestamp queries failed. Using epoch fallback.');
-            return new Date('1970-01-01T00:00:00Z');
-          }
-          console.error('[timestamp] No matches table found — CSDM data may not be imported');
-          return null;
-        } catch (e4) {
-          console.error('[timestamp] All timestamp queries failed:', e4.message);
-          return null;
-        }
-      }
-    }
+    console.error('[stats-state] Failed to fetch stats_refresh_state:', e.message);
+    return null;
   }
 }
 
-// --- Cached timestamp poller ---
-// The DB timestamp is polled in the background every 60s.
-// All request handlers read from memory, ZERO DB cost per page load.
-const DB_POLL_INTERVAL_MS = 60 * 1000; // 60 seconds
-let cachedLastDataTimestamp = null; // in-memory cache of last DB data timestamp
-let lastTimestampPollAt = null;
-let lastTimestampPollError = null;
-let lastTimestampSource = 'uninitialized';
+function shouldPublishStats(state) {
+  return Boolean(
+    state?.dirty &&
+    state?.status !== 'generating' &&
+    state.lastMutationAt &&
+    (Date.now() - state.lastMutationAt.getTime()) >= STATS_QUIET_PERIOD_MS
+  );
+}
+
+let cachedStatsState = null;
+let lastStatsStatePollAt = null;
+let lastStatsStatePollError = null;
+let lastStatsStateSource = 'uninitialized';
 let statsRefreshManagerReady = false;
 let backendListening = false;
 let prewarmFrontendStatsSnapshot = async () => false;
 
-async function pollDataTimestamp() {
-  lastTimestampPollAt = new Date();
+async function pollStatsState() {
+  lastStatsStatePollAt = new Date();
   try {
-    const previousTs = cachedLastDataTimestamp ? new Date(cachedLastDataTimestamp) : null;
-    const ts = await fetchLastDataTimestampFromDB();
-    if (ts) {
-      cachedLastDataTimestamp = new Date(ts);
-      lastTimestampPollError = null;
-      lastTimestampSource = 'poller';
-      const changed =
-        !previousTs ||
-        previousTs.getTime() !== cachedLastDataTimestamp.getTime();
-      if (changed && statsRefreshManagerReady) {
-        void triggerBackgroundStatsRefresh('timestamp-poller', cachedLastDataTimestamp);
+    const state = await fetchStatsRefreshStateFromDB();
+    if (state) {
+      cachedStatsState = state;
+      lastStatsStatePollError = null;
+      lastStatsStateSource = 'poller';
+      if (statsRefreshManagerReady && shouldPublishStats(state)) {
+        void triggerBackgroundStatsRefresh('dirty-state-poller', state);
       }
     } else {
-      lastTimestampPollError = 'timestamp query returned no value';
-      lastTimestampSource = 'poller-empty';
+      lastStatsStatePollError = 'stats_refresh_state query returned no value';
+      lastStatsStateSource = 'poller-empty';
     }
     // Keep live_version + attendance table pages warm in PG buffer cache.
     // Without this, after days of inactivity PG evicts these pages and the
@@ -139,57 +153,63 @@ async function pollDataTimestamp() {
       pool.query(`SELECT version FROM live_version WHERE key = 'attendance'`).catch(() => {});
     }
   } catch (e) {
-    lastTimestampPollError = e.message;
-    lastTimestampSource = 'poller-error';
-    console.error('[timestamp-poller] Error polling DB timestamp:', e.message);
+    lastStatsStatePollError = e.message;
+    lastStatsStateSource = 'poller-error';
+    console.error('[stats-state] Error polling stats_refresh_state:', e.message);
   }
 }
 
-// Returns the cached timestamp (never hits DB)
-function getCachedDataTimestamp() {
-  if (TEST_MODE) return fetchLastDataTimestampFromDB(); // test mode needs async per-call
-  return cachedLastDataTimestamp;
+function getCachedStatsState() {
+  if (TEST_MODE) return fetchStatsRefreshStateFromDB();
+  return cachedStatsState;
 }
 
-async function getDataTimestampWithFallback() {
-  const cachedTs = TEST_MODE ? await getCachedDataTimestamp() : getCachedDataTimestamp();
-  if (cachedTs) {
-    return { timestamp: cachedTs, source: TEST_MODE ? 'test' : 'cache' };
+async function getStatsStateWithFallback() {
+  const cachedState = TEST_MODE ? await getCachedStatsState() : getCachedStatsState();
+  if (cachedState) {
+    return { state: cachedState, source: TEST_MODE ? 'test' : 'cache' };
   }
 
   if (!pool) {
-    return { timestamp: null, source: 'no-pool' };
+    return { state: null, source: 'no-pool' };
   }
 
   try {
-    const freshTs = await fetchLastDataTimestampFromDB();
-    lastTimestampPollAt = new Date();
-    if (!freshTs) {
-      lastTimestampPollError = 'timestamp query returned no value';
-      lastTimestampSource = 'live-fallback-empty';
-      return { timestamp: null, source: 'live-fallback-empty' };
+    const freshState = await fetchStatsRefreshStateFromDB();
+    lastStatsStatePollAt = new Date();
+    if (!freshState) {
+      lastStatsStatePollError = 'stats_refresh_state query returned no value';
+      lastStatsStateSource = 'live-fallback-empty';
+      return { state: null, source: 'live-fallback-empty' };
     }
 
-    cachedLastDataTimestamp = new Date(freshTs);
-    lastTimestampPollError = null;
-    lastTimestampSource = 'live-fallback';
-    return { timestamp: cachedLastDataTimestamp, source: 'live-fallback' };
+    cachedStatsState = freshState;
+    lastStatsStatePollError = null;
+    lastStatsStateSource = 'live-fallback';
+    return { state: cachedStatsState, source: 'live-fallback' };
   } catch (e) {
-    lastTimestampPollAt = new Date();
-    lastTimestampPollError = e.message;
-    lastTimestampSource = 'live-fallback-error';
-    console.error('[timestamp-poller] Live fallback failed:', e.message);
-    return { timestamp: null, source: 'live-fallback-error' };
+    lastStatsStatePollAt = new Date();
+    lastStatsStatePollError = e.message;
+    lastStatsStateSource = 'live-fallback-error';
+    console.error('[stats-state] Live fallback failed:', e.message);
+    return { state: null, source: 'live-fallback-error' };
   }
+}
+
+function getPublishedStatsVersion() {
+  return cachedStatsState?.currentVersion || 0;
+}
+
+function getPublishedStatsTimestamp() {
+  return cachedStatsState?.lastCompletedAt || null;
 }
 
 // Start background poller (only in production)
 if (!TEST_MODE) {
-  // Initial poll on startup
-  pollDataTimestamp().then(() => {
-    console.log('[timestamp-poller] Initial DB timestamp:', cachedLastDataTimestamp);
+  pollStatsState().then(() => {
+    console.log('[stats-state] Initial state:', cachedStatsState);
   });
-  setInterval(pollDataTimestamp, DB_POLL_INTERVAL_MS);
+  setInterval(pollStatsState, STATS_POLL_INTERVAL_MS);
 }
 
 const { generateAll, generateAggregates, clearHistoricalCache } = require('./statsGenerator');
@@ -226,12 +246,15 @@ function rateLimiter(req, res, next) {
 }
 
 // Clean up stale entries every 5 minutes to prevent memory leak
-setInterval(() => {
+const rateLimitCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [ip, entry] of rateLimitMap) {
     if (now > entry.resetTime) rateLimitMap.delete(ip);
   }
 }, 5 * 60 * 1000);
+if (typeof rateLimitCleanupTimer.unref === 'function') {
+  rateLimitCleanupTimer.unref();
+}
 
 app.use(rateLimiter);
 
@@ -276,50 +299,160 @@ async function runStatsUpdateScript() {
 
 // Concurrency lock so only one generation runs at a time
 let statsGenerationPromise = null;
-let lastGeneratedServerTimestamp = null; // tracks last successful generation based on server data timestamp
+let lastGeneratedServerTimestamp = null;
+let lastGeneratedStatsVersion = 0;
 let lastGeneratedData = null; // cache of last generated datasets — kept in memory permanently (~4 MB, 3% of 128 MB heap)
 
 
 let frontendPrewarmPromise = null;
 
-function applyGeneratedSnapshot(data, serverDate) {
+function applyGeneratedSnapshot(data, statsState) {
   lastGeneratedData = data;
   lastAggregateData = pickAggregateSnapshot(data);
-  if (serverDate) {
-    lastGeneratedServerTimestamp = new Date(serverDate);
-    lastAggregateServerTimestamp = new Date(serverDate);
+  if (statsState) {
+    lastGeneratedStatsVersion = Number(statsState.currentVersion || 0);
+    lastAggregateStatsVersion = Number(statsState.currentVersion || 0);
+    if (statsState.lastCompletedAt) {
+      lastGeneratedServerTimestamp = new Date(statsState.lastCompletedAt);
+      lastAggregateServerTimestamp = new Date(statsState.lastCompletedAt);
+    }
   }
 }
 
-async function triggerBackgroundStatsRefresh(reason, targetTimestamp = null) {
-  const serverDate = targetTimestamp ? new Date(targetTimestamp) : (cachedLastDataTimestamp ? new Date(cachedLastDataTimestamp) : null);
-  const hasFreshCache = Boolean(
-    serverDate &&
-    lastGeneratedData &&
-    lastGeneratedServerTimestamp &&
-    serverDate.getTime() === new Date(lastGeneratedServerTimestamp).getTime()
+function buildStatsMeta(statsState) {
+  return {
+    statsVersion: Number(statsState?.currentVersion || 0),
+    serverTimestamp: statsState?.lastCompletedAt ? new Date(statsState.lastCompletedAt).toISOString() : null,
+  };
+}
+
+async function setStatsRefreshStatus(status, lastError = null) {
+  if (TEST_MODE) {
+    if (!cachedStatsState) return null;
+    cachedStatsState = {
+      ...cachedStatsState,
+      status,
+      lastError,
+      updatedAt: new Date(),
+    };
+    writeTestStatsState(cachedStatsState);
+    return cachedStatsState;
+  }
+
+  const result = await pool.query(
+    `UPDATE stats_refresh_state
+     SET status = $2,
+         last_error = $3,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING dirty, status, source_table, current_version, last_mutation_at, last_completed_at, updated_at, last_error`,
+    [1, status, lastError]
   );
-  if (hasFreshCache) {
+  cachedStatsState = normalizeStatsStateRow(result.rows[0] || null);
+  return cachedStatsState;
+}
+
+async function completeStatsPublish(expectedMutationAt, sourceTable, force = false) {
+  if (TEST_MODE) {
+    const baseState = cachedStatsState || await fetchStatsRefreshStateFromDB() || {};
+    cachedStatsState = {
+      ...baseState,
+      dirty: false,
+      status: 'idle',
+      sourceTable: sourceTable || baseState.sourceTable || null,
+      currentVersion: Number(baseState.currentVersion || 0) + 1,
+      lastCompletedAt: new Date(),
+      updatedAt: new Date(),
+      lastError: null,
+    };
+    writeTestStatsState(cachedStatsState);
+    return cachedStatsState;
+  }
+
+  const params = [1, sourceTable || null];
+  let query = `
+    UPDATE stats_refresh_state
+    SET dirty = false,
+        status = 'idle',
+        source_table = COALESCE($2, source_table),
+        current_version = current_version + 1,
+        last_completed_at = NOW(),
+        updated_at = NOW(),
+        last_error = NULL
+    WHERE id = $1`;
+
+  if (!force) {
+    params.push(expectedMutationAt ? new Date(expectedMutationAt).toISOString() : null);
+    query += ` AND dirty = true AND last_mutation_at IS NOT DISTINCT FROM $3::timestamptz`;
+  }
+
+  query += ` RETURNING dirty, status, source_table, current_version, last_mutation_at, last_completed_at, updated_at, last_error`;
+  const result = await pool.query(query, params);
+  const publishedState = normalizeStatsStateRow(result.rows[0] || null);
+  if (publishedState) {
+    cachedStatsState = publishedState;
+  }
+  return publishedState;
+}
+
+async function runStatsGenerationWithLock(reason) {
+  if (!statsGenerationPromise) {
+    console.log(`[stats-refresh] ${reason}: starting stats generation`);
+    statsGenerationPromise = runStatsUpdateScript().finally(() => { statsGenerationPromise = null; });
+  } else {
+    console.log(`[stats-refresh] ${reason}: reusing in-flight stats generation`);
+  }
+  return statsGenerationPromise;
+}
+
+async function triggerBackgroundStatsRefresh(reason, targetState = null, options = {}) {
+  const force = Boolean(options.force);
+  const effectiveState = targetState || cachedStatsState;
+  if (!force && !shouldPublishStats(effectiveState)) {
     return false;
   }
 
-  if (!statsGenerationPromise) {
-    console.log(`[stats-refresh] ${reason}: starting background full stats refresh`);
-    statsGenerationPromise = runStatsUpdateScript().finally(() => { statsGenerationPromise = null; });
-  } else {
-    console.log(`[stats-refresh] ${reason}: reusing in-flight stats refresh`);
+  if (!force && lastGeneratedData && lastGeneratedStatsVersion === Number(effectiveState?.currentVersion || 0) + 1) {
+    return false;
   }
 
   try {
-    const result = await statsGenerationPromise;
-    applyGeneratedSnapshot(result.data, serverDate);
+    await setStatsRefreshStatus('generating', null);
+    const expectedMutationAt = effectiveState?.lastMutationAt ? new Date(effectiveState.lastMutationAt) : null;
+    const result = await runStatsGenerationWithLock(reason);
+    const publishedState = await completeStatsPublish(expectedMutationAt, effectiveState?.sourceTable || reason, force);
+    if (!publishedState) {
+      const latest = await fetchStatsRefreshStateFromDB();
+      cachedStatsState = latest;
+      console.log(`[stats-refresh] ${reason}: source changed during generation, keeping dirty state for retry`);
+      return false;
+    }
+    applyGeneratedSnapshot(result.data, publishedState);
     if (backendListening) {
       void prewarmFrontendStatsSnapshot();
     }
-    console.log(`[stats-refresh] ${reason}: background full stats refresh complete`);
+    console.log(`[stats-refresh] ${reason}: published stats version ${publishedState.currentVersion}`);
     return true;
   } catch (e) {
+    try {
+      await setStatsRefreshStatus('dirty', e.message);
+    } catch {}
     console.error(`[stats-refresh] ${reason}: background full stats refresh failed`, e.message);
+    return false;
+  }
+}
+
+async function hydratePublishedSnapshot(reason, statsState) {
+  if (!statsState) return false;
+  if (lastGeneratedData && lastGeneratedStatsVersion === Number(statsState.currentVersion || 0)) {
+    return true;
+  }
+  try {
+    const result = await runStatsGenerationWithLock(reason);
+    applyGeneratedSnapshot(result.data, statsState);
+    return true;
+  } catch (e) {
+    console.error(`[stats-refresh] ${reason}: failed to hydrate published snapshot`, e.message);
     return false;
   }
 }
@@ -338,30 +471,38 @@ function sleep(ms) {
 }
 
 // Aggregates endpoint: recompute only when DB data has changed (or on cold start).
-// Uses the same in-memory cached timestamp as /stats/incremental to avoid unnecessary DB work.
-let lastAggregateServerTimestamp = null; // tracks DB timestamp of last aggregate generation
+// Uses the same published stats version as /stats/incremental to avoid unnecessary DB work.
+let lastAggregateServerTimestamp = null;
+let lastAggregateStatsVersion = 0;
 let lastAggregateData = null; // cached aggregate result
 let aggregateGenerationPromise = null; // concurrency lock
 
 app.get('/stats/aggregates', async (req, res) => {
   try {
-    const { timestamp: serverLastTs } = await getDataTimestampWithFallback();
-    const serverDate = serverLastTs ? new Date(serverLastTs) : null;
-    const dbUnchanged = serverDate && lastAggregateServerTimestamp &&
-        serverDate.getTime() === new Date(lastAggregateServerTimestamp).getTime();
+    const { state: statsState } = await getStatsStateWithFallback();
+    const statsMeta = buildStatsMeta(statsState);
+    const publishedVersion = Number(statsState?.currentVersion || 0);
+    const versionUnchanged = lastAggregateStatsVersion === publishedVersion;
 
-    // If DB hasn't changed since last generation, return cached data or skip
-    if (dbUnchanged) {
-      if (lastAggregateData) {
-        res.set('Cache-Control','no-store');
-        return res.json({ updated: true, serverTimestamp: serverDate.toISOString(), ...lastAggregateData });
-      }
-      // Cache expired but DB unchanged — frontend has data on disk, no need to regenerate
-      res.set('Cache-Control','no-store');
-      return res.json({ updated: false, serverTimestamp: serverDate.toISOString() });
+    if (publishedVersion <= 0) {
+      res.set('Cache-Control', 'no-store');
+      return res.json({ updated: false, ...statsMeta });
     }
 
-    // DB changed (or cold start) — regenerate with concurrency lock
+    if (versionUnchanged) {
+      if (lastAggregateData) {
+        res.set('Cache-Control','no-store');
+        return res.json({ updated: true, ...statsMeta, ...lastAggregateData });
+      }
+      res.set('Cache-Control','no-store');
+      return res.json({ updated: false, ...statsMeta });
+    }
+
+    if (statsState?.dirty) {
+      res.set('Cache-Control', 'no-store');
+      return res.json({ updated: false, ...statsMeta });
+    }
+
     if (!aggregateGenerationPromise) {
       aggregateGenerationPromise = (async () => {
         cachedSeasonConfig = resolveSeasonConfig();
@@ -371,59 +512,53 @@ app.get('/stats/aggregates', async (req, res) => {
       })().finally(() => { aggregateGenerationPromise = null; });
     }
     const agg = await aggregateGenerationPromise;
-    if (serverDate) lastAggregateServerTimestamp = serverDate;
+    lastAggregateStatsVersion = publishedVersion;
+    if (statsState?.lastCompletedAt) lastAggregateServerTimestamp = new Date(statsState.lastCompletedAt);
     lastAggregateData = agg;
     res.set('Cache-Control','no-store');
-    res.json({ updated: true, serverTimestamp: (serverDate || new Date()).toISOString(), ...agg });
+    res.json({ updated: true, ...statsMeta, ...agg });
   } catch (e) {
     console.error('Error in /stats/aggregates', e);
     res.status(500).json({ error: 'aggregates_failed', details: e.message });
   }
 });
 
-// Incremental endpoint: supply lastKnownTs; if no new base data, respond updated:false + serverTimestamp only.
-// If new data, regenerate only FULL set once and respond with changed datasets.
-// NOTE: This uses the in-memory cached timestamp — ZERO DB cost per request.
+// Incremental endpoint: supply lastKnownVersion; if no new published snapshot exists,
+// respond updated:false with version metadata only.
 app.get('/stats/incremental', async (req, res) => {
   try {
-    const clientTsRaw = typeof req.query.lastKnownTs === 'string' ? req.query.lastKnownTs : null;
-    const parsedClientTs = clientTsRaw ? new Date(clientTsRaw) : null;
-    const clientTs = parsedClientTs && !Number.isNaN(parsedClientTs.getTime()) ? parsedClientTs : null;
-    const { timestamp: serverLastTs, source: timestampSource } = await getDataTimestampWithFallback();
-    // If timestamp is unavailable, proceed with generation instead of hard-failing.
-    // Stats queries work independently of the timestamp — the timestamp only gates
-    // whether we *need* to regenerate. Without it, always regenerate (cold-start behavior).
-    const serverDate = serverLastTs ? new Date(serverLastTs) : null;
-    if (!serverDate) {
-      console.warn('[stats/incremental] Timestamp unavailable (source:', timestampSource, ') — treating as cold start, will generate stats');
+    const rawClientVersion = typeof req.query.lastKnownVersion === 'string'
+      ? req.query.lastKnownVersion
+      : null;
+    const legacyClientTs = typeof req.query.lastKnownTs === 'string'
+      ? req.query.lastKnownTs
+      : null;
+    const { state: statsState, source: stateSource } = await getStatsStateWithFallback();
+    if (!statsState) {
+      console.warn('[stats/incremental] stats_refresh_state unavailable (source:', stateSource, ')');
+      return res.status(503).json({ error: 'stats_state_unavailable' });
     }
-    const needs = !serverDate || !clientTs || serverDate > clientTs;
-    const effectiveTimestamp = serverDate || new Date();
-    const sourceChanged =
-      !lastGeneratedServerTimestamp || !serverDate ||
-      serverDate.getTime() !== new Date(lastGeneratedServerTimestamp).getTime();
-    let payload = { updated: false, serverTimestamp: effectiveTimestamp.toISOString() };
-    if (needs) {
-      // Regenerate when source actually changed, OR on cold start when we have no cached data
-      // (e.g. after a container restart).
-      if (sourceChanged || !lastGeneratedData) {
-        if (!statsGenerationPromise) {
-          statsGenerationPromise = runStatsUpdateScript().finally(()=>{ statsGenerationPromise=null; });
-        }
-        try {
-          const result = await statsGenerationPromise;
-          applyGeneratedSnapshot(result.data, serverDate);
-          payload = { updated: true, serverTimestamp: effectiveTimestamp.toISOString(), ...result.data };
-        } catch (e) {
-          console.error('Incremental generation failed', e);
-          return res.status(500).json({ error: 'incremental_failed', details: e.message });
-        }
-      } else if (lastGeneratedData) {
-        payload = { updated: true, serverTimestamp: effectiveTimestamp.toISOString(), ...lastGeneratedData };
-      }
+    const statsMeta = buildStatsMeta(statsState);
+    const publishedVersion = Number(statsState.currentVersion || 0);
+    const clientVersion = rawClientVersion && /^\d+$/.test(rawClientVersion)
+      ? Number(rawClientVersion)
+      : (legacyClientTs && statsMeta.serverTimestamp === legacyClientTs ? publishedVersion : 0);
+    if (publishedVersion <= clientVersion) {
+      res.set('Cache-Control', 'no-store');
+      return res.json({ updated: false, ...statsMeta });
     }
+
+    if (!statsState.dirty && (!lastGeneratedData || lastGeneratedStatsVersion !== publishedVersion)) {
+      await hydratePublishedSnapshot('incremental-hydrate', statsState);
+    }
+
+    if (!lastGeneratedData || lastGeneratedStatsVersion !== publishedVersion) {
+      res.set('Cache-Control', 'no-store');
+      return res.json({ updated: false, ...statsMeta });
+    }
+
     res.set('Cache-Control','no-store');
-    res.json(payload);
+    res.json({ updated: true, ...statsMeta, ...lastGeneratedData });
   } catch (e) {
     console.error('Error in /stats/incremental', e);
     res.status(500).json({ error: 'internal', details: e.message });
@@ -435,34 +570,25 @@ app.get('/stats/incremental', async (req, res) => {
 app.post('/stats/force-regenerate', async (req, res) => {
   try {
     console.log('[force-regenerate] Manual regeneration triggered');
-    // Clear cached timestamps to force regeneration of both full & aggregates
+    const { state: currentStatsState } = await getStatsStateWithFallback();
+    // Clear cached versions to force regeneration of both full & aggregates
+    lastGeneratedStatsVersion = 0;
     lastGeneratedServerTimestamp = null;
+    lastAggregateStatsVersion = 0;
     lastAggregateServerTimestamp = null;
     lastAggregateData = null;
-    // Clear historical season cache so all periods are recomputed from scratch
     clearHistoricalCache();
-    
-    // Always run fresh generation (bypass any in-progress promise)
-    cachedSeasonConfig = resolveSeasonConfig();
-    cachedSeasonStart = cachedSeasonConfig.seasonStart;
-    cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
-    const result = await runStatsUpdateScript();
-    
-    // Refresh the cached timestamp immediately so next incremental check sees the new state
-    await pollDataTimestamp();
-    const serverLastTs = cachedLastDataTimestamp;
-    if (serverLastTs) {
-      applyGeneratedSnapshot(result.data, serverLastTs);
+    const success = await triggerBackgroundStatsRefresh('force-regenerate', currentStatsState, { force: true });
+    if (!success || !lastGeneratedData) {
+      return res.status(500).json({ error: 'regeneration_failed', details: 'manual publish did not complete' });
     }
-    
-    // Return FULL data so frontend can write JSON files
+    const statsMeta = buildStatsMeta(cachedStatsState);
     res.json({ 
       success: true, 
-      updated: true,  // Always true for force regenerate
+      updated: true,
       message: 'Stats regenerated successfully',
-      serverTimestamp: new Date().toISOString(),  // Use current time, not DB time
-      // Include all datasets
-      ...result.data
+      ...statsMeta,
+      ...lastGeneratedData
     });
   } catch (e) {
     console.error('Error in force regenerate', e);
@@ -473,7 +599,7 @@ app.post('/stats/force-regenerate', async (req, res) => {
 // Lightweight diagnostics endpoint to help debug missing data
 app.get('/stats/diagnostics', async (req, res) => {
   try {
-    const { timestamp: effectiveDataTimestamp, source: effectiveTimestampSource } = await getDataTimestampWithFallback();
+    const { state: effectiveStatsState, source: effectiveStatsStateSource } = await getStatsStateWithFallback();
     const seasonStart = cachedSeasonStart;
     const seasonStarts = cachedSeasonStarts;
     let counts = {};
@@ -498,13 +624,30 @@ app.get('/stats/diagnostics', async (req, res) => {
     res.json({
       seasonStart,
       seasonStarts,
-      cachedLastDataTimestamp: cachedLastDataTimestamp ? cachedLastDataTimestamp.toISOString() : null,
-      effectiveDataTimestamp: effectiveDataTimestamp ? new Date(effectiveDataTimestamp).toISOString() : null,
-      effectiveTimestampSource,
-      lastTimestampPollAt: lastTimestampPollAt ? lastTimestampPollAt.toISOString() : null,
-      lastTimestampPollError,
-      lastTimestampSource,
-      lastGeneratedServerTimestamp,
+      cachedStatsState: cachedStatsState ? {
+        dirty: cachedStatsState.dirty,
+        status: cachedStatsState.status,
+        sourceTable: cachedStatsState.sourceTable,
+        currentVersion: cachedStatsState.currentVersion,
+        lastMutationAt: cachedStatsState.lastMutationAt ? cachedStatsState.lastMutationAt.toISOString() : null,
+        lastCompletedAt: cachedStatsState.lastCompletedAt ? cachedStatsState.lastCompletedAt.toISOString() : null,
+        lastError: cachedStatsState.lastError,
+      } : null,
+      effectiveStatsState: effectiveStatsState ? {
+        dirty: effectiveStatsState.dirty,
+        status: effectiveStatsState.status,
+        sourceTable: effectiveStatsState.sourceTable,
+        currentVersion: effectiveStatsState.currentVersion,
+        lastMutationAt: effectiveStatsState.lastMutationAt ? effectiveStatsState.lastMutationAt.toISOString() : null,
+        lastCompletedAt: effectiveStatsState.lastCompletedAt ? effectiveStatsState.lastCompletedAt.toISOString() : null,
+        lastError: effectiveStatsState.lastError,
+      } : null,
+      effectiveStatsStateSource,
+      lastStatsStatePollAt: lastStatsStatePollAt ? lastStatsStatePollAt.toISOString() : null,
+      lastStatsStatePollError,
+      lastStatsStateSource,
+      lastGeneratedStatsVersion,
+      lastGeneratedServerTimestamp: lastGeneratedServerTimestamp ? new Date(lastGeneratedServerTimestamp).toISOString() : null,
       counts,
     });
   } catch (e) {
@@ -625,12 +768,33 @@ if (!TEST_MODE) {
   // Auto-apply idempotent schema migrations on startup
   async function runMigrations() {
     const migrations = [
-      // --- updated_at tracking ---
-      `CREATE OR REPLACE FUNCTION update_timestamp() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql`,
-      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='matches' AND column_name='updated_at') THEN ALTER TABLE matches ADD COLUMN updated_at TIMESTAMP DEFAULT NOW(); END IF; END $$`,
-      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='players' AND column_name='updated_at') THEN ALTER TABLE players ADD COLUMN updated_at TIMESTAMP DEFAULT NOW(); END IF; END $$`,
-      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='matches_updated_at') THEN CREATE TRIGGER matches_updated_at BEFORE UPDATE ON matches FOR EACH ROW EXECUTE FUNCTION update_timestamp(); END IF; END $$`,
-      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='players_updated_at') THEN CREATE TRIGGER players_updated_at BEFORE UPDATE ON players FOR EACH ROW EXECUTE FUNCTION update_timestamp(); END IF; END $$`,
+      `CREATE TABLE IF NOT EXISTS stats_refresh_state (
+         id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+         dirty BOOLEAN NOT NULL DEFAULT false,
+         status TEXT NOT NULL DEFAULT 'idle',
+         source_table TEXT,
+         current_version BIGINT NOT NULL DEFAULT 0,
+         last_mutation_at TIMESTAMPTZ,
+         last_completed_at TIMESTAMPTZ,
+         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+         last_error TEXT
+       )`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='dirty') THEN ALTER TABLE stats_refresh_state ADD COLUMN dirty BOOLEAN NOT NULL DEFAULT false; END IF; END $$`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='status') THEN ALTER TABLE stats_refresh_state ADD COLUMN status TEXT NOT NULL DEFAULT 'idle'; END IF; END $$`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='current_version') THEN ALTER TABLE stats_refresh_state ADD COLUMN current_version BIGINT NOT NULL DEFAULT 0; END IF; END $$`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='last_mutation_at') THEN ALTER TABLE stats_refresh_state ADD COLUMN last_mutation_at TIMESTAMPTZ; END IF; END $$`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='last_completed_at') THEN ALTER TABLE stats_refresh_state ADD COLUMN last_completed_at TIMESTAMPTZ; END IF; END $$`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='last_error') THEN ALTER TABLE stats_refresh_state ADD COLUMN last_error TEXT; END IF; END $$`,
+      `CREATE OR REPLACE FUNCTION touch_stats_refresh_state() RETURNS TRIGGER AS $$ BEGIN INSERT INTO stats_refresh_state (id, dirty, status, source_table, last_mutation_at, updated_at, last_error) VALUES (1, true, 'dirty', TG_TABLE_NAME, NOW(), NOW(), NULL) ON CONFLICT (id) DO UPDATE SET dirty = true, status = 'dirty', source_table = EXCLUDED.source_table, last_mutation_at = EXCLUDED.last_mutation_at, updated_at = EXCLUDED.updated_at, last_error = NULL; RETURN NULL; END; $$ LANGUAGE plpgsql`,
+      `INSERT INTO stats_refresh_state (id, dirty, status, source_table, current_version, last_mutation_at, updated_at)
+       SELECT 1,
+              true,
+              'dirty',
+              'bootstrap',
+              0,
+              COALESCE((SELECT MAX(date) FROM demos), NOW()),
+              NOW()
+       ON CONFLICT (id) DO NOTHING`,
       // Live state tables (attendance + team picker) — replaces Firebase RTDB
       `CREATE TABLE IF NOT EXISTS attendance (steam_id TEXT PRIMARY KEY, name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'no_response', emoji_status TEXT NOT NULL DEFAULT 'normal', is_kaptan BOOLEAN NOT NULL DEFAULT FALSE, kaptan_timestamp BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       `CREATE TABLE IF NOT EXISTS team_picker (id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1), team_a_players JSONB NOT NULL DEFAULT '{}', team_b_players JSONB NOT NULL DEFAULT '{}', team_a_name_mode TEXT NOT NULL DEFAULT 'generic', team_b_name_mode TEXT NOT NULL DEFAULT 'generic', team_a_captain TEXT NOT NULL DEFAULT '', team_b_captain TEXT NOT NULL DEFAULT '', team_a_kabile TEXT NOT NULL DEFAULT '', team_b_kabile TEXT NOT NULL DEFAULT '', maps JSONB NOT NULL DEFAULT '{}', overrides JSONB NOT NULL DEFAULT '{}', updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
@@ -656,6 +820,11 @@ if (!TEST_MODE) {
       // Notification events — replaces Firebase RTDB notifications/events/{eventId}
       `CREATE TABLE IF NOT EXISTS notification_events (event_id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'pending', topic TEXT, title TEXT, body TEXT, data JSONB, created_by_uid TEXT, created_by_name TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), sent_at TIMESTAMPTZ, failed_at TIMESTAMPTZ, recipient_count INT, success_count INT, failure_count INT, errors JSONB, error TEXT)`,
     ];
+    for (const tableName of STATS_SOURCE_TABLES) {
+      migrations.push(
+        `DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='${tableName}') AND NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='${tableName}_stats_refresh_touch') THEN CREATE TRIGGER ${tableName}_stats_refresh_touch AFTER INSERT OR UPDATE OR DELETE ON ${tableName} FOR EACH STATEMENT EXECUTE FUNCTION touch_stats_refresh_state(); END IF; END $$`
+      );
+    }
     for (const sql of migrations) {
       try { await pool.query(sql); } catch (e) { console.warn('[migration]', e.message); }
     }
@@ -671,13 +840,19 @@ if (!TEST_MODE) {
       cachedSeasonConfig = resolveSeasonConfig();
       cachedSeasonStart = cachedSeasonConfig.seasonStart;
       cachedSeasonStarts = cachedSeasonConfig.seasonStarts;
-      await pollDataTimestamp();
-      console.log('[startup] migrations applied, config loaded. Generating initial full stats snapshot...');
+      await pollStatsState();
       const startedAt = Date.now();
-      const result = await runStatsUpdateScript();
-      const ts = cachedLastDataTimestamp;
-      applyGeneratedSnapshot(result.data, ts);
-      console.log(`[startup] initial full stats generation complete in ${Date.now() - startedAt}ms`);
+      if (cachedStatsState?.currentVersion > 0 && !cachedStatsState.dirty) {
+        console.log(`[startup] hydrating published stats version ${cachedStatsState.currentVersion} into memory`);
+        await hydratePublishedSnapshot('startup-hydrate', cachedStatsState);
+        console.log(`[startup] published stats hydration complete in ${Date.now() - startedAt}ms`);
+      } else if (shouldPublishStats(cachedStatsState)) {
+        console.log('[startup] dirty stats state is quiet enough; publishing initial snapshot');
+        await triggerBackgroundStatsRefresh('startup-initial', cachedStatsState);
+        console.log(`[startup] initial stats publish complete in ${Date.now() - startedAt}ms`);
+      } else {
+        console.log('[startup] waiting for quiet window before publishing stats', cachedStatsState);
+      }
     } catch (e) {
       console.warn('[startup] warmStartup failed (will retry on first request)', e.message);
     }
@@ -754,9 +929,9 @@ if (!TEST_MODE) {
       console.log(`Middleware is running on port ${port}`);
 
       // Start the notification scheduler after the server is listening.
-      // It uses getCachedDataTimestamp() (in-memory, no DB cost) to detect stats changes.
+      // It uses getPublishedStatsVersion() (in-memory, no DB cost) to detect stats changes.
       notificationScheduler.start({
-        getCachedDataTimestamp: () => cachedLastDataTimestamp,
+        getPublishedStatsVersion,
         pool,
       });
 

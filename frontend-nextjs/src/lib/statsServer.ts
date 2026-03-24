@@ -4,10 +4,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { readJson } from './dataReader';
+import { readSnapshotMetadata } from './statsSnapshot';
 
 const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
 const TIMEOUT_MS = 15000; // 15s — cold-start generation takes 10-20s on the 1 GB VM
-const TIMESTAMP_FILE = 'last_timestamp.txt';
 
 // Module-level cache: avoid hitting backend for every concurrent SSR render.
 // Refreshed when a new request arrives and at least 10s have passed.
@@ -24,16 +24,6 @@ function hasAllCachedKeys(keys: string[]): boolean {
 function mergeIntoCache(data: Record<string, any>, now: number) {
   cachedData = { ...(cachedData ?? {}), ...data };
   cachedAt = now;
-}
-
-async function readPersistedTimestamp(runtimeDir: string): Promise<string | null> {
-  try {
-    const raw = await fs.readFile(path.join(runtimeDir, TIMESTAMP_FILE), 'utf-8');
-    const ts = raw.trim();
-    return ts || null;
-  } catch {
-    return null;
-  }
 }
 
 async function readRuntimeJson(runtimeDir: string, key: string): Promise<any> {
@@ -57,10 +47,10 @@ async function readRuntimeSnapshot(runtimeDir: string, keys: string[]): Promise<
   return Object.fromEntries(entries);
 }
 
-async function fetchIncrementalSnapshot(lastKnownTs: string | null, cacheBuster: number): Promise<any> {
+async function fetchIncrementalSnapshot(lastKnownVersion: number | null, cacheBuster: number): Promise<any> {
   const url = new URL('/stats/incremental', BACKEND);
-  if (lastKnownTs) {
-    url.searchParams.set('lastKnownTs', lastKnownTs);
+  if (lastKnownVersion && lastKnownVersion > 0) {
+    url.searchParams.set('lastKnownVersion', String(lastKnownVersion));
   }
   url.searchParams.set('_cb', cacheBuster.toString());
 
@@ -90,10 +80,11 @@ export async function fetchStats(...keys: string[]): Promise<Record<string, any>
 
   const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
   const hasRuntimeSnapshot = await hasCompleteRuntimeSnapshot(runtimeDir, keys);
-  const persistedTs = hasRuntimeSnapshot ? await readPersistedTimestamp(runtimeDir) : null;
+  const metadata = hasRuntimeSnapshot ? await readSnapshotMetadata(runtimeDir) : null;
+  const persistedVersion = metadata?.statsVersion || 0;
 
   try {
-    const data = await fetchIncrementalSnapshot(persistedTs, now);
+    const data = await fetchIncrementalSnapshot(persistedVersion || null, now);
     if (data && typeof data === 'object') {
       if (data.updated) {
         cachedData = data;
@@ -105,7 +96,7 @@ export async function fetchStats(...keys: string[]): Promise<Record<string, any>
 
       // Backend confirmed nothing changed — serve from runtime-data (fast path).
       // Populate the module cache so concurrent SSR renders don't repeat network+disk I/O.
-      if (persistedTs && hasRuntimeSnapshot) {
+      if (hasRuntimeSnapshot) {
         try {
           const runtimeResult = await readRuntimeSnapshot(runtimeDir, keys);
           mergeIntoCache(runtimeResult, now);
@@ -117,7 +108,7 @@ export async function fetchStats(...keys: string[]): Promise<Record<string, any>
     }
 
     // Either backend returned updated:false without a usable runtime snapshot,
-    // or the runtime read failed. Force a full payload (no lastKnownTs).
+    // or the runtime read failed. Force a full payload (no lastKnownVersion).
     const fullData = await fetchIncrementalSnapshot(null, now + 1);
     if (fullData && fullData.updated && typeof fullData === 'object') {
       cachedData = fullData;

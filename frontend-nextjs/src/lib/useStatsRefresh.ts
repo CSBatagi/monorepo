@@ -20,14 +20,14 @@ export function useStatsRefresh({ onData, onSettled, enabled = true }: UseStatsR
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
-    const lastKnownTs = localStorage.getItem('stats_last_ts');
-    const url = `/api/stats/check${lastKnownTs ? `?lastKnownTs=${encodeURIComponent(lastKnownTs)}&` : '?'}_cb=${Date.now()}`;
+    const lastKnownVersion = localStorage.getItem('stats_version');
+    const url = `/api/stats/check${lastKnownVersion ? `?lastKnownVersion=${encodeURIComponent(lastKnownVersion)}&` : '?'}_cb=${Date.now()}`;
     fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-store' } })
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
-        if (data.serverTimestamp) {
-          try { localStorage.setItem('stats_last_ts', data.serverTimestamp); } catch {}
+        if (data.statsVersion) {
+          try { localStorage.setItem('stats_version', String(data.statsVersion)); } catch {}
         }
         if (data.updated) {
           try { onData(data); } finally { onSettled?.(); }

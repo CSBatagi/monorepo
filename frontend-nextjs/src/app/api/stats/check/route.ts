@@ -1,10 +1,9 @@
 import { NextRequest } from 'next/server';
 import path from 'path';
 import fs from 'fs/promises';
-import { STAT_FILES } from '@/lib/statsSnapshot';
+import { readSnapshotMetadata, STAT_FILES } from '@/lib/statsSnapshot';
 
 const BACKEND_TIMEOUT_MS = 30000; // 30s — stats generation on 1 GB VM can take 10-20s
-const TIMESTAMP_FILE = 'last_timestamp.txt';
 
 // --- Response cache / cooldown ---
 // Prevents thundering-herd: multiple client useEffect mounts all arrive within
@@ -13,16 +12,6 @@ const CHECK_COOLDOWN_MS = 10 * 1000; // 10 seconds keeps mount storms deduped wi
 let cachedCheckResponse: string | null = null;
 let checkCacheTimer: ReturnType<typeof setTimeout> | null = null;
 let lastCheckTime = 0;
-
-async function readPersistedTimestamp(runtimeDir: string): Promise<string | null> {
-  try {
-    const raw = await fs.readFile(path.join(runtimeDir, TIMESTAMP_FILE), 'utf-8');
-    const ts = raw.trim();
-    return ts || null;
-  } catch {
-    return null;
-  }
-}
 
 async function hasRuntimeStatFiles(runtimeDir: string): Promise<boolean> {
   for (const base of STAT_FILES) {
@@ -48,14 +37,14 @@ export async function GET(req: NextRequest) {
   const backendBase = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
   const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
   const url = new URL(req.url);
-  const clientTs = url.searchParams.get('lastKnownTs');
+  const clientVersion = url.searchParams.get('lastKnownVersion');
   const debug = url.searchParams.get('debug') === '1';
-  const persistedTs = await readPersistedTimestamp(runtimeDir);
+  const metadata = await readSnapshotMetadata(runtimeDir);
   const hasRuntimeFiles = await hasRuntimeStatFiles(runtimeDir);
-  const effectiveLastKnownTs = clientTs || (hasRuntimeFiles ? persistedTs : null);
+  const effectiveLastKnownVersion = clientVersion || (hasRuntimeFiles && metadata?.statsVersion ? String(metadata.statsVersion) : null);
   try {
     const checkUrl = new URL('/stats/incremental', backendBase);
-    if (effectiveLastKnownTs) checkUrl.searchParams.set('lastKnownTs', effectiveLastKnownTs);
+    if (effectiveLastKnownVersion) checkUrl.searchParams.set('lastKnownVersion', effectiveLastKnownVersion);
     checkUrl.searchParams.set('_cb', Date.now().toString());
     if (debug) console.log('[stats-proxy] Fetching backend', checkUrl.toString());
 
@@ -74,7 +63,12 @@ export async function GET(req: NextRequest) {
     if (res.status === 599 || !res.ok) {
       // Backend unreachable: build fallback from local runtime-data or static public data
       if (debug) console.warn('[stats-proxy] Backend unavailable/error (status:', res.status, '), using local fallback datasets');
-      const fallback: any = { updated: false, serverTimestamp: persistedTs, backendUnavailable: true };
+      const fallback: any = {
+        updated: false,
+        statsVersion: metadata?.statsVersion || 0,
+        serverTimestamp: metadata?.serverTimestamp || null,
+        backendUnavailable: true,
+      };
       const staticDir = path.join(process.cwd(), 'public', 'data');
       for (const base of STAT_FILES) {
         const key = base.replace(/\.json$/, '');

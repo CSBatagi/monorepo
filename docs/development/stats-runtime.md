@@ -2,11 +2,11 @@
 
 ## Runtime Flow
 
-1. **SSR (server rendering)**: All stats pages call `fetchStats()` (`lib/statsServer.ts`). The helper first checks whether all requested JSON files already exist in `runtime-data/` and reads `runtime-data/last_timestamp.txt`. If both are present, it calls backend `GET /stats/incremental?lastKnownTs=...`. When backend replies `{ updated: false }`, SSR serves the requested datasets directly from `runtime-data/` without pulling the full payload over the network. If the requested runtime snapshot is incomplete, unreadable, or the timestamp file is missing, SSR forces a full backend payload instead of returning partial data. A 10s module-level cache still prevents repeated backend calls across concurrent SSR renders, but it is only considered a hit when it already contains **all** requested dataset keys; subset reads are merged into the cache rather than replacing it. Timeout is 15s to cover cold-start generation (10-20s on the 1 GB VM).
+1. **SSR (server rendering)**: All stats pages call `fetchStats()` (`lib/statsServer.ts`). The helper first checks whether all requested JSON files already exist in `runtime-data/` and reads `runtime-data/stats_meta.json` (with `statsVersion` plus `serverTimestamp`). If both are present, it calls backend `GET /stats/incremental?lastKnownVersion=...`. When backend replies `{ updated: false }`, SSR serves the requested datasets directly from `runtime-data/` without pulling the full payload over the network. If the requested runtime snapshot is incomplete, unreadable, or the metadata file is missing, SSR forces a full backend payload instead of returning partial data. A 10s module-level cache still prevents repeated backend calls across concurrent SSR renders, but it is only considered a hit when it already contains **all** requested dataset keys; subset reads are merged into the cache rather than replacing it. Timeout is 15s to cover cold-start generation (10-20s on the 1 GB VM).
 2. **Client refresh**: Client components use the shared `useStatsRefresh` hook (`lib/useStatsRefresh.ts`) which calls `/api/stats/check` (incremental — only returns data when `updated: true`). The hook provides `onData` (fresh data) and `onSettled` (always fires, for clearing loading state) callbacks.
-3. **Disk write-through**: Root layout's `after()` hook calls `incrementalRefresh()` (cooldown: 90s) which fetches backend `GET /stats/incremental` and persists JSON files plus `last_timestamp.txt` to `runtime-data/` using `writeStatsSnapshot()` / `persistTimestamp()` from `lib/statsSnapshot.ts`. These files are both the backend-down fallback layer and the primary unchanged-data recall path for SSR. The runtime snapshot is a separate store from backend in-memory `lastGeneratedData`, so timestamp persistence must only happen when the runtime snapshot write is complete; if the backend replies `updated: false`, or if any existing file is preserved because the incoming dataset is empty, `last_timestamp.txt` is intentionally **not** advanced. This is the **sole disk writer** for stats files (apart from admin manual regeneration).
-4. Backend compares latest DB match timestamp (polls DB every 60s in background).
-5. If updated, backend regenerates datasets once and caches in memory permanently (`lastGeneratedData`).
+3. **Disk write-through**: Root layout's `after()` hook calls `incrementalRefresh()` (cooldown: 90s) which fetches backend `GET /stats/incremental` and persists JSON files plus `stats_meta.json` to `runtime-data/` using `writeStatsSnapshot()` / `persistSnapshotMetadata()` from `lib/statsSnapshot.ts`. These files are both the backend-down fallback layer and the primary unchanged-data recall path for SSR. The runtime snapshot is a separate store from backend in-memory `lastGeneratedData`, so metadata persistence must only happen when the runtime snapshot write is complete; if the backend replies `updated: false`, or if any existing file is preserved because the incoming dataset is empty, `stats_meta.json` is intentionally **not** advanced. This is the **sole disk writer** for stats files (apart from admin manual regeneration).
+4. Backend tracks source-table mutations in `stats_refresh_state` using a single `dirty` flag, `last_mutation_at`, and monotonic `current_version`.
+5. Once the state stays quiet for the configured quiet window, backend regenerates datasets once, increments the published version, clears `dirty`, and pushes the completed snapshot to the frontend.
 6. `/api/data/map_stats` route serves `map_stats.json` from `runtime-data/` on disk — used by team-picker. All other `/api/data/*` routes have been removed.
 
 ## Canonical Season Config
@@ -64,7 +64,7 @@ The canonical file list lives in `frontend-nextjs/src/lib/statsSnapshot.ts` (`ST
 - `frontend-nextjs/src/lib/statsSnapshot.ts` (single source of truth for the 13-file list + disk write helper)
 - `backend/generate-stats-from-prod.js`
 - `frontend-nextjs/src/lib/dataReader.ts` (disk fallback defaults)
-- `frontend-nextjs/src/lib/statsServer.ts` (SSR recall path — key names must match backend dataset keys, and unchanged fast-path depends on complete `runtime-data` files + `last_timestamp.txt`)
+- `frontend-nextjs/src/lib/statsServer.ts` (SSR recall path — key names must match backend dataset keys, and unchanged fast-path depends on complete `runtime-data` files + `stats_meta.json`)
 
 ## Memory Optimizations (1 GB VM)
 
@@ -79,18 +79,18 @@ The platform runs on a 1 GB RAM GCP VM. Key optimizations:
 ## Diagnostics and Notes
 
 - Main backend stats routes:
-  - `GET /stats/incremental` — checks cached DB timestamp (zero DB cost), regenerates if data changed. Returns full dataset when caller has no usable `lastKnownTs`, or `{ updated: false, serverTimestamp }` when unchanged.
+  - `GET /stats/incremental` — checks the cached published stats version (zero DB cost), returns full dataset when caller has an older `lastKnownVersion`, or `{ updated: false, statsVersion, serverTimestamp }` when unchanged.
   - `POST /stats/force-regenerate` — admin-only, clears all caches and regenerates everything
   - `GET /stats/diagnostics` — returns cached dataset sizes and season config
 - Data recall rules:
   - SSR should only use `runtime-data/` as the unchanged fast path when every requested dataset file exists and parses successfully.
   - If any requested runtime file is missing or unreadable, SSR must force a full backend payload rather than mix partial runtime data with fresh backend data.
   - Backend in-memory stats and frontend `runtime-data/` are separate stores. A fresh backend timestamp does not make the runtime snapshot safe unless the corresponding runtime files were fully written.
-  - Background unchanged checks (`updated: false`) do not advance the persisted runtime timestamp; otherwise SSR could trust older runtime files as if they matched the latest backend version.
-  - If a write preserves an older runtime file because the incoming dataset is empty, the persisted timestamp must remain unchanged so SSR will keep requesting a full backend payload instead of trusting a mixed-version runtime snapshot.
+  - Background unchanged checks (`updated: false`) do not advance the persisted runtime metadata; otherwise SSR could trust older runtime files as if they matched the latest published version.
+  - If a write preserves an older runtime file because the incoming dataset is empty, the persisted metadata must remain unchanged so SSR will keep requesting a full backend payload instead of trusting a mixed-version runtime snapshot.
   - The SSR module cache is completeness-aware: it should only satisfy a request when all requested keys are already cached. Partial page-level reads may extend the cache, but must not replace unrelated cached datasets.
   - Generic disk fallback remains the last resort for backend-unavailable scenarios.
-- Backend polls the DB timestamp every 60s in the background and touches `live_version` to keep attendance table pages in PG buffer cache. Page loads never hit the DB directly.
+- Backend polls `stats_refresh_state` in the background and touches `live_version` to keep attendance table pages in PG buffer cache. Page loads never hit the DB directly.
 - Historical (completed) season data is cached in memory and only recomputed on force-regenerate.
 
 ## Live State (Attendance + Team Picker)

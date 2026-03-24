@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/authSession';
-import { writeStatsSnapshotWithStatus, persistTimestamp } from '@/lib/statsSnapshot';
+import { writeStatsSnapshotWithStatus, persistSnapshotMetadata } from '@/lib/statsSnapshot';
 
 const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
 
@@ -54,7 +54,10 @@ export async function POST(req: NextRequest) {
     const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
     const writeResult = await writeStatsSnapshotWithStatus(data, runtimeDir);
     if (writeResult.complete) {
-      await persistTimestamp(runtimeDir, data.serverTimestamp || new Date().toISOString());
+      await persistSnapshotMetadata(runtimeDir, {
+        statsVersion: Number(data.statsVersion || 0),
+        serverTimestamp: typeof data.serverTimestamp === 'string' ? data.serverTimestamp : new Date().toISOString(),
+      });
     }
 
     return NextResponse.json({
@@ -63,6 +66,7 @@ export async function POST(req: NextRequest) {
       filesWritten: writeResult.written,
       snapshotComplete: writeResult.complete,
       preservedExistingDueToEmpty: writeResult.preservedExistingDueToEmpty,
+      statsVersion: Number(data.statsVersion || 0),
       serverTimestamp: data.serverTimestamp,
     });
   } catch (error: any) {

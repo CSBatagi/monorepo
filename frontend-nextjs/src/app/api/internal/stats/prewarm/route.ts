@@ -1,20 +1,37 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
-import { STAT_FILES, writeStatsSnapshotWithStatus, persistTimestamp } from '@/lib/statsSnapshot';
+import { revalidatePath } from 'next/cache';
+import { readSnapshotMetadata, STAT_FILES, writeStatsSnapshotWithStatus, persistSnapshotMetadata } from '@/lib/statsSnapshot';
 
 const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
 const AUTH_TOKEN = process.env.MATCHMAKING_TOKEN;
 const BACKEND_TIMEOUT_MS = 30000;
-const TIMESTAMP_FILE = 'last_timestamp.txt';
+const DATASET_PAGE_MAP: Record<string, string[]> = {
+  season_avg: ['/season-avg'],
+  season_avg_periods: ['/season-avg'],
+  last10: ['/last10'],
+  night_avg: ['/gece-ortalama'],
+  night_avg_all: ['/gece-ortalama', '/performans-odulleri', '/gecenin-mvpsi', '/batak-allstars'],
+  sonmac_by_date: ['/sonmac', '/mac-sonuclari', '/batak-allstars'],
+  sonmac_by_date_all: ['/sonmac', '/mac-sonuclari', '/batak-allstars'],
+  duello_son_mac: ['/duello'],
+  duello_sezon: ['/duello'],
+  performance_data: ['/performance'],
+  players_stats: ['/oyuncular'],
+  players_stats_periods: ['/oyuncular'],
+};
 
-async function readPersistedTimestamp(runtimeDir: string): Promise<string | null> {
-  try {
-    const raw = await fs.readFile(path.join(runtimeDir, TIMESTAMP_FILE), 'utf-8');
-    return raw.trim() || null;
-  } catch {
-    return null;
+function collectRevalidationPaths(data: Record<string, unknown>): string[] {
+  const paths = new Set<string>();
+  for (const base of STAT_FILES) {
+    const key = base.replace(/\.json$/, '');
+    if (data[key] === undefined) continue;
+    for (const pagePath of DATASET_PAGE_MAP[key] || []) {
+      paths.add(pagePath);
+    }
   }
+  return [...paths];
 }
 
 async function hasRuntimeStatFiles(runtimeDir: string): Promise<boolean> {
@@ -28,9 +45,9 @@ async function hasRuntimeStatFiles(runtimeDir: string): Promise<boolean> {
   return true;
 }
 
-async function fetchIncrementalSnapshot(lastKnownTs: string | null) {
+async function fetchIncrementalSnapshot(lastKnownVersion: number | null) {
   const url = new URL('/stats/incremental', BACKEND);
-  if (lastKnownTs) url.searchParams.set('lastKnownTs', lastKnownTs);
+  if (lastKnownVersion && lastKnownVersion > 0) url.searchParams.set('lastKnownVersion', String(lastKnownVersion));
   url.searchParams.set('_cb', Date.now().toString());
 
   const ac = new AbortController();
@@ -68,12 +85,12 @@ export async function POST(req: NextRequest) {
 
     const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
     const hadRuntimeFiles = await hasRuntimeStatFiles(runtimeDir);
-    const persistedTs = hadRuntimeFiles ? await readPersistedTimestamp(runtimeDir) : null;
+    const metadata = hadRuntimeFiles ? await readSnapshotMetadata(runtimeDir) : null;
 
-    let data = await fetchIncrementalSnapshot(persistedTs);
+    let data = await fetchIncrementalSnapshot(metadata?.statsVersion || null);
 
-    // Cold frontend volume: ask again without lastKnownTs so we receive the full payload
-    // needed to create runtime-data from scratch.
+    // Cold frontend volume: ask again without a known published version so we receive
+    // the full payload needed to create runtime-data from scratch.
     if ((!data?.updated || typeof data !== 'object') && !hadRuntimeFiles) {
       data = await fetchIncrementalSnapshot(null);
     }
@@ -85,8 +102,17 @@ export async function POST(req: NextRequest) {
     const writeResult = data.updated
       ? await writeStatsSnapshotWithStatus(data, runtimeDir)
       : { written: [], preservedExistingDueToEmpty: [], complete: true };
-    if (data.serverTimestamp && writeResult.complete) {
-      await persistTimestamp(runtimeDir, data.serverTimestamp);
+    if (writeResult.complete) {
+      await persistSnapshotMetadata(runtimeDir, {
+        statsVersion: Number(data.statsVersion || metadata?.statsVersion || 0),
+        serverTimestamp: typeof data.serverTimestamp === 'string' ? data.serverTimestamp : metadata?.serverTimestamp || null,
+      });
+    }
+    const revalidatedPaths = data.updated && writeResult.complete
+      ? collectRevalidationPaths(data)
+      : [];
+    for (const pagePath of revalidatedPaths) {
+      revalidatePath(pagePath);
     }
 
     return NextResponse.json({
@@ -96,6 +122,8 @@ export async function POST(req: NextRequest) {
       filesWritten: writeResult.written,
       snapshotComplete: writeResult.complete,
       preservedExistingDueToEmpty: writeResult.preservedExistingDueToEmpty,
+      revalidatedPaths,
+      statsVersion: Number(data.statsVersion || metadata?.statsVersion || 0),
       serverTimestamp: data.serverTimestamp || null,
     });
   } catch (error: any) {
