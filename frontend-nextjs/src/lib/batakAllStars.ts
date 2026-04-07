@@ -159,7 +159,7 @@ function getMainLeagueMapsForDate(sonmacByDate: SonmacByDate, date: string): str
 }
 
 // Modified version of deriveTeamsForDate that only considers main league maps
-function deriveMainLeagueTeamsForDate(sonmacByDate: SonmacByDate, date: string): {
+export function deriveMainLeagueTeamsForDate(sonmacByDate: SonmacByDate, date: string): {
   team1Name: string;
   team2Name: string;
   team1Players: Array<{ steamId: string; name?: string }>;

@@ -398,6 +398,18 @@ body.dark-theme .text-green-600 {
 body.dark-theme .text-yellow-500 {
   color: #facc15 !important;
 }
+
+/* ===== Dark Mode: Amber / Token Wars ===== */
+body.dark-theme .bg-amber-50 {
+  background-color: rgba(217, 119, 6, 0.08) !important;
+}
+body.dark-theme .bg-amber-100 {
+  background-color: rgba(217, 119, 6, 0.15) !important;
+}
+body.dark-theme .text-amber-700 {
+  color: #fbbf24 !important;
+}
+
 body.dark-theme .fill-yellow-400 {
   fill: rgba(250, 204, 21, 0.6) !important;
 }

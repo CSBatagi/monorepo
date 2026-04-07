@@ -119,6 +119,28 @@ export function resetSuperKupa() {
   return livePost('batak-super-kupa', { action: 'reset' });
 }
 
+// --- Token Wars ---
+
+export function setTokenWarsAction(fields: {
+  date: string;
+  actorSteamId: string;
+  targetSteamId: string;
+  tokenType: string;
+  setByUid?: string;
+  setByName?: string;
+  setAt?: number;
+}) {
+  return livePost('token-wars', { action: 'set', ...fields });
+}
+
+export function deleteTokenWarsAction(fields: {
+  date: string;
+  actorSteamId: string;
+  tokenType: string;
+}) {
+  return livePost('token-wars', { action: 'delete', ...fields });
+}
+
 // --- Notification Preferences ---
 
 export async function getNotificationPreferences(): Promise<{ enabled: boolean; topics: Record<string, boolean> }> {

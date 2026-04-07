@@ -633,4 +633,85 @@ router.post('/batak-super-kupa/reset', async (req, res) => {
   }
 });
 
+// ─── Token Wars ─────────────────────────────────────────────
+router.get('/token-wars', async (req, res) => {
+  try {
+    const clientVersion = parseInt(req.query.v) || 0;
+    const currentVersion = await getVersion('token_wars');
+    if (clientVersion >= currentVersion) {
+      return res.status(304).end();
+    }
+
+    const { rows } = await pool.query(
+      `SELECT date, actor_steam_id, target_steam_id, token_type, set_by_uid, set_by_name, set_at
+       FROM token_wars ORDER BY date, set_at`
+    );
+
+    // Group by date
+    const tokensByDate = {};
+    for (const row of rows) {
+      if (!tokensByDate[row.date]) tokensByDate[row.date] = [];
+      tokensByDate[row.date].push({
+        date: row.date,
+        actorSteamId: row.actor_steam_id,
+        targetSteamId: row.target_steam_id,
+        tokenType: row.token_type,
+        setByUid: row.set_by_uid,
+        setByName: row.set_by_name,
+        setAt: row.set_at ? Number(row.set_at) : null
+      });
+    }
+
+    res.json({ tokensByDate, version: currentVersion });
+  } catch (e) {
+    console.error('[live/token-wars GET]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/token-wars/set', async (req, res) => {
+  try {
+    const { date, actorSteamId, targetSteamId, tokenType, setByUid, setByName, setAt } = req.body;
+    if (!date || !actorSteamId || !targetSteamId || !tokenType) {
+      return res.status(400).json({ error: 'date, actorSteamId, targetSteamId, tokenType required' });
+    }
+
+    await pool.query(
+      `INSERT INTO token_wars (date, actor_steam_id, target_steam_id, token_type, set_by_uid, set_by_name, set_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+       ON CONFLICT (date, actor_steam_id, token_type) DO UPDATE SET
+         target_steam_id=$3, set_by_uid=$5, set_by_name=$6, set_at=$7, updated_at=NOW()`,
+      [date, actorSteamId, targetSteamId, tokenType, setByUid || null, setByName || null, setAt || null]
+    );
+
+    await bumpVersion('token_wars');
+    const version = await getVersion('token_wars');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/token-wars/set POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/token-wars/delete', async (req, res) => {
+  try {
+    const { date, actorSteamId, tokenType } = req.body;
+    if (!date || !actorSteamId || !tokenType) {
+      return res.status(400).json({ error: 'date, actorSteamId, tokenType required' });
+    }
+
+    await pool.query(
+      `DELETE FROM token_wars WHERE date = $1 AND actor_steam_id = $2 AND token_type = $3`,
+      [date, actorSteamId, tokenType]
+    );
+
+    await bumpVersion('token_wars');
+    const version = await getVersion('token_wars');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/token-wars/delete POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = { router, setup };

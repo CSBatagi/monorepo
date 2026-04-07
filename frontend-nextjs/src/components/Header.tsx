@@ -15,6 +15,7 @@ const navLinks = [
   { href: "/team-picker", label: "Takım Seçme" },
   { href: "/batak-domination", label: "Batak Domination" },
   { href: "/batak-allstars", label: "Batak All-Stars" },
+  { href: "/token-wars", label: "Batak Token Wars" },
   { href: "/sonmac", label: "Son Maç" },
   { href: "/performans-odulleri", label: "Performans Ödülleri" },
   { href: "/gecenin-mvpsi", label: "Gecenin MVP'si" },
