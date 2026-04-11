@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSession } from '@/contexts/SessionContext';
 import { useLivePolling } from '@/lib/useLivePolling';
 import { setCaptain } from '@/lib/liveApi';
@@ -286,15 +286,12 @@ export default function BatakAllStarsClient({
     team1: null,
     team2: null,
   });
-  const [captainSteamIds, setCaptainSteamIds] = useState<Record<TeamKey, string>>({ team1: '', team2: '' });
+  const [captainDraftSteamIds, setCaptainDraftSteamIds] = useState<Record<TeamKey, string>>({ team1: '', team2: '' });
   const [captainDraftDirty, setCaptainDraftDirty] = useState<Record<TeamKey, boolean>>({ team1: false, team2: false });
   const [savingTeam, setSavingTeam] = useState<Record<TeamKey, boolean>>({ team1: false, team2: false });
   const [message, setMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'standings' | 'raw' | 'kaptanlik' | 'captain-performance' | 'super-kupa'>('standings');
   const [expandedCaptainId, setExpandedCaptainId] = useState<string | null>(null);
-  const previousSelectedDateRef = useRef('');
-  const captainSteamIdsRef = useRef(captainSteamIds);
-  const captainDraftDirtyRef = useRef(captainDraftDirty);
   
   // Selected progress bar index (null = show all/latest, 1-based number = show standings up to that match)
   const [selectedProgressIndex, setSelectedProgressIndex] = useState<number | null>(null);
@@ -451,78 +448,48 @@ export default function BatakAllStarsClient({
     }
   }, [availableDates, seasonStart, selectedDate]);
 
-  // Derive saved captains from global captainsByDate for the selected date
+  // Reset the local draft only when the selected date changes.
   useEffect(() => {
-    captainSteamIdsRef.current = captainSteamIds;
-  }, [captainSteamIds]);
+    setMessage(null);
+    setCaptainDraftDirty({ team1: false, team2: false });
+    setCaptainDraftSteamIds({ team1: '', team2: '' });
+  }, [selectedDate]);
 
+  // Keep saved captains fully synced from live data for the selected date.
   useEffect(() => {
-    captainDraftDirtyRef.current = captainDraftDirty;
-  }, [captainDraftDirty]);
-
-  useEffect(() => {
-    const selectedDateChanged = previousSelectedDateRef.current !== selectedDate;
-    previousSelectedDateRef.current = selectedDate;
-
-    if (selectedDateChanged) {
-      setMessage(null);
-    }
-
     if (!selectedDate || !captainsByDate) {
       setSavedCaptains({ team1: null, team2: null });
-      if (selectedDateChanged) {
-        setCaptainDraftDirty({ team1: false, team2: false });
-        setCaptainSteamIds({ team1: '', team2: '' });
-      }
       return;
     }
 
     const dateData = captainsByDate[selectedDate];
-    const nextSavedCaptains = {
+    setSavedCaptains({
       team1: dateData?.team1 || null,
       team2: dateData?.team2 || null,
-    };
-    setSavedCaptains(nextSavedCaptains);
+    });
+  }, [selectedDate, captainsByDate]);
 
-    if (selectedDateChanged) {
-      setCaptainDraftDirty({ team1: false, team2: false });
-      setCaptainSteamIds({
-        team1: nextSavedCaptains.team1?.steamId || '',
-        team2: nextSavedCaptains.team2?.steamId || '',
-      });
-      return;
-    }
-
-    const currentCaptainSteamIds = captainSteamIdsRef.current;
-    const currentCaptainDraftDirty = captainDraftDirtyRef.current;
-    const nextCaptainSteamIds = { ...currentCaptainSteamIds };
-    const nextCaptainDraftDirty = { ...currentCaptainDraftDirty };
+  useEffect(() => {
+    const nextDirty = { ...captainDraftDirty };
+    let changed = false;
 
     (['team1', 'team2'] as const).forEach((teamKey) => {
-      const savedSteamId = nextSavedCaptains[teamKey]?.steamId || '';
-      if (!currentCaptainDraftDirty[teamKey]) {
-        nextCaptainSteamIds[teamKey] = savedSteamId;
-        return;
-      }
-      if (savedSteamId === currentCaptainSteamIds[teamKey]) {
-        nextCaptainDraftDirty[teamKey] = false;
+      const savedSteamId = savedCaptains[teamKey]?.steamId || '';
+      if (captainDraftDirty[teamKey] && savedSteamId === captainDraftSteamIds[teamKey]) {
+        nextDirty[teamKey] = false;
+        changed = true;
       }
     });
 
-    if (
-      nextCaptainSteamIds.team1 !== currentCaptainSteamIds.team1 ||
-      nextCaptainSteamIds.team2 !== currentCaptainSteamIds.team2
-    ) {
-      setCaptainSteamIds(nextCaptainSteamIds);
+    if (changed) {
+      setCaptainDraftDirty(nextDirty);
     }
+  }, [captainDraftDirty, captainDraftSteamIds, savedCaptains]);
 
-    if (
-      nextCaptainDraftDirty.team1 !== currentCaptainDraftDirty.team1 ||
-      nextCaptainDraftDirty.team2 !== currentCaptainDraftDirty.team2
-    ) {
-      setCaptainDraftDirty(nextCaptainDraftDirty);
-    }
-  }, [selectedDate, captainsByDate]);
+  const captainSteamIds = useMemo<Record<TeamKey, string>>(() => ({
+    team1: captainDraftDirty.team1 ? captainDraftSteamIds.team1 : savedCaptains.team1?.steamId || '',
+    team2: captainDraftDirty.team2 ? captainDraftSteamIds.team2 : savedCaptains.team2?.steamId || '',
+  }), [captainDraftDirty, captainDraftSteamIds, savedCaptains]);
 
   const handleSaveTeamCaptain = async (teamKey: TeamKey) => {
     if (!user) {
@@ -1131,7 +1098,7 @@ export default function BatakAllStarsClient({
                       value={selectedCaptainSteamId}
                       onChange={(e) => {
                         const nextSteamId = e.target.value;
-                        setCaptainSteamIds((prev) => ({ ...prev, [teamKey]: nextSteamId }));
+                        setCaptainDraftSteamIds((prev) => ({ ...prev, [teamKey]: nextSteamId }));
                         setCaptainDraftDirty((prev) => ({ ...prev, [teamKey]: true }));
                       }}
                       disabled={!selectedDate || roster.length === 0}

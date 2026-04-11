@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSession, type SessionUser } from '@/contexts/SessionContext';
 import { useLivePolling } from '@/lib/useLivePolling';
 import { setTokenWarsCaptain, setTokenWarsAction, deleteTokenWarsAction } from '@/lib/liveApi';
@@ -246,8 +246,11 @@ function AdminTokenPanel({
 }) {
   const [tokenType, setTokenType] = useState<TokenAction['tokenType']>('delete_worst');
   const [actorSteamId, setActorSteamId] = useState('');
+  const [targetSteamId, setTargetSteamId] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+
+  const requiresTargetPlayer = tokenType === 'lock_best';
 
   const allPlayers = useMemo(() => {
     const list: Array<{ steamId: string; name: string; leagueId: string }> = [];
@@ -294,6 +297,31 @@ function AdminTokenPanel({
 
     return list.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   }, [datesIncluded, tokensByDate]);
+
+  const targetCandidates = useMemo(() => {
+    if (!requiresTargetPlayer || !actorSteamId) return [] as TokenWarsPlayerStanding[];
+
+    const actorLeague = getPlayerLeague(actorSteamId, config);
+    if (!actorLeague) return [] as TokenWarsPlayerStanding[];
+
+    const leagueStandings = standingsByLeague[actorLeague]?.standings || [];
+    return leagueStandings.filter((player) => {
+      if (player.steamId === actorSteamId) return false;
+      return player.nightBreakdown.some((night) => !night.deleted && !night.locked && !night.protected && !night.unlocked);
+    });
+  }, [actorSteamId, config, requiresTargetPlayer, standingsByLeague]);
+
+  useEffect(() => {
+    if (!requiresTargetPlayer) {
+      if (targetSteamId) setTargetSteamId('');
+      return;
+    }
+
+    const targetStillValid = targetCandidates.some((player) => player.steamId === targetSteamId);
+    if (!targetStillValid) {
+      setTargetSteamId(targetCandidates[0]?.steamId || '');
+    }
+  }, [requiresTargetPlayer, targetCandidates, targetSteamId]);
 
   const autoSelection = useMemo<{
     token: Omit<TokenAction, 'id'> | null;
@@ -359,23 +387,26 @@ function AdminTokenPanel({
       return { token: makeToken(entry, actorSteamId), summary: makeSummary(entry, actorSteamId), error: null };
     }
 
-    const opponentChoices = leagueStandings
-      .filter((player) => player.steamId !== actorSteamId)
-      .flatMap((player) =>
-        player.nightBreakdown
-          .filter((night) => !night.deleted && !night.locked && !night.protected && !night.unlocked)
-          .map((night) => ({ player, night })),
-      )
-      .sort((a, b) => byHighestPoints(a.night, b.night));
+    if (!targetSteamId) {
+      return { token: null, summary: null, error: 'Saldirilacak oyuncuyu secin.' };
+    }
 
-    const choice = opponentChoices[0];
-    if (!choice) return { token: null, summary: null, error: 'Kitlenecek rakip gecesi bulunamadi.' };
+    const targetStanding = leagueStandings.find((player) => player.steamId === targetSteamId);
+    if (!targetStanding || targetStanding.steamId === actorSteamId) {
+      return { token: null, summary: null, error: 'Gecerli bir rakip secin.' };
+    }
+
+    const choice = [...targetStanding.nightBreakdown]
+      .filter((night) => !night.deleted && !night.locked && !night.protected && !night.unlocked)
+      .sort(byHighestPoints)[0];
+
+    if (!choice) return { token: null, summary: null, error: 'Secilen rakip icin kitlenecek gece bulunamadi.' };
     return {
-      token: makeToken(choice.night, choice.player.steamId),
-      summary: makeSummary(choice.night, choice.player.steamId),
+      token: makeToken(choice, targetStanding.steamId),
+      summary: makeSummary(choice, targetStanding.steamId),
       error: null,
     };
-  }, [actorSteamId, config, playersIndex, standingsByLeague, tokenType, user]);
+  }, [actorSteamId, config, playersIndex, standingsByLeague, targetSteamId, tokenType, user]);
 
   const handleSubmit = async () => {
     if (!actorSteamId || !tokenType) {
@@ -412,6 +443,7 @@ function AdminTokenPanel({
       await onSubmitToken({ ...autoSelection.token, setAt: Date.now() });
       setMsg('Token kaydedildi.');
       setActorSteamId('');
+      setTargetSteamId('');
     } catch (error: unknown) {
       setMsg(`Hata: ${getErrorMessage(error)}`);
     } finally {
@@ -431,12 +463,15 @@ function AdminTokenPanel({
     <div className="rounded border border-slate-200 bg-slate-50 p-4 shadow-sm">
       <h4 className="mb-4 font-semibold text-gray-800">Token Yönetimi (Admin)</h4>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className="mb-1 block text-xs text-gray-600">Token Tipi</label>
           <select
             value={tokenType}
-            onChange={(e) => setTokenType(e.target.value as TokenAction['tokenType'])}
+            onChange={(e) => {
+              setTokenType(e.target.value as TokenAction['tokenType']);
+              setMsg(null);
+            }}
             className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800 shadow-sm"
           >
             <option value="delete_worst">Sil (En Kötü Gece)</option>
@@ -450,7 +485,10 @@ function AdminTokenPanel({
           <label className="mb-1 block text-xs text-gray-600">Kullanan Oyuncu</label>
           <select
             value={actorSteamId}
-            onChange={(e) => setActorSteamId(e.target.value)}
+            onChange={(e) => {
+              setActorSteamId(e.target.value);
+              setMsg(null);
+            }}
             className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800 shadow-sm"
           >
             <option value="">Seçin...</option>
@@ -466,6 +504,28 @@ function AdminTokenPanel({
             })}
           </select>
         </div>
+
+        {requiresTargetPlayer && (
+          <div>
+            <label className="mb-1 block text-xs text-gray-600">Hedef Oyuncu</label>
+            <select
+              value={targetSteamId}
+              onChange={(e) => {
+                setTargetSteamId(e.target.value);
+                setMsg(null);
+              }}
+              disabled={!actorSteamId || targetCandidates.length === 0}
+              className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800 shadow-sm disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              <option value="">Seçin...</option>
+              {targetCandidates.map((player) => (
+                <option key={player.steamId} value={player.steamId}>
+                  {player.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="flex items-end">
           <button
@@ -588,14 +648,11 @@ export default function TokenWarsClient({
   const [activeTab, setActiveTab] = useState<ActiveTab>('standings');
   const [selectedProgressIndex, setSelectedProgressIndex] = useState<number | null>(null);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
-  const [captainSteamIds, setCaptainSteamIds] = useState<Record<TeamKey, string>>({ team1: '', team2: '' });
+  const [captainDraftSteamIds, setCaptainDraftSteamIds] = useState<Record<TeamKey, string>>({ team1: '', team2: '' });
   const [captainDraftDirty, setCaptainDraftDirty] = useState<Record<TeamKey, boolean>>({ team1: false, team2: false });
   const [savedCaptains, setSavedCaptains] = useState<Record<TeamKey, CaptainRecord | null>>({ team1: null, team2: null });
   const [savingTeam, setSavingTeam] = useState<Record<TeamKey, boolean>>({ team1: false, team2: false });
   const [message, setMessage] = useState<string | null>(null);
-  const previousSelectedDateRef = useRef('');
-  const captainSteamIdsRef = useRef(captainSteamIds);
-  const captainDraftDirtyRef = useRef(captainDraftDirty);
 
   const teams = useMemo(() => {
     if (!selectedDate) return null;
@@ -678,73 +735,42 @@ export default function TokenWarsClient({
   }, [availableDates, selectedDate]);
 
   useEffect(() => {
-    captainSteamIdsRef.current = captainSteamIds;
-  }, [captainSteamIds]);
+    setMessage(null);
+    setCaptainDraftDirty({ team1: false, team2: false });
+    setCaptainDraftSteamIds({ team1: '', team2: '' });
+  }, [selectedDate]);
 
   useEffect(() => {
-    captainDraftDirtyRef.current = captainDraftDirty;
-  }, [captainDraftDirty]);
-
-  useEffect(() => {
-    const selectedDateChanged = previousSelectedDateRef.current !== selectedDate;
-    previousSelectedDateRef.current = selectedDate;
-
-    if (selectedDateChanged) {
-      setMessage(null);
-    }
-
     if (!selectedDate || !captainsByDate) {
       setSavedCaptains({ team1: null, team2: null });
-      if (selectedDateChanged) {
-        setCaptainDraftDirty({ team1: false, team2: false });
-        setCaptainSteamIds({ team1: '', team2: '' });
-      }
       return;
     }
 
     const dateData = captainsByDate[selectedDate];
-    const nextSavedCaptains = { team1: dateData?.team1 || null, team2: dateData?.team2 || null };
-    setSavedCaptains(nextSavedCaptains);
+    setSavedCaptains({ team1: dateData?.team1 || null, team2: dateData?.team2 || null });
+  }, [captainsByDate, selectedDate]);
 
-    if (selectedDateChanged) {
-      setCaptainDraftDirty({ team1: false, team2: false });
-      setCaptainSteamIds({
-        team1: nextSavedCaptains.team1?.steamId || '',
-        team2: nextSavedCaptains.team2?.steamId || '',
-      });
-      return;
-    }
-
-    const currentCaptainSteamIds = captainSteamIdsRef.current;
-    const currentCaptainDraftDirty = captainDraftDirtyRef.current;
-    const nextCaptainSteamIds = { ...currentCaptainSteamIds };
-    const nextCaptainDraftDirty = { ...currentCaptainDraftDirty };
+  useEffect(() => {
+    const nextDirty = { ...captainDraftDirty };
+    let changed = false;
 
     (['team1', 'team2'] as const).forEach((teamKey) => {
-      const savedSteamId = nextSavedCaptains[teamKey]?.steamId || '';
-      if (!currentCaptainDraftDirty[teamKey]) {
-        nextCaptainSteamIds[teamKey] = savedSteamId;
-        return;
-      }
-      if (savedSteamId === currentCaptainSteamIds[teamKey]) {
-        nextCaptainDraftDirty[teamKey] = false;
+      const savedSteamId = savedCaptains[teamKey]?.steamId || '';
+      if (captainDraftDirty[teamKey] && savedSteamId === captainDraftSteamIds[teamKey]) {
+        nextDirty[teamKey] = false;
+        changed = true;
       }
     });
 
-    if (
-      nextCaptainSteamIds.team1 !== currentCaptainSteamIds.team1 ||
-      nextCaptainSteamIds.team2 !== currentCaptainSteamIds.team2
-    ) {
-      setCaptainSteamIds(nextCaptainSteamIds);
+    if (changed) {
+      setCaptainDraftDirty(nextDirty);
     }
+  }, [captainDraftDirty, captainDraftSteamIds, savedCaptains]);
 
-    if (
-      nextCaptainDraftDirty.team1 !== currentCaptainDraftDirty.team1 ||
-      nextCaptainDraftDirty.team2 !== currentCaptainDraftDirty.team2
-    ) {
-      setCaptainDraftDirty(nextCaptainDraftDirty);
-    }
-  }, [captainsByDate, selectedDate]);
+  const captainSteamIds = useMemo<Record<TeamKey, string>>(() => ({
+    team1: captainDraftDirty.team1 ? captainDraftSteamIds.team1 : savedCaptains.team1?.steamId || '',
+    team2: captainDraftDirty.team2 ? captainDraftSteamIds.team2 : savedCaptains.team2?.steamId || '',
+  }), [captainDraftDirty, captainDraftSteamIds, savedCaptains]);
 
   const handleSaveTeamCaptain = async (teamKey: TeamKey) => {
     if (!user) {
@@ -1033,7 +1059,7 @@ export default function TokenWarsClient({
                       value={captainSteamIds[teamKey]}
                       onChange={(e) => {
                         const nextSteamId = e.target.value;
-                        setCaptainSteamIds((state) => ({ ...state, [teamKey]: nextSteamId }));
+                        setCaptainDraftSteamIds((state) => ({ ...state, [teamKey]: nextSteamId }));
                         setCaptainDraftDirty((state) => ({ ...state, [teamKey]: true }));
                       }}
                       className="mt-2 w-full rounded border px-2 py-1 text-sm"
