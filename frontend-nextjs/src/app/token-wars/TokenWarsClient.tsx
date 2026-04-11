@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSession, type SessionUser } from '@/contexts/SessionContext';
 import { useLivePolling } from '@/lib/useLivePolling';
-import { setCaptain, setTokenWarsAction, deleteTokenWarsAction } from '@/lib/liveApi';
+import { setTokenWarsCaptain, setTokenWarsAction, deleteTokenWarsAction } from '@/lib/liveApi';
 import {
   ArrowDown,
   ArrowUp,
@@ -228,6 +228,7 @@ function AdminTokenPanel({
   captainsByDate,
   tokensByDate,
   datesIncluded,
+  standingsByLeague,
   playersIndex,
   onSubmitToken,
   onDeleteToken,
@@ -237,6 +238,7 @@ function AdminTokenPanel({
   captainsByDate: CaptainsByDateSnapshot | null;
   tokensByDate: TokensByDateSnapshot | null;
   datesIncluded: string[];
+  standingsByLeague: Record<string, { id: string; name: string; standings: TokenWarsPlayerStanding[] }>;
   playersIndex: ReturnType<typeof buildPlayersIndex>;
   onSubmitToken: (token: Omit<TokenAction, 'id'>) => Promise<void>;
   onDeleteToken: (date: string, actorSteamId: string, tokenType: string) => Promise<void>;
@@ -244,8 +246,6 @@ function AdminTokenPanel({
 }) {
   const [tokenType, setTokenType] = useState<TokenAction['tokenType']>('delete_worst');
   const [actorSteamId, setActorSteamId] = useState('');
-  const [targetSteamId, setTargetSteamId] = useState('');
-  const [date, setDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -263,24 +263,14 @@ function AdminTokenPanel({
     return list;
   }, [config, playersIndex]);
 
-  const targetPlayers = useMemo(() => {
-    if (tokenType === 'delete_worst' || tokenType === 'protect_best') {
-      return actorSteamId ? allPlayers.filter((p) => p.steamId === actorSteamId) : [];
-    }
-    if (tokenType === 'lock_best') {
-      const actorLeague = getPlayerLeague(actorSteamId, config);
-      return allPlayers.filter((p) => p.leagueId === actorLeague && p.steamId !== actorSteamId);
-    }
-    return allPlayers;
-  }, [actorSteamId, allPlayers, config, tokenType]);
-
   const tokenBudget = useMemo(() => {
     const datesSet = new Set(datesIncluded);
     const captainCounts = computeCaptainTokens(captainsByDate, datesSet);
     const usedCounts: Record<string, number> = {};
 
     if (tokensByDate) {
-      for (const actions of Object.values(tokensByDate)) {
+      for (const [tokenDate, actions] of Object.entries(tokensByDate)) {
+        if (!datesSet.has(tokenDate)) continue;
         for (const action of actions) {
           usedCounts[action.actorSteamId] = (usedCounts[action.actorSteamId] || 0) + 1;
         }
@@ -293,25 +283,108 @@ function AdminTokenPanel({
   const allTokens = useMemo(() => {
     const list: TokenAction[] = [];
     if (!tokensByDate) return list;
+    const datesSet = new Set(datesIncluded);
 
-    for (const actions of Object.values(tokensByDate)) {
+    for (const [tokenDate, actions] of Object.entries(tokensByDate)) {
+      if (!datesSet.has(tokenDate)) continue;
       for (const action of actions) {
         list.push(action);
       }
     }
 
     return list.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-  }, [tokensByDate]);
+  }, [datesIncluded, tokensByDate]);
 
-  useEffect(() => {
-    if (tokenType === 'delete_worst' || tokenType === 'protect_best') {
-      setTargetSteamId(actorSteamId);
+  const autoSelection = useMemo<{
+    token: Omit<TokenAction, 'id'> | null;
+    summary: string | null;
+    error: string | null;
+  }>(() => {
+    if (!actorSteamId) return { token: null, summary: null, error: null };
+
+    const actorLeague = getPlayerLeague(actorSteamId, config);
+    if (!actorLeague) {
+      return { token: null, summary: null, error: 'Oyuncunun ligi bulunamadi.' };
     }
-  }, [actorSteamId, tokenType]);
+
+    const leagueStandings = standingsByLeague[actorLeague]?.standings || [];
+    const actorStanding = leagueStandings.find((player) => player.steamId === actorSteamId);
+    if (!actorStanding) {
+      return { token: null, summary: null, error: 'Oyuncu icin aktif sezon verisi bulunamadi.' };
+    }
+
+    const byLowestPoints = (a: NightBreakdownEntry, b: NightBreakdownEntry) => {
+      if (a.totalPoints !== b.totalPoints) return a.totalPoints - b.totalPoints;
+      if (a.hltv2Diff !== b.hltv2Diff) return a.hltv2Diff - b.hltv2Diff;
+      return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+    };
+    const byHighestPoints = (a: NightBreakdownEntry, b: NightBreakdownEntry) => {
+      if (a.totalPoints !== b.totalPoints) return b.totalPoints - a.totalPoints;
+      if (a.hltv2Diff !== b.hltv2Diff) return b.hltv2Diff - a.hltv2Diff;
+      return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+    };
+    const signed = (value: number) => `${value >= 0 ? '+' : ''}${value}`;
+    const makeToken = (entry: NightBreakdownEntry, targetSteamId: string): Omit<TokenAction, 'id'> => ({
+      date: entry.date,
+      actorSteamId,
+      targetSteamId,
+      tokenType,
+      setByUid: user?.uid,
+      setByName: user?.name || user?.email || '',
+    });
+    const makeSummary = (entry: NightBreakdownEntry, targetSteamId: string) =>
+      `${displayNameForSteamId(targetSteamId, playersIndex)} - ${entry.date} - Toplam ${entry.totalPoints} (HLTV2 DIFF ${signed(entry.perfPoints)} + Takim ${signed(entry.teamPoints)})`;
+
+    if (tokenType === 'delete_worst') {
+      const entry = [...actorStanding.nightBreakdown]
+        .filter((night) => !night.deleted && !night.locked)
+        .sort(byLowestPoints)[0];
+      if (!entry) return { token: null, summary: null, error: 'Silinecek aktif gece bulunamadi.' };
+      return { token: makeToken(entry, actorSteamId), summary: makeSummary(entry, actorSteamId), error: null };
+    }
+
+    if (tokenType === 'protect_best') {
+      const entry = [...actorStanding.nightBreakdown]
+        .filter((night) => !night.deleted && !night.locked && !night.protected)
+        .sort(byHighestPoints)[0];
+      if (!entry) return { token: null, summary: null, error: 'Korunacak aktif gece bulunamadi.' };
+      return { token: makeToken(entry, actorSteamId), summary: makeSummary(entry, actorSteamId), error: null };
+    }
+
+    if (tokenType === 'unlock') {
+      const entry = [...actorStanding.nightBreakdown]
+        .filter((night) => night.locked)
+        .sort(byHighestPoints)[0];
+      if (!entry) return { token: null, summary: null, error: 'Acik kilitli gece bulunamadi.' };
+      return { token: makeToken(entry, actorSteamId), summary: makeSummary(entry, actorSteamId), error: null };
+    }
+
+    const opponentChoices = leagueStandings
+      .filter((player) => player.steamId !== actorSteamId)
+      .flatMap((player) =>
+        player.nightBreakdown
+          .filter((night) => !night.deleted && !night.locked && !night.protected && !night.unlocked)
+          .map((night) => ({ player, night })),
+      )
+      .sort((a, b) => byHighestPoints(a.night, b.night));
+
+    const choice = opponentChoices[0];
+    if (!choice) return { token: null, summary: null, error: 'Kitlenecek rakip gecesi bulunamadi.' };
+    return {
+      token: makeToken(choice.night, choice.player.steamId),
+      summary: makeSummary(choice.night, choice.player.steamId),
+      error: null,
+    };
+  }, [actorSteamId, config, playersIndex, standingsByLeague, tokenType, user]);
 
   const handleSubmit = async () => {
-    if (!date || !actorSteamId || !targetSteamId || !tokenType) {
-      setMsg('Tüm alanları doldurun.');
+    if (!actorSteamId || !tokenType) {
+      setMsg('Token tipi ve kullanan oyuncuyu secin.');
+      return;
+    }
+
+    if (!autoSelection.token) {
+      setMsg(autoSelection.error || 'Otomatik hedef bulunamadi.');
       return;
     }
 
@@ -336,11 +409,9 @@ function AdminTokenPanel({
     setSaving(true);
     setMsg(null);
     try {
-      await onSubmitToken({ date, actorSteamId, targetSteamId, tokenType, setAt: Date.now() });
+      await onSubmitToken({ ...autoSelection.token, setAt: Date.now() });
       setMsg('Token kaydedildi.');
-      setDate('');
       setActorSteamId('');
-      setTargetSteamId('');
     } catch (error: unknown) {
       setMsg(`Hata: ${getErrorMessage(error)}`);
     } finally {
@@ -360,7 +431,7 @@ function AdminTokenPanel({
     <div className="rounded border border-slate-200 bg-slate-50 p-4 shadow-sm">
       <h4 className="mb-4 font-semibold text-gray-800">Token Yönetimi (Admin)</h4>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <label className="mb-1 block text-xs text-gray-600">Token Tipi</label>
           <select
@@ -396,37 +467,6 @@ function AdminTokenPanel({
           </select>
         </div>
 
-        <div>
-          <label className="mb-1 block text-xs text-gray-600">Hedef Oyuncu</label>
-          <select
-            value={targetSteamId}
-            onChange={(e) => setTargetSteamId(e.target.value)}
-            disabled={tokenType === 'delete_worst' || tokenType === 'protect_best'}
-            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800 shadow-sm disabled:cursor-not-allowed disabled:bg-gray-100"
-          >
-            <option value="">Seçin...</option>
-            {targetPlayers.map((player) => (
-              <option key={player.steamId} value={player.steamId}>
-                {player.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs text-gray-600">Uygulanan Gece</label>
-          <select
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800 shadow-sm"
-          >
-            <option value="">Seçin...</option>
-            {datesIncluded.map((nightDate) => (
-              <option key={nightDate} value={nightDate}>{nightDate}</option>
-            ))}
-          </select>
-        </div>
-
         <div className="flex items-end">
           <button
             type="button"
@@ -437,6 +477,17 @@ function AdminTokenPanel({
             {saving ? 'Kaydediliyor...' : 'Kaydet'}
           </button>
         </div>
+      </div>
+
+      <div className="mt-3 rounded border border-purple-100 bg-white px-3 py-2 text-sm text-gray-700">
+        <span className="font-medium">Otomatik secim: </span>
+        {autoSelection.error ? (
+          <span className="text-amber-700">{autoSelection.error}</span>
+        ) : autoSelection.summary ? (
+          <span>{autoSelection.summary}</span>
+        ) : (
+          <span className="text-gray-500">Oyuncu secince hedef gece otomatik hesaplanir.</span>
+        )}
       </div>
 
       {msg && (
@@ -514,7 +565,7 @@ export default function TokenWarsClient({
   const playersIndex = useMemo(() => buildPlayersIndex(players), [players]);
 
   const { data: captainsData, refetch: refetchCaptains } = useLivePolling<{ captainsByDate: CaptainsByDateSnapshot }>({
-    url: '/api/live/batak-captains',
+    url: '/api/live/token-wars-captains',
     intervalMs: 5000,
     initialData: { captainsByDate: {} },
   });
@@ -666,7 +717,7 @@ export default function TokenWarsClient({
 
     setSavingTeam((state) => ({ ...state, [teamKey]: true }));
     try {
-      await setCaptain({
+      await setTokenWarsCaptain({
         date: selectedDate,
         teamKey,
         steamId: chosenSteamId,
@@ -867,11 +918,14 @@ export default function TokenWarsClient({
 
                                   return (
                                     <td key={date} className={`px-3 py-2 text-center ${getNightStateTone(entry)}`}>
-                                      <div className={`font-mono ${entry.hltv2Diff >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                                        {entry.hltv2Diff >= 0 ? '+' : ''}{entry.hltv2Diff.toFixed(2)}
+                                      <div className="font-mono font-semibold text-gray-900">
+                                        {entry.totalPoints}
                                       </div>
                                       <div className="text-[10px] font-mono text-gray-600">
-                                        Takım {entry.teamPoints >= 0 ? '+' : ''}{entry.teamPoints}
+                                        HLTV2 DIFF {entry.perfPoints >= 0 ? '+' : ''}{entry.perfPoints} + Takim {entry.teamPoints >= 0 ? '+' : ''}{entry.teamPoints}
+                                      </div>
+                                      <div className={`text-[10px] font-mono ${entry.hltv2Diff >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                        ({entry.hltv2Diff >= 0 ? '+' : ''}{entry.hltv2Diff.toFixed(2)})
                                       </div>
                                       <NightStateBadges entry={entry} />
                                     </td>
@@ -955,6 +1009,7 @@ export default function TokenWarsClient({
           captainsByDate={captainsByDate}
           tokensByDate={tokensByDate}
           datesIncluded={standingsData?.datesIncluded || []}
+          standingsByLeague={standingsData?.byLeague || {}}
           playersIndex={playersIndex}
           onSubmitToken={handleSubmitToken}
           onDeleteToken={handleDeleteToken}

@@ -19,13 +19,12 @@ Expected shape:
 
 ```json
 {
-  "season_start": "YYYY-MM-DD",
-  "season_starts": ["YYYY-MM-DD", "..."]
+  "season_start": "YYYY-MM-DD"
 }
 ```
 
-- `season_start`: active season start.
-- `season_starts`: all historical boundaries used for period dropdowns and all-time segmentation.
+- `season_start`: the single global active season start for the website and backend stats generation.
+- Completed feature seasons that need to stay pinned, such as Batak All-Stars, must use a dedicated feature file instead of adding historical boundaries here. Current All-Stars file: `frontend-nextjs/public/data/batak_allstars_season_start.json`.
 
 ## Period-Aware Dataset Contract
 

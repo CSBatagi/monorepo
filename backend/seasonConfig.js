@@ -10,15 +10,6 @@ function normalizeDate(value) {
   return dateOnly;
 }
 
-function uniqueSortedDates(values) {
-  const set = new Set();
-  for (const v of values) {
-    const normalized = normalizeDate(v);
-    if (normalized) set.add(normalized);
-  }
-  return Array.from(set).sort();
-}
-
 function buildCandidateFiles(explicitFile) {
   const files = [];
   if (explicitFile) files.push(explicitFile);
@@ -44,19 +35,12 @@ function resolveSeasonConfig(opts = {}) {
     }
   }
 
-  const startsFromFile = Array.isArray(parsed?.season_starts) ? parsed.season_starts : [];
   const seasonStartFromFile = normalizeDate(parsed?.season_start);
-  const seasonStarts = uniqueSortedDates([...startsFromFile, seasonStartFromFile, fallbackDate]);
-  const seasonStart = seasonStartFromFile || seasonStarts[seasonStarts.length - 1] || fallbackDate;
-
-  if (!seasonStarts.includes(seasonStart)) {
-    seasonStarts.push(seasonStart);
-    seasonStarts.sort();
-  }
+  const seasonStart = seasonStartFromFile || fallbackDate;
 
   return {
     seasonStart,
-    seasonStarts,
+    seasonStarts: [seasonStart],
   };
 }
 

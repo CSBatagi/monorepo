@@ -91,6 +91,19 @@ export function setCaptain(fields: {
   return livePost('batak-captains', { action: 'set', ...fields });
 }
 
+export function setTokenWarsCaptain(fields: {
+  date: string;
+  teamKey: string;
+  steamId: string;
+  steamName?: string;
+  teamName?: string;
+  setByUid?: string;
+  setByName?: string;
+  setAt?: number;
+}) {
+  return livePost('token-wars-captains', { action: 'set', ...fields });
+}
+
 // --- Super Kupa ---
 
 export function setSuperKupaMatch(fields: {

@@ -219,14 +219,17 @@ export function computeTokenWarsStandings(params: {
 
   const datesIncludedSet = new Set(datesIncluded);
   const captainTokensBySteamId = computeCaptainTokens(captainsByDate, datesIncludedSet);
+  const scopedTokensByDate: TokensByDateSnapshot | null = tokensByDate
+    ? Object.fromEntries(Object.entries(tokensByDate).filter(([date]) => datesIncludedSet.has(date)))
+    : null;
 
   // Resolve token effects
-  const { deletedNights, lockedNights, protectedNights, unlockedNights } = resolveTokenEffects(tokensByDate);
+  const { deletedNights, lockedNights, protectedNights, unlockedNights } = resolveTokenEffects(scopedTokensByDate);
 
   // Count tokens used per player
   const tokensUsedBySteamId: Record<string, number> = {};
-  if (tokensByDate) {
-    for (const actions of Object.values(tokensByDate)) {
+  if (scopedTokensByDate) {
+    for (const actions of Object.values(scopedTokensByDate)) {
       for (const t of actions) {
         tokensUsedBySteamId[t.actorSteamId] = (tokensUsedBySteamId[t.actorSteamId] || 0) + 1;
       }
