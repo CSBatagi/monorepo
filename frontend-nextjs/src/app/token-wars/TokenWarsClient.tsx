@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSession, type SessionUser } from '@/contexts/SessionContext';
 import { useLivePolling } from '@/lib/useLivePolling';
 import { setTokenWarsCaptain, setTokenWarsAction, deleteTokenWarsAction } from '@/lib/liveApi';
@@ -589,9 +589,13 @@ export default function TokenWarsClient({
   const [selectedProgressIndex, setSelectedProgressIndex] = useState<number | null>(null);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const [captainSteamIds, setCaptainSteamIds] = useState<Record<TeamKey, string>>({ team1: '', team2: '' });
+  const [captainDraftDirty, setCaptainDraftDirty] = useState<Record<TeamKey, boolean>>({ team1: false, team2: false });
   const [savedCaptains, setSavedCaptains] = useState<Record<TeamKey, CaptainRecord | null>>({ team1: null, team2: null });
   const [savingTeam, setSavingTeam] = useState<Record<TeamKey, boolean>>({ team1: false, team2: false });
   const [message, setMessage] = useState<string | null>(null);
+  const previousSelectedDateRef = useRef('');
+  const captainSteamIdsRef = useRef(captainSteamIds);
+  const captainDraftDirtyRef = useRef(captainDraftDirty);
 
   const teams = useMemo(() => {
     if (!selectedDate) return null;
@@ -674,20 +678,72 @@ export default function TokenWarsClient({
   }, [availableDates, selectedDate]);
 
   useEffect(() => {
-    setMessage(null);
-    setCaptainSteamIds({ team1: '', team2: '' });
+    captainSteamIdsRef.current = captainSteamIds;
+  }, [captainSteamIds]);
+
+  useEffect(() => {
+    captainDraftDirtyRef.current = captainDraftDirty;
+  }, [captainDraftDirty]);
+
+  useEffect(() => {
+    const selectedDateChanged = previousSelectedDateRef.current !== selectedDate;
+    previousSelectedDateRef.current = selectedDate;
+
+    if (selectedDateChanged) {
+      setMessage(null);
+    }
 
     if (!selectedDate || !captainsByDate) {
       setSavedCaptains({ team1: null, team2: null });
+      if (selectedDateChanged) {
+        setCaptainDraftDirty({ team1: false, team2: false });
+        setCaptainSteamIds({ team1: '', team2: '' });
+      }
       return;
     }
 
     const dateData = captainsByDate[selectedDate];
-    setSavedCaptains({ team1: dateData?.team1 || null, team2: dateData?.team2 || null });
-    setCaptainSteamIds({
-      team1: dateData?.team1?.steamId || '',
-      team2: dateData?.team2?.steamId || '',
+    const nextSavedCaptains = { team1: dateData?.team1 || null, team2: dateData?.team2 || null };
+    setSavedCaptains(nextSavedCaptains);
+
+    if (selectedDateChanged) {
+      setCaptainDraftDirty({ team1: false, team2: false });
+      setCaptainSteamIds({
+        team1: nextSavedCaptains.team1?.steamId || '',
+        team2: nextSavedCaptains.team2?.steamId || '',
+      });
+      return;
+    }
+
+    const currentCaptainSteamIds = captainSteamIdsRef.current;
+    const currentCaptainDraftDirty = captainDraftDirtyRef.current;
+    const nextCaptainSteamIds = { ...currentCaptainSteamIds };
+    const nextCaptainDraftDirty = { ...currentCaptainDraftDirty };
+
+    (['team1', 'team2'] as const).forEach((teamKey) => {
+      const savedSteamId = nextSavedCaptains[teamKey]?.steamId || '';
+      if (!currentCaptainDraftDirty[teamKey]) {
+        nextCaptainSteamIds[teamKey] = savedSteamId;
+        return;
+      }
+      if (savedSteamId === currentCaptainSteamIds[teamKey]) {
+        nextCaptainDraftDirty[teamKey] = false;
+      }
     });
+
+    if (
+      nextCaptainSteamIds.team1 !== currentCaptainSteamIds.team1 ||
+      nextCaptainSteamIds.team2 !== currentCaptainSteamIds.team2
+    ) {
+      setCaptainSteamIds(nextCaptainSteamIds);
+    }
+
+    if (
+      nextCaptainDraftDirty.team1 !== currentCaptainDraftDirty.team1 ||
+      nextCaptainDraftDirty.team2 !== currentCaptainDraftDirty.team2
+    ) {
+      setCaptainDraftDirty(nextCaptainDraftDirty);
+    }
   }, [captainsByDate, selectedDate]);
 
   const handleSaveTeamCaptain = async (teamKey: TeamKey) => {
@@ -975,7 +1031,11 @@ export default function TokenWarsClient({
                     )}
                     <select
                       value={captainSteamIds[teamKey]}
-                      onChange={(e) => setCaptainSteamIds((state) => ({ ...state, [teamKey]: e.target.value }))}
+                      onChange={(e) => {
+                        const nextSteamId = e.target.value;
+                        setCaptainSteamIds((state) => ({ ...state, [teamKey]: nextSteamId }));
+                        setCaptainDraftDirty((state) => ({ ...state, [teamKey]: true }));
+                      }}
                       className="mt-2 w-full rounded border px-2 py-1 text-sm"
                     >
                       <option value="">Seçin...</option>
