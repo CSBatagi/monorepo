@@ -76,7 +76,7 @@ if (-not (Test-Path "backend\.env")) {
             }
         }
         
-        $backendEnv += "`n# GCP Configuration`nVM_NAME=cs2-server`nGCP_ZONE=europe-west3-c`nGOOGLE_APPLICATION_CREDENTIALS=../credentials.json`n`n# Server Configuration`nPORT=3000`nNODE_ENV=development`n"
+        $backendEnv += "`n# GCP Configuration`nVM_NAME=backend-1`nGCP_ZONE=us-east1-d`nGOOGLE_APPLICATION_CREDENTIALS=../credentials.json`n`n# Server Configuration`nPORT=3000`nNODE_ENV=development`n"
         
         $backendEnv | Out-File -FilePath "backend\.env" -Encoding utf8
         Write-Host "OK Created backend/.env from .backend_secrets" -ForegroundColor Green

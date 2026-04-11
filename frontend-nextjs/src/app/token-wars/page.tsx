@@ -9,9 +9,12 @@ export default async function TokenWarsPage() {
   const seasonStart = typeof seasonStartRaw?.season_start === 'string' ? seasonStartRaw.season_start.split('T')[0] : null;
   const players = (await readJson('players.json')) || [];
   const config = (await readJson('token_wars_config.json')) || null;
-  const stats = await fetchStats('night_avg', 'sonmac_by_date');
-  const nightAvg = stats.night_avg || {};
-  const sonmacByDate = stats.sonmac_by_date || {};
+  // Use _all variants: the season-filtered night_avg/sonmac_by_date can go stale
+  // across season boundaries (ISR cache baked with old season data).
+  // Client-side seasonStart filtering handles the rest.
+  const stats = await fetchStats('night_avg_all', 'sonmac_by_date_all');
+  const nightAvg = stats.night_avg_all || {};
+  const sonmacByDate = stats.sonmac_by_date_all || {};
   return (
     <div id="page-token_wars" className="page-content page-content-container">
       <h2 className="text-2xl font-semibold text-purple-600 mb-4">Batak Token Wars</h2>
