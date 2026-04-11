@@ -135,7 +135,6 @@ export function resetSuperKupa() {
 // --- Token Wars ---
 
 export function setTokenWarsAction(fields: {
-  date: string;
   actorSteamId: string;
   targetSteamId: string;
   tokenType: string;
@@ -147,9 +146,7 @@ export function setTokenWarsAction(fields: {
 }
 
 export function deleteTokenWarsAction(fields: {
-  date: string;
-  actorSteamId: string;
-  tokenType: string;
+  id: number;
 }) {
   return livePost('token-wars', { action: 'delete', ...fields });
 }

@@ -879,7 +879,7 @@ if (!TEST_MODE) {
       `CREATE TABLE IF NOT EXISTS batak_super_kupa (slot TEXT PRIMARY KEY, player1_steam_id TEXT NOT NULL, player1_name TEXT NOT NULL, player1_league TEXT NOT NULL, player2_steam_id TEXT NOT NULL, player2_name TEXT NOT NULL, player2_league TEXT NOT NULL, winner_steam_id TEXT, score TEXT, date TEXT, set_by_uid TEXT, set_by_name TEXT, set_at BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       // Token Wars tables — separated from Batak AllStars season state
       `CREATE TABLE IF NOT EXISTS token_wars_captains (date TEXT NOT NULL, team_key TEXT NOT NULL, steam_id TEXT NOT NULL, steam_name TEXT, team_name TEXT, set_by_uid TEXT, set_by_name TEXT, set_at BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (date, team_key))`,
-      `CREATE TABLE IF NOT EXISTS token_wars (date TEXT NOT NULL, actor_steam_id TEXT NOT NULL, target_steam_id TEXT NOT NULL, token_type TEXT NOT NULL, set_by_uid TEXT, set_by_name TEXT, set_at BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (date, actor_steam_id, token_type))`,
+      `CREATE TABLE IF NOT EXISTS token_wars (id SERIAL PRIMARY KEY, actor_steam_id TEXT NOT NULL, target_steam_id TEXT NOT NULL, token_type TEXT NOT NULL, set_by_uid TEXT, set_by_name TEXT, set_at BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       // Admin table — email-based admin lookup
       `CREATE TABLE IF NOT EXISTS admins (email TEXT PRIMARY KEY, is_admin BOOLEAN NOT NULL DEFAULT TRUE, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       // Notification preferences — replaces Firebase RTDB notifications/preferences/{uid}

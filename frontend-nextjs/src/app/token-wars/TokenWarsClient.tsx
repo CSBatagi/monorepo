@@ -35,7 +35,7 @@ import {
   type TokenAction,
   type TokenWarsConfig,
   type TokenWarsPlayerStanding,
-  type TokensByDateSnapshot,
+  type TokensSnapshot,
 } from '@/lib/tokenWars';
 
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || 'osirikler';
@@ -226,7 +226,7 @@ function ScoringReference({ config }: { config: TokenWarsConfig }) {
 function AdminTokenPanel({
   config,
   captainsByDate,
-  tokensByDate,
+  tokens,
   datesIncluded,
   standingsByLeague,
   playersIndex,
@@ -236,12 +236,12 @@ function AdminTokenPanel({
 }: {
   config: TokenWarsConfig;
   captainsByDate: CaptainsByDateSnapshot | null;
-  tokensByDate: TokensByDateSnapshot | null;
+  tokens: TokensSnapshot | null;
   datesIncluded: string[];
   standingsByLeague: Record<string, { id: string; name: string; standings: TokenWarsPlayerStanding[] }>;
   playersIndex: ReturnType<typeof buildPlayersIndex>;
   onSubmitToken: (token: Omit<TokenAction, 'id'>) => Promise<void>;
-  onDeleteToken: (date: string, actorSteamId: string, tokenType: string) => Promise<void>;
+  onDeleteToken: (tokenId: number) => Promise<void>;
   user: SessionUser | null;
 }) {
   const [tokenType, setTokenType] = useState<TokenAction['tokenType']>('delete_worst');
@@ -271,32 +271,19 @@ function AdminTokenPanel({
     const captainCounts = computeCaptainTokens(captainsByDate, datesSet);
     const usedCounts: Record<string, number> = {};
 
-    if (tokensByDate) {
-      for (const [tokenDate, actions] of Object.entries(tokensByDate)) {
-        if (!datesSet.has(tokenDate)) continue;
-        for (const action of actions) {
-          usedCounts[action.actorSteamId] = (usedCounts[action.actorSteamId] || 0) + 1;
-        }
+    if (tokens) {
+      for (const action of tokens) {
+        usedCounts[action.actorSteamId] = (usedCounts[action.actorSteamId] || 0) + 1;
       }
     }
 
     return { captainCounts, usedCounts };
-  }, [captainsByDate, datesIncluded, tokensByDate]);
+  }, [captainsByDate, datesIncluded, tokens]);
 
   const allTokens = useMemo(() => {
-    const list: TokenAction[] = [];
-    if (!tokensByDate) return list;
-    const datesSet = new Set(datesIncluded);
-
-    for (const [tokenDate, actions] of Object.entries(tokensByDate)) {
-      if (!datesSet.has(tokenDate)) continue;
-      for (const action of actions) {
-        list.push(action);
-      }
-    }
-
-    return list.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-  }, [datesIncluded, tokensByDate]);
+    if (!tokens) return [];
+    return [...tokens].sort((a, b) => (b.setAt ?? 0) - (a.setAt ?? 0));
+  }, [tokens]);
 
   const targetCandidates = useMemo(() => {
     if (!requiresTargetPlayer || !actorSteamId) return [] as TokenWarsPlayerStanding[];
@@ -352,8 +339,7 @@ function AdminTokenPanel({
       return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
     };
     const signed = (value: number) => `${value >= 0 ? '+' : ''}${value}`;
-    const makeToken = (entry: NightBreakdownEntry, targetSteamId: string): Omit<TokenAction, 'id'> => ({
-      date: entry.date,
+    const makeToken = (targetSteamId: string): Omit<TokenAction, 'id'> => ({
       actorSteamId,
       targetSteamId,
       tokenType,
@@ -361,14 +347,14 @@ function AdminTokenPanel({
       setByName: user?.name || user?.email || '',
     });
     const makeSummary = (entry: NightBreakdownEntry, targetSteamId: string) =>
-      `${displayNameForSteamId(targetSteamId, playersIndex)} - ${entry.date} - Toplam ${entry.totalPoints} (HLTV2 DIFF ${signed(entry.perfPoints)} + Takim ${signed(entry.teamPoints)})`;
+      `${displayNameForSteamId(targetSteamId, playersIndex)} - su an ${entry.date} - Toplam ${entry.totalPoints} (HLTV2 DIFF ${signed(entry.perfPoints)} + Takim ${signed(entry.teamPoints)})`;
 
     if (tokenType === 'delete_worst') {
       const entry = [...actorStanding.nightBreakdown]
         .filter((night) => !night.deleted && !night.locked)
         .sort(byLowestPoints)[0];
       if (!entry) return { token: null, summary: null, error: 'Silinecek aktif gece bulunamadi.' };
-      return { token: makeToken(entry, actorSteamId), summary: makeSummary(entry, actorSteamId), error: null };
+      return { token: makeToken(actorSteamId), summary: makeSummary(entry, actorSteamId), error: null };
     }
 
     if (tokenType === 'protect_best') {
@@ -376,7 +362,7 @@ function AdminTokenPanel({
         .filter((night) => !night.deleted && !night.locked && !night.protected)
         .sort(byHighestPoints)[0];
       if (!entry) return { token: null, summary: null, error: 'Korunacak aktif gece bulunamadi.' };
-      return { token: makeToken(entry, actorSteamId), summary: makeSummary(entry, actorSteamId), error: null };
+      return { token: makeToken(actorSteamId), summary: makeSummary(entry, actorSteamId), error: null };
     }
 
     if (tokenType === 'unlock') {
@@ -384,7 +370,7 @@ function AdminTokenPanel({
         .filter((night) => night.locked)
         .sort(byHighestPoints)[0];
       if (!entry) return { token: null, summary: null, error: 'Acik kilitli gece bulunamadi.' };
-      return { token: makeToken(entry, actorSteamId), summary: makeSummary(entry, actorSteamId), error: null };
+      return { token: makeToken(actorSteamId), summary: makeSummary(entry, actorSteamId), error: null };
     }
 
     if (!targetSteamId) {
@@ -402,7 +388,7 @@ function AdminTokenPanel({
 
     if (!choice) return { token: null, summary: null, error: 'Secilen rakip icin kitlenecek gece bulunamadi.' };
     return {
-      token: makeToken(choice, targetStanding.steamId),
+      token: makeToken(targetStanding.steamId),
       summary: makeSummary(choice, targetStanding.steamId),
       error: null,
     };
@@ -561,7 +547,7 @@ function AdminTokenPanel({
           <h5 className="mb-2 text-sm font-medium text-gray-700">Kayıtlı Tokenlar ({allTokens.length})</h5>
           <div className="max-h-60 space-y-1 overflow-y-auto">
             {allTokens.map((token, index) => (
-              <div key={`${token.actorSteamId}-${token.tokenType}-${token.date}-${index}`} className="flex items-center justify-between rounded border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm">
+              <div key={token.id ?? `${token.actorSteamId}-${token.tokenType}-${index}`} className="flex items-center justify-between rounded border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm">
                 <div className="flex items-center gap-2">
                   <TokenBadge type={token.tokenType} />
                   <span className="font-medium">{displayNameForSteamId(token.actorSteamId, playersIndex)}</span>
@@ -571,20 +557,21 @@ function AdminTokenPanel({
                       <span>{displayNameForSteamId(token.targetSteamId, playersIndex)}</span>
                     </>
                   )}
-                  <span className="text-xs text-gray-400">{token.date}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const password = window.prompt('Silmek için şifre girin:');
-                    if (password !== CLEAR_ATTENDANCE_PASSWORD) return;
-                    await onDeleteToken(token.date, token.actorSteamId, token.tokenType);
-                  }}
-                  className="text-xs text-red-400 hover:text-red-600"
-                  title="Sil"
-                >
-                  ×
-                </button>
+                {token.id != null && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const password = window.prompt('Silmek için şifre girin:');
+                      if (password !== CLEAR_ATTENDANCE_PASSWORD) return;
+                      await onDeleteToken(token.id!);
+                    }}
+                    className="text-xs text-red-400 hover:text-red-600"
+                    title="Sil"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -631,12 +618,12 @@ export default function TokenWarsClient({
   });
   const captainsByDate = captainsData.captainsByDate || null;
 
-  const { data: tokensData, refetch: refetchTokens } = useLivePolling<{ tokensByDate: TokensByDateSnapshot }>({
+  const { data: tokensData, refetch: refetchTokens } = useLivePolling<{ tokens: TokensSnapshot }>({
     url: '/api/live/token-wars',
     intervalMs: 5000,
-    initialData: { tokensByDate: {} },
+    initialData: { tokens: [] },
   });
-  const tokensByDate = tokensData.tokensByDate || null;
+  const tokens = tokensData.tokens || null;
 
   const availableDates = useMemo(() => {
     const dates = Object.keys(nightAvg || {});
@@ -665,11 +652,11 @@ export default function TokenWarsClient({
       nightAvg,
       sonmacByDate,
       captainsByDate,
-      tokensByDate,
+      tokens,
       seasonStart,
       playersIndex,
     });
-  }, [captainsByDate, effectiveConfig, nightAvg, playersIndex, seasonStart, sonmacByDate, tokensByDate]);
+  }, [captainsByDate, effectiveConfig, nightAvg, playersIndex, seasonStart, sonmacByDate, tokens]);
 
   const totalPlayedNights = standingsData?.datesIncluded?.length ?? 0;
   const effectiveProgressIndex = selectedProgressIndex === null ? null : Math.min(selectedProgressIndex, totalPlayedNights);
@@ -681,12 +668,12 @@ export default function TokenWarsClient({
       nightAvg,
       sonmacByDate,
       captainsByDate,
-      tokensByDate,
+      tokens,
       seasonStart,
       playersIndex,
       upToNight: effectiveProgressIndex,
     });
-  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, nightAvg, playersIndex, seasonStart, sonmacByDate, standingsData, tokensByDate, totalPlayedNights]);
+  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, nightAvg, playersIndex, seasonStart, sonmacByDate, standingsData, tokens, totalPlayedNights]);
 
   const previousStandingsData = useMemo(() => {
     const currentNightCount = effectiveProgressIndex ?? totalPlayedNights;
@@ -697,12 +684,12 @@ export default function TokenWarsClient({
       nightAvg,
       sonmacByDate,
       captainsByDate,
-      tokensByDate,
+      tokens,
       seasonStart,
       playersIndex,
       upToNight: currentNightCount - 1,
     });
-  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, nightAvg, playersIndex, seasonStart, sonmacByDate, tokensByDate, totalPlayedNights]);
+  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, nightAvg, playersIndex, seasonStart, sonmacByDate, tokens, totalPlayedNights]);
 
   const standingsWithChange = useMemo(() => {
     if (!filteredStandingsData?.byLeague) return null;
@@ -823,8 +810,8 @@ export default function TokenWarsClient({
     await refetchTokens();
   };
 
-  const handleDeleteToken = async (date: string, actorSteamId: string, tokenType: string) => {
-    await deleteTokenWarsAction({ date, actorSteamId, tokenType });
+  const handleDeleteToken = async (tokenId: number) => {
+    await deleteTokenWarsAction({ id: tokenId });
     await refetchTokens();
   };
 
@@ -888,7 +875,7 @@ export default function TokenWarsClient({
                               <th className="px-2 py-2 text-right font-semibold text-gray-800">Oyn.</th>
                               <th className="px-2 py-2 text-right font-semibold text-gray-800">Kpt.</th>
                               <th className="px-2 py-2 text-right font-semibold text-gray-800">Token</th>
-                              <th className="px-2 py-2 text-right font-semibold text-gray-800">Puan</th>
+                              <th className="px-2 py-2 text-right font-semibold text-gray-800">Ort.</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1093,7 +1080,7 @@ export default function TokenWarsClient({
         <AdminTokenPanel
           config={effectiveConfig}
           captainsByDate={captainsByDate}
-          tokensByDate={tokensByDate}
+          tokens={tokens}
           datesIncluded={standingsData?.datesIncluded || []}
           standingsByLeague={standingsData?.byLeague || {}}
           playersIndex={playersIndex}

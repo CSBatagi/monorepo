@@ -207,12 +207,14 @@ export default function BatakAllStarsClient({
   nightAvg,
   sonmacByDate,
   seasonStart,
+  seasonEnd,
   players,
   config,
 }: {
   nightAvg: NightAvgData;
   sonmacByDate: SonmacByDate;
   seasonStart: string | null;
+  seasonEnd: string | null;
   players: unknown;
   config: AllStarsConfig | null;
 }) {
@@ -236,9 +238,13 @@ export default function BatakAllStarsClient({
 
   const availableDates = useMemo(() => {
     const dates = Object.keys(nightAvg || {});
-    const filtered = seasonStart ? dates.filter((d) => d >= seasonStart) : dates;
+    const filtered = dates.filter((d) => {
+      if (seasonStart && d < seasonStart) return false;
+      if (seasonEnd && d > seasonEnd) return false;
+      return true;
+    });
     return sortDatesDesc(filtered);
-  }, [nightAvg, seasonStart]);
+  }, [nightAvg, seasonStart, seasonEnd]);
   const [selectedDate, setSelectedDate] = useState<string>('');
 
   const { data: captainsData, refetch: refetchCaptains } = useLivePolling<{
@@ -304,9 +310,10 @@ export default function BatakAllStarsClient({
       sonmacByDate,
       captainsByDate,
       seasonStart,
+      seasonEnd,
       playersIndex,
     });
-  }, [captainsByDate, effectiveConfig, nightAvg, playersIndex, seasonStart, sonmacByDate]);
+  }, [captainsByDate, effectiveConfig, nightAvg, playersIndex, seasonStart, seasonEnd, sonmacByDate]);
 
   // Total played nights count (for progress bar)
   const totalPlayedNights = standingsData?.datesIncluded?.length ?? 0;
@@ -330,10 +337,11 @@ export default function BatakAllStarsClient({
       sonmacByDate,
       captainsByDate,
       seasonStart,
+      seasonEnd,
       playersIndex,
       upToNight: effectiveProgressIndex,
     });
-  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, nightAvg, playersIndex, seasonStart, sonmacByDate, standingsData, totalPlayedNights]);
+  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, nightAvg, playersIndex, seasonStart, seasonEnd, sonmacByDate, standingsData, totalPlayedNights]);
 
   // Compute standings from the previous night for position change comparison
   // When filtering, "previous" means one night before the selected filter
@@ -350,10 +358,11 @@ export default function BatakAllStarsClient({
       sonmacByDate,
       captainsByDate,
       seasonStart,
+      seasonEnd,
       playersIndex,
       upToNight: currentNightCount - 1,
     });
-  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, nightAvg, playersIndex, seasonStart, sonmacByDate, totalPlayedNights]);
+  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, nightAvg, playersIndex, seasonStart, seasonEnd, sonmacByDate, totalPlayedNights]);
 
   // Compute standings with position change info (uses filtered data for display)
   const standingsWithPositionChange = useMemo(() => {
@@ -431,9 +440,10 @@ export default function BatakAllStarsClient({
       nightAvg,
       captainsByDate,
       seasonStart,
+      seasonEnd,
       playersIndex,
     });
-  }, [nightAvg, captainsByDate, seasonStart, playersIndex]);
+  }, [nightAvg, captainsByDate, seasonStart, seasonEnd, playersIndex]);
 
   // Default date selection
   useEffect(() => {

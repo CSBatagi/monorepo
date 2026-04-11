@@ -60,8 +60,7 @@ export type TokenWarsConfig = {
 // ── Token action types ────────────────────────────────────────────────────────
 
 export type TokenAction = {
-  id?: string;
-  date: string;           // night this token applies to
+  id?: number;
   actorSteamId: string;   // who used the token
   targetSteamId: string;  // who it targets (self for delete_worst / protect_best)
   tokenType: 'delete_worst' | 'lock_best' | 'protect_best' | 'unlock';
@@ -70,7 +69,7 @@ export type TokenAction = {
   setAt?: number;
 };
 
-export type TokensByDateSnapshot = Record<string, TokenAction[]>;
+export type TokensSnapshot = TokenAction[];
 
 // ── Standing types ────────────────────────────────────────────────────────────
 
@@ -92,7 +91,7 @@ export type TokenWarsPlayerStanding = {
   oyn: number;          // nights played
   kpt: number;          // captain tokens earned
   tokensUsed: number;   // tokens already spent
-  totalPoints: number;  // sum of effective night points
+  totalPoints: number;  // average of effective night points
   nightBreakdown: NightBreakdownEntry[];
   meetsKriteria: boolean;
   positionChange?: 'up' | 'down' | 'same' | 'new';
@@ -134,50 +133,96 @@ export function teamPointsFromSeries(
 // ── Token resolution ──────────────────────────────────────────────────────────
 
 /**
- * Given all tokens, resolves the effective state for each (player, date) pair:
- *  - deleted: player used delete_worst on this night
- *  - locked:  opponent used lock_best on this night for this player
- *  - protected: player used protect_best on this night
- *  - unlocked: someone used unlock to reverse a lock on this night
+ * Given all tokens (without dates) and raw night breakdowns for all players,
+ * dynamically resolves which night each token applies to.
+ *
+ * Processing order:
+ *   1. protect_best  – mark actor's best nights as protected (immune to lock)
+ *   2. lock_best     – mark target's best unprotected nights as locked
+ *   3. unlock        – remove a lock from the target player
+ *   4. delete_worst  – mark actor's worst effective nights as deleted
+ *
+ * Within each type, tokens are processed by setAt (earliest first).
  */
 export function resolveTokenEffects(
-  tokens: TokensByDateSnapshot | null,
+  tokens: TokensSnapshot | null,
+  rawBreakdowns: Map<string, NightBreakdownEntry[]>,
 ): {
-  deletedNights: Map<string, Set<string>>;   // steamId → set of deleted dates
-  lockedNights: Map<string, Set<string>>;    // steamId → set of locked dates
-  protectedNights: Map<string, Set<string>>; // steamId → set of protected dates
-  unlockedNights: Map<string, Set<string>>;  // steamId → set of unlocked dates
+  deletedNights: Map<string, Set<string>>;
+  lockedNights: Map<string, Set<string>>;
+  protectedNights: Map<string, Set<string>>;
+  unlockedNights: Map<string, Set<string>>;
 } {
   const deletedNights = new Map<string, Set<string>>();
   const lockedNights = new Map<string, Set<string>>();
   const protectedNights = new Map<string, Set<string>>();
   const unlockedNights = new Map<string, Set<string>>();
 
-  if (!tokens) return { deletedNights, lockedNights, protectedNights, unlockedNights };
+  if (!tokens || tokens.length === 0) {
+    return { deletedNights, lockedNights, protectedNights, unlockedNights };
+  }
 
   function addToMap(map: Map<string, Set<string>>, steamId: string, date: string) {
     if (!map.has(steamId)) map.set(steamId, new Set());
     map.get(steamId)!.add(date);
   }
 
-  // Process all token actions
-  for (const actions of Object.values(tokens)) {
-    for (const t of actions) {
-      switch (t.tokenType) {
-        case 'delete_worst':
-          addToMap(deletedNights, t.actorSteamId, t.date);
-          break;
-        case 'lock_best':
-          addToMap(lockedNights, t.targetSteamId, t.date);
-          break;
-        case 'protect_best':
-          addToMap(protectedNights, t.actorSteamId, t.date);
-          break;
-        case 'unlock':
-          addToMap(unlockedNights, t.targetSteamId, t.date);
-          break;
-      }
-    }
+  function isProtected(steamId: string, date: string) {
+    return protectedNights.get(steamId)?.has(date) ?? false;
+  }
+  function isLocked(steamId: string, date: string) {
+    return lockedNights.get(steamId)?.has(date) ?? false;
+  }
+  function isUnlocked(steamId: string, date: string) {
+    return unlockedNights.get(steamId)?.has(date) ?? false;
+  }
+  function isDeleted(steamId: string, date: string) {
+    return deletedNights.get(steamId)?.has(date) ?? false;
+  }
+
+  const bySetAt = (a: TokenAction, b: TokenAction) => (a.setAt ?? 0) - (b.setAt ?? 0);
+
+  // 1. protect_best – actor's best unprotected nights
+  const protectTokens = tokens.filter((t) => t.tokenType === 'protect_best').sort(bySetAt);
+  for (const t of protectTokens) {
+    const nights = rawBreakdowns.get(t.actorSteamId) || [];
+    const candidate = [...nights]
+      .filter((n) => !isProtected(t.actorSteamId, n.date))
+      .sort((a, b) => b.totalPoints - a.totalPoints)[0];
+    if (candidate) addToMap(protectedNights, t.actorSteamId, candidate.date);
+  }
+
+  // 2. lock_best – target's best unprotected, unlocked nights
+  const lockTokens = tokens.filter((t) => t.tokenType === 'lock_best').sort(bySetAt);
+  for (const t of lockTokens) {
+    const nights = rawBreakdowns.get(t.targetSteamId) || [];
+    const candidate = [...nights]
+      .filter((n) => !isProtected(t.targetSteamId, n.date) && !isLocked(t.targetSteamId, n.date))
+      .sort((a, b) => b.totalPoints - a.totalPoints)[0];
+    if (candidate) addToMap(lockedNights, t.targetSteamId, candidate.date);
+  }
+
+  // 3. unlock – remove a lock from target's locked night (most impactful first)
+  const unlockTokens = tokens.filter((t) => t.tokenType === 'unlock').sort(bySetAt);
+  for (const t of unlockTokens) {
+    const nights = rawBreakdowns.get(t.targetSteamId) || [];
+    const candidate = [...nights]
+      .filter((n) => isLocked(t.targetSteamId, n.date) && !isUnlocked(t.targetSteamId, n.date))
+      .sort((a, b) => b.totalPoints - a.totalPoints)[0];
+    if (candidate) addToMap(unlockedNights, t.targetSteamId, candidate.date);
+  }
+
+  // 4. delete_worst – actor's worst non-locked, non-deleted nights
+  const deleteTokens = tokens.filter((t) => t.tokenType === 'delete_worst').sort(bySetAt);
+  for (const t of deleteTokens) {
+    const nights = rawBreakdowns.get(t.actorSteamId) || [];
+    const candidate = [...nights]
+      .filter((n) => {
+        const effectivelyLocked = isLocked(t.actorSteamId, n.date) && !isUnlocked(t.actorSteamId, n.date);
+        return !effectivelyLocked && !isDeleted(t.actorSteamId, n.date);
+      })
+      .sort((a, b) => a.totalPoints - b.totalPoints)[0];
+    if (candidate) addToMap(deletedNights, t.actorSteamId, candidate.date);
   }
 
   return { deletedNights, lockedNights, protectedNights, unlockedNights };
@@ -190,7 +235,7 @@ export function computeTokenWarsStandings(params: {
   nightAvg: NightAvgData;
   sonmacByDate: SonmacByDate;
   captainsByDate: CaptainsByDateSnapshot | null;
-  tokensByDate: TokensByDateSnapshot | null;
+  tokens: TokensSnapshot | null;
   seasonStart: string | null;
   playersIndex: PlayersIndex;
   upToNight?: number;
@@ -199,7 +244,7 @@ export function computeTokenWarsStandings(params: {
   datesIncluded: string[];
   warnings: string[];
 } {
-  const { config, nightAvg, sonmacByDate, captainsByDate, tokensByDate, seasonStart, playersIndex, upToNight } = params;
+  const { config, nightAvg, sonmacByDate, captainsByDate, tokens, seasonStart, playersIndex, upToNight } = params;
 
   const start = seasonStart || null;
   const captainDates = Object.keys(captainsByDate || {});
@@ -219,20 +264,12 @@ export function computeTokenWarsStandings(params: {
 
   const datesIncludedSet = new Set(datesIncluded);
   const captainTokensBySteamId = computeCaptainTokens(captainsByDate, datesIncludedSet);
-  const scopedTokensByDate: TokensByDateSnapshot | null = tokensByDate
-    ? Object.fromEntries(Object.entries(tokensByDate).filter(([date]) => datesIncludedSet.has(date)))
-    : null;
-
-  // Resolve token effects
-  const { deletedNights, lockedNights, protectedNights, unlockedNights } = resolveTokenEffects(scopedTokensByDate);
 
   // Count tokens used per player
   const tokensUsedBySteamId: Record<string, number> = {};
-  if (scopedTokensByDate) {
-    for (const actions of Object.values(scopedTokensByDate)) {
-      for (const t of actions) {
-        tokensUsedBySteamId[t.actorSteamId] = (tokensUsedBySteamId[t.actorSteamId] || 0) + 1;
-      }
+  if (tokens) {
+    for (const t of tokens) {
+      tokensUsedBySteamId[t.actorSteamId] = (tokensUsedBySteamId[t.actorSteamId] || 0) + 1;
     }
   }
 
@@ -249,11 +286,11 @@ export function computeTokenWarsStandings(params: {
 
   const warnings: string[] = [];
 
-  function nightBreakdownForPlayer(steamId: string): NightBreakdownEntry[] {
+  // Step 1: compute raw night breakdowns (no token effects) for all players
+  function rawNightBreakdownForPlayer(steamId: string): NightBreakdownEntry[] {
     const results: NightBreakdownEntry[] = [];
 
     for (const d of datesIncluded) {
-      // Use main-league teams (ignoring casual 3rd maps) for scoring, consistent with All-Stars
       const teams = deriveMainLeagueTeamsForDate(sonmacByDate, d);
       if (!teams) continue;
 
@@ -272,28 +309,52 @@ export function computeTokenWarsStandings(params: {
         : teamPointsFromSeries(teams.mapWinsTeam2, teams.mapWinsTeam1, config.scoring.teamPoints);
       if (tp === null) continue;
 
-      // Token effects for this player on this date
-      const isDeleted = deletedNights.get(steamId)?.has(d) ?? false;
-      const isProtected = protectedNights.get(steamId)?.has(d) ?? false;
-      const isUnlocked = unlockedNights.get(steamId)?.has(d) ?? false;
-      // A night is effectively locked only if locked AND not protected AND not unlocked
-      const rawLocked = lockedNights.get(steamId)?.has(d) ?? false;
-      const isLocked = rawLocked && !isProtected && !isUnlocked;
-
       results.push({
         date: d,
         hltv2Diff,
         perfPoints,
         teamPoints: tp,
         totalPoints: perfPoints + tp,
-        deleted: isDeleted,
-        locked: isLocked,
-        protected: isProtected,
-        unlocked: isUnlocked && rawLocked,
+        deleted: false,
+        locked: false,
+        protected: false,
+        unlocked: false,
       });
     }
 
     return results.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  }
+
+  // Collect all players and their raw breakdowns
+  const allPlayerSteamIds: string[] = [];
+  const rawBreakdowns = new Map<string, NightBreakdownEntry[]>();
+  for (const league of config.leagues || []) {
+    for (const steamId of league.players || []) {
+      allPlayerSteamIds.push(steamId);
+      rawBreakdowns.set(steamId, rawNightBreakdownForPlayer(steamId));
+    }
+  }
+
+  // Step 2: resolve token effects dynamically against the raw breakdowns
+  const { deletedNights, lockedNights, protectedNights, unlockedNights } = resolveTokenEffects(tokens, rawBreakdowns);
+
+  // Step 3: apply resolved effects back to build final breakdowns
+  function applyTokenEffects(steamId: string, raw: NightBreakdownEntry[]): NightBreakdownEntry[] {
+    return raw.map((entry) => {
+      const isDeleted = deletedNights.get(steamId)?.has(entry.date) ?? false;
+      const isProtected = protectedNights.get(steamId)?.has(entry.date) ?? false;
+      const isUnlockedFlag = unlockedNights.get(steamId)?.has(entry.date) ?? false;
+      const rawLocked = lockedNights.get(steamId)?.has(entry.date) ?? false;
+      const isLocked = rawLocked && !isProtected && !isUnlockedFlag;
+
+      return {
+        ...entry,
+        deleted: isDeleted,
+        locked: isLocked,
+        protected: isProtected,
+        unlocked: isUnlockedFlag && rawLocked,
+      };
+    });
   }
 
   const byLeague: Record<string, { id: string; name: string; standings: TokenWarsPlayerStanding[] }> = {};
@@ -303,14 +364,17 @@ export function computeTokenWarsStandings(params: {
 
     for (const steamId of league.players || []) {
       const name = displayNameForSteamId(steamId, playersIndex);
-      const breakdown = nightBreakdownForPlayer(steamId);
+      const raw = rawBreakdowns.get(steamId) || [];
+      const breakdown = applyTokenEffects(steamId, raw);
       const oyn = breakdown.length;
       const kpt = captainTokensBySteamId[steamId] || 0;
       const tokensUsed = tokensUsedBySteamId[steamId] || 0;
 
-      // Calculate total: sum of effective (not deleted, not locked) night points
+      // Calculate average of effective (not deleted, not locked) night points
       const effectiveNights = breakdown.filter((n) => !n.deleted && !n.locked);
-      const totalPoints = effectiveNights.reduce((sum, n) => sum + n.totalPoints, 0);
+      const totalPoints = effectiveNights.length > 0
+        ? effectiveNights.reduce((sum, n) => sum + n.totalPoints, 0) / effectiveNights.length
+        : 0;
 
       const meetsKriteria = oyn >= 5 && kpt >= 1;
 
@@ -344,14 +408,12 @@ export function computeTokenWarsStandings(params: {
 export function availableTokens(
   steamId: string,
   captainTokens: number,
-  tokensByDate: TokensByDateSnapshot | null,
+  tokens: TokensSnapshot | null,
 ): number {
   let used = 0;
-  if (tokensByDate) {
-    for (const actions of Object.values(tokensByDate)) {
-      for (const t of actions) {
-        if (t.actorSteamId === steamId) used++;
-      }
+  if (tokens) {
+    for (const t of tokens) {
+      if (t.actorSteamId === steamId) used++;
     }
   }
   return Math.max(0, captainTokens - used);

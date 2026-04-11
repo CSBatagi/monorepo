@@ -337,6 +337,7 @@ export function computeStandings(params: {
   sonmacByDate: SonmacByDate;
   captainsByDate: CaptainsByDateSnapshot | null;
   seasonStart: string | null;
+  seasonEnd?: string | null;
   playersIndex: PlayersIndex;
   excludeLastNight?: boolean; // if true, exclude the most recent night for position comparison
   upToNight?: number; // if provided, only include nights up to this index (1-based)
@@ -345,15 +346,17 @@ export function computeStandings(params: {
   datesIncluded: string[];
   warnings: string[];
 } {
-  const { config, nightAvg, sonmacByDate, captainsByDate, seasonStart, playersIndex, excludeLastNight, upToNight } = params;
+  const { config, nightAvg, sonmacByDate, captainsByDate, seasonStart, seasonEnd, playersIndex, excludeLastNight, upToNight } = params;
 
   // All-Stars nights are inferred from captain tagging: if captains were assigned for a date
   // (both teams) and the date is within the season, it counts as an All-Stars night.
   const start = seasonStart || null;
+  const end = seasonEnd || null;
   const captainDates = Object.keys(captainsByDate || {});
   let datesIncluded = captainDates
     .filter((d) => {
       if (start && d < start) return false;
+      if (end && d > end) return false;
       const rec = captainsByDate?.[d];
       const t1 = rec?.team1?.steamId;
       const t2 = rec?.team2?.steamId;
@@ -513,18 +516,21 @@ export function computeCaptainPerformance(params: {
   nightAvg: NightAvgData;
   captainsByDate: CaptainsByDateSnapshot | null;
   seasonStart: string | null;
+  seasonEnd?: string | null;
   playersIndex: PlayersIndex;
 }): CaptainPerformanceSummary[] {
-  const { nightAvg, captainsByDate, seasonStart, playersIndex } = params;
+  const { nightAvg, captainsByDate, seasonStart, seasonEnd, playersIndex } = params;
 
   if (!captainsByDate || !nightAvg) return [];
 
   const start = seasonStart || null;
+  const end = seasonEnd || null;
 
   // Get included All-Stars dates (same criteria as computeStandings)
   const datesIncluded = Object.keys(captainsByDate)
     .filter((d) => {
       if (start && d < start) return false;
+      if (end && d > end) return false;
       const rec = captainsByDate[d];
       if (!rec?.team1?.steamId || !rec?.team2?.steamId) return false;
       if (!nightAvg[d]) return false;

@@ -705,26 +705,21 @@ router.get('/token-wars', async (req, res) => {
     }
 
     const { rows } = await pool.query(
-      `SELECT date, actor_steam_id, target_steam_id, token_type, set_by_uid, set_by_name, set_at
-       FROM token_wars ORDER BY date, set_at`
+      `SELECT id, actor_steam_id, target_steam_id, token_type, set_by_uid, set_by_name, set_at
+       FROM token_wars ORDER BY set_at`
     );
 
-    // Group by date
-    const tokensByDate = {};
-    for (const row of rows) {
-      if (!tokensByDate[row.date]) tokensByDate[row.date] = [];
-      tokensByDate[row.date].push({
-        date: row.date,
-        actorSteamId: row.actor_steam_id,
-        targetSteamId: row.target_steam_id,
-        tokenType: row.token_type,
-        setByUid: row.set_by_uid,
-        setByName: row.set_by_name,
-        setAt: row.set_at ? Number(row.set_at) : null
-      });
-    }
+    const tokens = rows.map(row => ({
+      id: row.id,
+      actorSteamId: row.actor_steam_id,
+      targetSteamId: row.target_steam_id,
+      tokenType: row.token_type,
+      setByUid: row.set_by_uid,
+      setByName: row.set_by_name,
+      setAt: row.set_at ? Number(row.set_at) : null
+    }));
 
-    res.json({ tokensByDate, version: currentVersion });
+    res.json({ tokens, version: currentVersion });
   } catch (e) {
     console.error('[live/token-wars GET]', e.message);
     res.status(500).json({ error: e.message });
@@ -733,17 +728,15 @@ router.get('/token-wars', async (req, res) => {
 
 router.post('/token-wars/set', async (req, res) => {
   try {
-    const { date, actorSteamId, targetSteamId, tokenType, setByUid, setByName, setAt } = req.body;
-    if (!date || !actorSteamId || !targetSteamId || !tokenType) {
-      return res.status(400).json({ error: 'date, actorSteamId, targetSteamId, tokenType required' });
+    const { actorSteamId, targetSteamId, tokenType, setByUid, setByName, setAt } = req.body;
+    if (!actorSteamId || !targetSteamId || !tokenType) {
+      return res.status(400).json({ error: 'actorSteamId, targetSteamId, tokenType required' });
     }
 
     await pool.query(
-      `INSERT INTO token_wars (date, actor_steam_id, target_steam_id, token_type, set_by_uid, set_by_name, set_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
-       ON CONFLICT (date, actor_steam_id, token_type) DO UPDATE SET
-         target_steam_id=$3, set_by_uid=$5, set_by_name=$6, set_at=$7, updated_at=NOW()`,
-      [date, actorSteamId, targetSteamId, tokenType, setByUid || null, setByName || null, setAt || null]
+      `INSERT INTO token_wars (actor_steam_id, target_steam_id, token_type, set_by_uid, set_by_name, set_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW())`,
+      [actorSteamId, targetSteamId, tokenType, setByUid || null, setByName || null, setAt || null]
     );
 
     await bumpVersion('token_wars');
@@ -757,14 +750,14 @@ router.post('/token-wars/set', async (req, res) => {
 
 router.post('/token-wars/delete', async (req, res) => {
   try {
-    const { date, actorSteamId, tokenType } = req.body;
-    if (!date || !actorSteamId || !tokenType) {
-      return res.status(400).json({ error: 'date, actorSteamId, tokenType required' });
+    const { id } = req.body;
+    if (!id) {
+      return res.status(400).json({ error: 'id required' });
     }
 
     await pool.query(
-      `DELETE FROM token_wars WHERE date = $1 AND actor_steam_id = $2 AND token_type = $3`,
-      [date, actorSteamId, tokenType]
+      `DELETE FROM token_wars WHERE id = $1`,
+      [id]
     );
 
     await bumpVersion('token_wars');

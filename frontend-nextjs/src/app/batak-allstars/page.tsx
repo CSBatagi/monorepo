@@ -7,6 +7,7 @@ export const revalidate = 60; // seconds – data changes only when stats regene
 export default async function BatakAllStarsPage() {
   const seasonStartRaw = (await readJson('batak_allstars_season_start.json')) || {};
   const seasonStart = typeof seasonStartRaw?.season_start === 'string' ? seasonStartRaw.season_start.split('T')[0] : null;
+  const seasonEnd = typeof seasonStartRaw?.season_end === 'string' ? seasonStartRaw.season_end.split('T')[0] : null;
   const players = (await readJson('players.json')) || [];
   const config = (await readJson('batak_allstars_config.json')) || null;
   const stats = await fetchStats('night_avg', 'sonmac_by_date');
@@ -19,6 +20,7 @@ export default async function BatakAllStarsPage() {
         nightAvg={nightAvg}
         sonmacByDate={sonmacByDate}
         seasonStart={seasonStart}
+        seasonEnd={seasonEnd}
         players={players}
         config={config}
       />
