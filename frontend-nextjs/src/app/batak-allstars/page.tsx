@@ -10,9 +10,11 @@ export default async function BatakAllStarsPage() {
   const seasonEnd = typeof seasonStartRaw?.season_end === 'string' ? seasonStartRaw.season_end.split('T')[0] : null;
   const players = (await readJson('players.json')) || [];
   const config = (await readJson('batak_allstars_config.json')) || null;
-  const stats = await fetchStats('night_avg', 'sonmac_by_date');
-  const nightAvg = stats.night_avg || {};
-  const sonmacByDate = stats.sonmac_by_date || {};
+  // Use _all variants because the backend's season_start.json may differ from
+  // batak_allstars_season_start.json. The client filters by seasonStart/seasonEnd.
+  const stats = await fetchStats('night_avg_all', 'sonmac_by_date_all');
+  const nightAvg = stats.night_avg_all || {};
+  const sonmacByDate = stats.sonmac_by_date_all || {};
   return (
     <div id="page-batak_allstars" className="page-content page-content-container">
       <h2 className="text-2xl font-semibold text-blue-600 mb-4">Batak All-Stars Ligi</h2>
