@@ -21,6 +21,7 @@ describe('GET /stats/incremental (integration light)', () => {
       status: 'idle',
       source_table: 'test',
       current_version: 1,
+      mutation_version: 7,
       last_mutation_at: new Date(Date.now() - 60000),
       last_completed_at: new Date(Date.now() - 60000),
       updated_at: new Date(Date.now() - 60000),
@@ -68,5 +69,12 @@ describe('GET /stats/incremental (integration light)', () => {
     expect(second.status).toBe(200);
     expect(second.body.updated).toBe(true);
     expect(second.body.statsVersion).toBe(force.body.statsVersion);
+  });
+
+  test('diagnostics exposes mutationVersion for publish debugging', async () => {
+    const res = await request(app).get('/stats/diagnostics');
+
+    expect(res.status).toBe(200);
+    expect(res.body.effectiveStatsState).toHaveProperty('mutationVersion', 7);
   });
 });

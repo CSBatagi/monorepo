@@ -196,13 +196,13 @@ mvpVotes/lockedByDate/{YYYY-MM-DD} = { locked: true, lockedAt: number, lockedByU
 **SuperKupaBracket.tsx** uses 1 Firebase RTDB path:
 - `batakAllStars/superKupa` — read/write bracket results (`onValue` + `set` + `remove`, lines 231, 313, 322, 345)
 
-**Admin check** uses `admins/{uid}` (Firebase RTDB boolean):
-- `api/admin/check/route.ts` — server-side admin check via HMAC session (line 19)
-- `api/admin/regenerate-stats/route.ts` — admin check (line 56)
-- `api/admin/notifications/send/route.ts` — admin check (line 27)
-- `notifications/page.tsx` — client-side admin check (line 164)
+**Admin check** uses the PostgreSQL `admins` table:
+- `api/admin/check/route.ts` — server-side admin check via HMAC session and backend PG lookup
+- `api/admin/regenerate-stats/route.ts` — admin check via HMAC session and backend PG lookup
+- `api/admin/notifications/send/route.ts` — admin check via HMAC session and backend PG lookup
+- `notifications/page.tsx` — client-side admin check via Next.js API
 
-**Note:** `AdminStatsButton.tsx` does NOT use Firebase directly anymore. It calls `/api/admin/check` (session cookie) and `/api/admin/regenerate-stats` (session cookie). The Firebase dependency is only in the server-side routes.
+**Note:** `AdminStatsButton.tsx` does NOT use Firebase directly. It calls `/api/admin/check` (session cookie) and `/api/admin/regenerate-stats` (session cookie). Firebase has been removed from the admin check path.
 
 ### Captain Performance Computation
 
@@ -277,23 +277,23 @@ All Firebase RTDB notification paths migrated to PostgreSQL:
 | Feature | Storage | Status |
 |---------|---------|--------|
 | Notification inbox (in-app messages) | **PostgreSQL** (`notification_inbox` + `notification_inbox_version` tables) | **MIGRATED** ✅ |
-| Push delivery | **Firebase Cloud Messaging** (`adminMessaging().sendEachForMulticast()`) | Stays on FCM (no alternative) |
+| Push delivery | **Standard Web Push** (`web-push`, VAPID) | Migrated from FCM |
 | Preferences (per-user topic toggles) | **PostgreSQL** (`notification_preferences` table) | **MIGRATED** ✅ |
-| Subscriptions (FCM tokens per device) | **PostgreSQL** (`notification_subscriptions` table) | **MIGRATED** ✅ |
+| Subscriptions (Web Push subscriptions per device) | **PostgreSQL** (`notification_subscriptions` table) | **MIGRATED** ✅ |
 | Event dedup (idempotency log) | **PostgreSQL** (`notification_events` table) | **MIGRATED** ✅ |
 | Attendance count for scheduler | **PostgreSQL** (backend scheduler, PG only) | **MIGRATED** ✅ |
 
 ### What Changed
 
 1. **3 new PG tables**: `notification_preferences`, `notification_subscriptions`, `notification_events`
-2. **`backend/notificationRoutes.js`** (new): preferences/subscriptions CRUD + unified `POST /emit` endpoint (PG dedup → PG resolve recipients → FCM dispatch → PG inbox)
+2. **`backend/notificationRoutes.js`** (new): preferences/subscriptions CRUD + unified `POST /emit` endpoint (PG dedup → PG resolve recipients → Web Push dispatch → PG inbox)
 3. **`notifications/page.tsx`**: `useAuth()` → `useSession()`, all 6 RTDB operations → liveApi HTTP helpers
 4. **`api/admin/notifications/send/route.ts`**: session cookie auth, dispatch proxied to backend emit
 5. **`api/notifications/emit/route.ts`**: dispatch proxied to backend emit (keeps teker_dondu crossing detection + MVP lock check in Next.js)
 6. **`backend/notificationScheduler.js`**: RTDB resolve/dedup → PG resolve/dedup, removed `adminDb` import, removed RTDB attendance fallback
 7. **`serverNotifications.ts`**: stripped to types + `isNotificationTopic()` only (~35 lines). All dispatch logic removed.
 8. **Deleted dead code**: `lib/notificationScheduler.ts`, `lib/notificationScheduleRules.ts` (never called — scheduler runs in backend)
-9. **`/notifications` removed from FIREBASE_ROUTES** — zero Firebase SDK on this page (except `firebase/messaging` for FCM push token via `app` import)
+9. **`/notifications` removed from FIREBASE_ROUTES** — zero Firebase SDK on this page; push uses standard Web Push subscriptions
 10. **Next.js proxy routes**: `api/notifications/preferences/route.ts`, `api/notifications/subscriptions/route.ts`
 11. **liveApi helpers**: `getNotificationPreferences`, `saveNotificationPreferences`, `getDeviceRegistration`, `registerDevice`, `unregisterDevice`
 12. **Migration script**: `backend/scripts/migrate-notifications.js` — one-time RTDB → PG for preferences, subscriptions, events (last 7 days)

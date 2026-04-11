@@ -4,10 +4,12 @@
 
 1. **SSR (server rendering)**: All stats pages call `fetchStats()` (`lib/statsServer.ts`). The helper first checks whether all requested JSON files already exist in `runtime-data/` and reads `runtime-data/stats_meta.json` (with `statsVersion` plus `serverTimestamp`). If both are present, it calls backend `GET /stats/incremental?lastKnownVersion=...`. When backend replies `{ updated: false }`, SSR serves the requested datasets directly from `runtime-data/` without pulling the full payload over the network. If the requested runtime snapshot is incomplete, unreadable, or the metadata file is missing, SSR forces a full backend payload instead of returning partial data. A 10s module-level cache still prevents repeated backend calls across concurrent SSR renders, but it is only considered a hit when it already contains **all** requested dataset keys; subset reads are merged into the cache rather than replacing it. Timeout is 15s to cover cold-start generation (10-20s on the 1 GB VM).
 2. **Client refresh**: Client components use the shared `useStatsRefresh` hook (`lib/useStatsRefresh.ts`) which calls `/api/stats/check` (incremental — only returns data when `updated: true`). The hook provides `onData` (fresh data) and `onSettled` (always fires, for clearing loading state) callbacks.
-3. **Disk write-through**: Root layout's `after()` hook calls `incrementalRefresh()` (cooldown: 90s) which fetches backend `GET /stats/incremental` and persists JSON files plus `stats_meta.json` to `runtime-data/` using `writeStatsSnapshot()` / `persistSnapshotMetadata()` from `lib/statsSnapshot.ts`. These files are both the backend-down fallback layer and the primary unchanged-data recall path for SSR. The runtime snapshot is a separate store from backend in-memory `lastGeneratedData`, so metadata persistence must only happen when the runtime snapshot write is complete; if the backend replies `updated: false`, or if any existing file is preserved because the incoming dataset is empty, `stats_meta.json` is intentionally **not** advanced. This is the **sole disk writer** for stats files (apart from admin manual regeneration).
-4. Backend tracks source-table mutations in `stats_refresh_state` using a single `dirty` flag, `last_mutation_at`, and monotonic `current_version`.
-5. Once the state stays quiet for the configured quiet window, backend regenerates datasets once, increments the published version, clears `dirty`, and pushes the completed snapshot to the frontend.
+3. **Disk write-through**: Root layout's `after()` hook calls `incrementalRefresh()` (cooldown: 90s) which fetches backend `GET /stats/incremental` and persists JSON files plus `stats_meta.json` to `runtime-data/` using `writeStatsSnapshot()` / `persistSnapshotMetadata()` from `lib/statsSnapshot.ts`. These files are both the backend-down fallback layer and the primary unchanged-data recall path for SSR. The runtime snapshot is a separate store from backend in-memory `lastGeneratedData`, so metadata persistence must only happen when the runtime snapshot write is complete; if the backend replies `updated: false`, or if any existing file is preserved because the incoming dataset is empty, `stats_meta.json` is intentionally **not** advanced.
+4. Backend tracks source-table mutations in `stats_refresh_state` using `dirty`, `last_mutation_at`, and monotonic `mutation_version`. `current_version` is the published stats snapshot version, not the pending DB mutation counter.
+5. Once the state stays quiet for the configured quiet window, backend regenerates datasets once, increments the published version, clears `dirty`, and asks the frontend internal prewarm endpoint to persist the completed snapshot.
 6. `/api/data/map_stats` route serves `map_stats.json` from `runtime-data/` on disk — used by team-picker. All other `/api/data/*` routes have been removed.
+
+Production publishing details and incident checks live in [`../operations/stats-publishing.md`](../operations/stats-publishing.md). Keep that runbook in sync when changing backend dirty-state tracking, frontend prewarm, or admin regeneration behavior.
 
 ## Canonical Season Config
 
@@ -71,10 +73,18 @@ The canonical file list lives in `frontend-nextjs/src/lib/statsSnapshot.ts` (`ST
 The platform runs on a 1 GB RAM GCP VM. Key optimizations:
 
 - **PostgreSQL**: tuned to `shared_buffers=32MB`, `work_mem=2MB`, `max_connections=20` (Docker limit: 192M).
-- **Backend**: connection pool of 10 (idle timeout: 120s to survive between 60s polls), V8 heap capped at 128 MB (Docker limit: 256M). Stats queries run in staggered batches of 3-4 instead of 11 parallel. Stats cache (`lastGeneratedData` ~4 MB) kept permanently in memory — overwritten when DB data changes, only null on container restart.
-- **Frontend**: V8 heap capped at 160 MB (Docker limit: 256M). Session auth uses HMAC-SHA256 tokens (`authSession.ts`) instead of firebase-admin for the hot path. firebase-admin only loads lazily for the notification scheduler and admin routes.
+- **Backend**: connection pool of 10 (idle timeout: 120s), V8 heap capped at 128 MB (Docker limit: 256M). Stats queries run in staggered batches of 3-4 instead of 11 parallel. Stats cache (`lastGeneratedData` ~4 MB) kept permanently in memory — overwritten when DB data changes, only null on container restart.
+- **Frontend**: V8 heap capped at 160 MB (Docker limit: 256M). Session auth uses HMAC-SHA256 tokens (`authSession.ts`) instead of firebase-admin session cookies. Firebase SDKs have been removed.
 - **Caddy**: gzip/zstd compression enabled. Static assets (`/_next/static/*`, `/images/*`) get long-lived cache headers.
 - **Incremental refresh cooldown**: 90 seconds (layout.tsx `after()` hook). JSON files written without pretty-printing.
+
+## Runtime Snapshot Writers
+
+Only these paths should write generated stats into frontend `runtime-data/`:
+
+- `frontend-nextjs/src/app/layout.tsx` (`after()` write-through)
+- `frontend-nextjs/src/app/api/internal/stats/prewarm/route.ts` (backend-triggered internal prewarm)
+- `frontend-nextjs/src/app/api/admin/regenerate-stats/route.ts` (admin manual regeneration)
 
 ## Diagnostics and Notes
 

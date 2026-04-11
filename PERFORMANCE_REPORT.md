@@ -39,12 +39,12 @@ Leaves ~490-600 MB headroom (including OS).
 
 ### 2. Backend Memory Reduction
 
-- **Connection pool**: reduced from 15 to 10; idle timeout raised to 120s to keep connections alive between 60s polls (`index.js`)
+- **Connection pool**: reduced from 15 to 10; idle timeout raised to 120s (`index.js`)
 - **V8 heap**: capped at 128 MB via `NODE_OPTIONS`
 - **Query batching**: 11 parallel DB queries staggered into 3 batches of 3-4 (`statsGenerator.js`)
 - **Period processing**: changed from `Promise.all` to sequential loop
-- **In-memory stats cache**: `lastGeneratedData` (~4 MB) and `lastAggregateData` (~50-100 KB) kept permanently in memory — no TTL. Overwritten when DB timestamp changes; only null after a container restart.
-- **PG buffer keepalive**: 60s poller touches `live_version` table to keep attendance pages in PG buffer cache
+- **In-memory stats cache**: `lastGeneratedData` (~4 MB) and `lastAggregateData` (~50-100 KB) kept permanently in memory — no TTL. Overwritten when the published stats version changes; only null after a container restart.
+- **PG buffer keepalive**: stats state poller touches `live_version` table to keep attendance pages in PG buffer cache
 - Startup runs `generateAggregates` so aggregate data is available immediately
 - Docker memory limit: 256M
 
@@ -89,7 +89,7 @@ The scheduler runs in the **backend** Express process (`backend/notificationSche
 - Runs every 60 seconds
 - Push delivery uses `web-push` (VAPID) — lightweight, no Firebase SDK
 - Timed rules check Istanbul time and read attendance count from PostgreSQL
-- Stats-update check uses the backend's in-memory cached DB timestamp (zero DB/HTTP cost)
+- Stats-update check uses the backend's in-memory published stats version (zero DB/HTTP cost)
 - Can be disabled via `ENABLE_NOTIFICATION_SCHEDULER=false`
 - Requires VAPID keys in the backend env (`.frontend_secrets` is shared via docker-compose)
 

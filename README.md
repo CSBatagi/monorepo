@@ -38,6 +38,7 @@ Open `http://localhost:3000`.
 ## Notes
 
 - Runtime stats architecture uses `/stats/incremental` and `/stats/aggregates`.
+- Production stats publishing runbook: [`docs/operations/stats-publishing.md`](docs/operations/stats-publishing.md).
 - Season boundaries live in `frontend-nextjs/public/data/season_start.json`.
 - Deployed on a 1 GB RAM GCP VM with Docker memory limits. See `PERFORMANCE_REPORT.md` for the memory budget.
 - Session auth uses lightweight HMAC tokens; push notifications use standard Web Push (VAPID).

@@ -22,15 +22,17 @@ Provide a mobile-app-like experience for a private group (20-30 users) on Androi
 
 ### Stats Publishing Flow
 
-- Backend polls DB timestamp every 60s (`backend/index.js`) and serves:
+- Backend polls `stats_refresh_state` (`backend/index.js`; default `STATS_POLL_INTERVAL_MS=15000`) and serves:
   - `GET /stats/incremental`
   - `GET /stats/aggregates`
   - `POST /stats/force-regenerate`
   - `GET /stats/diagnostics`
-- Next.js proxies and persists datasets in:
+- Next.js checks and persists datasets in:
   - `frontend-nextjs/src/app/api/stats/check/route.ts`
-  - `frontend-nextjs/src/app/api/stats/aggregates/route.ts`
+  - `frontend-nextjs/src/app/api/internal/stats/prewarm/route.ts`
   - `frontend-nextjs/src/app/api/admin/regenerate-stats/route.ts`
+
+Detailed production publishing behavior is documented in `docs/operations/stats-publishing.md`.
 
 ### Realtime Features (all migrated to PostgreSQL)
 
@@ -181,11 +183,11 @@ Current rules:
 ## Scheduler Polling + Cost
 
 - Scheduler runs in the **backend** Express process (`backend/notificationScheduler.js`), NOT in Next.js.
-- Started after the Express server is listening; uses the backend's in-memory cached DB timestamp for stats-update checks (zero HTTP cost).
+- Started after the Express server is listening; uses the backend's in-memory published stats version for stats-update checks (zero HTTP cost).
 - Main loop interval is every 60 seconds (`SCHEDULER_INTERVAL_MS = 60_000`).
 - Work per loop:
   - Timed rules: reads attendance count from PostgreSQL.
-  - Stats update: compares the cached DB timestamp (updated by the backend's 60s poller) — no network call needed.
+  - Stats update: compares the cached published stats version — no network call needed.
 - Duplicate sends are blocked by `notification_events` table in PostgreSQL.
 - Push delivery uses `web-push` (VAPID) — lightweight, no Firebase SDK needed.
 - Can be disabled via `ENABLE_NOTIFICATION_SCHEDULER=false` env var on the backend.

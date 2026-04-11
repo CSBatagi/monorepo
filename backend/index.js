@@ -41,6 +41,7 @@ const STATS_SOURCE_TABLES = [
 ];
 const STATS_POLL_INTERVAL_MS = Number(process.env.STATS_POLL_INTERVAL_MS || 15000);
 const STATS_QUIET_PERIOD_MS = Number(process.env.STATS_QUIET_PERIOD_MS || 30000);
+const STATS_GENERATING_TIMEOUT_MS = Number(process.env.STATS_GENERATING_TIMEOUT_MS || 10 * 60 * 1000);
 if (!TEST_MODE) {
   pool = new Pool({
     user: process.env.DB_USER,
@@ -61,6 +62,7 @@ function normalizeStatsStateRow(row) {
     status: row.status || 'idle',
     sourceTable: row.source_table || null,
     currentVersion: Number(row.current_version || 0),
+    mutationVersion: Number(row.mutation_version || 0),
     lastMutationAt: row.last_mutation_at ? new Date(row.last_mutation_at) : null,
     lastCompletedAt: row.last_completed_at ? new Date(row.last_completed_at) : null,
     updatedAt: row.updated_at ? new Date(row.updated_at) : null,
@@ -75,6 +77,7 @@ function writeTestStatsState(state) {
     status: state.status || 'idle',
     source_table: state.sourceTable || null,
     current_version: Number(state.currentVersion || 0),
+    mutation_version: Number(state.mutationVersion || 0),
     last_mutation_at: state.lastMutationAt ? new Date(state.lastMutationAt) : null,
     last_completed_at: state.lastCompletedAt ? new Date(state.lastCompletedAt) : null,
     updated_at: state.updatedAt ? new Date(state.updatedAt) : null,
@@ -91,6 +94,7 @@ async function fetchStatsRefreshStateFromDB() {
         status: 'idle',
         source_table: 'test',
         current_version: 1,
+        mutation_version: 0,
         last_mutation_at: completedAt,
         last_completed_at: completedAt,
         updated_at: completedAt,
@@ -102,7 +106,7 @@ async function fetchStatsRefreshStateFromDB() {
 
   try {
     const result = await pool.query(`
-      SELECT dirty, status, source_table, current_version, last_mutation_at, last_completed_at, updated_at, last_error
+      SELECT dirty, status, source_table, current_version, mutation_version, last_mutation_at, last_completed_at, updated_at, last_error
       FROM stats_refresh_state
       WHERE id = 1
       LIMIT 1;
@@ -112,6 +116,11 @@ async function fetchStatsRefreshStateFromDB() {
     console.error('[stats-state] Failed to fetch stats_refresh_state:', e.message);
     return null;
   }
+}
+
+function isStaleGeneratingStatsState(state) {
+  if (!state?.dirty || state.status !== 'generating' || !state.updatedAt) return false;
+  return (Date.now() - state.updatedAt.getTime()) >= STATS_GENERATING_TIMEOUT_MS;
 }
 
 function shouldPublishStats(state) {
@@ -139,8 +148,17 @@ async function pollStatsState() {
       cachedStatsState = state;
       lastStatsStatePollError = null;
       lastStatsStateSource = 'poller';
-      if (statsRefreshManagerReady && shouldPublishStats(state)) {
-        void triggerBackgroundStatsRefresh('dirty-state-poller', state);
+      if (statsRefreshManagerReady) {
+        if (isStaleGeneratingStatsState(state)) {
+          void (async () => {
+            const recovered = await setStatsRefreshStatus('dirty', 'Recovered stale generating stats state');
+            if (shouldPublishStats(recovered)) {
+              await triggerBackgroundStatsRefresh('stale-generating-recovery', recovered);
+            }
+          })().catch((e) => console.error('[stats-state] Failed to recover stale generating state:', e.message));
+        } else if (shouldPublishStats(state)) {
+          void triggerBackgroundStatsRefresh('dirty-state-poller', state);
+        }
       }
     } else {
       lastStatsStatePollError = 'stats_refresh_state query returned no value';
@@ -328,9 +346,10 @@ function buildStatsMeta(statsState) {
 
 async function setStatsRefreshStatus(status, lastError = null) {
   if (TEST_MODE) {
-    if (!cachedStatsState) return null;
+    const baseState = cachedStatsState || await fetchStatsRefreshStateFromDB();
+    if (!baseState) return null;
     cachedStatsState = {
-      ...cachedStatsState,
+      ...baseState,
       status,
       lastError,
       updatedAt: new Date(),
@@ -344,17 +363,51 @@ async function setStatsRefreshStatus(status, lastError = null) {
      SET status = $2,
          last_error = $3,
          updated_at = NOW()
-     WHERE id = $1
-     RETURNING dirty, status, source_table, current_version, last_mutation_at, last_completed_at, updated_at, last_error`,
+      WHERE id = $1
+      RETURNING dirty, status, source_table, current_version, mutation_version, last_mutation_at, last_completed_at, updated_at, last_error`,
     [1, status, lastError]
   );
   cachedStatsState = normalizeStatsStateRow(result.rows[0] || null);
   return cachedStatsState;
 }
 
-async function completeStatsPublish(expectedMutationAt, sourceTable, force = false) {
+async function beginStatsGeneration(expectedMutationVersion) {
+  if (TEST_MODE) {
+    const baseState = cachedStatsState || await fetchStatsRefreshStateFromDB();
+    if (!baseState?.dirty || baseState.status === 'generating') return null;
+    if (Number(baseState.mutationVersion || 0) !== Number(expectedMutationVersion || 0)) return null;
+    cachedStatsState = {
+      ...baseState,
+      status: 'generating',
+      lastError: null,
+      updatedAt: new Date(),
+    };
+    writeTestStatsState(cachedStatsState);
+    return cachedStatsState;
+  }
+
+  const result = await pool.query(
+    `UPDATE stats_refresh_state
+     SET status = 'generating',
+         last_error = NULL,
+         updated_at = NOW()
+     WHERE id = $1
+       AND dirty = true
+       AND status <> 'generating'
+       AND mutation_version = $2
+     RETURNING dirty, status, source_table, current_version, mutation_version, last_mutation_at, last_completed_at, updated_at, last_error`,
+    [1, Number(expectedMutationVersion || 0)]
+  );
+  cachedStatsState = normalizeStatsStateRow(result.rows[0] || null);
+  return cachedStatsState;
+}
+
+async function completeStatsPublish(expectedMutationVersion, sourceTable, force = false) {
   if (TEST_MODE) {
     const baseState = cachedStatsState || await fetchStatsRefreshStateFromDB() || {};
+    if (!force && Number(baseState.mutationVersion || 0) !== Number(expectedMutationVersion || 0)) {
+      return null;
+    }
     cachedStatsState = {
       ...baseState,
       dirty: false,
@@ -382,11 +435,11 @@ async function completeStatsPublish(expectedMutationAt, sourceTable, force = fal
     WHERE id = $1`;
 
   if (!force) {
-    params.push(expectedMutationAt ? new Date(expectedMutationAt).toISOString() : null);
-    query += ` AND dirty = true AND last_mutation_at IS NOT DISTINCT FROM $3::timestamptz`;
+    params.push(Number(expectedMutationVersion || 0));
+    query += ` AND dirty = true AND mutation_version = $3`;
   }
 
-  query += ` RETURNING dirty, status, source_table, current_version, last_mutation_at, last_completed_at, updated_at, last_error`;
+  query += ` RETURNING dirty, status, source_table, current_version, mutation_version, last_mutation_at, last_completed_at, updated_at, last_error`;
   const result = await pool.query(query, params);
   const publishedState = normalizeStatsStateRow(result.rows[0] || null);
   if (publishedState) {
@@ -417,10 +470,18 @@ async function triggerBackgroundStatsRefresh(reason, targetState = null, options
   }
 
   try {
-    await setStatsRefreshStatus('generating', null);
-    const expectedMutationAt = effectiveState?.lastMutationAt ? new Date(effectiveState.lastMutationAt) : null;
+    const generationState = force
+      ? (await setStatsRefreshStatus('generating', null) || effectiveState || await fetchStatsRefreshStateFromDB())
+      : await beginStatsGeneration(effectiveState?.mutationVersion);
+    if (!generationState) {
+      const latest = await fetchStatsRefreshStateFromDB();
+      cachedStatsState = latest;
+      console.log(`[stats-refresh] ${reason}: source changed before generation started, retrying after quiet window`);
+      return false;
+    }
+    const expectedMutationVersion = Number(generationState.mutationVersion || 0);
     const result = await runStatsGenerationWithLock(reason);
-    const publishedState = await completeStatsPublish(expectedMutationAt, effectiveState?.sourceTable || reason, force);
+    const publishedState = await completeStatsPublish(expectedMutationVersion, generationState?.sourceTable || reason, force);
     if (!publishedState) {
       const latest = await fetchStatsRefreshStateFromDB();
       cachedStatsState = latest;
@@ -629,6 +690,7 @@ app.get('/stats/diagnostics', async (req, res) => {
         status: cachedStatsState.status,
         sourceTable: cachedStatsState.sourceTable,
         currentVersion: cachedStatsState.currentVersion,
+        mutationVersion: cachedStatsState.mutationVersion,
         lastMutationAt: cachedStatsState.lastMutationAt ? cachedStatsState.lastMutationAt.toISOString() : null,
         lastCompletedAt: cachedStatsState.lastCompletedAt ? cachedStatsState.lastCompletedAt.toISOString() : null,
         lastError: cachedStatsState.lastError,
@@ -638,6 +700,7 @@ app.get('/stats/diagnostics', async (req, res) => {
         status: effectiveStatsState.status,
         sourceTable: effectiveStatsState.sourceTable,
         currentVersion: effectiveStatsState.currentVersion,
+        mutationVersion: effectiveStatsState.mutationVersion,
         lastMutationAt: effectiveStatsState.lastMutationAt ? effectiveStatsState.lastMutationAt.toISOString() : null,
         lastCompletedAt: effectiveStatsState.lastCompletedAt ? effectiveStatsState.lastCompletedAt.toISOString() : null,
         lastError: effectiveStatsState.lastError,
@@ -774,6 +837,7 @@ if (!TEST_MODE) {
          status TEXT NOT NULL DEFAULT 'idle',
          source_table TEXT,
          current_version BIGINT NOT NULL DEFAULT 0,
+         mutation_version BIGINT NOT NULL DEFAULT 0,
          last_mutation_at TIMESTAMPTZ,
          last_completed_at TIMESTAMPTZ,
          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -782,15 +846,17 @@ if (!TEST_MODE) {
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='dirty') THEN ALTER TABLE stats_refresh_state ADD COLUMN dirty BOOLEAN NOT NULL DEFAULT false; END IF; END $$`,
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='status') THEN ALTER TABLE stats_refresh_state ADD COLUMN status TEXT NOT NULL DEFAULT 'idle'; END IF; END $$`,
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='current_version') THEN ALTER TABLE stats_refresh_state ADD COLUMN current_version BIGINT NOT NULL DEFAULT 0; END IF; END $$`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='mutation_version') THEN ALTER TABLE stats_refresh_state ADD COLUMN mutation_version BIGINT NOT NULL DEFAULT 0; END IF; END $$`,
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='last_mutation_at') THEN ALTER TABLE stats_refresh_state ADD COLUMN last_mutation_at TIMESTAMPTZ; END IF; END $$`,
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='last_completed_at') THEN ALTER TABLE stats_refresh_state ADD COLUMN last_completed_at TIMESTAMPTZ; END IF; END $$`,
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stats_refresh_state' AND column_name='last_error') THEN ALTER TABLE stats_refresh_state ADD COLUMN last_error TEXT; END IF; END $$`,
-      `CREATE OR REPLACE FUNCTION touch_stats_refresh_state() RETURNS TRIGGER AS $$ BEGIN INSERT INTO stats_refresh_state (id, dirty, status, source_table, last_mutation_at, updated_at, last_error) VALUES (1, true, 'dirty', TG_TABLE_NAME, NOW(), NOW(), NULL) ON CONFLICT (id) DO UPDATE SET dirty = true, status = 'dirty', source_table = EXCLUDED.source_table, last_mutation_at = EXCLUDED.last_mutation_at, updated_at = EXCLUDED.updated_at, last_error = NULL; RETURN NULL; END; $$ LANGUAGE plpgsql`,
-      `INSERT INTO stats_refresh_state (id, dirty, status, source_table, current_version, last_mutation_at, updated_at)
+      `CREATE OR REPLACE FUNCTION touch_stats_refresh_state() RETURNS TRIGGER AS $$ BEGIN INSERT INTO stats_refresh_state (id, dirty, status, source_table, mutation_version, last_mutation_at, updated_at, last_error) VALUES (1, true, 'dirty', TG_TABLE_NAME, 1, NOW(), NOW(), NULL) ON CONFLICT (id) DO UPDATE SET dirty = true, status = 'dirty', source_table = EXCLUDED.source_table, mutation_version = stats_refresh_state.mutation_version + 1, last_mutation_at = EXCLUDED.last_mutation_at, updated_at = EXCLUDED.updated_at, last_error = NULL; RETURN NULL; END; $$ LANGUAGE plpgsql`,
+      `INSERT INTO stats_refresh_state (id, dirty, status, source_table, current_version, mutation_version, last_mutation_at, updated_at)
        SELECT 1,
               true,
               'dirty',
               'bootstrap',
+              0,
               0,
               COALESCE((SELECT MAX(date) FROM demos), NOW()),
               NOW()
