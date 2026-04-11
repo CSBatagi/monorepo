@@ -58,7 +58,10 @@ async function fetchIncrementalSnapshot(lastKnownVersion: number | null, cacheBu
   const t = setTimeout(() => ac.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(url.toString(), {
-      cache: 'no-store',
+      // Use next.revalidate instead of cache:'no-store' to avoid
+      // "Page changed from static to dynamic" errors in Next.js 15 ISR pages.
+      // Our module-level cache (10s TTL) handles freshness independently.
+      next: { revalidate: 60 },
       signal: ac.signal,
     });
     if (!res.ok) {
