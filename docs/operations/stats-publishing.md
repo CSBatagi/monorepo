@@ -22,8 +22,8 @@ These are code defaults unless overridden by environment variables:
 
 - `STATS_POLL_INTERVAL_MS`: `15000` ms.
 - `STATS_QUIET_PERIOD_MS`: `30000` ms.
-- Frontend `layout.tsx` write-through cooldown: `90000` ms.
-- Internal frontend prewarm retries: `15` attempts, `5000` ms apart, `10000` ms request timeout.
+- Internal frontend prewarm retries: `6` attempts, `5000` ms apart, `30000` ms request timeout.
+- Public frontend stats check cooldown: `10000` ms.
 
 Do not assume older documentation that says "60s stats poller" is describing this path. The notification scheduler has a 60s loop, but the backend stats state poller defaults to 15s.
 
@@ -113,7 +113,7 @@ The frontend writes stats files to `STATS_DATA_DIR` using `statsSnapshot.ts`. Th
 
 Writers:
 
-- Root layout `after()` write-through calls backend `GET /stats/incremental`.
+- Public stats check endpoint `GET /api/stats/check`.
 - Internal prewarm endpoint `POST /api/internal/stats/prewarm`.
 - Admin manual endpoint `POST /api/admin/regenerate-stats`.
 

@@ -338,8 +338,9 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
       setLoadingMapStats(true);
       try {
         // map_stats is read from disk (runtime-data/map_stats.json), kept fresh by
-        // layout.tsx after() hook. Unlike last10/season_avg, map_stats is not available
-        // via /api/stats/check when there are no new stats — so disk is the correct source here.
+        // stats prewarm/check routes. Unlike last10/season_avg, map_stats is not
+        // available via /api/stats/check when there are no new stats, so disk is
+        // the correct source here.
         const res = await fetch('/api/data/map_stats');
         let data: any = null;
         try { data = await res.json(); } catch { data = null; }

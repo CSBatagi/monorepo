@@ -41,7 +41,7 @@ Replace Firebase RTDB listeners with **short polling** (3s interval).
 All stats pages now use a unified SSR data path via `fetchStats()` in `lib/statsServer.ts`:
 - **SSR**: Calls backend directly (server-to-server) via `/stats/incremental` → serves from in-memory cache
 - **Client**: `/api/stats/check` as a refresh-if-newer enhancement (not primary source)
-- **Disk fallback**: `readJson()` if backend unreachable (written by `layout.tsx` `after()` hook)
+- **Disk fallback**: `readJson()` if backend unreachable (written by stats check/prewarm routes)
 - Module-level 10s cache prevents redundant backend calls during concurrent SSR renders
 
 ## Phase 1: Attendance + Team Picker (P0) — COMPLETE

@@ -1,5 +1,5 @@
 // Single source of truth for runtime-data stat file list and snapshot writing.
-// Used by layout.tsx (after-hook writer) and admin/regenerate-stats (manual writer).
+// Used by stats check/prewarm routes and admin/regenerate-stats.
 import path from 'path';
 import fs from 'fs/promises';
 

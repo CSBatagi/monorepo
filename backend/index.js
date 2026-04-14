@@ -934,9 +934,9 @@ if (!TEST_MODE) {
 
     const frontendBase = process.env.FRONTEND_INTERNAL_URL || 'http://frontend-nextjs:3000';
     const authToken = process.env.MATCHMAKING_TOKEN;
-    const attempts = Number(process.env.FRONTEND_PREWARM_ATTEMPTS || 15);
+    const attempts = Number(process.env.FRONTEND_PREWARM_ATTEMPTS || 6);
     const retryMs = Number(process.env.FRONTEND_PREWARM_RETRY_MS || 5000);
-    const timeoutMs = Number(process.env.FRONTEND_PREWARM_TIMEOUT_MS || 10000);
+    const timeoutMs = Number(process.env.FRONTEND_PREWARM_TIMEOUT_MS || 30000);
 
     if (!authToken) {
       console.warn('[startup] frontend stats prewarm skipped: MATCHMAKING_TOKEN is not configured');
