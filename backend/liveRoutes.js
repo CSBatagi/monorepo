@@ -700,7 +700,7 @@ router.get('/token-wars', async (req, res) => {
   try {
     const clientVersion = parseInt(req.query.v) || 0;
     const currentVersion = await getVersion('token_wars');
-    if (clientVersion >= currentVersion) {
+    if (clientVersion > 0 && clientVersion >= currentVersion) {
       return res.status(304).end();
     }
 

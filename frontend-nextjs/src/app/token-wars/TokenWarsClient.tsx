@@ -3,7 +3,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSession, type SessionUser } from '@/contexts/SessionContext';
 import { useLivePolling } from '@/lib/useLivePolling';
+import { useStatsRefresh } from '@/lib/useStatsRefresh';
 import { setTokenWarsCaptain, setTokenWarsAction, deleteTokenWarsAction } from '@/lib/liveApi';
+import { getDateKeyedPeriodData, isDateKeyedPeriodPayload } from '@/lib/statsPeriods';
 import {
   ArrowDown,
   ArrowUp,
@@ -582,8 +584,8 @@ function AdminTokenPanel({
 }
 
 export default function TokenWarsClient({
-  nightAvg,
-  sonmacByDate,
+  nightAvg: initialNightAvg,
+  sonmacByDate: initialSonmacByDate,
   seasonStart,
   players,
   config,
@@ -595,6 +597,18 @@ export default function TokenWarsClient({
   config: TokenWarsConfig | null;
 }) {
   const { user } = useSession();
+  const [nightAvgData, setNightAvgData] = useState<NightAvgData>(initialNightAvg || {});
+  const [sonmacByDateData, setSonmacByDateData] = useState<SonmacByDate>(initialSonmacByDate || {});
+  const nightAvg = nightAvgData;
+  const sonmacByDate = sonmacByDateData;
+
+  useEffect(() => {
+    setNightAvgData(initialNightAvg || {});
+  }, [initialNightAvg]);
+
+  useEffect(() => {
+    setSonmacByDateData(initialSonmacByDate || {});
+  }, [initialSonmacByDate]);
 
   const effectiveConfig: TokenWarsConfig = useMemo(() => {
     return config || {
@@ -610,6 +624,25 @@ export default function TokenWarsClient({
   }, [config]);
 
   const playersIndex = useMemo(() => buildPlayersIndex(players), [players]);
+
+  useStatsRefresh({
+    keys: ['night_avg_periods', 'sonmac_by_date_periods', 'night_avg', 'sonmac_by_date'],
+    onData: (payload) => {
+      const nextNightAvg = isDateKeyedPeriodPayload<any[]>(payload?.night_avg_periods) && payload.night_avg_periods.current_period
+        ? getDateKeyedPeriodData(payload.night_avg_periods, payload.night_avg_periods.current_period)
+        : payload?.night_avg;
+      const nextSonmacByDate = isDateKeyedPeriodPayload<any>(payload?.sonmac_by_date_periods) && payload.sonmac_by_date_periods.current_period
+        ? getDateKeyedPeriodData(payload.sonmac_by_date_periods, payload.sonmac_by_date_periods.current_period)
+        : payload?.sonmac_by_date;
+
+      if (nextNightAvg && typeof nextNightAvg === 'object') {
+        setNightAvgData(nextNightAvg as NightAvgData);
+      }
+      if (nextSonmacByDate && typeof nextSonmacByDate === 'object') {
+        setSonmacByDateData(nextSonmacByDate as SonmacByDate);
+      }
+    },
+  });
 
   const { data: captainsData, refetch: refetchCaptains } = useLivePolling<{ captainsByDate: CaptainsByDateSnapshot }>({
     url: '/api/live/token-wars-captains',

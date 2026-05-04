@@ -33,6 +33,11 @@ const moreLinks = [
   { href: "/performance", label: "Performans Grafikleri" },
 ];
 
+const desktopNavRows = [
+  navLinks.slice(0, 7),
+  navLinks.slice(7),
+];
+
 export default function Header() {
   const { user, ready, logout } = useSession();
   const { isDark } = useTheme();
@@ -40,15 +45,7 @@ export default function Header() {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const splitIndex = Math.ceil(navLinks.length / 2);
   const isMoreActive = moreLinks.some(link => pathname === link.href);
-
-  const handleNavWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      e.currentTarget.scrollLeft += e.deltaY;
-      e.preventDefault();
-    }
-  };
 
   const handleSignInClick = () => {
     router.push('/login');
@@ -68,24 +65,24 @@ export default function Header() {
     setIsMoreOpen(false);
   }, [pathname, user]);
 
-  const linkClassName = (href: string) => `px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+  const linkClassName = (href: string) => `px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
     pathname === href
       ? isDark
-        ? 'bg-dark-border text-blue-400 border border-blue-500/30'
-        : 'bg-gray-700'
+        ? 'bg-dark-border !text-blue-300 border border-blue-500/30'
+        : 'bg-gray-700 !text-white'
       : isDark
-        ? 'hover:bg-dark-card text-gray-300 hover:text-blue-400'
-        : 'hover:bg-gray-700'
+        ? 'hover:bg-dark-card !text-gray-300 hover:!text-blue-300'
+        : 'hover:bg-gray-700 !text-gray-100 hover:!text-white'
   }`;
 
   const mobileLinkClassName = (href: string) => `block px-3 py-2 rounded-md text-base font-medium transition-colors ${
     pathname === href
       ? isDark
-        ? 'bg-dark-border text-blue-400 border-l-2 border-blue-500'
-        : 'bg-gray-700'
+        ? 'bg-dark-border !text-blue-300 border-l-2 border-blue-500'
+        : 'bg-gray-700 !text-white'
       : isDark
-        ? 'hover:bg-dark-card text-gray-300 hover:text-blue-400'
-        : 'hover:bg-gray-700'
+        ? 'hover:bg-dark-card !text-gray-300 hover:!text-blue-300'
+        : 'hover:bg-gray-700 !text-gray-100 hover:!text-white'
   }`;
 
   return (
@@ -106,29 +103,12 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Center: Desktop Navigation Links (two rows with overflow scroll) */}
-          <div className="hidden md:flex flex-1 min-w-0">
-            <nav className="w-full flex flex-col gap-1">
-              <div
-                className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-1"
-                onWheel={handleNavWheel}
-              >
-                {navLinks.slice(0, splitIndex).map(link => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={linkClassName(link.href)}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-              <div className="flex items-center gap-1 pb-1">
-                <div
-                  className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap"
-                  onWheel={handleNavWheel}
-                >
-                  {navLinks.slice(splitIndex).map(link => (
+          {/* Center: Desktop Navigation Links */}
+          <div className="hidden md:flex flex-1 min-w-0 justify-center">
+            <nav className="flex w-full max-w-5xl flex-col items-center gap-1">
+              {desktopNavRows.map((row, rowIndex) => (
+                <div key={rowIndex} className="flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                  {row.map(link => (
                     <Link
                       key={link.href}
                       href={link.href}
@@ -137,62 +117,64 @@ export default function Header() {
                       {link.label}
                     </Link>
                   ))}
-                </div>
-                <div className="relative flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setIsMoreOpen((open) => !open)}
-                    className={`inline-flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                      isMoreActive
-                        ? isDark
-                          ? 'bg-dark-border text-blue-400 border border-blue-500/30'
-                          : 'bg-gray-700'
-                        : isDark
-                          ? 'hover:bg-dark-card text-gray-300 hover:text-blue-400'
-                          : 'hover:bg-gray-700'
-                    }`}
-                    aria-expanded={isMoreOpen}
-                    aria-haspopup="menu"
-                  >
-                    Diğer
-                    <ChevronDown className={`h-4 w-4 transition-transform ${isMoreOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-                  </button>
-                  {isMoreOpen && (
-                    <div
-                      role="menu"
-                      className={`absolute right-0 top-full z-50 mt-2 min-w-56 rounded-md border py-1 shadow-lg ${
-                        isDark
-                          ? 'bg-[#0a0f1a] border-dark-border'
-                          : 'bg-gray-800 border-gray-700'
-                      }`}
-                    >
-                      {moreLinks.map(link => (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          role="menuitem"
-                          className={`block px-3 py-2 text-sm font-medium transition-colors ${
-                            pathname === link.href
-                              ? isDark
-                                ? 'bg-dark-border text-blue-400'
-                                : 'bg-gray-700'
-                              : isDark
-                                ? 'text-gray-300 hover:bg-dark-card hover:text-blue-400'
-                                : 'text-white hover:bg-gray-700'
+                  {rowIndex === desktopNavRows.length - 1 && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsMoreOpen((open) => !open)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                          isMoreActive
+                            ? isDark
+                              ? 'bg-dark-border !text-blue-300 border border-blue-500/30'
+                              : 'bg-gray-700 !text-white'
+                            : isDark
+                              ? 'hover:bg-dark-card !text-gray-300 hover:!text-blue-300'
+                              : 'hover:bg-gray-700 !text-gray-100 hover:!text-white'
+                        }`}
+                        aria-expanded={isMoreOpen}
+                        aria-haspopup="menu"
+                      >
+                        Diğer
+                        <ChevronDown className={`h-4 w-4 transition-transform ${isMoreOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                      </button>
+                      {isMoreOpen && (
+                        <div
+                          role="menu"
+                          className={`absolute right-0 top-full z-50 mt-2 min-w-56 rounded-md border py-1 shadow-lg ${
+                            isDark
+                              ? 'bg-[#0a0f1a] border-dark-border'
+                              : 'bg-gray-800 border-gray-700'
                           }`}
                         >
-                          {link.label}
-                        </Link>
-                      ))}
+                          {moreLinks.map(link => (
+                            <Link
+                              key={link.href}
+                              href={link.href}
+                              role="menuitem"
+                              className={`block px-3 py-2 text-sm font-medium transition-colors ${
+                                pathname === link.href
+                                  ? isDark
+                                    ? 'bg-dark-border !text-blue-300'
+                                    : 'bg-gray-700 !text-white'
+                                  : isDark
+                                    ? '!text-gray-300 hover:bg-dark-card hover:!text-blue-300'
+                                    : '!text-white hover:bg-gray-700'
+                              }`}
+                            >
+                              {link.label}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
+              ))}
             </nav>
           </div>
 
           {/* Right: Account Controls (desktop/tablet) */}
-          <div className="hidden md:flex flex-col items-end gap-2 flex-shrink-0">
+          <div className="hidden md:flex flex-shrink-0">
             {!ready ? (
               <div className="px-3 py-2 text-sm">Loading...</div>
             ) : user ? (
