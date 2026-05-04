@@ -433,7 +433,7 @@ function buildQueries(seasonStart, seasonEnd = null){
 
 
 async function buildPlayersStats(pool, qset, errors, labelPrefix = 'players_stats') {
-  // Run player-stats queries in staggered batches (max 4 concurrent for pool of 5)
+  // Run player-stats queries in staggered batches (max 4 concurrent within backend pool headroom).
   const safeQ = async (query, label) => {
     try { return (await pool.query(query)).rows; }
     catch (e) { console.error(`[statsGenerator] ${label} query failed`, e.message); errors.push({ dataset: `${labelPrefix}:${label}`, error: e.message }); return []; }
@@ -758,7 +758,7 @@ async function generateAll(pool, opts={}){
   results.season_avg_periods = seasonAvgPeriods;
   results.season_avg = seasonAvgPeriods.data?.[seasonAvgPeriods.current_period] || [];
   // Run dataset queries in staggered batches to reduce peak memory on 1 GB VMs.
-  // Each batch runs up to 4 queries in parallel (fits in pool of 5 connections).
+  // Each batch runs up to 4 queries in parallel within backend pool headroom.
   const isAllTime = sezonbaslangic === ALL_TIME_START;
   const safeQG = async (query, label) => {
     try { return (await pool.query(query)).rows; }

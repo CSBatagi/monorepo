@@ -290,7 +290,11 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
         // Use /api/stats/check (backed by backend memory) for stats data.
         // The endpoint returns { updated: false } when nothing changed — only
         // overwrite local state when the response actually contains data keys.
-        const res = await fetch(`/api/stats/check?_cb=${Date.now()}`, { cache: 'no-store' });
+        const params = new URLSearchParams({
+          keys: 'last10,season_avg',
+          _cb: String(Date.now()),
+        });
+        const res = await fetch(`/api/stats/check?${params.toString()}`, { cache: 'no-store' });
         const data = await res.json();
         if (cancelled) return;
         if (data.updated) {

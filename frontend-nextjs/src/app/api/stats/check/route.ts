@@ -21,6 +21,33 @@ type CheckResult = {
   headers: Record<string, string>;
 };
 
+const STAT_DATA_KEYS = new Set(STAT_FILES.map((base) => base.replace(/\.json$/, '')));
+
+function parseRequestedKeys(raw: string | null): string[] {
+  if (!raw) return [];
+  const unique = new Set<string>();
+  for (const key of raw.split(',')) {
+    const normalized = key.trim();
+    if (STAT_DATA_KEYS.has(normalized)) unique.add(normalized);
+  }
+  return [...unique].sort();
+}
+
+function filterStatsPayload(data: Record<string, any>, requestedKeys: string[]): Record<string, any> {
+  if (!requestedKeys.length) return data;
+  const filtered: Record<string, any> = {
+    updated: Boolean(data.updated),
+    statsVersion: data.statsVersion,
+    serverTimestamp: data.serverTimestamp ?? null,
+  };
+  if (data.backendUnavailable) filtered.backendUnavailable = true;
+  if (data.__errors) filtered.__errors = data.__errors;
+  for (const key of requestedKeys) {
+    if (data[key] !== undefined) filtered[key] = data[key];
+  }
+  return filtered;
+}
+
 let cachedCheckResult: CheckResult | null = null;
 let checkCacheTimer: ReturnType<typeof setTimeout> | null = null;
 let lastCheckTime = 0;
@@ -76,6 +103,7 @@ async function buildLocalFallback(
   key: string,
   runtimeDir: string,
   metadata: Awaited<ReturnType<typeof readSnapshotMetadata>>,
+  requestedKeys: string[],
 ): Promise<CheckResult> {
   const fallback: Record<string, unknown> = {
     updated: false,
@@ -84,8 +112,11 @@ async function buildLocalFallback(
     backendUnavailable: true,
   };
   const staticDir = path.join(process.cwd(), 'public', 'data');
+  const filesToRead = requestedKeys.length
+    ? requestedKeys.map((keyName) => `${keyName}.json`).filter((base) => STAT_FILES.includes(base))
+    : STAT_FILES;
 
-  for (const base of STAT_FILES) {
+  for (const base of filesToRead) {
     const dataKey = base.replace(/\.json$/, '');
     let content: unknown = undefined;
     try {
@@ -101,7 +132,7 @@ async function buildLocalFallback(
     if (content !== undefined) fallback[dataKey] = content;
   }
 
-  const hasAnyData = STAT_FILES.some((base) => fallback[base.replace(/\.json$/, '')] !== undefined);
+  const hasAnyData = filesToRead.some((base) => fallback[base.replace(/\.json$/, '')] !== undefined);
   if (hasAnyData) fallback.updated = true;
   return jsonResult(key, fallback);
 }
@@ -139,6 +170,7 @@ async function executeCheck({
   effectiveLastKnownVersion,
   debug,
   metadata,
+  requestedKeys,
 }: {
   key: string;
   backendBase: string;
@@ -146,6 +178,7 @@ async function executeCheck({
   effectiveLastKnownVersion: string | null;
   debug: boolean;
   metadata: Awaited<ReturnType<typeof readSnapshotMetadata>>;
+  requestedKeys: string[];
 }): Promise<CheckResult> {
   const checkUrl = new URL('/stats/incremental', backendBase);
   if (effectiveLastKnownVersion) checkUrl.searchParams.set('lastKnownVersion', effectiveLastKnownVersion);
@@ -168,7 +201,7 @@ async function executeCheck({
     if (debug) {
       console.warn('[stats-proxy] Backend unavailable/error (status:', res.status, '), using local fallback datasets');
     }
-    return buildLocalFallback(key, runtimeDir, metadata);
+    return buildLocalFallback(key, runtimeDir, metadata, requestedKeys);
   }
 
   const bodyText = await res.text();
@@ -189,7 +222,7 @@ async function executeCheck({
   await persistUpdatedSnapshot(data, runtimeDir, metadata);
 
   if (debug) console.log('[stats-proxy] Success updated=', data.updated);
-  return jsonResult(key, data, 200, {
+  return jsonResult(key, filterStatsPayload(data, requestedKeys), 200, {
     'Cache-Control': 'no-store, no-cache, must-revalidate',
     Pragma: 'no-cache',
     Expires: '0',
@@ -201,13 +234,15 @@ export async function GET(req: NextRequest) {
   const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
   const url = new URL(req.url);
   const clientVersion = url.searchParams.get('lastKnownVersion');
+  const requestedKeys = parseRequestedKeys(url.searchParams.get('keys'));
+  const requestedKeyPart = requestedKeys.length ? requestedKeys.join(',') : 'all';
   const debug = url.searchParams.get('debug') === '1';
   const now = Date.now();
 
   // Normal client polling includes lastKnownVersion. In that common case the
   // cache key is knowable without touching runtime-data, so hot cache hits stay
   // zero-I/O.
-  const clientCacheKey = clientVersion ? `${clientVersion}:${debug ? 'debug' : 'normal'}` : null;
+  const clientCacheKey = clientVersion ? `${clientVersion}:${requestedKeyPart}:${debug ? 'debug' : 'normal'}` : null;
   if (clientCacheKey && cachedCheckResult?.key === clientCacheKey && now - lastCheckTime < CHECK_COOLDOWN_MS) {
     return toResponse(cachedCheckResult);
   }
@@ -223,7 +258,7 @@ export async function GET(req: NextRequest) {
   const hasRuntimeFiles = clientVersion ? false : await hasRuntimeStatFiles(runtimeDir);
   const effectiveLastKnownVersion =
     clientVersion || (hasRuntimeFiles && metadata?.statsVersion ? String(metadata.statsVersion) : null);
-  const cacheKey = `${effectiveLastKnownVersion || 'none'}:${debug ? 'debug' : 'normal'}`;
+  const cacheKey = `${effectiveLastKnownVersion || 'none'}:${requestedKeyPart}:${debug ? 'debug' : 'normal'}`;
 
   if (cachedCheckResult?.key === cacheKey && now - lastCheckTime < CHECK_COOLDOWN_MS) {
     return toResponse(cachedCheckResult);
@@ -245,6 +280,7 @@ export async function GET(req: NextRequest) {
       effectiveLastKnownVersion,
       debug,
       metadata,
+      requestedKeys,
     });
     inFlightCheck = { key: cacheKey, promise };
     const result = await promise;

@@ -143,6 +143,7 @@ export default function SonMacClient({
   const initialDataEmpty = !initialData || Object.keys(initialData).length === 0;
 
   useStatsRefresh({
+    keys: ['sonmac_by_date_all', 'sonmac_by_date'],
     onData: (j) => {
       const incoming = j?.sonmac_by_date_all || j?.sonmac_by_date;
       const hasIncomingData = incoming && typeof incoming === "object" && Object.keys(incoming).length > 0;

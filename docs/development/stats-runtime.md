@@ -3,7 +3,7 @@
 ## Runtime Flow
 
 1. **SSR (server rendering)**: All stats pages call `fetchStats()` (`lib/statsServer.ts`). The helper first checks whether all requested JSON files already exist in `runtime-data/` and reads `runtime-data/stats_meta.json` (with `statsVersion` plus `serverTimestamp`). If both are present, it calls backend `GET /stats/incremental?lastKnownVersion=...`. When backend replies `{ updated: false }`, SSR serves the requested datasets directly from `runtime-data/` without pulling the full payload over the network. If the requested runtime snapshot is incomplete, unreadable, or the metadata file is missing, SSR forces a full backend payload instead of returning partial data. A 10s module-level cache still prevents repeated backend calls across concurrent SSR renders, but it is only considered a hit when it already contains **all** requested dataset keys; subset reads are merged into the cache rather than replacing it. Timeout is 15s to cover cold-start generation (10-20s on the 1 GB VM).
-2. **Client refresh**: Client components use the shared `useStatsRefresh` hook (`lib/useStatsRefresh.ts`) which calls `/api/stats/check` (incremental — only returns data when `updated: true`). The hook provides `onData` (fresh data) and `onSettled` (always fires, for clearing loading state) callbacks.
+2. **Client refresh**: Client components use the shared `useStatsRefresh` hook (`lib/useStatsRefresh.ts`) which calls `/api/stats/check` (incremental — only returns data when `updated: true`). The hook keeps the global `statsVersion` model, but callers can pass dataset `keys` so the browser receives only the datasets that component can consume. The endpoint still persists the complete backend snapshot before filtering the public response. The hook provides `onData` (fresh data) and `onSettled` (always fires, for clearing loading state) callbacks.
 3. **Disk write-through**: The dynamic stats check and prewarm routes fetch backend `GET /stats/incremental` and persist JSON files plus `stats_meta.json` to `runtime-data/` using `writeStatsSnapshotWithStatus()` / `persistSnapshotMetadata()` from `lib/statsSnapshot.ts`. These files are both the backend-down fallback layer and the primary unchanged-data recall path for SSR. The runtime snapshot is a separate store from backend in-memory `lastGeneratedData`, so metadata persistence must only happen when the runtime snapshot write is complete; if the backend replies `updated: false`, or if any existing file is preserved because the incoming dataset is empty, `stats_meta.json` is intentionally **not** advanced.
 4. Backend tracks source-table mutations in `stats_refresh_state` using `dirty`, `last_mutation_at`, and monotonic `mutation_version`. `current_version` is the published stats snapshot version, not the pending DB mutation counter.
 5. Once the state stays quiet for the configured quiet window, backend regenerates datasets once, increments the published version, clears `dirty`, and asks the frontend internal prewarm endpoint to persist the completed snapshot.
@@ -19,12 +19,14 @@ Expected shape:
 
 ```json
 {
-  "season_start": "YYYY-MM-DD"
+  "season_start": "YYYY-MM-DD",
+  "season_starts": ["YYYY-MM-DD"]
 }
 ```
 
 - `season_start`: the single global active season start for the website and backend stats generation.
-- Completed feature seasons that need to stay pinned, such as Batak All-Stars, must use a dedicated feature file instead of adding historical boundaries here. Current All-Stars file: `frontend-nextjs/public/data/batak_allstars_season_start.json`.
+- `season_starts`: optional sorted list of global season boundaries, including the active `season_start`. Backend period datasets use these to derive previous season end dates.
+- Completed feature seasons that need to stay pinned independently from the global season calendar, such as Batak All-Stars, must use a dedicated feature file. Current All-Stars file: `frontend-nextjs/public/data/batak_allstars_season_start.json`.
 
 ## Period-Aware Dataset Contract
 
@@ -71,7 +73,7 @@ The canonical file list lives in `frontend-nextjs/src/lib/statsSnapshot.ts` (`ST
 
 The platform runs on a 1 GB RAM GCP VM. Key optimizations:
 
-- **PostgreSQL**: tuned to `shared_buffers=32MB`, `work_mem=2MB`, `max_connections=20` (Docker limit: 192M).
+- **PostgreSQL**: tuned to `shared_buffers=32MB`, `work_mem=2MB`, `max_connections=50` (Docker limit: 192M). The higher connection ceiling is intentional operational/concurrency headroom; the backend pool itself is capped at 10.
 - **Backend**: connection pool of 10 (idle timeout: 120s), V8 heap capped at 128 MB (Docker limit: 256M). Stats queries run in staggered batches of 3-4 instead of 11 parallel. Stats cache (`lastGeneratedData` ~4 MB) kept permanently in memory — overwritten when DB data changes, only null on container restart.
 - **Frontend**: V8 heap capped at 192 MB (Docker limit: 256M). Session auth uses HMAC-SHA256 tokens (`authSession.ts`) instead of firebase-admin session cookies. Firebase SDKs have been removed.
 - **Caddy**: gzip/zstd compression enabled. Static assets (`/_next/static/*`, `/images/*`) get long-lived cache headers.

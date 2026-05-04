@@ -9,6 +9,8 @@ interface UseStatsRefreshOptions {
   onSettled?: () => void;
   /** Skip the fetch entirely (e.g. SSR data was sufficient). Default: true. */
   enabled?: boolean;
+  /** Dataset keys this client can consume. The global stats version still controls freshness. */
+  keys?: string[];
 }
 
 /**
@@ -16,12 +18,16 @@ interface UseStatsRefreshOptions {
  * Fetches /api/stats/check on mount, manages localStorage timestamp,
  * and calls onData when the backend reports updated data.
  */
-export function useStatsRefresh({ onData, onSettled, enabled = true }: UseStatsRefreshOptions) {
+export function useStatsRefresh({ onData, onSettled, enabled = true, keys = [] }: UseStatsRefreshOptions) {
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
     const lastKnownVersion = localStorage.getItem('stats_version');
-    const url = `/api/stats/check${lastKnownVersion ? `?lastKnownVersion=${encodeURIComponent(lastKnownVersion)}&` : '?'}_cb=${Date.now()}`;
+    const params = new URLSearchParams();
+    if (lastKnownVersion) params.set('lastKnownVersion', lastKnownVersion);
+    if (keys.length) params.set('keys', keys.join(','));
+    params.set('_cb', String(Date.now()));
+    const url = `/api/stats/check?${params.toString()}`;
     fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-store' } })
       .then((r) => r.json())
       .then((data) => {

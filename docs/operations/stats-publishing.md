@@ -113,7 +113,7 @@ The frontend writes stats files to `STATS_DATA_DIR` using `statsSnapshot.ts`. Th
 
 Writers:
 
-- Public stats check endpoint `GET /api/stats/check`.
+- Public stats check endpoint `GET /api/stats/check`. Browser callers may pass `keys=a,b` to reduce response size; the endpoint still uses the single global `statsVersion` and writes the complete backend snapshot to `runtime-data/` before filtering the public response.
 - Internal prewarm endpoint `POST /api/internal/stats/prewarm`.
 - Admin manual endpoint `POST /api/admin/regenerate-stats`.
 

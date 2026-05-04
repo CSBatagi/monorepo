@@ -67,6 +67,7 @@ export default function SeasonAvgTabsClient({
 
   useStatsRefresh({
     enabled: selectedData.length === 0,
+    keys: ['season_avg_periods', 'season_avg'],
     onData: (payload) => {
       if (payload?.season_avg_periods?.data) {
         setPeriodPayload(payload.season_avg_periods);

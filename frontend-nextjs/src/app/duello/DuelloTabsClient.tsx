@@ -139,6 +139,7 @@ export default function DuelloTabsClient({ sonmacData: initialSonmac, sezonData:
 
   // Fetch potential fresher data (incl. first load if files missing)
   useStatsRefresh({
+    keys: ['duello_son_mac', 'duello_sezon'],
     onData: (j) => {
       if (j.duello_son_mac && j.duello_son_mac.playerRows) {
         setSonmacData(j.duello_son_mac);

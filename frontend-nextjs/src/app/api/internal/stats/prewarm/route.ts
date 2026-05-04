@@ -8,13 +8,13 @@ const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
 const AUTH_TOKEN = process.env.MATCHMAKING_TOKEN;
 const BACKEND_TIMEOUT_MS = 30000;
 const DATASET_PAGE_MAP: Record<string, string[]> = {
-  season_avg: ['/season-avg'],
+  season_avg: ['/season-avg', '/team-picker'],
   season_avg_periods: ['/season-avg'],
-  last10: ['/last10'],
+  last10: ['/last10', '/team-picker'],
   night_avg: ['/gece-ortalama'],
-  night_avg_all: ['/gece-ortalama', '/performans-odulleri', '/gecenin-mvpsi', '/batak-allstars'],
+  night_avg_all: ['/gece-ortalama', '/performans-odulleri', '/gecenin-mvpsi', '/batak-allstars', '/token-wars'],
   sonmac_by_date: ['/sonmac', '/mac-sonuclari', '/batak-allstars'],
-  sonmac_by_date_all: ['/sonmac', '/mac-sonuclari', '/batak-allstars'],
+  sonmac_by_date_all: ['/sonmac', '/mac-sonuclari', '/batak-allstars', '/token-wars'],
   duello_son_mac: ['/duello'],
   duello_sezon: ['/duello'],
   performance_data: ['/performance'],

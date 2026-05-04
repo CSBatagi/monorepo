@@ -28,6 +28,7 @@ export default function MacSonuclariClient({ allData: initialData, seasonStarts 
   const [allData, setAllData] = useState<Record<string, any>>(initialData);
 
   useStatsRefresh({
+    keys: ['sonmac_by_date_all', 'sonmac_by_date'],
     onData: (j) => {
       const incoming = j?.sonmac_by_date_all || j?.sonmac_by_date;
       if (incoming && typeof incoming === "object" && Object.keys(incoming).length > 0) {

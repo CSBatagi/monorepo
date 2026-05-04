@@ -19,6 +19,19 @@ function buildCandidateFiles(explicitFile) {
   return files;
 }
 
+function normalizeSeasonStarts(rawStarts, fallbackStart) {
+  const starts = [];
+  if (Array.isArray(rawStarts)) {
+    for (const start of rawStarts) {
+      const normalized = normalizeDate(start);
+      if (normalized) starts.push(normalized);
+    }
+  }
+  const fallback = normalizeDate(fallbackStart);
+  if (fallback) starts.push(fallback);
+  return Array.from(new Set(starts)).sort();
+}
+
 function resolveSeasonConfig(opts = {}) {
   const explicitEnvDate = opts.explicitEnvDate || process.env.SEZON_BASLANGIC || DEFAULT_SEASON_START;
   const explicitFile = opts.explicitFile || process.env.SEASON_START_FILE;
@@ -37,15 +50,17 @@ function resolveSeasonConfig(opts = {}) {
 
   const seasonStartFromFile = normalizeDate(parsed?.season_start);
   const seasonStart = seasonStartFromFile || fallbackDate;
+  const seasonStarts = normalizeSeasonStarts(parsed?.season_starts, seasonStart);
 
   return {
     seasonStart,
-    seasonStarts: [seasonStart],
+    seasonStarts,
   };
 }
 
 module.exports = {
   DEFAULT_SEASON_START,
   normalizeDate,
+  normalizeSeasonStarts,
   resolveSeasonConfig,
 };

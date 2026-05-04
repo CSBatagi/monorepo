@@ -65,6 +65,7 @@ export default function NightAvgTableClient({
   const { isDark } = useTheme();
 
   useStatsRefresh({
+    keys: ['night_avg_all', 'night_avg'],
     onData: (j) => {
       const incoming = j?.night_avg_all || j?.night_avg;
       if (incoming) {

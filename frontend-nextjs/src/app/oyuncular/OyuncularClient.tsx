@@ -241,6 +241,7 @@ export default function OyuncularClient({
   }, [activeSteamId, tabs]);
 
   useStatsRefresh({
+    keys: ['players_stats_periods', 'players_stats'],
     onData: (j) => {
       if (j?.players_stats_periods?.data) {
         setPeriodPayload(j.players_stats_periods);

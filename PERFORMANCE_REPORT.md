@@ -34,7 +34,7 @@ Leaves ~490-600 MB headroom (including OS).
 
 - `shared_buffers=32MB` (down from default 128 MB)
 - `work_mem=2MB`, `maintenance_work_mem=32MB`
-- `max_connections=20`
+- `max_connections=50` (kept for backend pool, live polling, admin/operational access, and concurrent stats work headroom)
 - Docker memory limit: 192M
 
 ### 2. Backend Memory Reduction
@@ -56,6 +56,7 @@ Leaves ~490-600 MB headroom (including OS).
 - **SessionContext**: lightweight cookie-based user context for shared components (Header, Layout)
 - **Incremental refresh cooldown**: 90 seconds (`layout.tsx`). JSON files written without pretty-printing.
 - **Unified SSR data path**: all stats pages use `fetchStats()` (`lib/statsServer.ts`) which fetches from backend memory server-to-server (10s module cache). Falls back to disk files only when backend is unreachable. Eliminates stale-disk-read bugs where some pages showed fresh data and others didn't.
+- **Filtered client stats refresh**: `/api/stats/check` still uses the global `statsVersion`, persists the complete runtime snapshot, then returns only requested dataset keys to browser callers.
 - **No Firebase SDK**: Firebase client and admin SDKs fully removed. Zero JS bundles downloaded for Firebase. Auth uses Google OAuth + HMAC sessions. Push notifications use standard Web Push (VAPID).
 - **Server-side player data**: `attendance/page.tsx` is a server component that reads `players.json` from disk (ISR, revalidate 60s). The client component (`AttendanceClient.tsx`) receives players as props — no client-side fetch waterfall.
 - Docker memory limit: 256M
@@ -98,5 +99,5 @@ The scheduler runs in the **backend** Express process (`backend/notificationSche
 If further memory reduction is needed:
 
 1. **Add swap space** (1-2 GB) on the VM as OOM safety net
-2. **Paginate `sonmac_by_date_all.json`** (4.1 MB) — load only current season by default
+2. **Split date-keyed historical stats by season** — keep completed seasons static/sharded and update only the active season by default
 3. **Re-enable Next.js image optimization** or use a CDN for static images

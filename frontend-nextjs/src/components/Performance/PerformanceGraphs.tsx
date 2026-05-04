@@ -76,6 +76,7 @@ const PerformanceGraphs: React.FC<PerformanceGraphsProps> = ({ initialData = [] 
     }, [initialData]);
 
     useStatsRefresh({
+      keys: ['performance_data'],
       onData: (payload) => {
         if (Array.isArray(payload.performance_data) && payload.performance_data.length > 0) {
           applyPerfData(payload.performance_data);

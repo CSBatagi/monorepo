@@ -116,6 +116,7 @@ export default function PerformansOdulleriClient({
   const [allData, setAllData] = useState<Record<string, any[]>>(initialData);
 
   useStatsRefresh({
+    keys: ['night_avg_all', 'night_avg'],
     onData: (j) => {
       const incoming = j?.night_avg_all || j?.night_avg;
       if (incoming && typeof incoming === "object" && Object.keys(incoming).length > 0) {
