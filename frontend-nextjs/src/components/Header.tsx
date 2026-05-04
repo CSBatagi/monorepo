@@ -8,34 +8,40 @@ import ThemeToggle from '@/components/ThemeToggle';
 import NotificationBell from '@/components/NotificationBell';
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { ChevronDown } from 'lucide-react';
 
 const navLinks = [
   { href: "/", label: "Anasayfa" },
   { href: "/attendance", label: "Katılım" },
   { href: "/team-picker", label: "Takım Seçme" },
-  { href: "/batak-domination", label: "Batak Domination" },
-  { href: "/batak-allstars", label: "Batak All-Stars" },
   { href: "/token-wars", label: "Batak Token Wars" },
   { href: "/sonmac", label: "Son Maç" },
   { href: "/performans-odulleri", label: "Performans Ödülleri" },
-  { href: "/gecenin-mvpsi", label: "Gecenin MVP'si" },
   { href: "/gece-ortalama", label: "Gece Ortalaması" },
   { href: "/last10", label: "Son 10 Ortalaması" },
   { href: "/season-avg", label: "Sezon Ortalaması" },
   { href: "/oyuncular", label: "Oyuncular" },
   { href: "/duello", label: "Düello" },
-  { href: "/performance", label: "Performans Grafikleri" },
   { href: "/mac-sonuclari", label: "Maç Sonuçları" },
   { href: "/mac-videolari", label: "Maç Videoları" },
+];
+
+const moreLinks = [
+  { href: "/batak-domination", label: "Batak Domination" },
+  { href: "/batak-allstars", label: "Batak All-Stars" },
+  { href: "/gecenin-mvpsi", label: "Gecenin MVP'si" },
+  { href: "/performance", label: "Performans Grafikleri" },
 ];
 
 export default function Header() {
   const { user, ready, logout } = useSession();
   const { isDark } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const splitIndex = Math.ceil(navLinks.length / 2);
+  const isMoreActive = moreLinks.some(link => pathname === link.href);
 
   const handleNavWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
@@ -59,7 +65,28 @@ export default function Header() {
   // Close menu on navigation
   useEffect(() => {
     setIsMenuOpen(false);
-  }, [user]);
+    setIsMoreOpen(false);
+  }, [pathname, user]);
+
+  const linkClassName = (href: string) => `px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+    pathname === href
+      ? isDark
+        ? 'bg-dark-border text-blue-400 border border-blue-500/30'
+        : 'bg-gray-700'
+      : isDark
+        ? 'hover:bg-dark-card text-gray-300 hover:text-blue-400'
+        : 'hover:bg-gray-700'
+  }`;
+
+  const mobileLinkClassName = (href: string) => `block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+    pathname === href
+      ? isDark
+        ? 'bg-dark-border text-blue-400 border-l-2 border-blue-500'
+        : 'bg-gray-700'
+      : isDark
+        ? 'hover:bg-dark-card text-gray-300 hover:text-blue-400'
+        : 'hover:bg-gray-700'
+  }`;
 
   return (
     <>
@@ -90,30 +117,33 @@ export default function Header() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                      pathname === link.href
-                        ? isDark
-                          ? 'bg-dark-border text-blue-400 border border-blue-500/30'
-                          : 'bg-gray-700'
-                        : isDark
-                          ? 'hover:bg-dark-card text-gray-300 hover:text-blue-400'
-                          : 'hover:bg-gray-700'
-                    }`}
+                    className={linkClassName(link.href)}
                   >
                     {link.label}
                   </Link>
                 ))}
               </div>
-              <div
-                className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-1"
-                onWheel={handleNavWheel}
-              >
-                {navLinks.slice(splitIndex).map(link => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                      pathname === link.href
+              <div className="flex items-center gap-1 pb-1">
+                <div
+                  className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap"
+                  onWheel={handleNavWheel}
+                >
+                  {navLinks.slice(splitIndex).map(link => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={linkClassName(link.href)}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+                <div className="relative flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsMoreOpen((open) => !open)}
+                    className={`inline-flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                      isMoreActive
                         ? isDark
                           ? 'bg-dark-border text-blue-400 border border-blue-500/30'
                           : 'bg-gray-700'
@@ -121,10 +151,42 @@ export default function Header() {
                           ? 'hover:bg-dark-card text-gray-300 hover:text-blue-400'
                           : 'hover:bg-gray-700'
                     }`}
+                    aria-expanded={isMoreOpen}
+                    aria-haspopup="menu"
                   >
-                    {link.label}
-                  </Link>
-                ))}
+                    Diğer
+                    <ChevronDown className={`h-4 w-4 transition-transform ${isMoreOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                  </button>
+                  {isMoreOpen && (
+                    <div
+                      role="menu"
+                      className={`absolute right-0 top-full z-50 mt-2 min-w-56 rounded-md border py-1 shadow-lg ${
+                        isDark
+                          ? 'bg-[#0a0f1a] border-dark-border'
+                          : 'bg-gray-800 border-gray-700'
+                      }`}
+                    >
+                      {moreLinks.map(link => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          role="menuitem"
+                          className={`block px-3 py-2 text-sm font-medium transition-colors ${
+                            pathname === link.href
+                              ? isDark
+                                ? 'bg-dark-border text-blue-400'
+                                : 'bg-gray-700'
+                              : isDark
+                                ? 'text-gray-300 hover:bg-dark-card hover:text-blue-400'
+                                : 'text-white hover:bg-gray-700'
+                          }`}
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </nav>
           </div>
@@ -223,15 +285,22 @@ export default function Header() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                  pathname === link.href
-                    ? isDark
-                      ? 'bg-dark-border text-blue-400 border-l-2 border-blue-500'
-                      : 'bg-gray-700'
-                    : isDark
-                      ? 'hover:bg-dark-card text-gray-300 hover:text-blue-400'
-                      : 'hover:bg-gray-700'
-                }`}
+                className={mobileLinkClassName(link.href)}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <div className={`px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide ${
+              isDark ? 'text-gray-500' : 'text-gray-400'
+            }`}>
+              Diğer
+            </div>
+            {moreLinks.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsMenuOpen(false)}
+                className={`${mobileLinkClassName(link.href)} ml-3`}
               >
                 {link.label}
               </Link>
