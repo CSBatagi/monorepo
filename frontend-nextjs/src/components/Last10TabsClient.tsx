@@ -12,7 +12,6 @@ export default function Last10TabsClient({ data: initialData }: { data: any[] })
   const [loading, setLoading] = useState<boolean>(!initialData || initialData.length === 0);
 
   useStatsRefresh({
-    enabled: data.length === 0,
     keys: ['last10'],
     onData: (j) => {
       if (Array.isArray(j.last10) && j.last10.length) {
