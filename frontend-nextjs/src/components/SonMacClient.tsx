@@ -4,6 +4,14 @@ import SeasonStatsTable from "./SeasonStatsTable";
 import { buildSeasonWindowOptions, filterDatesBySeason } from "@/lib/seasonRanges";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useStatsRefresh } from "@/lib/useStatsRefresh";
+import {
+  buildPeriodWindowOptions,
+  dateKeysForPeriodPayload,
+  getDateKeyedPeriodData,
+  isDateKeyedPeriodPayload,
+  loadDateKeyedPeriodSelection,
+  type DateKeyedPeriodPayload,
+} from "@/lib/statsPeriods";
 
 type RoundInfo = {
   round_number?: number;
@@ -133,37 +141,61 @@ export default function SonMacClient({
   allData: initialData,
   dates: initialDates,
   seasonStarts,
+  periodPayload: initialPeriodPayload,
 }: {
   allData: Record<string, any>;
   dates: string[];
   seasonStarts: string[];
+  periodPayload?: DateKeyedPeriodPayload<any> | null;
 }) {
   const [data, setData] = useState<Record<string, any>>(initialData);
   const [dates, setDates] = useState<string[]>(initialDates);
-  const initialDataEmpty = !initialData || Object.keys(initialData).length === 0;
+  const [periodPayload, setPeriodPayload] = useState<DateKeyedPeriodPayload<any> | null>(initialPeriodPayload || null);
+  const [periodData, setPeriodData] = useState<Record<string, Record<string, any>>>(initialPeriodPayload?.data || {});
 
   useStatsRefresh({
-    keys: ['sonmac_by_date_all', 'sonmac_by_date'],
+    keys: ['sonmac_by_date_periods'],
     onData: (j) => {
-      const incoming = j?.sonmac_by_date_all || j?.sonmac_by_date;
-      const hasIncomingData = incoming && typeof incoming === "object" && Object.keys(incoming).length > 0;
-      if (hasIncomingData) {
-        setData(incoming);
-        const newDates = Object.keys(incoming).sort((a, b) => b.localeCompare(a));
+      if (isDateKeyedPeriodPayload<any>(j?.sonmac_by_date_periods)) {
+        setPeriodPayload(j.sonmac_by_date_periods);
+        setPeriodData(j.sonmac_by_date_periods.data || {});
+        const nextPeriod = j.sonmac_by_date_periods.current_period || "all_time";
+        const newDates = Object.keys(getDateKeyedPeriodData(j.sonmac_by_date_periods, nextPeriod)).sort((a, b) => b.localeCompare(a));
+        setSelectedSeasonId(nextPeriod);
         setDates(newDates);
+      } else {
+        const incoming = j?.sonmac_by_date;
+        const hasIncomingData = incoming && typeof incoming === "object" && Object.keys(incoming).length > 0;
+        if (hasIncomingData) {
+          setData(incoming);
+          const newDates = Object.keys(incoming).sort((a, b) => b.localeCompare(a));
+          setDates(newDates);
+        }
       }
     },
   });
 
-  const seasonOptions = useMemo(() => buildSeasonWindowOptions(seasonStarts || [], dates), [seasonStarts, dates]);
-  const [selectedSeasonId, setSelectedSeasonId] = useState(seasonOptions[0]?.id || "all_time");
+  const allPeriodDates = useMemo(() => dateKeysForPeriodPayload(periodPayload), [periodPayload]);
+  const seasonOptions = useMemo(
+    () => buildPeriodWindowOptions(periodPayload, seasonStarts || [], allPeriodDates.length ? allPeriodDates : dates),
+    [periodPayload, seasonStarts, allPeriodDates, dates]
+  );
+  const [selectedSeasonId, setSelectedSeasonId] = useState(initialPeriodPayload?.current_period || seasonOptions[0]?.id || "all_time");
   const selectedSeason = useMemo(
     () => seasonOptions.find((s) => s.id === selectedSeasonId) || seasonOptions[0] || { id: "all_time", label: "Tum Zamanlar", startDate: null, endDate: null },
     [seasonOptions, selectedSeasonId]
   );
-  const filteredDates = useMemo(() => filterDatesBySeason(dates, selectedSeason), [dates, selectedSeason]);
+  const visibleData = useMemo(
+    () => periodPayload ? (periodData[selectedSeasonId] || {}) : data,
+    [periodPayload, periodData, selectedSeasonId, data]
+  );
+  const visibleDates = useMemo(() => Object.keys(visibleData || {}).sort((a, b) => b.localeCompare(a)), [visibleData]);
+  const filteredDates = useMemo(
+    () => periodPayload ? visibleDates : filterDatesBySeason(dates, selectedSeason),
+    [periodPayload, visibleDates, dates, selectedSeason]
+  );
   const [selectedDate, setSelectedDate] = useState(filteredDates[0] || "");
-  const maps = data[selectedDate]?.maps || {};
+  const maps = visibleData[selectedDate]?.maps || {};
   const mapNames = Object.keys(maps);
   const [selectedMap, setSelectedMap] = useState(mapNames[0] || "");
 
@@ -174,6 +206,22 @@ export default function SonMacClient({
   }, [seasonOptions, selectedSeasonId]);
 
   React.useEffect(() => {
+    if (!periodPayload || periodData[selectedSeasonId]) return;
+    let cancelled = false;
+    loadDateKeyedPeriodSelection<any>({
+      dataset: "sonmac_by_date",
+      payload: periodPayload,
+      periodId: selectedSeasonId,
+      loadedData: periodData,
+    }).then((nextData) => {
+      if (!cancelled) setPeriodData(nextData);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [periodPayload, periodData, selectedSeasonId]);
+
+  React.useEffect(() => {
     if (!filteredDates.includes(selectedDate)) {
       setSelectedDate(filteredDates[0] || "");
     }
@@ -181,9 +229,9 @@ export default function SonMacClient({
 
   // Update selectedMap if date changes
   React.useEffect(() => {
-    const newMapNames = Object.keys(data[selectedDate]?.maps || {});
+    const newMapNames = Object.keys(visibleData[selectedDate]?.maps || {});
     setSelectedMap(newMapNames[0] || "");
-  }, [selectedDate, data]);
+  }, [selectedDate, visibleData]);
 
   const mapData = maps[selectedMap] || {};
   const team1 = mapData.team1;

@@ -42,7 +42,7 @@ Leaves ~490-600 MB headroom (including OS).
 - **Connection pool**: reduced from 15 to 10; idle timeout raised to 120s (`index.js`)
 - **V8 heap**: capped at 128 MB via `NODE_OPTIONS`
 - **Query batching**: 11 parallel DB queries staggered into 3 batches of 3-4 (`statsGenerator.js`)
-- **Period processing**: changed from `Promise.all` to sequential loop
+- **Period processing**: changed from `Promise.all` to sequential loop. Completed `season_avg` and `players_stats` payloads are cached by period; date-keyed completed seasons are static frontend shards.
 - **In-memory stats cache**: `lastGeneratedData` (~4 MB) and `lastAggregateData` (~50-100 KB) kept permanently in memory — no TTL. Overwritten when the published stats version changes; only null after a container restart.
 - **PG buffer keepalive**: stats state poller touches `live_version` table to keep attendance pages in PG buffer cache
 - Startup runs `generateAggregates` so aggregate data is available immediately
@@ -57,6 +57,7 @@ Leaves ~490-600 MB headroom (including OS).
 - **Incremental refresh cooldown**: 90 seconds (`layout.tsx`). JSON files written without pretty-printing.
 - **Unified SSR data path**: all stats pages use `fetchStats()` (`lib/statsServer.ts`) which fetches from backend memory server-to-server (10s module cache). Falls back to disk files only when backend is unreachable. Eliminates stale-disk-read bugs where some pages showed fresh data and others didn't.
 - **Filtered client stats refresh**: `/api/stats/check` still uses the global `statsVersion`, persists the complete runtime snapshot, then returns only requested dataset keys to browser callers.
+- **Season-split date-keyed stats**: `night_avg_periods` and `sonmac_by_date_periods` carry active-season data plus period metadata. Completed seasons are committed under `public/data/stats-history/` and lazy-loaded only when a historical or all-time view needs them.
 - **No Firebase SDK**: Firebase client and admin SDKs fully removed. Zero JS bundles downloaded for Firebase. Auth uses Google OAuth + HMAC sessions. Push notifications use standard Web Push (VAPID).
 - **Server-side player data**: `attendance/page.tsx` is a server component that reads `players.json` from disk (ISR, revalidate 60s). The client component (`AttendanceClient.tsx`) receives players as props — no client-side fetch waterfall.
 - Docker memory limit: 256M
@@ -99,5 +100,4 @@ The scheduler runs in the **backend** Express process (`backend/notificationSche
 If further memory reduction is needed:
 
 1. **Add swap space** (1-2 GB) on the VM as OOM safety net
-2. **Split date-keyed historical stats by season** — keep completed seasons static/sharded and update only the active season by default
-3. **Re-enable Next.js image optimization** or use a CDN for static images
+2. **Re-enable Next.js image optimization** or use a CDN for static images

@@ -119,6 +119,29 @@ Writers:
 
 `stats_meta.json` must only advance after a complete snapshot write. If any existing runtime file is preserved because the new dataset is empty, metadata must not advance.
 
+Large date-keyed historical datasets are split between runtime and static frontend assets:
+
+- `night_avg_periods`
+- `sonmac_by_date_periods`
+
+These runtime period payloads follow the same global `statsVersion` as every other stats file, but their `data` contains only the active/current season. Completed season files are committed under:
+
+```text
+frontend-nextjs/public/data/stats-history/night_avg/
+frontend-nextjs/public/data/stats-history/sonmac_by_date/
+```
+
+After refreshing local historical source files, update the committed static shards with:
+
+```text
+cd backend
+node generate-stats-from-prod.js
+cd frontend-nextjs
+npm run bake-stats-history
+```
+
+`generate-stats-from-prod.js` writes normal runtime files plus bake-only all-time sources under `frontend-nextjs/runtime-data/history-source/`. The bake script splits those sources into committed completed-season shards.
+
 ## Admin Manual Publish
 
 The admin "Stat Bas" button calls:
@@ -154,7 +177,7 @@ Check:
 - `effectiveStatsState.lastCompletedAt`
 - `effectiveStatsState.lastError`
 - `lastGeneratedStatsVersion`
-- dataset counts such as `sonmac_all_dates` and `night_avg_all_dates`
+- dataset counts such as `sonmac_dates`, `night_avg_dates`, `sonmac_by_date_periods`, and `night_avg_periods`
 
 Then verify DB state/triggers with the SQL in the trigger section.
 

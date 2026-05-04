@@ -303,6 +303,17 @@ async function buildSeasonAvgPeriodsDataset(pool, currentSeasonStart, configured
   return payload;
 }
 
+function buildCurrentDateKeyedPeriodsDataset(periodSource, currentData) {
+  return {
+    current_period: periodSource.current_period,
+    season_starts: periodSource.season_starts,
+    periods: periodSource.periods,
+    data: {
+      [periodSource.current_period]: currentData || {},
+    },
+  };
+}
+
 function buildSonmacByDate(sonmacRows, roundRows) {
   const sonmacGrouped = {};
   for (const r of sonmacRows) {
@@ -765,17 +776,14 @@ async function generateAll(pool, opts={}){
     catch (e) { console.error(`[statsGenerator] ${label} query failed`, e.message); errors.push({ dataset: label, error: e.message }); return []; }
   };
   // Batch 1: night averages + last10 + season sonmac
-  const [nightRows, nightRowsAllRaw, last10Rows, sonmacRows] = await Promise.all([
+  const [nightRows, last10Rows, sonmacRows] = await Promise.all([
     safeQG(qset.nightAvg, 'night_avg'),
-    isAllTime ? Promise.resolve([]) : safeQG(allTimeQset.nightAvg, 'night_avg_all'),
     safeQG(qset.last10, 'last10'),
     safeQG(qset.sonmac, 'sonmac'),
   ]);
-  // Batch 2: rounds + all-time sonmac + duello
-  const [roundRows, allTimeSonmacRowsRaw, allTimeRoundRowsRaw, dLastRows] = await Promise.all([
+  // Batch 2: rounds + duello
+  const [roundRows, dLastRows] = await Promise.all([
     safeQG(qset.sonmacRounds, 'sonmac_rounds'),
-    isAllTime ? Promise.resolve([]) : safeQG(allTimeQset.sonmac, 'sonmac_by_date_all'),
-    isAllTime ? Promise.resolve([]) : safeQG(allTimeQset.sonmacRounds, 'sonmac_by_date_all_rounds'),
     safeQG(qset.duello_son_mac, 'duello_son_mac'),
   ]);
   // Batch 3: remaining datasets
@@ -784,14 +792,11 @@ async function generateAll(pool, opts={}){
     safeQG(qset.performanceGraphs, 'performance_graphs'),
     safeQG(qset.mapStats, 'map_stats'),
   ]);
-  const nightRowsAll = isAllTime ? nightRows : nightRowsAllRaw;
-  const allTimeSonmacRows = isAllTime ? sonmacRows : allTimeSonmacRowsRaw;
-  const allTimeRoundRows  = isAllTime ? roundRows  : allTimeRoundRowsRaw;
   results.night_avg     = mapNightAvgRows(nightRows);
-  results.night_avg_all = mapNightAvgRows(nightRowsAll);
   results.last10 = last10Rows.map(r=>({ steam_id:r.steam_id, name:r.name, hltv_2:num(r.hltv_2), adr:num(r.adr), kd:num(r.kd), mvp:num(r.mvp), kills:num(r.kills), deaths:num(r.deaths), assists:num(r.assists), hs:num(r.headshot_kills), hs_ratio:num(r.headshot_killratio), first_kill:num(r.first_kill_count), first_death:num(r.first_death_count), bomb_planted:num(r.bomb_planted), bomb_defused:num(r.bomb_defused), hltv:num(r.hltv), kast:num(r.kast), utl_dmg:num(r.utl_dmg), two_kills:num(r.two_kills), three_kills:num(r.three_kills), four_kills:num(r.four_kills), five_kills:num(r.five_kills), matches:num(r.matches_in_interval), win_rate:num(r.win_rate_percentage), avg_clutches: safeAvg(num(r.total_clutches), num(r.matches_in_interval)), avg_clutches_won: safeAvg(num(r.total_clutches_won), num(r.matches_in_interval)), clutch_success: pct(num(r.total_clutches_won), num(r.total_clutches)) }));
   results.sonmac_by_date     = buildSonmacByDate(sonmacRows, roundRows);
-  results.sonmac_by_date_all = buildSonmacByDate(allTimeSonmacRows, allTimeRoundRows);
+  results.night_avg_periods = buildCurrentDateKeyedPeriodsDataset(seasonAvgPeriods, results.night_avg);
+  results.sonmac_by_date_periods = buildCurrentDateKeyedPeriodsDataset(seasonAvgPeriods, results.sonmac_by_date);
   results.duello_son_mac  = buildDuello(dLastRows);
   results.duello_sezon    = buildDuello(dSeasonRows);
   results.performance_data = mapPerformanceRows(perfRows);
@@ -914,4 +919,21 @@ async function generateAggregates(pool, opts = {}) {
   return out;
 }
 
-module.exports = { generateAll, generateAggregates, clearHistoricalCache };
+async function generateHistoricalDateKeyedAllTime(pool, opts = {}) {
+  loadCanonicalNames();
+  if (opts.seasonStart) {
+    sezonbaslangic = opts.seasonStart;
+  }
+  const qset = buildQueries(ALL_TIME_START);
+  const [nightRows, sonmacRows, roundRows] = await Promise.all([
+    pool.query(qset.nightAvg).then((r) => r.rows),
+    pool.query(qset.sonmac).then((r) => r.rows),
+    pool.query(qset.sonmacRounds).then((r) => r.rows),
+  ]);
+  return {
+    night_avg_all: mapNightAvgRows(nightRows),
+    sonmac_by_date_all: buildSonmacByDate(sonmacRows, roundRows),
+  };
+}
+
+module.exports = { generateAll, generateAggregates, generateHistoricalDateKeyedAllTime, clearHistoricalCache };

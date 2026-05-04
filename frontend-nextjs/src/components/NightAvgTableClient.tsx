@@ -8,6 +8,14 @@ import { RadarGraphs } from "./SeasonAvgRadarGraphs";
 import { buildSeasonWindowOptions, filterDatesBySeason } from "@/lib/seasonRanges";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useStatsRefresh } from "@/lib/useStatsRefresh";
+import {
+  buildPeriodWindowOptions,
+  dateKeysForPeriodPayload,
+  getDateKeyedPeriodData,
+  isDateKeyedPeriodPayload,
+  loadDateKeyedPeriodSelection,
+  type DateKeyedPeriodPayload,
+} from "@/lib/statsPeriods";
 
 const nightAvgColumns = [
   { key: "name", label: "Oyuncu" },
@@ -42,33 +50,57 @@ export default function NightAvgTableClient({
   allData: initialData,
   dates: initialDates,
   seasonStarts,
+  periodPayload: initialPeriodPayload,
 }: {
   allData: Record<string, any[]>;
   dates: string[];
   seasonStarts: string[];
+  periodPayload?: DateKeyedPeriodPayload<any[]> | null;
 }) {
   const [dataMap, setDataMap] = useState<Record<string, any[]>>(initialData);
   const [dates, setDates] = useState<string[]>(initialDates);
+  const [periodPayload, setPeriodPayload] = useState<DateKeyedPeriodPayload<any[]> | null>(initialPeriodPayload || null);
+  const [periodData, setPeriodData] = useState<Record<string, Record<string, any[]>>>(initialPeriodPayload?.data || {});
   const [loading, setLoading] = useState<boolean>(Object.keys(initialData || {}).length === 0);
   const [activeTab, setActiveTab] = useState<"table" | "graph" | "head2head">("table");
 
-  const seasonOptions = useMemo(() => buildSeasonWindowOptions(seasonStarts || [], dates), [seasonStarts, dates]);
-  const [selectedSeasonId, setSelectedSeasonId] = useState<string>(seasonOptions[0]?.id || "all_time");
+  const allPeriodDates = useMemo(() => dateKeysForPeriodPayload(periodPayload), [periodPayload]);
+  const seasonOptions = useMemo(
+    () => buildPeriodWindowOptions(periodPayload, seasonStarts || [], allPeriodDates.length ? allPeriodDates : dates),
+    [periodPayload, seasonStarts, allPeriodDates, dates]
+  );
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>(initialPeriodPayload?.current_period || seasonOptions[0]?.id || "all_time");
   const selectedSeason = useMemo(
     () => seasonOptions.find((s) => s.id === selectedSeasonId) || seasonOptions[0] || { id: "all_time", label: "Tum Zamanlar", startDate: null, endDate: null },
     [seasonOptions, selectedSeasonId]
   );
-  const filteredDates = useMemo(() => filterDatesBySeason(dates, selectedSeason), [dates, selectedSeason]);
+  const visibleDataMap = useMemo(
+    () => periodPayload ? (periodData[selectedSeasonId] || {}) : dataMap,
+    [periodPayload, periodData, selectedSeasonId, dataMap]
+  );
+  const visibleDates = useMemo(() => Object.keys(visibleDataMap || {}).sort((a, b) => b.localeCompare(a)), [visibleDataMap]);
+  const filteredDates = useMemo(
+    () => periodPayload ? visibleDates : filterDatesBySeason(dates, selectedSeason),
+    [periodPayload, visibleDates, dates, selectedSeason]
+  );
 
   const [selectedDate, setSelectedDate] = useState<string>(filteredDates[0] || "");
-  const data = dataMap[selectedDate] || [];
+  const data = visibleDataMap[selectedDate] || [];
   const { isDark } = useTheme();
 
   useStatsRefresh({
-    keys: ['night_avg_all', 'night_avg'],
+    keys: ['night_avg_periods'],
     onData: (j) => {
-      const incoming = j?.night_avg_all || j?.night_avg;
-      if (incoming) {
+      if (isDateKeyedPeriodPayload<any[]>(j?.night_avg_periods)) {
+        setPeriodPayload(j.night_avg_periods);
+        setPeriodData(j.night_avg_periods.data || {});
+        const nextPeriod = j.night_avg_periods.current_period || selectedSeasonId;
+        const newDates = Object.keys(getDateKeyedPeriodData(j.night_avg_periods, nextPeriod)).sort((a, b) => b.localeCompare(a));
+        setSelectedSeasonId(nextPeriod);
+        setSelectedDate((prev) => (newDates.includes(prev) ? prev : (newDates[0] || "")));
+      } else {
+        const incoming = j?.night_avg;
+        if (!incoming) return;
         setDataMap(incoming);
         const newDates = Object.keys(incoming).sort((a, b) => b.localeCompare(a));
         setDates(newDates);
@@ -87,6 +119,22 @@ export default function NightAvgTableClient({
       setSelectedSeasonId(seasonOptions[0]?.id || "all_time");
     }
   }, [seasonOptions, selectedSeasonId]);
+
+  React.useEffect(() => {
+    if (!periodPayload || periodData[selectedSeasonId]) return;
+    let cancelled = false;
+    loadDateKeyedPeriodSelection<any[]>({
+      dataset: "night_avg",
+      payload: periodPayload,
+      periodId: selectedSeasonId,
+      loadedData: periodData,
+    }).then((nextData) => {
+      if (!cancelled) setPeriodData(nextData);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [periodPayload, periodData, selectedSeasonId]);
 
   React.useEffect(() => {
     if (!filteredDates.includes(selectedDate)) {

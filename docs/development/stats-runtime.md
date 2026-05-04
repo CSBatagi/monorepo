@@ -36,9 +36,9 @@ Primary JSON outputs:
 - `season_avg_periods.json`
 - `last10.json`
 - `night_avg.json`
-- `night_avg_all.json`
+- `night_avg_periods.json`
 - `sonmac_by_date.json`
-- `sonmac_by_date_all.json`
+- `sonmac_by_date_periods.json`
 - `players_stats.json`
 - `players_stats_periods.json`
 - `performance_data.json`
@@ -48,26 +48,43 @@ Primary JSON outputs:
 
 Current usage pattern:
 
-- Date-keyed pages use all-time datasets with client period filtering (`night_avg_all`, `sonmac_by_date_all`).
+- Date-keyed historical pages prefer small period manifests (`night_avg_periods`, `sonmac_by_date_periods`) whose `data` contains only the active/current season.
+- Completed date-keyed seasons are baked into frontend static files under `public/data/stats-history/<dataset>/season_YYYY-MM-DD.json`.
+- Historical and all-time browser views lazy-load static period files only when a user selects that period. All-time is assembled client-side from static completed seasons plus the active runtime season.
 - Heavy player payload uses backend period-precomputed structure (`players_stats_periods`).
 - Season average tab consumes `season_avg_periods`.
 
 ## Page to Dataset Mapping
 
 - `season-avg`: `season_avg_periods`
-- `sonmac`, `mac-sonuclari`: `sonmac_by_date_all`
-- `gece-ortalama`: `night_avg_all`
-- `performans-odulleri`: `night_avg_all`
+- `sonmac`, `mac-sonuclari`: `sonmac_by_date_periods`
+- `gece-ortalama`: `night_avg_periods`
+- `performans-odulleri`: `night_avg_periods`
+- `gecenin-mvpsi`: `night_avg_periods`
+- `batak-allstars`, `token-wars`: `night_avg_periods`, `sonmac_by_date_periods`
 - `oyuncular`: `players_stats_periods`
+
+## Adding Stats Pages
+
+When adding or modifying a stats-consuming page, keep these rules:
+
+- Use the smallest dataset the page needs. Do not introduce merged all-time date-keyed runtime payloads for `night_avg` or `sonmac_by_date`.
+- For current-season date-keyed data, request `night_avg_periods` or `sonmac_by_date_periods` and read `current_period` from the payload. These period payloads intentionally embed only active/current season data.
+- For historical season selection in the browser, reuse `frontend-nextjs/src/lib/statsPeriods.ts`. It lazy-loads one committed static shard from `public/data/stats-history/<dataset>/season_YYYY-MM-DD.json`.
+- For all-time date-keyed browser views, merge on demand from static completed season shards plus the active runtime period. Do not make the backend or `/api/stats/check` return a merged all-time date-keyed object by default.
+- For server-rendered feature pages with custom date ranges, reuse `frontend-nextjs/src/lib/statsHistoryServer.ts` so SSR reads only the overlapping static shards.
+- Add every new runtime dataset key to `frontend-nextjs/src/app/api/internal/stats/prewarm/route.ts` so ISR pages are revalidated after a stats publish.
+- If a new completed global season boundary is added, regenerate production source files and rerun `cd frontend-nextjs && npm run bake-stats-history`; commit the updated files under `public/data/stats-history/`.
 
 ## Required Sync Points When Adding/Renaming Stats Files
 
 The canonical file list lives in `frontend-nextjs/src/lib/statsSnapshot.ts` (`STAT_FILES` array). Update the following together:
 
-- `frontend-nextjs/src/lib/statsSnapshot.ts` (single source of truth for the 13-file list + disk write helper)
+- `frontend-nextjs/src/lib/statsSnapshot.ts` (single source of truth for the stats file list + disk write helper)
 - `backend/generate-stats-from-prod.js`
 - `frontend-nextjs/src/lib/dataReader.ts` (disk fallback defaults)
 - `frontend-nextjs/src/lib/statsServer.ts` (SSR recall path — key names must match backend dataset keys, and unchanged fast-path depends on complete `runtime-data` files + `stats_meta.json`)
+- `frontend-nextjs/scripts/bake-stats-history.mjs` and committed files in `frontend-nextjs/public/data/stats-history/` when completed season boundaries change or historical snapshots are regenerated.
 
 ## Memory Optimizations (1 GB VM)
 
@@ -102,7 +119,8 @@ Only these paths should write generated stats into frontend `runtime-data/`:
   - The SSR module cache is completeness-aware: it should only satisfy a request when all requested keys are already cached. Partial page-level reads may extend the cache, but must not replace unrelated cached datasets.
   - Generic disk fallback remains the last resort for backend-unavailable scenarios.
 - Backend polls `stats_refresh_state` in the background and touches `live_version` to keep attendance table pages in PG buffer cache. Page loads never hit the DB directly.
-- Historical (completed) season data is cached in memory and only recomputed on force-regenerate.
+- Historical date-keyed completed season files are static frontend assets. Regenerate them with `cd backend && node generate-stats-from-prod.js`, then `cd ../frontend-nextjs && npm run bake-stats-history` after production credentials are configured.
+- Historical `season_avg` and `players_stats` completed periods are still generated and cached by the backend period payloads.
 
 ## Live State (Attendance + Team Picker)
 

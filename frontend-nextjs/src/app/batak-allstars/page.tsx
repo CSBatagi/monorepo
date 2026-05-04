@@ -1,6 +1,11 @@
 import BatakAllStarsClient from './BatakAllStarsClient';
 import { readJson } from '@/lib/dataReader';
 import { fetchStats } from '@/lib/statsServer';
+import {
+  getDateKeyedPeriodData,
+  isDateKeyedPeriodPayload,
+} from '@/lib/statsPeriods';
+import { readDateKeyedRangeFromStaticHistory } from '@/lib/statsHistoryServer';
 
 export const revalidate = 60; // seconds – data changes only when stats regenerate
 
@@ -10,11 +15,31 @@ export default async function BatakAllStarsPage() {
   const seasonEnd = typeof seasonStartRaw?.season_end === 'string' ? seasonStartRaw.season_end.split('T')[0] : null;
   const players = (await readJson('players.json')) || [];
   const config = (await readJson('batak_allstars_config.json')) || null;
-  // Use _all variants because the backend's season_start.json may differ from
-  // batak_allstars_season_start.json. The client filters by seasonStart/seasonEnd.
-  const stats = await fetchStats('night_avg_all', 'sonmac_by_date_all');
-  const nightAvg = stats.night_avg_all || {};
-  const sonmacByDate = stats.sonmac_by_date_all || {};
+  // Batak All-Stars can use a range that differs from the global season.
+  // SSR reads only the overlapping static season shards and passes the filtered range.
+  const stats = await fetchStats('night_avg_periods', 'sonmac_by_date_periods', 'night_avg', 'sonmac_by_date');
+  const nightAvgPeriods = isDateKeyedPeriodPayload<any[]>(stats.night_avg_periods) ? stats.night_avg_periods : null;
+  const sonmacPeriods = isDateKeyedPeriodPayload<any>(stats.sonmac_by_date_periods) ? stats.sonmac_by_date_periods : null;
+  const currentNightAvg = nightAvgPeriods?.current_period
+    ? getDateKeyedPeriodData(nightAvgPeriods, nightAvgPeriods.current_period)
+    : stats.night_avg || {};
+  const currentSonmacByDate = sonmacPeriods?.current_period
+    ? getDateKeyedPeriodData(sonmacPeriods, sonmacPeriods.current_period)
+    : stats.sonmac_by_date || {};
+  const nightAvg = await readDateKeyedRangeFromStaticHistory<any[]>({
+    dataset: 'night_avg',
+    payload: nightAvgPeriods,
+    currentData: currentNightAvg,
+    rangeStart: seasonStart,
+    rangeEnd: seasonEnd,
+  });
+  const sonmacByDate = await readDateKeyedRangeFromStaticHistory<any>({
+    dataset: 'sonmac_by_date',
+    payload: sonmacPeriods,
+    currentData: currentSonmacByDate,
+    rangeStart: seasonStart,
+    rangeEnd: seasonEnd,
+  });
   return (
     <div id="page-batak_allstars" className="page-content page-content-container">
       <h2 className="text-2xl font-semibold text-blue-600 mb-4">Batak All-Stars Ligi</h2>

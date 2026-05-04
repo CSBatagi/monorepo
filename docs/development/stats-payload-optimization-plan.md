@@ -39,7 +39,7 @@ Completed in the 2026-05-04 pass:
 - `PERFORMANCE_REPORT.md`, `docs/development/stats-runtime.md`, and `docs/operations/stats-publishing.md`: aligned with the current contract.
 - `backend/test/seasonConfig.test.js`: added coverage for season start parsing.
 
-Next agent should start with **Section 3: Season-Split Historical Datasets** unless the user redirects.
+Section 3 is now implemented. The next optimization pass should validate payload sizes in production-like runtime data and decide whether any remaining consumers still need legacy all-time fields.
 
 ## Constraints
 
@@ -59,7 +59,7 @@ Update `frontend-nextjs/src/app/api/internal/stats/prewarm/route.ts` so every st
 Known missing paths to add:
 
 - `/team-picker` for `season_avg` and `last10`.
-- `/token-wars` for `night_avg_all` and `sonmac_by_date_all`.
+- `/token-wars` for the date-keyed historical datasets.
 
 This preserves global versioning and only fixes cache invalidation coverage.
 
@@ -88,7 +88,7 @@ Investigate and then implement a compatible split for large historical datasets:
 - Keep active/current season data regenerated in normal publish flow.
 - Store completed season datasets by season period, keyed by configured season starts and derived end dates.
 - Keep historical season outputs static unless the admin force-regenerate path explicitly rebuilds them.
-- Continue exposing compatibility fields during migration so existing pages do not break.
+- Keep active/current season data compatible while moving completed historical seasons to static frontend shards.
 
 Candidate snapshot fields:
 
@@ -96,6 +96,8 @@ Candidate snapshot fields:
 night_avg_periods
 sonmac_by_date_periods
 ```
+
+Status: implemented in this pass with baked static history. Backend now emits `night_avg_periods` and `sonmac_by_date_periods` using the same period metadata shape as `season_avg_periods` / `players_stats_periods`, but date-keyed period payloads contain only the active/current season in `data`. Completed seasons are committed as static frontend shards under `frontend-nextjs/public/data/stats-history/`. Historical selections lazy-load one static shard; all-time is assembled on demand from static completed seasons plus the active runtime season. The single global `statsVersion` is preserved.
 
 The existing `season_avg_periods` and `players_stats_periods` structure is the preferred local pattern.
 
@@ -105,17 +107,17 @@ Candidate page behavior:
 - Pages that need historical filters should fetch or receive period payloads and select one season at a time.
 - Avoid sending merged all-time date-keyed payloads to the browser by default.
 
-Before implementing this part, confirm every consumer of `night_avg_all` and `sonmac_by_date_all`, including feature pages such as Batak All-Stars and Token Wars.
+Before implementing this part, confirm every former consumer of the all-time date-keyed datasets, including feature pages such as Batak All-Stars and Token Wars.
 
 Known consumers from the 2026-05-04 read-only inspection:
 
-- `/gece-ortalama`: `night_avg_all`
-- `/performans-odulleri`: `night_avg_all`
-- `/gecenin-mvpsi`: `night_avg_all`
-- `/sonmac`: `sonmac_by_date_all`
-- `/mac-sonuclari`: `sonmac_by_date_all`
-- `/batak-allstars`: `night_avg_all` + `sonmac_by_date_all`; pinned feature range can differ from global season
-- `/token-wars`: `night_avg_all` + `sonmac_by_date_all`; currently uses all-time data to avoid stale season-filtered ISR across season changes
+- `/gece-ortalama`: migrated to `night_avg_periods` + lazy static history
+- `/performans-odulleri`: migrated to `night_avg_periods` + lazy static history
+- `/gecenin-mvpsi`: migrated to current period from `night_avg_periods`
+- `/sonmac`: migrated to `sonmac_by_date_periods` + lazy static history
+- `/mac-sonuclari`: migrated to `sonmac_by_date_periods` + lazy static history
+- `/batak-allstars`: SSR reads only overlapping static history shards because its pinned feature range can differ from the global season
+- `/token-wars`: migrated to current period from `night_avg_periods` + `sonmac_by_date_periods`
 - `/oyuncular`: already uses `players_stats_periods`
 - `/season-avg`: already uses `season_avg_periods`
 

@@ -44,3 +44,6 @@ credentials.json
 # Database dumps
 production_dump_*.sql
 *.sql
+
+# Bake-only generated sources for static stats history
+frontend-nextjs/runtime-data/history-source/

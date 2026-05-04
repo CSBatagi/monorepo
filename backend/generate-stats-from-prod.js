@@ -6,7 +6,7 @@ require('dotenv').config();
 const { Pool } = require('pg');
 const fs = require('fs').promises;
 const path = require('path');
-const { generateAll, generateAggregates } = require('./statsGenerator');
+const { generateAll, generateAggregates, generateHistoricalDateKeyedAllTime } = require('./statsGenerator');
 const { resolveSeasonConfig } = require('./seasonConfig');
 
 // Production database configuration
@@ -51,14 +51,18 @@ async function generateStatsFromProduction() {
     console.log('Generating aggregate datasets...');
     const aggregates = await generateAggregates(productionPool, { seasonStart, seasonStarts });
     console.log('✓ Aggregate datasets generated\n');
+
+    console.log('Generating historical date-keyed source datasets for static baking...');
+    const historicalDateKeyed = await generateHistoricalDateKeyedAllTime(productionPool, { seasonStart, seasonStarts });
+    console.log('✓ Historical date-keyed source datasets generated\n');
     
     // Write incremental files
     console.log('Writing files to runtime-data/...');
     const incrementalFiles = {
       'night_avg.json': incremental.night_avg,
-      'night_avg_all.json': incremental.night_avg_all,
+      'night_avg_periods.json': incremental.night_avg_periods,
       'sonmac_by_date.json': incremental.sonmac_by_date,
-      'sonmac_by_date_all.json': incremental.sonmac_by_date_all,
+      'sonmac_by_date_periods.json': incremental.sonmac_by_date_periods,
       'duello_son_mac.json': incremental.duello_son_mac,
       'duello_sezon.json': incremental.duello_sezon,
       'performance_data.json': incremental.performance_data,
@@ -84,6 +88,18 @@ async function generateStatsFromProduction() {
       const filepath = path.join(runtimeDir, filename);
       await fs.writeFile(filepath, JSON.stringify(data, null, 2), 'utf-8');
       console.log(`  ✓ ${filename}`);
+    }
+
+    const historySourceDir = path.join(runtimeDir, 'history-source');
+    await fs.mkdir(historySourceDir, { recursive: true });
+    const historySourceFiles = {
+      'night_avg_all.json': historicalDateKeyed.night_avg_all,
+      'sonmac_by_date_all.json': historicalDateKeyed.sonmac_by_date_all,
+    };
+    for (const [filename, data] of Object.entries(historySourceFiles)) {
+      const filepath = path.join(historySourceDir, filename);
+      await fs.writeFile(filepath, JSON.stringify(data), 'utf-8');
+      console.log(`  ✓ history-source/${filename}`);
     }
     
     // Write timestamp

@@ -2,210 +2,194 @@
   {
     "steam_id": "76561198805132512",
     "name": "AfterFart",
-    "matches_played": 14,
-    "wins": 5,
+    "matches_played": 12,
+    "wins": 6,
     "ties": 0,
-    "losses": 9,
-    "win_rate": 35.71,
-    "hltv_2": 0.7491403562682015,
-    "hltv": 0.6499560730797904,
-    "kast": 68.79190826416016,
-    "adr": 53.517092841012136,
-    "kd": 0.57,
-    "avg_kills_per_round": 0.43,
-    "avg_deaths_per_round": 0.75,
-    "hs_pct": 37.32,
-    "kills": 142,
-    "deaths": 247,
+    "losses": 6,
+    "win_rate": 50,
+    "hltv_2": 0.8013525009155273,
+    "hltv": 0.6946860005458196,
+    "kast": 67.75570678710938,
+    "adr": 63.74809773763021,
+    "kd": 0.65,
+    "avg_kills_per_round": 0.48,
+    "avg_deaths_per_round": 0.74,
+    "hs_pct": 28.15,
+    "kills": 135,
+    "deaths": 209,
     "assists": 87,
-    "headshots": 53,
-    "wallbang_kills": 6,
+    "headshots": 38,
+    "wallbang_kills": 5,
     "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 38,
-      "traded_pct": 8,
-      "first_kills": 19,
-      "first_deaths": 31,
+      "success_pct": 38.46,
+      "traded_pct": 15.38,
+      "first_kills": 15,
+      "first_deaths": 24,
       "best_weapon": "Galil AR"
     },
     "rounds": {
-      "total": 331,
-      "ct": 168,
-      "t": 163
+      "total": 281,
+      "ct": 146,
+      "t": 135
     },
     "multi_kills": {
-      "k1": 80,
-      "k2": 25,
+      "k1": 64,
+      "k2": 28,
       "k3": 4,
-      "k4": 0,
+      "k4": 1,
       "k5": 0
     },
     "inspections": {
-      "total": 94,
+      "total": 92,
       "deaths_while_inspecting": 0
     },
     "objectives": {
-      "bomb_planted": 12,
-      "bomb_defused": 3,
+      "bomb_planted": 17,
+      "bomb_defused": 4,
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 2.5,
-      "enemies_flashed": 2.6,
-      "avg_he_damage": 27.5,
-      "avg_smokes_thrown": 6.4
+      "avg_blind_time": 2.1,
+      "enemies_flashed": 4.3,
+      "avg_he_damage": 51.4,
+      "avg_smokes_thrown": 6.7
     },
     "weapons": [
       {
         "name": "Galil AR",
-        "kills": 38,
-        "hs_pct": 31.58,
-        "damage": 4738,
-        "shots": 1039,
-        "hits": 171,
-        "accuracy": 16.46
-      },
-      {
-        "name": "AK-47",
-        "kills": 24,
-        "hs_pct": 58.33,
-        "damage": 3137,
-        "shots": 701,
-        "hits": 84,
-        "accuracy": 11.98
-      },
-      {
-        "name": "M4A1",
-        "kills": 22,
-        "hs_pct": 18.18,
-        "damage": 3505,
-        "shots": 578,
-        "hits": 105,
-        "accuracy": 18.17
-      },
-      {
-        "name": "Glock-18",
-        "kills": 15,
-        "hs_pct": 20,
-        "damage": 1692,
-        "shots": 339,
-        "hits": 83,
-        "accuracy": 24.48
-      },
-      {
-        "name": "P2000",
-        "kills": 14,
-        "hs_pct": 64.29,
-        "damage": 2037,
-        "shots": 256,
-        "hits": 62,
-        "accuracy": 24.22
-      },
-      {
-        "name": "AUG",
-        "kills": 8,
-        "hs_pct": 50,
-        "damage": 1415,
-        "shots": 302,
-        "hits": 56,
-        "accuracy": 18.54
-      },
-      {
-        "name": "FAMAS",
-        "kills": 6,
-        "hs_pct": 16.67,
-        "damage": 981,
-        "shots": 211,
-        "hits": 36,
-        "accuracy": 17.06
-      },
-      {
-        "name": "SG 553",
-        "kills": 6,
-        "hs_pct": 50,
-        "damage": 895,
-        "shots": 343,
-        "hits": 27,
-        "accuracy": 7.87
+        "kills": 44,
+        "hs_pct": 22.73,
+        "damage": 6607,
+        "shots": 1292,
+        "hits": 246,
+        "accuracy": 19.04
       },
       {
         "name": "M4A4",
-        "kills": 6,
-        "hs_pct": 50,
-        "damage": 813,
-        "shots": 190,
-        "hits": 26,
-        "accuracy": 13.68
+        "kills": 29,
+        "hs_pct": 31.03,
+        "damage": 4088,
+        "shots": 628,
+        "hits": 140,
+        "accuracy": 22.29
+      },
+      {
+        "name": "M4A1",
+        "kills": 10,
+        "hs_pct": 20,
+        "damage": 1483,
+        "shots": 261,
+        "hits": 47,
+        "accuracy": 18.01
+      },
+      {
+        "name": "AUG",
+        "kills": 10,
+        "hs_pct": 30,
+        "damage": 1167,
+        "shots": 230,
+        "hits": 48,
+        "accuracy": 20.87
+      },
+      {
+        "name": "USP-S",
+        "kills": 9,
+        "hs_pct": 66.67,
+        "damage": 2098,
+        "shots": 263,
+        "hits": 72,
+        "accuracy": 27.38
+      },
+      {
+        "name": "Glock-18",
+        "kills": 9,
+        "hs_pct": 66.67,
+        "damage": 1551,
+        "shots": 245,
+        "hits": 60,
+        "accuracy": 24.49
+      },
+      {
+        "name": "AK-47",
+        "kills": 8,
+        "hs_pct": 12.5,
+        "damage": 997,
+        "shots": 305,
+        "hits": 35,
+        "accuracy": 11.48
+      },
+      {
+        "name": "FAMAS",
+        "kills": 8,
+        "hs_pct": 12.5,
+        "damage": 667,
+        "shots": 133,
+        "hits": 29,
+        "accuracy": 21.8
+      },
+      {
+        "name": "G3SG1",
+        "kills": 7,
+        "hs_pct": 0,
+        "damage": 935,
+        "shots": 55,
+        "hits": 16,
+        "accuracy": 29.09
       },
       {
         "name": "HE Grenade",
         "kills": 1,
         "hs_pct": 0,
-        "damage": 385,
-        "shots": 29,
-        "hits": 12,
-        "accuracy": 41.38
+        "damage": 617,
+        "shots": 52,
+        "hits": 19,
+        "accuracy": 36.54
       }
     ],
     "clutches": {
       "overall": {
-        "total": 39,
-        "won": 1,
-        "lost": 38,
-        "avg_kills": 0.26,
-        "win_rate": 2.56,
-        "save_rate": 7.69
+        "total": 27,
+        "won": 6,
+        "lost": 21,
+        "avg_kills": 0.41,
+        "win_rate": 22.22,
+        "save_rate": 11.11
       },
       "by_type": {
         "1v1": {
-          "total": 5,
-          "won": 1,
-          "lost": 4,
-          "avg_kills": 0.2,
-          "win_rate": 20,
-          "save_rate": 40
-        },
-        "1v2": {
-          "total": 9,
-          "won": 0,
-          "lost": 9,
-          "avg_kills": 0.33,
-          "win_rate": 0,
+          "total": 8,
+          "won": 5,
+          "lost": 3,
+          "avg_kills": 0.5,
+          "win_rate": 62.5,
           "save_rate": 0
         },
-        "1v3": {
-          "total": 10,
+        "1v2": {
+          "total": 3,
           "won": 0,
-          "lost": 10,
-          "avg_kills": 0.5,
+          "lost": 3,
+          "avg_kills": 0.33,
           "win_rate": 0,
-          "save_rate": 10
+          "save_rate": 33.33
+        },
+        "1v3": {
+          "total": 9,
+          "won": 1,
+          "lost": 8,
+          "avg_kills": 0.67,
+          "win_rate": 11.11,
+          "save_rate": 22.22
         },
         "1v4": {
           "total": 6,
           "won": 0,
           "lost": 6,
-          "avg_kills": 0.17,
+          "avg_kills": 0,
           "win_rate": 0,
           "save_rate": 0
         },
         "1v5": {
-          "total": 6,
-          "won": 0,
-          "lost": 6,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v6": {
-          "total": 2,
-          "won": 0,
-          "lost": 2,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v7": {
           "total": 1,
           "won": 0,
           "lost": 1,
@@ -219,39 +203,39 @@
   {
     "steam_id": "76561199040476123",
     "name": "bekenbaver",
-    "matches_played": 2,
-    "wins": 1,
+    "matches_played": 0,
+    "wins": 0,
     "ties": 0,
-    "losses": 1,
-    "win_rate": 50,
-    "hltv_2": 0.13817650079727173,
-    "hltv": 0.22096000239253044,
-    "kast": 40.625,
-    "adr": 22.460227012634277,
-    "kd": 0.18,
-    "avg_kills_per_round": 0.16,
-    "avg_deaths_per_round": 0.87,
-    "hs_pct": 50,
-    "kills": 6,
-    "deaths": 33,
-    "assists": 2,
-    "headshots": 3,
+    "losses": 0,
+    "win_rate": 0,
+    "hltv_2": 0,
+    "hltv": 0,
+    "kast": 0,
+    "adr": 0,
+    "kd": 0,
+    "avg_kills_per_round": 0,
+    "avg_deaths_per_round": 0,
+    "hs_pct": 0,
+    "kills": 0,
+    "deaths": 0,
+    "assists": 0,
+    "headshots": 0,
     "wallbang_kills": 0,
     "collateral_kills": 0,
     "opening_duels": {
       "success_pct": 0,
-      "traded_pct": 66.67,
+      "traded_pct": 0,
       "first_kills": 0,
-      "first_deaths": 3,
-      "best_weapon": "FAMAS"
+      "first_deaths": 0,
+      "best_weapon": null
     },
     "rounds": {
-      "total": 38,
-      "ct": 24,
-      "t": 14
+      "total": 0,
+      "ct": 0,
+      "t": 0
     },
     "multi_kills": {
-      "k1": 6,
+      "k1": 0,
       "k2": 0,
       "k3": 0,
       "k4": 0,
@@ -267,351 +251,219 @@
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 0.6,
-      "enemies_flashed": 1,
-      "avg_he_damage": 59.5,
-      "avg_smokes_thrown": 4.5
+      "avg_blind_time": 0,
+      "enemies_flashed": 0,
+      "avg_he_damage": 0,
+      "avg_smokes_thrown": 0
     },
-    "weapons": [
-      {
-        "name": "FAMAS",
-        "kills": 2,
-        "hs_pct": 0,
-        "damage": 165,
-        "shots": 36,
-        "hits": 6,
-        "accuracy": 16.67
-      },
-      {
-        "name": "MP5-SD",
-        "kills": 2,
-        "hs_pct": 50,
-        "damage": 99,
-        "shots": 70,
-        "hits": 5,
-        "accuracy": 7.14
-      },
-      {
-        "name": "M4A4",
-        "kills": 1,
-        "hs_pct": 100,
-        "damage": 198,
-        "shots": 15,
-        "hits": 2,
-        "accuracy": 13.33
-      },
-      {
-        "name": "Negev",
-        "kills": 1,
-        "hs_pct": 100,
-        "damage": 95,
-        "shots": 102,
-        "hits": 1,
-        "accuracy": 0.98
-      },
-      {
-        "name": "Galil AR",
-        "kills": 0,
-        "hs_pct": 0,
-        "damage": 135,
-        "shots": 126,
-        "hits": 2,
-        "accuracy": 1.59
-      },
-      {
-        "name": "AK-47",
-        "kills": 0,
-        "hs_pct": 0,
-        "damage": 128,
-        "shots": 36,
-        "hits": 4,
-        "accuracy": 11.11
-      },
-      {
-        "name": "HE Grenade",
-        "kills": 0,
-        "hs_pct": 0,
-        "damage": 119,
-        "shots": 16,
-        "hits": 5,
-        "accuracy": 31.25
-      },
-      {
-        "name": "USP-S",
-        "kills": 0,
-        "hs_pct": 0,
-        "damage": 92,
-        "shots": 17,
-        "hits": 4,
-        "accuracy": 23.53
-      },
-      {
-        "name": "Glock-18",
-        "kills": 0,
-        "hs_pct": 0,
-        "damage": 32,
-        "shots": 14,
-        "hits": 2,
-        "accuracy": 14.29
-      },
-      {
-        "name": "CZ75 Auto",
-        "kills": 0,
-        "hs_pct": 0,
-        "damage": 25,
-        "shots": 5,
-        "hits": 1,
-        "accuracy": 20
-      }
-    ],
+    "weapons": [],
     "clutches": {
       "overall": {
-        "total": 4,
-        "won": 1,
-        "lost": 3,
-        "avg_kills": 0.5,
-        "win_rate": 25,
+        "total": 0,
+        "won": 0,
+        "lost": 0,
+        "avg_kills": 0,
+        "win_rate": 0,
         "save_rate": 0
       },
-      "by_type": {
-        "1v1": {
-          "total": 1,
-          "won": 1,
-          "lost": 0,
-          "avg_kills": 1,
-          "win_rate": 100,
-          "save_rate": 0
-        },
-        "1v2": {
-          "total": 1,
-          "won": 0,
-          "lost": 1,
-          "avg_kills": 1,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v3": {
-          "total": 1,
-          "won": 0,
-          "lost": 1,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v4": {
-          "total": 1,
-          "won": 0,
-          "lost": 1,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v5": {
-          "total": 0,
-          "won": 0,
-          "lost": 0,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        }
-      }
+      "by_type": {}
     }
   },
   {
     "steam_id": "76561198047085527",
     "name": "bobinaj",
-    "matches_played": 15,
-    "wins": 7,
+    "matches_played": 4,
+    "wins": 2,
     "ties": 0,
-    "losses": 8,
-    "win_rate": 46.67,
-    "hltv_2": 1.0155742625395456,
-    "hltv": 0.9255352656046549,
-    "kast": 71.86034520467122,
-    "adr": 70.57287038167318,
-    "kd": 0.92,
-    "avg_kills_per_round": 0.67,
-    "avg_deaths_per_round": 0.73,
-    "hs_pct": 27.54,
-    "kills": 236,
-    "deaths": 257,
-    "assists": 80,
-    "headshots": 65,
-    "wallbang_kills": 11,
+    "losses": 2,
+    "win_rate": 50,
+    "hltv_2": 0.9600167572498322,
+    "hltv": 0.685232013463974,
+    "kast": 78.12500190734863,
+    "adr": 74.55059432983398,
+    "kd": 0.67,
+    "avg_kills_per_round": 0.56,
+    "avg_deaths_per_round": 0.84,
+    "hs_pct": 32.79,
+    "kills": 61,
+    "deaths": 91,
+    "assists": 49,
+    "headshots": 20,
+    "wallbang_kills": 1,
     "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 49.33,
-      "traded_pct": 10.67,
-      "first_kills": 37,
-      "first_deaths": 38,
-      "best_weapon": "AWP"
+      "success_pct": 36.84,
+      "traded_pct": 5.26,
+      "first_kills": 7,
+      "first_deaths": 12,
+      "best_weapon": "M4A1"
     },
     "rounds": {
-      "total": 354,
-      "ct": 166,
-      "t": 188
+      "total": 108,
+      "ct": 57,
+      "t": 51
     },
     "multi_kills": {
-      "k1": 111,
-      "k2": 37,
-      "k3": 13,
-      "k4": 3,
+      "k1": 39,
+      "k2": 10,
+      "k3": 1,
+      "k4": 0,
       "k5": 0
     },
     "inspections": {
-      "total": 77,
+      "total": 96,
       "deaths_while_inspecting": 0
     },
     "objectives": {
-      "bomb_planted": 13,
-      "bomb_defused": 3,
+      "bomb_planted": 4,
+      "bomb_defused": 0,
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 2.5,
-      "enemies_flashed": 4.1,
-      "avg_he_damage": 94.8,
-      "avg_smokes_thrown": 8.7
+      "avg_blind_time": 2.6,
+      "enemies_flashed": 18.3,
+      "avg_he_damage": 289.3,
+      "avg_smokes_thrown": 10
     },
     "weapons": [
       {
-        "name": "AWP",
-        "kills": 70,
-        "hs_pct": 4.29,
-        "damage": 6269,
-        "shots": 124,
-        "hits": 75,
-        "accuracy": 60.48
-      },
-      {
         "name": "M4A1",
-        "kills": 53,
-        "hs_pct": 41.51,
-        "damage": 6167,
-        "shots": 1258,
-        "hits": 187,
-        "accuracy": 14.86
+        "kills": 12,
+        "hs_pct": 25,
+        "damage": 1797,
+        "shots": 275,
+        "hits": 59,
+        "accuracy": 21.45
       },
       {
         "name": "AK-47",
-        "kills": 36,
-        "hs_pct": 44.44,
-        "damage": 4466,
-        "shots": 1182,
-        "hits": 149,
-        "accuracy": 12.61
+        "kills": 11,
+        "hs_pct": 18.18,
+        "damage": 1009,
+        "shots": 415,
+        "hits": 35,
+        "accuracy": 8.43
       },
       {
-        "name": "Glock-18",
-        "kills": 19,
-        "hs_pct": 47.37,
-        "damage": 2318,
-        "shots": 485,
-        "hits": 98,
-        "accuracy": 20.21
+        "name": "AWP",
+        "kills": 8,
+        "hs_pct": 0,
+        "damage": 751,
+        "shots": 16,
+        "hits": 9,
+        "accuracy": 56.25
       },
       {
         "name": "M4A4",
-        "kills": 17,
-        "hs_pct": 17.65,
-        "damage": 2254,
-        "shots": 443,
-        "hits": 85,
-        "accuracy": 19.19
-      },
-      {
-        "name": "Galil AR",
-        "kills": 10,
-        "hs_pct": 30,
-        "damage": 1195,
-        "shots": 369,
-        "hits": 44,
-        "accuracy": 11.92
+        "kills": 7,
+        "hs_pct": 0,
+        "damage": 642,
+        "shots": 159,
+        "hits": 25,
+        "accuracy": 15.72
       },
       {
         "name": "USP-S",
-        "kills": 8,
-        "hs_pct": 75,
-        "damage": 2036,
-        "shots": 329,
-        "hits": 59,
-        "accuracy": 17.93
+        "kills": 5,
+        "hs_pct": 100,
+        "damage": 707,
+        "shots": 67,
+        "hits": 20,
+        "accuracy": 29.85
       },
       {
-        "name": "MP7",
-        "kills": 8,
-        "hs_pct": 12.5,
-        "damage": 912,
-        "shots": 151,
-        "hits": 41,
-        "accuracy": 27.15
-      },
-      {
-        "name": "G3SG1",
-        "kills": 3,
-        "hs_pct": 0,
-        "damage": 243,
-        "shots": 16,
-        "hits": 5,
-        "accuracy": 31.25
+        "name": "MAC-10",
+        "kills": 4,
+        "hs_pct": 100,
+        "damage": 810,
+        "shots": 141,
+        "hits": 34,
+        "accuracy": 24.11
       },
       {
         "name": "AUG",
+        "kills": 4,
+        "hs_pct": 25,
+        "damage": 649,
+        "shots": 132,
+        "hits": 23,
+        "accuracy": 17.42
+      },
+      {
+        "name": "Negev",
+        "kills": 3,
+        "hs_pct": 66.67,
+        "damage": 546,
+        "shots": 231,
+        "hits": 18,
+        "accuracy": 7.79
+      },
+      {
+        "name": "HE Grenade",
         "kills": 2,
         "hs_pct": 0,
-        "damage": 394,
-        "shots": 93,
-        "hits": 16,
-        "accuracy": 17.2
+        "damage": 1157,
+        "shots": 40,
+        "hits": 45,
+        "accuracy": 112.5
+      },
+      {
+        "name": "Glock-18",
+        "kills": 2,
+        "hs_pct": 0,
+        "damage": 457,
+        "shots": 119,
+        "hits": 22,
+        "accuracy": 18.49
       }
     ],
     "clutches": {
       "overall": {
-        "total": 41,
-        "won": 5,
-        "lost": 36,
-        "avg_kills": 0.51,
-        "win_rate": 12.2,
-        "save_rate": 17.07
+        "total": 17,
+        "won": 1,
+        "lost": 16,
+        "avg_kills": 0.53,
+        "win_rate": 5.88,
+        "save_rate": 0
       },
       "by_type": {
         "1v1": {
-          "total": 7,
-          "won": 5,
-          "lost": 2,
-          "avg_kills": 0.57,
-          "win_rate": 71.43,
-          "save_rate": 14.29
-        },
-        "1v2": {
-          "total": 8,
+          "total": 1,
           "won": 0,
-          "lost": 8,
-          "avg_kills": 0.5,
+          "lost": 1,
+          "avg_kills": 0,
           "win_rate": 0,
           "save_rate": 0
         },
+        "1v2": {
+          "total": 5,
+          "won": 1,
+          "lost": 4,
+          "avg_kills": 0.8,
+          "win_rate": 20,
+          "save_rate": 0
+        },
         "1v3": {
-          "total": 12,
-          "won": 0,
-          "lost": 12,
-          "avg_kills": 0.33,
-          "win_rate": 0,
-          "save_rate": 33.33
-        },
-        "1v4": {
-          "total": 10,
-          "won": 0,
-          "lost": 10,
-          "avg_kills": 0.7,
-          "win_rate": 0,
-          "save_rate": 20
-        },
-        "1v5": {
           "total": 4,
           "won": 0,
           "lost": 4,
           "avg_kills": 0.5,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v4": {
+          "total": 6,
+          "won": 0,
+          "lost": 6,
+          "avg_kills": 0.33,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v5": {
+          "total": 1,
+          "won": 0,
+          "lost": 1,
+          "avg_kills": 1,
           "win_rate": 0,
           "save_rate": 0
         }
@@ -622,174 +474,174 @@
     "steam_id": "76561198287242573",
     "name": "Cago",
     "matches_played": 17,
-    "wins": 8,
+    "wins": 7,
     "ties": 0,
-    "losses": 9,
-    "win_rate": 47.06,
-    "hltv_2": 1.4302333628430086,
-    "hltv": 1.3041988856652205,
-    "kast": 76.99500970279469,
-    "adr": 100.79061799890854,
-    "kd": 1.43,
-    "avg_kills_per_round": 0.96,
-    "avg_deaths_per_round": 0.67,
-    "hs_pct": 42.82,
-    "kills": 369,
-    "deaths": 258,
-    "assists": 112,
-    "headshots": 158,
-    "wallbang_kills": 8,
+    "losses": 10,
+    "win_rate": 41.18,
+    "hltv_2": 1.601226757554447,
+    "hltv": 1.5426148141131681,
+    "kast": 79.95604705810547,
+    "adr": 111.53735037410961,
+    "kd": 1.62,
+    "avg_kills_per_round": 1.1,
+    "avg_deaths_per_round": 0.68,
+    "hs_pct": 31.69,
+    "kills": 426,
+    "deaths": 263,
+    "assists": 96,
+    "headshots": 135,
+    "wallbang_kills": 14,
     "collateral_kills": 1,
     "opening_duels": {
-      "success_pct": 65.71,
-      "traded_pct": 1.43,
-      "first_kills": 46,
-      "first_deaths": 24,
-      "best_weapon": "M4A1"
+      "success_pct": 66.39,
+      "traded_pct": 8.4,
+      "first_kills": 79,
+      "first_deaths": 40,
+      "best_weapon": "AK-47"
     },
     "rounds": {
-      "total": 384,
-      "ct": 192,
-      "t": 192
+      "total": 387,
+      "ct": 200,
+      "t": 187
     },
     "multi_kills": {
-      "k1": 120,
-      "k2": 89,
-      "k3": 16,
-      "k4": 6,
-      "k5": 0
+      "k1": 132,
+      "k2": 66,
+      "k3": 38,
+      "k4": 7,
+      "k5": 4
     },
     "inspections": {
-      "total": 62,
-      "deaths_while_inspecting": 0
+      "total": 408,
+      "deaths_while_inspecting": 1
     },
     "objectives": {
-      "bomb_planted": 17,
-      "bomb_defused": 6,
+      "bomb_planted": 16,
+      "bomb_defused": 8,
       "hostage_rescued": 0
     },
     "utilities": {
       "avg_blind_time": 2.6,
-      "enemies_flashed": 5.2,
-      "avg_he_damage": 64.2,
-      "avg_smokes_thrown": 12.2
+      "enemies_flashed": 4.6,
+      "avg_he_damage": 105.5,
+      "avg_smokes_thrown": 13.4
     },
     "weapons": [
       {
-        "name": "M4A1",
-        "kills": 89,
-        "hs_pct": 52.81,
-        "damage": 11145,
-        "shots": 1678,
-        "hits": 302,
-        "accuracy": 18
-      },
-      {
         "name": "AK-47",
-        "kills": 82,
-        "hs_pct": 42.68,
-        "damage": 9835,
-        "shots": 2455,
-        "hits": 313,
-        "accuracy": 12.75
+        "kills": 117,
+        "hs_pct": 35.9,
+        "damage": 13366,
+        "shots": 2345,
+        "hits": 402,
+        "accuracy": 17.14
       },
       {
         "name": "AWP",
-        "kills": 54,
-        "hs_pct": 5.56,
-        "damage": 5137,
-        "shots": 110,
-        "hits": 56,
-        "accuracy": 50.91
+        "kills": 101,
+        "hs_pct": 0.99,
+        "damage": 8736,
+        "shots": 233,
+        "hits": 106,
+        "accuracy": 45.49
+      },
+      {
+        "name": "M4A1",
+        "kills": 88,
+        "hs_pct": 31.82,
+        "damage": 10572,
+        "shots": 1368,
+        "hits": 324,
+        "accuracy": 23.68
       },
       {
         "name": "USP-S",
-        "kills": 20,
-        "hs_pct": 85,
-        "damage": 2046,
-        "shots": 259,
-        "hits": 49,
-        "accuracy": 18.92
+        "kills": 30,
+        "hs_pct": 83.33,
+        "damage": 3642,
+        "shots": 367,
+        "hits": 89,
+        "accuracy": 24.25
       },
       {
         "name": "Galil AR",
-        "kills": 20,
-        "hs_pct": 45,
-        "damage": 1966,
-        "shots": 389,
-        "hits": 62,
-        "accuracy": 15.94
+        "kills": 24,
+        "hs_pct": 45.83,
+        "damage": 3797,
+        "shots": 715,
+        "hits": 127,
+        "accuracy": 17.76
       },
       {
         "name": "Glock-18",
-        "kills": 17,
-        "hs_pct": 47.06,
-        "damage": 2345,
-        "shots": 399,
-        "hits": 82,
-        "accuracy": 20.55
-      },
-      {
-        "name": "FAMAS",
-        "kills": 8,
-        "hs_pct": 25,
-        "damage": 806,
-        "shots": 191,
-        "hits": 31,
-        "accuracy": 16.23
-      },
-      {
-        "name": "P2000",
-        "kills": 8,
-        "hs_pct": 62.5,
-        "damage": 743,
-        "shots": 106,
-        "hits": 22,
-        "accuracy": 20.75
+        "kills": 23,
+        "hs_pct": 65.22,
+        "damage": 2395,
+        "shots": 319,
+        "hits": 71,
+        "accuracy": 22.26
       },
       {
         "name": "Desert Eagle",
-        "kills": 5,
-        "hs_pct": 80,
-        "damage": 554,
-        "shots": 50,
-        "hits": 8,
-        "accuracy": 16
+        "kills": 7,
+        "hs_pct": 28.57,
+        "damage": 966,
+        "shots": 71,
+        "hits": 21,
+        "accuracy": 29.58
       },
       {
-        "name": "MP7",
-        "kills": 4,
-        "hs_pct": 25,
-        "damage": 485,
-        "shots": 139,
-        "hits": 20,
-        "accuracy": 14.39
+        "name": "FAMAS",
+        "kills": 7,
+        "hs_pct": 42.86,
+        "damage": 865,
+        "shots": 161,
+        "hits": 29,
+        "accuracy": 18.01
+      },
+      {
+        "name": "HE Grenade",
+        "kills": 6,
+        "hs_pct": 0,
+        "damage": 1794,
+        "shots": 85,
+        "hits": 66,
+        "accuracy": 77.65
+      },
+      {
+        "name": "Dual Berettas",
+        "kills": 6,
+        "hs_pct": 83.33,
+        "damage": 446,
+        "shots": 48,
+        "hits": 7,
+        "accuracy": 14.58
       }
     ],
     "clutches": {
       "overall": {
-        "total": 39,
-        "won": 9,
-        "lost": 30,
-        "avg_kills": 0.64,
-        "win_rate": 23.08,
-        "save_rate": 7.69
+        "total": 46,
+        "won": 13,
+        "lost": 33,
+        "avg_kills": 0.59,
+        "win_rate": 28.26,
+        "save_rate": 19.57
       },
       "by_type": {
         "1v1": {
-          "total": 11,
-          "won": 5,
-          "lost": 6,
-          "avg_kills": 0.36,
-          "win_rate": 45.45,
+          "total": 8,
+          "won": 8,
+          "lost": 0,
+          "avg_kills": 0.63,
+          "win_rate": 100,
           "save_rate": 0
         },
         "1v2": {
-          "total": 6,
-          "won": 3,
-          "lost": 3,
-          "avg_kills": 1,
-          "win_rate": 50,
+          "total": 11,
+          "won": 4,
+          "lost": 7,
+          "avg_kills": 0.82,
+          "win_rate": 36.36,
           "save_rate": 0
         },
         "1v3": {
@@ -798,29 +650,29 @@
           "lost": 10,
           "avg_kills": 0.45,
           "win_rate": 9.09,
-          "save_rate": 18.18
+          "save_rate": 27.27
         },
         "1v4": {
-          "total": 5,
+          "total": 12,
           "won": 0,
-          "lost": 5,
-          "avg_kills": 0.8,
+          "lost": 12,
+          "avg_kills": 0.5,
           "win_rate": 0,
-          "save_rate": 0
+          "save_rate": 25
         },
         "1v5": {
-          "total": 5,
+          "total": 3,
           "won": 0,
-          "lost": 5,
-          "avg_kills": 1,
+          "lost": 3,
+          "avg_kills": 0.67,
           "win_rate": 0,
-          "save_rate": 20
+          "save_rate": 100
         },
         "1v6": {
           "total": 1,
           "won": 0,
           "lost": 1,
-          "avg_kills": 1,
+          "avg_kills": 0,
           "win_rate": 0,
           "save_rate": 0
         }
@@ -847,14 +699,14 @@
     "deaths": 0,
     "assists": 0,
     "headshots": 0,
-    "wallbang_kills": 2,
+    "wallbang_kills": 0,
     "collateral_kills": 0,
     "opening_duels": {
       "success_pct": 0,
       "traded_pct": 0,
       "first_kills": 0,
       "first_deaths": 0,
-      "best_weapon": "M4A1"
+      "best_weapon": null
     },
     "rounds": {
       "total": 0,
@@ -878,103 +730,12 @@
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 4,
+      "avg_blind_time": 0,
       "enemies_flashed": 0,
       "avg_he_damage": 0,
       "avg_smokes_thrown": 0
     },
-    "weapons": [
-      {
-        "name": "M4A1",
-        "kills": 11,
-        "hs_pct": 54.55,
-        "damage": 1389,
-        "shots": 269,
-        "hits": 43,
-        "accuracy": 15.99
-      },
-      {
-        "name": "AK-47",
-        "kills": 11,
-        "hs_pct": 54.55,
-        "damage": 1377,
-        "shots": 286,
-        "hits": 41,
-        "accuracy": 14.34
-      },
-      {
-        "name": "AWP",
-        "kills": 11,
-        "hs_pct": 18.18,
-        "damage": 956,
-        "shots": 21,
-        "hits": 11,
-        "accuracy": 52.38
-      },
-      {
-        "name": "Galil AR",
-        "kills": 5,
-        "hs_pct": 40,
-        "damage": 421,
-        "shots": 167,
-        "hits": 20,
-        "accuracy": 11.98
-      },
-      {
-        "name": "MAC-10",
-        "kills": 3,
-        "hs_pct": 33.33,
-        "damage": 287,
-        "shots": 59,
-        "hits": 11,
-        "accuracy": 18.64
-      },
-      {
-        "name": "Glock-18",
-        "kills": 2,
-        "hs_pct": 50,
-        "damage": 239,
-        "shots": 73,
-        "hits": 11,
-        "accuracy": 15.07
-      },
-      {
-        "name": "Desert Eagle",
-        "kills": 1,
-        "hs_pct": 100,
-        "damage": 197,
-        "shots": 21,
-        "hits": 4,
-        "accuracy": 19.05
-      },
-      {
-        "name": "MP9",
-        "kills": 1,
-        "hs_pct": 100,
-        "damage": 153,
-        "shots": 24,
-        "hits": 5,
-        "accuracy": 20.83
-      },
-      {
-        "name": "MP7",
-        "kills": 1,
-        "hs_pct": 100,
-        "damage": 38,
-        "shots": 3,
-        "hits": 1,
-        "accuracy": 33.33
-      },
-      {
-        "name": "HE Grenade",
-        "kills": 0,
-        "hs_pct": 0,
-        "damage": 354,
-        "shots": 18,
-        "hits": 15,
-        "accuracy": 83.33
-      }
-    ],
+    "weapons": [],
     "clutches": {
       "overall": {
         "total": 0,
@@ -984,48 +745,7 @@
         "win_rate": 0,
         "save_rate": 0
       },
-      "by_type": {
-        "1v1": {
-          "total": 0,
-          "won": 0,
-          "lost": 0,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v2": {
-          "total": 0,
-          "won": 0,
-          "lost": 0,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v3": {
-          "total": 0,
-          "won": 0,
-          "lost": 0,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v4": {
-          "total": 0,
-          "won": 0,
-          "lost": 0,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v5": {
-          "total": 0,
-          "won": 0,
-          "lost": 0,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        }
-      }
+      "by_type": {}
     }
   },
   {
@@ -1100,41 +820,41 @@
   {
     "steam_id": "76561198416652468",
     "name": "Cavid-20",
-    "matches_played": 6,
-    "wins": 2,
+    "matches_played": 12,
+    "wins": 6,
     "ties": 0,
-    "losses": 4,
-    "win_rate": 33.33,
-    "hltv_2": 0.7332050154606501,
-    "hltv": 0.6684998273849487,
-    "kast": 63.30298868815104,
-    "adr": 58.46437772115072,
-    "kd": 0.64,
-    "avg_kills_per_round": 0.51,
-    "avg_deaths_per_round": 0.79,
-    "hs_pct": 29.23,
-    "kills": 65,
-    "deaths": 101,
-    "assists": 28,
-    "headshots": 19,
-    "wallbang_kills": 1,
+    "losses": 6,
+    "win_rate": 50,
+    "hltv_2": 0.7702759231130282,
+    "hltv": 0.6672627578179041,
+    "kast": 67.42437648773193,
+    "adr": 57.98496468861898,
+    "kd": 0.63,
+    "avg_kills_per_round": 0.47,
+    "avg_deaths_per_round": 0.75,
+    "hs_pct": 25.38,
+    "kills": 130,
+    "deaths": 208,
+    "assists": 65,
+    "headshots": 33,
+    "wallbang_kills": 5,
     "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 57.69,
-      "traded_pct": 0,
-      "first_kills": 15,
-      "first_deaths": 11,
+      "success_pct": 43.75,
+      "traded_pct": 14.58,
+      "first_kills": 21,
+      "first_deaths": 27,
       "best_weapon": "AUG"
     },
     "rounds": {
-      "total": 128,
-      "ct": 70,
-      "t": 58
+      "total": 277,
+      "ct": 135,
+      "t": 142
     },
     "multi_kills": {
-      "k1": 36,
-      "k2": 7,
-      "k3": 5,
+      "k1": 74,
+      "k2": 24,
+      "k3": 3,
       "k4": 0,
       "k5": 0
     },
@@ -1143,163 +863,155 @@
       "deaths_while_inspecting": 0
     },
     "objectives": {
-      "bomb_planted": 1,
+      "bomb_planted": 6,
       "bomb_defused": 0,
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 3,
-      "enemies_flashed": 1,
-      "avg_he_damage": 13,
-      "avg_smokes_thrown": 4
+      "avg_blind_time": 3.5,
+      "enemies_flashed": 1.1,
+      "avg_he_damage": 35,
+      "avg_smokes_thrown": 8.3
     },
     "weapons": [
       {
         "name": "AUG",
-        "kills": 18,
-        "hs_pct": 11.11,
-        "damage": 2351,
-        "shots": 312,
-        "hits": 96,
-        "accuracy": 30.77
-      },
-      {
-        "name": "SG 553",
-        "kills": 11,
-        "hs_pct": 36.36,
-        "damage": 1029,
-        "shots": 253,
-        "hits": 37,
-        "accuracy": 14.62
-      },
-      {
-        "name": "Galil AR",
-        "kills": 9,
-        "hs_pct": 0,
-        "damage": 952,
-        "shots": 144,
-        "hits": 43,
-        "accuracy": 29.86
+        "kills": 44,
+        "hs_pct": 25,
+        "damage": 4506,
+        "shots": 804,
+        "hits": 181,
+        "accuracy": 22.51
       },
       {
         "name": "AK-47",
-        "kills": 8,
-        "hs_pct": 37.5,
-        "damage": 1228,
-        "shots": 240,
-        "hits": 37,
-        "accuracy": 15.42
+        "kills": 20,
+        "hs_pct": 40,
+        "damage": 2374,
+        "shots": 451,
+        "hits": 69,
+        "accuracy": 15.3
       },
       {
         "name": "M4A1",
-        "kills": 5,
-        "hs_pct": 60,
-        "damage": 933,
-        "shots": 103,
-        "hits": 27,
-        "accuracy": 26.21
+        "kills": 19,
+        "hs_pct": 21.05,
+        "damage": 2698,
+        "shots": 320,
+        "hits": 84,
+        "accuracy": 26.25
       },
       {
-        "name": "MP9",
-        "kills": 5,
-        "hs_pct": 100,
-        "damage": 656,
-        "shots": 92,
-        "hits": 31,
-        "accuracy": 33.7
+        "name": "SG 553",
+        "kills": 14,
+        "hs_pct": 28.57,
+        "damage": 2272,
+        "shots": 280,
+        "hits": 80,
+        "accuracy": 28.57
       },
       {
-        "name": "Glock-18",
-        "kills": 4,
-        "hs_pct": 25,
-        "damage": 726,
-        "shots": 140,
-        "hits": 34,
-        "accuracy": 24.29
+        "name": "Galil AR",
+        "kills": 11,
+        "hs_pct": 27.27,
+        "damage": 1423,
+        "shots": 275,
+        "hits": 57,
+        "accuracy": 20.73
       },
       {
         "name": "P2000",
+        "kills": 9,
+        "hs_pct": 11.11,
+        "damage": 1472,
+        "shots": 175,
+        "hits": 59,
+        "accuracy": 33.71
+      },
+      {
+        "name": "Glock-18",
+        "kills": 9,
+        "hs_pct": 11.11,
+        "damage": 1212,
+        "shots": 214,
+        "hits": 61,
+        "accuracy": 28.5
+      },
+      {
+        "name": "FAMAS",
+        "kills": 2,
+        "hs_pct": 0,
+        "damage": 574,
+        "shots": 89,
+        "hits": 21,
+        "accuracy": 23.6
+      },
+      {
+        "name": "M4A4",
         "kills": 2,
         "hs_pct": 50,
-        "damage": 469,
-        "shots": 51,
-        "hits": 15,
-        "accuracy": 29.41
+        "damage": 265,
+        "shots": 27,
+        "hits": 9,
+        "accuracy": 33.33
       },
       {
-        "name": "MP5-SD",
-        "kills": 2,
-        "hs_pct": 0,
-        "damage": 82,
-        "shots": 23,
-        "hits": 5,
-        "accuracy": 21.74
-      },
-      {
-        "name": "MAC-10",
+        "name": "HE Grenade",
         "kills": 1,
         "hs_pct": 0,
-        "damage": 37,
-        "shots": 42,
-        "hits": 2,
-        "accuracy": 4.76
+        "damage": 420,
+        "shots": 40,
+        "hits": 23,
+        "accuracy": 57.5
       }
     ],
     "clutches": {
       "overall": {
-        "total": 12,
-        "won": 0,
-        "lost": 12,
-        "avg_kills": 0.42,
-        "win_rate": 0,
-        "save_rate": 0
+        "total": 27,
+        "won": 5,
+        "lost": 22,
+        "avg_kills": 0.48,
+        "win_rate": 18.52,
+        "save_rate": 7.41
       },
       "by_type": {
         "1v1": {
-          "total": 1,
-          "won": 0,
-          "lost": 1,
-          "avg_kills": 0,
-          "win_rate": 0,
+          "total": 9,
+          "won": 4,
+          "lost": 5,
+          "avg_kills": 0.56,
+          "win_rate": 44.44,
           "save_rate": 0
         },
         "1v2": {
-          "total": 1,
+          "total": 2,
           "won": 0,
-          "lost": 1,
-          "avg_kills": 0,
+          "lost": 2,
+          "avg_kills": 0.5,
           "win_rate": 0,
           "save_rate": 0
         },
         "1v3": {
-          "total": 3,
-          "won": 0,
-          "lost": 3,
-          "avg_kills": 0,
-          "win_rate": 0,
+          "total": 7,
+          "won": 1,
+          "lost": 6,
+          "avg_kills": 0.86,
+          "win_rate": 14.29,
           "save_rate": 0
         },
         "1v4": {
-          "total": 3,
+          "total": 5,
           "won": 0,
-          "lost": 3,
-          "avg_kills": 0.67,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v5": {
-          "total": 3,
-          "won": 0,
-          "lost": 3,
+          "lost": 5,
           "avg_kills": 0,
           "win_rate": 0,
-          "save_rate": 0
+          "save_rate": 40
         },
-        "1v6": {
-          "total": 1,
+        "1v5": {
+          "total": 4,
           "won": 0,
-          "lost": 1,
-          "avg_kills": 3,
+          "lost": 4,
+          "avg_kills": 0.25,
           "win_rate": 0,
           "save_rate": 0
         }
@@ -1378,43 +1090,43 @@
   {
     "steam_id": "76561198040459377",
     "name": "daE",
-    "matches_played": 15,
-    "wins": 4,
+    "matches_played": 13,
+    "wins": 7,
     "ties": 0,
-    "losses": 11,
-    "win_rate": 26.67,
-    "hltv_2": 1.2258025328318278,
-    "hltv": 1.1331642548243204,
-    "kast": 73.14323755900065,
-    "adr": 86.03821563720703,
-    "kd": 1.18,
-    "avg_kills_per_round": 0.83,
-    "avg_deaths_per_round": 0.7,
-    "hs_pct": 27.62,
-    "kills": 286,
-    "deaths": 243,
-    "assists": 90,
+    "losses": 6,
+    "win_rate": 53.85,
+    "hltv_2": 1.4692845252844005,
+    "hltv": 1.3651956228109507,
+    "kast": 78.98138721172626,
+    "adr": 100.75707714374249,
+    "kd": 1.51,
+    "avg_kills_per_round": 0.95,
+    "avg_deaths_per_round": 0.63,
+    "hs_pct": 29.81,
+    "kills": 265,
+    "deaths": 175,
+    "assists": 61,
     "headshots": 79,
     "wallbang_kills": 10,
-    "collateral_kills": 0,
+    "collateral_kills": 1,
     "opening_duels": {
-      "success_pct": 56.72,
-      "traded_pct": 5.97,
-      "first_kills": 38,
-      "first_deaths": 29,
-      "best_weapon": "AUG"
+      "success_pct": 70,
+      "traded_pct": 3.33,
+      "first_kills": 42,
+      "first_deaths": 18,
+      "best_weapon": "SG 553"
     },
     "rounds": {
-      "total": 346,
-      "ct": 172,
-      "t": 174
+      "total": 279,
+      "ct": 137,
+      "t": 142
     },
     "multi_kills": {
-      "k1": 107,
-      "k2": 62,
-      "k3": 12,
-      "k4": 5,
-      "k5": 0
+      "k1": 101,
+      "k2": 51,
+      "k3": 14,
+      "k4": 4,
+      "k5": 1
     },
     "inspections": {
       "total": 2,
@@ -1422,166 +1134,158 @@
     },
     "objectives": {
       "bomb_planted": 10,
-      "bomb_defused": 3,
+      "bomb_defused": 6,
       "hostage_rescued": 0
     },
     "utilities": {
       "avg_blind_time": 2.6,
-      "enemies_flashed": 5.7,
-      "avg_he_damage": 61.9,
-      "avg_smokes_thrown": 8
+      "enemies_flashed": 4.2,
+      "avg_he_damage": 100.8,
+      "avg_smokes_thrown": 6.6
     },
     "weapons": [
       {
+        "name": "SG 553",
+        "kills": 70,
+        "hs_pct": 27.14,
+        "damage": 6820,
+        "shots": 823,
+        "hits": 240,
+        "accuracy": 29.16
+      },
+      {
         "name": "AUG",
-        "kills": 55,
-        "hs_pct": 27.27,
-        "damage": 5194,
-        "shots": 1010,
-        "hits": 197,
-        "accuracy": 19.5
+        "kills": 41,
+        "hs_pct": 21.95,
+        "damage": 4027,
+        "shots": 696,
+        "hits": 154,
+        "accuracy": 22.13
       },
       {
         "name": "AWP",
-        "kills": 37,
-        "hs_pct": 16.22,
-        "damage": 3450,
-        "shots": 90,
-        "hits": 41,
-        "accuracy": 45.56
+        "kills": 29,
+        "hs_pct": 3.45,
+        "damage": 2502,
+        "shots": 48,
+        "hits": 32,
+        "accuracy": 66.67
       },
       {
         "name": "M4A1",
-        "kills": 31,
-        "hs_pct": 25.81,
-        "damage": 3920,
-        "shots": 639,
-        "hits": 125,
-        "accuracy": 19.56
-      },
-      {
-        "name": "SG 553",
-        "kills": 30,
-        "hs_pct": 36.67,
-        "damage": 3207,
-        "shots": 453,
-        "hits": 110,
-        "accuracy": 24.28
-      },
-      {
-        "name": "AK-47",
-        "kills": 28,
-        "hs_pct": 25,
-        "damage": 3816,
-        "shots": 582,
-        "hits": 128,
-        "accuracy": 21.99
-      },
-      {
-        "name": "MP9",
-        "kills": 23,
-        "hs_pct": 39.13,
-        "damage": 2970,
-        "shots": 638,
-        "hits": 125,
-        "accuracy": 19.59
-      },
-      {
-        "name": "Glock-18",
-        "kills": 19,
-        "hs_pct": 42.11,
-        "damage": 2020,
-        "shots": 375,
-        "hits": 92,
-        "accuracy": 24.53
-      },
-      {
-        "name": "P2000",
-        "kills": 14,
-        "hs_pct": 42.86,
-        "damage": 1764,
-        "shots": 294,
-        "hits": 66,
-        "accuracy": 22.45
+        "kills": 27,
+        "hs_pct": 44.44,
+        "damage": 2940,
+        "shots": 478,
+        "hits": 94,
+        "accuracy": 19.67
       },
       {
         "name": "P90",
-        "kills": 11,
-        "hs_pct": 18.18,
-        "damage": 1304,
-        "shots": 317,
-        "hits": 64,
-        "accuracy": 20.19
+        "kills": 19,
+        "hs_pct": 26.32,
+        "damage": 2441,
+        "shots": 457,
+        "hits": 111,
+        "accuracy": 24.29
       },
       {
-        "name": "Galil AR",
-        "kills": 9,
-        "hs_pct": 44.44,
-        "damage": 1475,
-        "shots": 271,
-        "hits": 51,
-        "accuracy": 18.82
+        "name": "P2000",
+        "kills": 16,
+        "hs_pct": 75,
+        "damage": 2054,
+        "shots": 308,
+        "hits": 64,
+        "accuracy": 20.78
+      },
+      {
+        "name": "Glock-18",
+        "kills": 12,
+        "hs_pct": 41.67,
+        "damage": 2007,
+        "shots": 272,
+        "hits": 76,
+        "accuracy": 27.94
+      },
+      {
+        "name": "AK-47",
+        "kills": 12,
+        "hs_pct": 33.33,
+        "damage": 1743,
+        "shots": 190,
+        "hits": 57,
+        "accuracy": 30
+      },
+      {
+        "name": "UMP-45",
+        "kills": 11,
+        "hs_pct": 63.64,
+        "damage": 1979,
+        "shots": 335,
+        "hits": 71,
+        "accuracy": 21.19
+      },
+      {
+        "name": "MAC-10",
+        "kills": 11,
+        "hs_pct": 9.09,
+        "damage": 1274,
+        "shots": 233,
+        "hits": 58,
+        "accuracy": 24.89
       }
     ],
     "clutches": {
       "overall": {
-        "total": 63,
-        "won": 9,
-        "lost": 54,
-        "avg_kills": 0.7,
-        "win_rate": 14.29,
-        "save_rate": 9.52
+        "total": 42,
+        "won": 11,
+        "lost": 31,
+        "avg_kills": 0.64,
+        "win_rate": 26.19,
+        "save_rate": 11.9
       },
       "by_type": {
         "1v1": {
-          "total": 4,
-          "won": 2,
-          "lost": 2,
-          "avg_kills": 0.5,
-          "win_rate": 50,
+          "total": 8,
+          "won": 7,
+          "lost": 1,
+          "avg_kills": 0.88,
+          "win_rate": 87.5,
           "save_rate": 0
         },
         "1v2": {
-          "total": 12,
-          "won": 5,
-          "lost": 7,
-          "avg_kills": 0.83,
-          "win_rate": 41.67,
-          "save_rate": 8.33
+          "total": 9,
+          "won": 4,
+          "lost": 5,
+          "avg_kills": 0.78,
+          "win_rate": 44.44,
+          "save_rate": 22.22
         },
         "1v3": {
-          "total": 21,
-          "won": 2,
-          "lost": 19,
-          "avg_kills": 0.76,
-          "win_rate": 9.52,
-          "save_rate": 9.52
+          "total": 10,
+          "won": 0,
+          "lost": 10,
+          "avg_kills": 0.3,
+          "win_rate": 0,
+          "save_rate": 30
         },
         "1v4": {
-          "total": 15,
+          "total": 7,
           "won": 0,
-          "lost": 15,
-          "avg_kills": 0.53,
-          "win_rate": 0,
-          "save_rate": 13.33
-        },
-        "1v5": {
-          "total": 9,
-          "won": 0,
-          "lost": 9,
-          "avg_kills": 0.89,
-          "win_rate": 0,
-          "save_rate": 11.11
-        },
-        "1v6": {
-          "total": 1,
-          "won": 0,
-          "lost": 1,
-          "avg_kills": 0,
+          "lost": 7,
+          "avg_kills": 0.57,
           "win_rate": 0,
           "save_rate": 0
         },
-        "1v7": {
+        "1v5": {
+          "total": 7,
+          "won": 0,
+          "lost": 7,
+          "avg_kills": 0.86,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v6": {
           "total": 1,
           "won": 0,
           "lost": 1,
@@ -1595,192 +1299,192 @@
   {
     "steam_id": "76561198031411056",
     "name": "darbe",
-    "matches_played": 18,
-    "wins": 10,
+    "matches_played": 12,
+    "wins": 8,
     "ties": 0,
-    "losses": 8,
-    "win_rate": 55.56,
-    "hltv_2": 1.2288442254066467,
-    "hltv": 1.1054680513011084,
-    "kast": 76.25744967990451,
-    "adr": 83.66334215799968,
-    "kd": 1.09,
-    "avg_kills_per_round": 0.77,
-    "avg_deaths_per_round": 0.71,
-    "hs_pct": 28.48,
-    "kills": 330,
-    "deaths": 304,
-    "assists": 121,
-    "headshots": 94,
+    "losses": 4,
+    "win_rate": 66.67,
+    "hltv_2": 1.1311700840791066,
+    "hltv": 1.055813580751419,
+    "kast": 74.38229560852051,
+    "adr": 74.84372075398763,
+    "kd": 1.05,
+    "avg_kills_per_round": 0.76,
+    "avg_deaths_per_round": 0.72,
+    "hs_pct": 34.3,
+    "kills": 207,
+    "deaths": 197,
+    "assists": 61,
+    "headshots": 71,
     "wallbang_kills": 4,
-    "collateral_kills": 1,
+    "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 60.87,
-      "traded_pct": 6.52,
-      "first_kills": 28,
-      "first_deaths": 18,
+      "success_pct": 62.96,
+      "traded_pct": 0,
+      "first_kills": 17,
+      "first_deaths": 10,
       "best_weapon": "AUG"
     },
     "rounds": {
-      "total": 428,
-      "ct": 214,
-      "t": 214
+      "total": 274,
+      "ct": 127,
+      "t": 147
     },
     "multi_kills": {
-      "k1": 149,
-      "k2": 50,
-      "k3": 22,
+      "k1": 79,
+      "k2": 38,
+      "k3": 12,
       "k4": 4,
       "k5": 0
     },
     "inspections": {
-      "total": 68,
-      "deaths_while_inspecting": 1
+      "total": 83,
+      "deaths_while_inspecting": 0
     },
     "objectives": {
-      "bomb_planted": 22,
+      "bomb_planted": 23,
       "bomb_defused": 7,
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 2.9,
-      "enemies_flashed": 6.7,
-      "avg_he_damage": 77.9,
-      "avg_smokes_thrown": 6.2
+      "avg_blind_time": 2.8,
+      "enemies_flashed": 3,
+      "avg_he_damage": 115.5,
+      "avg_smokes_thrown": 10.3
     },
     "weapons": [
       {
         "name": "AUG",
-        "kills": 132,
-        "hs_pct": 26.52,
-        "damage": 13655,
-        "shots": 2398,
-        "hits": 534,
-        "accuracy": 22.27
+        "kills": 87,
+        "hs_pct": 28.74,
+        "damage": 8608,
+        "shots": 1314,
+        "hits": 335,
+        "accuracy": 25.49
       },
       {
         "name": "SG 553",
-        "kills": 68,
-        "hs_pct": 26.47,
-        "damage": 6958,
-        "shots": 1263,
-        "hits": 247,
-        "accuracy": 19.56
-      },
-      {
-        "name": "M4A1",
-        "kills": 34,
-        "hs_pct": 20.59,
-        "damage": 3748,
-        "shots": 431,
-        "hits": 116,
-        "accuracy": 26.91
+        "kills": 42,
+        "hs_pct": 35.71,
+        "damage": 3859,
+        "shots": 630,
+        "hits": 122,
+        "accuracy": 19.37
       },
       {
         "name": "Galil AR",
-        "kills": 34,
-        "hs_pct": 29.41,
-        "damage": 3730,
-        "shots": 605,
-        "hits": 131,
-        "accuracy": 21.65
-      },
-      {
-        "name": "Glock-18",
-        "kills": 17,
-        "hs_pct": 52.94,
-        "damage": 2974,
-        "shots": 479,
-        "hits": 114,
-        "accuracy": 23.8
-      },
-      {
-        "name": "AK-47",
-        "kills": 14,
-        "hs_pct": 35.71,
-        "damage": 2272,
-        "shots": 329,
-        "hits": 68,
-        "accuracy": 20.67
-      },
-      {
-        "name": "USP-S",
-        "kills": 12,
-        "hs_pct": 41.67,
-        "damage": 1641,
-        "shots": 176,
-        "hits": 51,
-        "accuracy": 28.98
-      },
-      {
-        "name": "P2000",
-        "kills": 5,
-        "hs_pct": 80,
-        "damage": 987,
-        "shots": 166,
-        "hits": 35,
-        "accuracy": 21.08
+        "kills": 21,
+        "hs_pct": 33.33,
+        "damage": 2851,
+        "shots": 429,
+        "hits": 97,
+        "accuracy": 22.61
       },
       {
         "name": "M4A4",
-        "kills": 4,
-        "hs_pct": 25,
-        "damage": 587,
-        "shots": 104,
-        "hits": 22,
-        "accuracy": 21.15
+        "kills": 21,
+        "hs_pct": 19.05,
+        "damage": 1731,
+        "shots": 355,
+        "hits": 62,
+        "accuracy": 17.46
       },
       {
-        "name": "FAMAS",
-        "kills": 4,
+        "name": "Glock-18",
+        "kills": 11,
+        "hs_pct": 63.64,
+        "damage": 1436,
+        "shots": 255,
+        "hits": 61,
+        "accuracy": 23.92
+      },
+      {
+        "name": "AK-47",
+        "kills": 10,
+        "hs_pct": 60,
+        "damage": 1152,
+        "shots": 141,
+        "hits": 27,
+        "accuracy": 19.15
+      },
+      {
+        "name": "P2000",
+        "kills": 10,
+        "hs_pct": 50,
+        "damage": 1103,
+        "shots": 167,
+        "hits": 32,
+        "accuracy": 19.16
+      },
+      {
+        "name": "M4A1",
+        "kills": 3,
+        "hs_pct": 66.67,
+        "damage": 564,
+        "shots": 66,
+        "hits": 15,
+        "accuracy": 22.73
+      },
+      {
+        "name": "HE Grenade",
+        "kills": 1,
         "hs_pct": 0,
-        "damage": 400,
-        "shots": 67,
-        "hits": 18,
-        "accuracy": 26.87
+        "damage": 1386,
+        "shots": 59,
+        "hits": 52,
+        "accuracy": 88.14
+      },
+      {
+        "name": "MP7",
+        "kills": 1,
+        "hs_pct": 0,
+        "damage": 129,
+        "shots": 26,
+        "hits": 7,
+        "accuracy": 26.92
       }
     ],
     "clutches": {
       "overall": {
-        "total": 38,
+        "total": 37,
         "won": 3,
-        "lost": 35,
-        "avg_kills": 0.37,
-        "win_rate": 7.89,
-        "save_rate": 13.16
+        "lost": 34,
+        "avg_kills": 0.7,
+        "win_rate": 8.11,
+        "save_rate": 8.11
       },
       "by_type": {
         "1v1": {
-          "total": 4,
-          "won": 2,
-          "lost": 2,
-          "avg_kills": 0.25,
-          "win_rate": 50,
+          "total": 5,
+          "won": 1,
+          "lost": 4,
+          "avg_kills": 0.2,
+          "win_rate": 20,
           "save_rate": 0
         },
         "1v2": {
-          "total": 7,
-          "won": 0,
-          "lost": 7,
-          "avg_kills": 0.14,
-          "win_rate": 0,
+          "total": 10,
+          "won": 2,
+          "lost": 8,
+          "avg_kills": 1,
+          "win_rate": 20,
           "save_rate": 0
         },
         "1v3": {
-          "total": 13,
-          "won": 1,
-          "lost": 12,
-          "avg_kills": 0.46,
-          "win_rate": 7.69,
-          "save_rate": 23.08
-        },
-        "1v4": {
           "total": 8,
           "won": 0,
           "lost": 8,
-          "avg_kills": 0.63,
+          "avg_kills": 1.25,
           "win_rate": 0,
-          "save_rate": 25
+          "save_rate": 12.5
+        },
+        "1v4": {
+          "total": 9,
+          "won": 0,
+          "lost": 9,
+          "avg_kills": 0.44,
+          "win_rate": 0,
+          "save_rate": 11.11
         },
         "1v5": {
           "total": 5,
@@ -1788,15 +1492,7 @@
           "lost": 5,
           "avg_kills": 0.2,
           "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v6": {
-          "total": 1,
-          "won": 0,
-          "lost": 1,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
+          "save_rate": 20
         }
       }
     }
@@ -1804,200 +1500,200 @@
   {
     "steam_id": "76561198004605665",
     "name": "ekl1ps",
-    "matches_played": 14,
-    "wins": 9,
+    "matches_played": 12,
+    "wins": 8,
     "ties": 0,
-    "losses": 5,
-    "win_rate": 64.29,
-    "hltv_2": 1.251926634992872,
-    "hltv": 1.2021205084664481,
-    "kast": 74.58063888549805,
-    "adr": 83.75879750932965,
-    "kd": 1.21,
-    "avg_kills_per_round": 0.85,
-    "avg_deaths_per_round": 0.71,
-    "hs_pct": 32.27,
-    "kills": 282,
-    "deaths": 234,
-    "assists": 82,
-    "headshots": 91,
-    "wallbang_kills": 7,
+    "losses": 4,
+    "win_rate": 66.67,
+    "hltv_2": 1.1312668323516846,
+    "hltv": 1.002721759180228,
+    "kast": 73.70303789774577,
+    "adr": 80.25673294067383,
+    "kd": 1.02,
+    "avg_kills_per_round": 0.75,
+    "avg_deaths_per_round": 0.74,
+    "hs_pct": 37.95,
+    "kills": 195,
+    "deaths": 192,
+    "assists": 71,
+    "headshots": 74,
+    "wallbang_kills": 3,
     "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 63.64,
-      "traded_pct": 7.79,
-      "first_kills": 49,
-      "first_deaths": 28,
-      "best_weapon": "M4A1"
+      "success_pct": 50.91,
+      "traded_pct": 5.45,
+      "first_kills": 28,
+      "first_deaths": 27,
+      "best_weapon": "AK-47"
     },
     "rounds": {
-      "total": 330,
-      "ct": 163,
-      "t": 167
+      "total": 259,
+      "ct": 126,
+      "t": 133
     },
     "multi_kills": {
-      "k1": 118,
-      "k2": 33,
-      "k3": 23,
-      "k4": 6,
-      "k5": 1
+      "k1": 94,
+      "k2": 28,
+      "k3": 11,
+      "k4": 3,
+      "k5": 0
     },
     "inspections": {
       "total": 0,
       "deaths_while_inspecting": 0
     },
     "objectives": {
-      "bomb_planted": 33,
+      "bomb_planted": 19,
       "bomb_defused": 6,
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 2.2,
-      "enemies_flashed": 3.9,
-      "avg_he_damage": 125.7,
-      "avg_smokes_thrown": 7.3
+      "avg_blind_time": 2.5,
+      "enemies_flashed": 7,
+      "avg_he_damage": 55.3,
+      "avg_smokes_thrown": 6.4
     },
     "weapons": [
       {
-        "name": "M4A1",
-        "kills": 103,
-        "hs_pct": 25.24,
-        "damage": 11557,
-        "shots": 1326,
-        "hits": 365,
-        "accuracy": 27.53
+        "name": "AK-47",
+        "kills": 83,
+        "hs_pct": 37.35,
+        "damage": 9837,
+        "shots": 1102,
+        "hits": 282,
+        "accuracy": 25.59
       },
       {
-        "name": "AK-47",
-        "kills": 102,
-        "hs_pct": 29.41,
-        "damage": 11721,
-        "shots": 1555,
-        "hits": 363,
-        "accuracy": 23.34
+        "name": "M4A1",
+        "kills": 62,
+        "hs_pct": 30.65,
+        "damage": 7513,
+        "shots": 852,
+        "hits": 239,
+        "accuracy": 28.05
       },
       {
         "name": "Glock-18",
-        "kills": 21,
-        "hs_pct": 66.67,
-        "damage": 2072,
-        "shots": 212,
-        "hits": 75,
-        "accuracy": 35.38
-      },
-      {
-        "name": "SSG 08",
         "kills": 14,
-        "hs_pct": 92.86,
-        "damage": 1658,
-        "shots": 29,
-        "hits": 17,
-        "accuracy": 58.62
-      },
-      {
-        "name": "AWP",
-        "kills": 12,
-        "hs_pct": 0,
-        "damage": 1005,
-        "shots": 14,
-        "hits": 12,
-        "accuracy": 85.71
+        "hs_pct": 71.43,
+        "damage": 1916,
+        "shots": 241,
+        "hits": 72,
+        "accuracy": 29.88
       },
       {
         "name": "USP-S",
         "kills": 10,
-        "hs_pct": 50,
-        "damage": 1447,
-        "shots": 163,
-        "hits": 51,
-        "accuracy": 31.29
+        "hs_pct": 80,
+        "damage": 1099,
+        "shots": 121,
+        "hits": 35,
+        "accuracy": 28.93
+      },
+      {
+        "name": "AWP",
+        "kills": 9,
+        "hs_pct": 11.11,
+        "damage": 780,
+        "shots": 31,
+        "hits": 9,
+        "accuracy": 29.03
+      },
+      {
+        "name": "SSG 08",
+        "kills": 5,
+        "hs_pct": 80,
+        "damage": 684,
+        "shots": 13,
+        "hits": 8,
+        "accuracy": 61.54
       },
       {
         "name": "AUG",
-        "kills": 6,
-        "hs_pct": 16.67,
-        "damage": 660,
-        "shots": 50,
-        "hits": 21,
-        "accuracy": 42
-      },
-      {
-        "name": "MAC-10",
         "kills": 5,
-        "hs_pct": 20,
-        "damage": 455,
-        "shots": 111,
-        "hits": 27,
-        "accuracy": 24.32
-      },
-      {
-        "name": "HE Grenade",
-        "kills": 3,
         "hs_pct": 0,
-        "damage": 1760,
-        "shots": 80,
-        "hits": 63,
-        "accuracy": 78.75
+        "damage": 476,
+        "shots": 53,
+        "hits": 19,
+        "accuracy": 35.85
       },
       {
         "name": "MP9",
+        "kills": 4,
+        "hs_pct": 25,
+        "damage": 702,
+        "shots": 99,
+        "hits": 31,
+        "accuracy": 31.31
+      },
+      {
+        "name": "Galil AR",
         "kills": 2,
         "hs_pct": 0,
-        "damage": 377,
-        "shots": 87,
-        "hits": 18,
-        "accuracy": 20.69
+        "damage": 145,
+        "shots": 24,
+        "hits": 7,
+        "accuracy": 29.17
+      },
+      {
+        "name": "HE Grenade",
+        "kills": 1,
+        "hs_pct": 0,
+        "damage": 664,
+        "shots": 49,
+        "hits": 35,
+        "accuracy": 71.43
       }
     ],
     "clutches": {
       "overall": {
         "total": 25,
-        "won": 5,
-        "lost": 20,
-        "avg_kills": 0.72,
-        "win_rate": 20,
+        "won": 6,
+        "lost": 19,
+        "avg_kills": 0.68,
+        "win_rate": 24,
         "save_rate": 4
       },
       "by_type": {
         "1v1": {
-          "total": 2,
-          "won": 1,
-          "lost": 1,
-          "avg_kills": 0.5,
-          "win_rate": 50,
+          "total": 7,
+          "won": 5,
+          "lost": 2,
+          "avg_kills": 0.57,
+          "win_rate": 71.43,
           "save_rate": 0
         },
         "1v2": {
-          "total": 8,
-          "won": 2,
-          "lost": 6,
-          "avg_kills": 0.75,
-          "win_rate": 25,
-          "save_rate": 0
-        },
-        "1v3": {
-          "total": 4,
-          "won": 1,
-          "lost": 3,
-          "avg_kills": 0.75,
-          "win_rate": 25,
-          "save_rate": 0
-        },
-        "1v4": {
-          "total": 8,
-          "won": 1,
-          "lost": 7,
-          "avg_kills": 0.75,
-          "win_rate": 12.5,
-          "save_rate": 12.5
-        },
-        "1v5": {
           "total": 3,
           "won": 0,
           "lost": 3,
-          "avg_kills": 0.67,
+          "avg_kills": 0,
           "win_rate": 0,
           "save_rate": 0
+        },
+        "1v3": {
+          "total": 5,
+          "won": 1,
+          "lost": 4,
+          "avg_kills": 0.6,
+          "win_rate": 20,
+          "save_rate": 0
+        },
+        "1v4": {
+          "total": 5,
+          "won": 0,
+          "lost": 5,
+          "avg_kills": 1,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v5": {
+          "total": 5,
+          "won": 0,
+          "lost": 5,
+          "avg_kills": 1,
+          "win_rate": 0,
+          "save_rate": 20
         }
       }
     }
@@ -2005,41 +1701,41 @@
   {
     "steam_id": "76561197997780623",
     "name": "eskisigibi",
-    "matches_played": 5,
-    "wins": 3,
+    "matches_played": 0,
+    "wins": 0,
     "ties": 0,
-    "losses": 2,
-    "win_rate": 60,
-    "hltv_2": 0.20884080231189728,
-    "hltv": 0.3201866030693054,
-    "kast": 46.0821029663086,
-    "adr": 26.22935962677002,
-    "kd": 0.19,
-    "avg_kills_per_round": 0.15,
-    "avg_deaths_per_round": 0.78,
-    "hs_pct": 23.81,
-    "kills": 21,
-    "deaths": 110,
-    "assists": 21,
-    "headshots": 5,
+    "losses": 0,
+    "win_rate": 0,
+    "hltv_2": 0,
+    "hltv": 0,
+    "kast": 0,
+    "adr": 0,
+    "kd": 0,
+    "avg_kills_per_round": 0,
+    "avg_deaths_per_round": 0,
+    "hs_pct": 0,
+    "kills": 0,
+    "deaths": 0,
+    "assists": 0,
+    "headshots": 0,
     "wallbang_kills": 0,
     "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 13.04,
-      "traded_pct": 8.7,
-      "first_kills": 3,
-      "first_deaths": 20,
-      "best_weapon": "XM1014"
+      "success_pct": 0,
+      "traded_pct": 0,
+      "first_kills": 0,
+      "first_deaths": 0,
+      "best_weapon": null
     },
     "rounds": {
-      "total": 141,
-      "ct": 67,
-      "t": 74
+      "total": 0,
+      "ct": 0,
+      "t": 0
     },
     "multi_kills": {
-      "k1": 14,
-      "k2": 2,
-      "k3": 1,
+      "k1": 0,
+      "k2": 0,
+      "k3": 0,
       "k4": 0,
       "k5": 0
     },
@@ -2048,167 +1744,27 @@
       "deaths_while_inspecting": 0
     },
     "objectives": {
-      "bomb_planted": 7,
-      "bomb_defused": 1,
+      "bomb_planted": 0,
+      "bomb_defused": 0,
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 2.7,
-      "enemies_flashed": 14,
-      "avg_he_damage": 87.8,
-      "avg_smokes_thrown": 12.6
+      "avg_blind_time": 0,
+      "enemies_flashed": 0,
+      "avg_he_damage": 0,
+      "avg_smokes_thrown": 0
     },
-    "weapons": [
-      {
-        "name": "XM1014",
-        "kills": 11,
-        "hs_pct": 18.18,
-        "damage": 1797,
-        "shots": 125,
-        "hits": 98,
-        "accuracy": 78.4
-      },
-      {
-        "name": "PP-Bizon",
-        "kills": 4,
-        "hs_pct": 25,
-        "damage": 656,
-        "shots": 568,
-        "hits": 30,
-        "accuracy": 5.28
-      },
-      {
-        "name": "HE Grenade",
-        "kills": 1,
-        "hs_pct": 0,
-        "damage": 439,
-        "shots": 49,
-        "hits": 19,
-        "accuracy": 38.78
-      },
-      {
-        "name": "AK-47",
-        "kills": 1,
-        "hs_pct": 100,
-        "damage": 407,
-        "shots": 297,
-        "hits": 12,
-        "accuracy": 4.04
-      },
-      {
-        "name": "MAC-10",
-        "kills": 1,
-        "hs_pct": 100,
-        "damage": 60,
-        "shots": 32,
-        "hits": 3,
-        "accuracy": 9.38
-      },
-      {
-        "name": "Galil AR",
-        "kills": 1,
-        "hs_pct": 0,
-        "damage": 39,
-        "shots": 21,
-        "hits": 2,
-        "accuracy": 9.52
-      },
-      {
-        "name": "Dual Berettas",
-        "kills": 1,
-        "hs_pct": 0,
-        "damage": 36,
-        "shots": 28,
-        "hits": 2,
-        "accuracy": 7.14
-      },
-      {
-        "name": "M4A1",
-        "kills": 1,
-        "hs_pct": 0,
-        "damage": 13,
-        "shots": 23,
-        "hits": 1,
-        "accuracy": 4.35
-      },
-      {
-        "name": "USP-S",
-        "kills": 0,
-        "hs_pct": 0,
-        "damage": 325,
-        "shots": 49,
-        "hits": 12,
-        "accuracy": 24.49
-      },
-      {
-        "name": "Glock-18",
-        "kills": 0,
-        "hs_pct": 0,
-        "damage": 126,
-        "shots": 71,
-        "hits": 7,
-        "accuracy": 9.86
-      }
-    ],
+    "weapons": [],
     "clutches": {
       "overall": {
-        "total": 10,
-        "won": 3,
-        "lost": 7,
-        "avg_kills": 0.1,
-        "win_rate": 30,
-        "save_rate": 10
+        "total": 0,
+        "won": 0,
+        "lost": 0,
+        "avg_kills": 0,
+        "win_rate": 0,
+        "save_rate": 0
       },
-      "by_type": {
-        "1v1": {
-          "total": 1,
-          "won": 1,
-          "lost": 0,
-          "avg_kills": 0,
-          "win_rate": 100,
-          "save_rate": 0
-        },
-        "1v2": {
-          "total": 3,
-          "won": 1,
-          "lost": 2,
-          "avg_kills": 0,
-          "win_rate": 33.33,
-          "save_rate": 33.33
-        },
-        "1v3": {
-          "total": 4,
-          "won": 1,
-          "lost": 3,
-          "avg_kills": 0.25,
-          "win_rate": 25,
-          "save_rate": 0
-        },
-        "1v5": {
-          "total": 1,
-          "won": 0,
-          "lost": 1,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v6": {
-          "total": 1,
-          "won": 0,
-          "lost": 1,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v4": {
-          "total": 0,
-          "won": 0,
-          "lost": 0,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        }
-      }
+      "by_type": {}
     }
   },
   {
@@ -2283,384 +1839,175 @@
   {
     "steam_id": "76561198041502233",
     "name": "HiLLbili",
-    "matches_played": 10,
-    "wins": 5,
+    "matches_played": 8,
+    "wins": 2,
     "ties": 0,
-    "losses": 5,
-    "win_rate": 50,
-    "hltv_2": 1.1856580138206483,
-    "hltv": 1.0568353891372682,
-    "kast": 73.00421028137207,
-    "adr": 89.27108993530274,
-    "kd": 1.04,
-    "avg_kills_per_round": 0.79,
-    "avg_deaths_per_round": 0.76,
-    "hs_pct": 20.71,
-    "kills": 198,
-    "deaths": 191,
-    "assists": 78,
-    "headshots": 41,
+    "losses": 6,
+    "win_rate": 25,
+    "hltv_2": 1.0254373848438263,
+    "hltv": 0.8483458831906319,
+    "kast": 75.7600245475769,
+    "adr": 73.50603532791138,
+    "kd": 0.83,
+    "avg_kills_per_round": 0.67,
+    "avg_deaths_per_round": 0.81,
+    "hs_pct": 25.64,
+    "kills": 117,
+    "deaths": 141,
+    "assists": 42,
+    "headshots": 30,
     "wallbang_kills": 2,
     "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 39.29,
-      "traded_pct": 7.14,
-      "first_kills": 22,
-      "first_deaths": 34,
+      "success_pct": 57.69,
+      "traded_pct": 7.69,
+      "first_kills": 15,
+      "first_deaths": 11,
       "best_weapon": "M4A1"
     },
     "rounds": {
-      "total": 252,
-      "ct": 125,
-      "t": 127
+      "total": 174,
+      "ct": 90,
+      "t": 84
     },
     "multi_kills": {
-      "k1": 84,
-      "k2": 30,
-      "k3": 14,
-      "k4": 3,
+      "k1": 54,
+      "k2": 26,
+      "k3": 4,
+      "k4": 0,
       "k5": 0
     },
     "inspections": {
-      "total": 0,
+      "total": 5,
       "deaths_while_inspecting": 0
     },
     "objectives": {
-      "bomb_planted": 8,
-      "bomb_defused": 3,
+      "bomb_planted": 12,
+      "bomb_defused": 1,
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 2.9,
-      "enemies_flashed": 0.9,
-      "avg_he_damage": 33.6,
-      "avg_smokes_thrown": 5.6
+      "avg_blind_time": 2.8,
+      "enemies_flashed": 1.3,
+      "avg_he_damage": 15.8,
+      "avg_smokes_thrown": 7.4
     },
     "weapons": [
       {
         "name": "M4A1",
-        "kills": 53,
-        "hs_pct": 20.75,
-        "damage": 7492,
-        "shots": 810,
-        "hits": 218,
-        "accuracy": 26.91
-      },
-      {
-        "name": "SG 553",
-        "kills": 31,
-        "hs_pct": 19.35,
-        "damage": 3220,
-        "shots": 464,
-        "hits": 115,
-        "accuracy": 24.78
+        "kills": 34,
+        "hs_pct": 32.35,
+        "damage": 4251,
+        "shots": 488,
+        "hits": 136,
+        "accuracy": 27.87
       },
       {
         "name": "Galil AR",
         "kills": 22,
-        "hs_pct": 18.18,
-        "damage": 3781,
-        "shots": 537,
-        "hits": 138,
-        "accuracy": 25.7
+        "hs_pct": 13.64,
+        "damage": 2680,
+        "shots": 436,
+        "hits": 101,
+        "accuracy": 23.17
       },
       {
-        "name": "G3SG1",
-        "kills": 15,
-        "hs_pct": 6.67,
-        "damage": 1859,
-        "shots": 98,
-        "hits": 33,
-        "accuracy": 33.67
+        "name": "AUG",
+        "kills": 12,
+        "hs_pct": 33.33,
+        "damage": 1413,
+        "shots": 230,
+        "hits": 50,
+        "accuracy": 21.74
       },
       {
-        "name": "AWP",
-        "kills": 15,
-        "hs_pct": 6.67,
-        "damage": 1625,
-        "shots": 36,
-        "hits": 18,
-        "accuracy": 50
-      },
-      {
-        "name": "P2000",
-        "kills": 14,
-        "hs_pct": 42.86,
-        "damage": 2013,
-        "shots": 341,
-        "hits": 70,
-        "accuracy": 20.53
+        "name": "AK-47",
+        "kills": 12,
+        "hs_pct": 41.67,
+        "damage": 1244,
+        "shots": 233,
+        "hits": 41,
+        "accuracy": 17.6
       },
       {
         "name": "SCAR-20",
         "kills": 11,
-        "hs_pct": 18.18,
-        "damage": 1083,
-        "shots": 70,
-        "hits": 21,
-        "accuracy": 30
-      },
-      {
-        "name": "AUG",
-        "kills": 10,
         "hs_pct": 0,
-        "damage": 1286,
-        "shots": 213,
-        "hits": 53,
-        "accuracy": 24.88
-      },
-      {
-        "name": "Glock-18",
-        "kills": 8,
-        "hs_pct": 62.5,
-        "damage": 1099,
-        "shots": 211,
-        "hits": 46,
-        "accuracy": 21.8
-      },
-      {
-        "name": "AK-47",
-        "kills": 5,
-        "hs_pct": 40,
-        "damage": 511,
-        "shots": 41,
-        "hits": 14,
-        "accuracy": 34.15
-      }
-    ],
-    "clutches": {
-      "overall": {
-        "total": 18,
-        "won": 2,
-        "lost": 16,
-        "avg_kills": 0.28,
-        "win_rate": 11.11,
-        "save_rate": 5.56
-      },
-      "by_type": {
-        "1v1": {
-          "total": 2,
-          "won": 1,
-          "lost": 1,
-          "avg_kills": 0.5,
-          "win_rate": 50,
-          "save_rate": 0
-        },
-        "1v2": {
-          "total": 4,
-          "won": 1,
-          "lost": 3,
-          "avg_kills": 0.75,
-          "win_rate": 25,
-          "save_rate": 0
-        },
-        "1v3": {
-          "total": 3,
-          "won": 0,
-          "lost": 3,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v4": {
-          "total": 5,
-          "won": 0,
-          "lost": 5,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v5": {
-          "total": 4,
-          "won": 0,
-          "lost": 4,
-          "avg_kills": 0.25,
-          "win_rate": 0,
-          "save_rate": 25
-        }
-      }
-    }
-  },
-  {
-    "steam_id": "76561198001957069",
-    "name": "Malawhur",
-    "matches_played": 14,
-    "wins": 10,
-    "ties": 0,
-    "losses": 4,
-    "win_rate": 71.43,
-    "hltv_2": 1.252839641911643,
-    "hltv": 1.1368467190435954,
-    "kast": 76.33235549926758,
-    "adr": 88.7414185660226,
-    "kd": 1.18,
-    "avg_kills_per_round": 0.84,
-    "avg_deaths_per_round": 0.71,
-    "hs_pct": 24.23,
-    "kills": 260,
-    "deaths": 220,
-    "assists": 81,
-    "headshots": 63,
-    "wallbang_kills": 5,
-    "collateral_kills": 0,
-    "opening_duels": {
-      "success_pct": 49.23,
-      "traded_pct": 15.38,
-      "first_kills": 32,
-      "first_deaths": 33,
-      "best_weapon": "AUG"
-    },
-    "rounds": {
-      "total": 310,
-      "ct": 160,
-      "t": 150
-    },
-    "multi_kills": {
-      "k1": 98,
-      "k2": 51,
-      "k3": 15,
-      "k4": 3,
-      "k5": 1
-    },
-    "inspections": {
-      "total": 1,
-      "deaths_while_inspecting": 0
-    },
-    "objectives": {
-      "bomb_planted": 19,
-      "bomb_defused": 3,
-      "hostage_rescued": 0
-    },
-    "utilities": {
-      "avg_blind_time": 2.3,
-      "enemies_flashed": 2.8,
-      "avg_he_damage": 76.8,
-      "avg_smokes_thrown": 4.8
-    },
-    "weapons": [
-      {
-        "name": "AUG",
-        "kills": 70,
-        "hs_pct": 14.29,
-        "damage": 6887,
-        "shots": 1244,
-        "hits": 268,
-        "accuracy": 21.54
-      },
-      {
-        "name": "AWP",
-        "kills": 60,
-        "hs_pct": 8.33,
-        "damage": 5413,
-        "shots": 143,
-        "hits": 64,
-        "accuracy": 44.76
-      },
-      {
-        "name": "AK-47",
-        "kills": 43,
-        "hs_pct": 27.91,
-        "damage": 5278,
-        "shots": 956,
-        "hits": 167,
-        "accuracy": 17.47
-      },
-      {
-        "name": "M4A1",
-        "kills": 26,
-        "hs_pct": 30.77,
-        "damage": 3551,
-        "shots": 571,
-        "hits": 115,
-        "accuracy": 20.14
-      },
-      {
-        "name": "SG 553",
-        "kills": 25,
-        "hs_pct": 32,
-        "damage": 2315,
-        "shots": 421,
-        "hits": 82,
-        "accuracy": 19.48
-      },
-      {
-        "name": "Glock-18",
-        "kills": 15,
-        "hs_pct": 60,
-        "damage": 1923,
-        "shots": 330,
-        "hits": 67,
-        "accuracy": 20.3
+        "damage": 1053,
+        "shots": 86,
+        "hits": 19,
+        "accuracy": 22.09
       },
       {
         "name": "USP-S",
-        "kills": 12,
-        "hs_pct": 75,
-        "damage": 2364,
-        "shots": 316,
-        "hits": 84,
-        "accuracy": 26.58
+        "kills": 7,
+        "hs_pct": 57.14,
+        "damage": 1329,
+        "shots": 208,
+        "hits": 52,
+        "accuracy": 25
       },
       {
-        "name": "MAC-10",
-        "kills": 4,
-        "hs_pct": 25,
-        "damage": 834,
-        "shots": 198,
-        "hits": 41,
-        "accuracy": 20.71
-      },
-      {
-        "name": "Molotov",
-        "kills": 4,
+        "name": "G3SG1",
+        "kills": 7,
         "hs_pct": 0,
-        "damage": 448,
-        "shots": 38,
-        "hits": 72,
-        "accuracy": 189.47
+        "damage": 781,
+        "shots": 54,
+        "hits": 14,
+        "accuracy": 25.93
       },
       {
-        "name": "HE Grenade",
+        "name": "Glock-18",
+        "kills": 5,
+        "hs_pct": 20,
+        "damage": 856,
+        "shots": 209,
+        "hits": 42,
+        "accuracy": 20.1
+      },
+      {
+        "name": "MP7",
+        "kills": 3,
+        "hs_pct": 0,
+        "damage": 252,
+        "shots": 33,
+        "hits": 13,
+        "accuracy": 39.39
+      },
+      {
+        "name": "XM1014",
         "kills": 2,
         "hs_pct": 0,
-        "damage": 1075,
-        "shots": 95,
-        "hits": 54,
-        "accuracy": 56.84
+        "damage": 273,
+        "shots": 11,
+        "hits": 20,
+        "accuracy": 181.82
       }
     ],
     "clutches": {
       "overall": {
-        "total": 32,
-        "won": 8,
-        "lost": 24,
-        "avg_kills": 0.59,
-        "win_rate": 25,
-        "save_rate": 3.13
+        "total": 11,
+        "won": 1,
+        "lost": 10,
+        "avg_kills": 0.55,
+        "win_rate": 9.09,
+        "save_rate": 0
       },
       "by_type": {
-        "1v1": {
-          "total": 6,
-          "won": 3,
-          "lost": 3,
-          "avg_kills": 0.17,
-          "win_rate": 50,
-          "save_rate": 16.67
-        },
         "1v2": {
-          "total": 9,
-          "won": 3,
-          "lost": 6,
-          "avg_kills": 0.56,
-          "win_rate": 33.33,
+          "total": 6,
+          "won": 1,
+          "lost": 5,
+          "avg_kills": 0.5,
+          "win_rate": 16.67,
           "save_rate": 0
         },
         "1v3": {
-          "total": 11,
-          "won": 2,
-          "lost": 9,
-          "avg_kills": 0.91,
-          "win_rate": 18.18,
+          "total": 2,
+          "won": 0,
+          "lost": 2,
+          "avg_kills": 0,
+          "win_rate": 0,
           "save_rate": 0
         },
         "1v4": {
@@ -2672,10 +2019,428 @@
           "save_rate": 0
         },
         "1v5": {
-          "total": 4,
+          "total": 1,
           "won": 0,
-          "lost": 4,
+          "lost": 1,
+          "avg_kills": 2,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v1": {
+          "total": 0,
+          "won": 0,
+          "lost": 0,
+          "avg_kills": 0,
+          "win_rate": 0,
+          "save_rate": 0
+        }
+      }
+    }
+  },
+  {
+    "steam_id": "76561198001957069",
+    "name": "Malawhur",
+    "matches_played": 4,
+    "wins": 1,
+    "ties": 0,
+    "losses": 3,
+    "win_rate": 25,
+    "hltv_2": 1.0120492428541183,
+    "hltv": 0.9715115129947662,
+    "kast": 67.97969436645508,
+    "adr": 74.59725189208984,
+    "kd": 0.92,
+    "avg_kills_per_round": 0.7,
+    "avg_deaths_per_round": 0.76,
+    "hs_pct": 29.31,
+    "kills": 58,
+    "deaths": 63,
+    "assists": 13,
+    "headshots": 17,
+    "wallbang_kills": 1,
+    "collateral_kills": 0,
+    "opening_duels": {
+      "success_pct": 50,
+      "traded_pct": 25,
+      "first_kills": 6,
+      "first_deaths": 6,
+      "best_weapon": "AWP"
+    },
+    "rounds": {
+      "total": 83,
+      "ct": 42,
+      "t": 41
+    },
+    "multi_kills": {
+      "k1": 22,
+      "k2": 11,
+      "k3": 5,
+      "k4": 0,
+      "k5": 0
+    },
+    "inspections": {
+      "total": 0,
+      "deaths_while_inspecting": 0
+    },
+    "objectives": {
+      "bomb_planted": 7,
+      "bomb_defused": 0,
+      "hostage_rescued": 0
+    },
+    "utilities": {
+      "avg_blind_time": 1.7,
+      "enemies_flashed": 2.5,
+      "avg_he_damage": 68.5,
+      "avg_smokes_thrown": 4.3
+    },
+    "weapons": [
+      {
+        "name": "AWP",
+        "kills": 19,
+        "hs_pct": 15.79,
+        "damage": 1712,
+        "shots": 40,
+        "hits": 20,
+        "accuracy": 50
+      },
+      {
+        "name": "M4A1",
+        "kills": 17,
+        "hs_pct": 41.18,
+        "damage": 1723,
+        "shots": 171,
+        "hits": 50,
+        "accuracy": 29.24
+      },
+      {
+        "name": "AUG",
+        "kills": 9,
+        "hs_pct": 11.11,
+        "damage": 856,
+        "shots": 142,
+        "hits": 34,
+        "accuracy": 23.94
+      },
+      {
+        "name": "AK-47",
+        "kills": 6,
+        "hs_pct": 50,
+        "damage": 915,
+        "shots": 137,
+        "hits": 29,
+        "accuracy": 21.17
+      },
+      {
+        "name": "Glock-18",
+        "kills": 3,
+        "hs_pct": 33.33,
+        "damage": 386,
+        "shots": 92,
+        "hits": 21,
+        "accuracy": 22.83
+      },
+      {
+        "name": "SG 553",
+        "kills": 3,
+        "hs_pct": 100,
+        "damage": 294,
+        "shots": 51,
+        "hits": 6,
+        "accuracy": 11.76
+      },
+      {
+        "name": "FAMAS",
+        "kills": 1,
+        "hs_pct": 0,
+        "damage": 119,
+        "shots": 15,
+        "hits": 5,
+        "accuracy": 33.33
+      },
+      {
+        "name": "M4A4",
+        "kills": 1,
+        "hs_pct": 0,
+        "damage": 51,
+        "shots": 15,
+        "hits": 2,
+        "accuracy": 13.33
+      },
+      {
+        "name": "Galil AR",
+        "kills": 1,
+        "hs_pct": 0,
+        "damage": 42,
+        "shots": 6,
+        "hits": 2,
+        "accuracy": 33.33
+      },
+      {
+        "name": "USP-S",
+        "kills": 0,
+        "hs_pct": 0,
+        "damage": 392,
+        "shots": 61,
+        "hits": 15,
+        "accuracy": 24.59
+      }
+    ],
+    "clutches": {
+      "overall": {
+        "total": 9,
+        "won": 1,
+        "lost": 8,
+        "avg_kills": 0.22,
+        "win_rate": 11.11,
+        "save_rate": 22.22
+      },
+      "by_type": {
+        "1v1": {
+          "total": 3,
+          "won": 0,
+          "lost": 3,
+          "avg_kills": 0,
+          "win_rate": 0,
+          "save_rate": 33.33
+        },
+        "1v2": {
+          "total": 2,
+          "won": 1,
+          "lost": 1,
+          "avg_kills": 1,
+          "win_rate": 50,
+          "save_rate": 0
+        },
+        "1v3": {
+          "total": 2,
+          "won": 0,
+          "lost": 2,
+          "avg_kills": 0,
+          "win_rate": 0,
+          "save_rate": 50
+        },
+        "1v4": {
+          "total": 2,
+          "won": 0,
+          "lost": 2,
+          "avg_kills": 0,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v5": {
+          "total": 0,
+          "won": 0,
+          "lost": 0,
+          "avg_kills": 0,
+          "win_rate": 0,
+          "save_rate": 0
+        }
+      }
+    }
+  },
+  {
+    "steam_id": "76561198045378695",
+    "name": "MeDoKa",
+    "matches_played": 9,
+    "wins": 3,
+    "ties": 0,
+    "losses": 6,
+    "win_rate": 33.33,
+    "hltv_2": 0.6844757695992788,
+    "hltv": 0.5886476635932922,
+    "kast": 66.49764166937933,
+    "adr": 51.26131587558322,
+    "kd": 0.54,
+    "avg_kills_per_round": 0.42,
+    "avg_deaths_per_round": 0.79,
+    "hs_pct": 37.8,
+    "kills": 82,
+    "deaths": 153,
+    "assists": 42,
+    "headshots": 31,
+    "wallbang_kills": 0,
+    "collateral_kills": 0,
+    "opening_duels": {
+      "success_pct": 44.44,
+      "traded_pct": 25.93,
+      "first_kills": 12,
+      "first_deaths": 15,
+      "best_weapon": "MP5-SD"
+    },
+    "rounds": {
+      "total": 193,
+      "ct": 102,
+      "t": 91
+    },
+    "multi_kills": {
+      "k1": 54,
+      "k2": 12,
+      "k3": 0,
+      "k4": 1,
+      "k5": 0
+    },
+    "inspections": {
+      "total": 1,
+      "deaths_while_inspecting": 0
+    },
+    "objectives": {
+      "bomb_planted": 7,
+      "bomb_defused": 0,
+      "hostage_rescued": 0
+    },
+    "utilities": {
+      "avg_blind_time": 3.4,
+      "enemies_flashed": 0.9,
+      "avg_he_damage": 4.7,
+      "avg_smokes_thrown": 1.6
+    },
+    "weapons": [
+      {
+        "name": "MP5-SD",
+        "kills": 19,
+        "hs_pct": 31.58,
+        "damage": 2125,
+        "shots": 521,
+        "hits": 102,
+        "accuracy": 19.58
+      },
+      {
+        "name": "AUG",
+        "kills": 17,
+        "hs_pct": 41.18,
+        "damage": 2340,
+        "shots": 487,
+        "hits": 81,
+        "accuracy": 16.63
+      },
+      {
+        "name": "SG 553",
+        "kills": 11,
+        "hs_pct": 18.18,
+        "damage": 1413,
+        "shots": 328,
+        "hits": 57,
+        "accuracy": 17.38
+      },
+      {
+        "name": "AK-47",
+        "kills": 8,
+        "hs_pct": 62.5,
+        "damage": 894,
+        "shots": 161,
+        "hits": 20,
+        "accuracy": 12.42
+      },
+      {
+        "name": "Galil AR",
+        "kills": 7,
+        "hs_pct": 28.57,
+        "damage": 1002,
+        "shots": 223,
+        "hits": 39,
+        "accuracy": 17.49
+      },
+      {
+        "name": "Glock-18",
+        "kills": 6,
+        "hs_pct": 33.33,
+        "damage": 510,
+        "shots": 85,
+        "hits": 21,
+        "accuracy": 24.71
+      },
+      {
+        "name": "SCAR-20",
+        "kills": 5,
+        "hs_pct": 60,
+        "damage": 747,
+        "shots": 32,
+        "hits": 9,
+        "accuracy": 28.13
+      },
+      {
+        "name": "USP-S",
+        "kills": 2,
+        "hs_pct": 100,
+        "damage": 648,
+        "shots": 122,
+        "hits": 18,
+        "accuracy": 14.75
+      },
+      {
+        "name": "FAMAS",
+        "kills": 2,
+        "hs_pct": 50,
+        "damage": 267,
+        "shots": 47,
+        "hits": 10,
+        "accuracy": 21.28
+      },
+      {
+        "name": "G3SG1",
+        "kills": 2,
+        "hs_pct": 0,
+        "damage": 228,
+        "shots": 34,
+        "hits": 4,
+        "accuracy": 11.76
+      }
+    ],
+    "clutches": {
+      "overall": {
+        "total": 23,
+        "won": 0,
+        "lost": 23,
+        "avg_kills": 0.52,
+        "win_rate": 0,
+        "save_rate": 4.35
+      },
+      "by_type": {
+        "1v1": {
+          "total": 2,
+          "won": 0,
+          "lost": 2,
           "avg_kills": 0.5,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v2": {
+          "total": 1,
+          "won": 0,
+          "lost": 1,
+          "avg_kills": 1,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v3": {
+          "total": 9,
+          "won": 0,
+          "lost": 9,
+          "avg_kills": 0.33,
+          "win_rate": 0,
+          "save_rate": 11.11
+        },
+        "1v4": {
+          "total": 10,
+          "won": 0,
+          "lost": 10,
+          "avg_kills": 0.7,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v6": {
+          "total": 1,
+          "won": 0,
+          "lost": 1,
+          "avg_kills": 0,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v5": {
+          "total": 0,
+          "won": 0,
+          "lost": 0,
+          "avg_kills": 0,
           "win_rate": 0,
           "save_rate": 0
         }
@@ -2685,215 +2450,6 @@
   {
     "steam_id": "76561199065748965",
     "name": "mersido",
-    "matches_played": 10,
-    "wins": 7,
-    "ties": 0,
-    "losses": 3,
-    "win_rate": 70,
-    "hltv_2": 0.8501889113336801,
-    "hltv": 0.7492304056882858,
-    "kast": 63.384646606445315,
-    "adr": 67.21268234252929,
-    "kd": 0.77,
-    "avg_kills_per_round": 0.59,
-    "avg_deaths_per_round": 0.76,
-    "hs_pct": 25.74,
-    "kills": 136,
-    "deaths": 176,
-    "assists": 54,
-    "headshots": 35,
-    "wallbang_kills": 3,
-    "collateral_kills": 1,
-    "opening_duels": {
-      "success_pct": 37.21,
-      "traded_pct": 6.98,
-      "first_kills": 16,
-      "first_deaths": 27,
-      "best_weapon": "AK-47"
-    },
-    "rounds": {
-      "total": 232,
-      "ct": 117,
-      "t": 115
-    },
-    "multi_kills": {
-      "k1": 77,
-      "k2": 27,
-      "k3": 2,
-      "k4": 0,
-      "k5": 0
-    },
-    "inspections": {
-      "total": 45,
-      "deaths_while_inspecting": 0
-    },
-    "objectives": {
-      "bomb_planted": 9,
-      "bomb_defused": 2,
-      "hostage_rescued": 0
-    },
-    "utilities": {
-      "avg_blind_time": 3.1,
-      "enemies_flashed": 2.4,
-      "avg_he_damage": 39.6,
-      "avg_smokes_thrown": 15.4
-    },
-    "weapons": [
-      {
-        "name": "AK-47",
-        "kills": 56,
-        "hs_pct": 26.79,
-        "damage": 6919,
-        "shots": 1162,
-        "hits": 223,
-        "accuracy": 19.19
-      },
-      {
-        "name": "M4A1",
-        "kills": 54,
-        "hs_pct": 20.37,
-        "damage": 6460,
-        "shots": 977,
-        "hits": 212,
-        "accuracy": 21.7
-      },
-      {
-        "name": "Dual Berettas",
-        "kills": 11,
-        "hs_pct": 45.45,
-        "damage": 1229,
-        "shots": 167,
-        "hits": 43,
-        "accuracy": 25.75
-      },
-      {
-        "name": "USP-S",
-        "kills": 7,
-        "hs_pct": 28.57,
-        "damage": 1322,
-        "shots": 160,
-        "hits": 54,
-        "accuracy": 33.75
-      },
-      {
-        "name": "MP7",
-        "kills": 6,
-        "hs_pct": 33.33,
-        "damage": 1038,
-        "shots": 145,
-        "hits": 41,
-        "accuracy": 28.28
-      },
-      {
-        "name": "HE Grenade",
-        "kills": 1,
-        "hs_pct": 0,
-        "damage": 396,
-        "shots": 44,
-        "hits": 18,
-        "accuracy": 40.91
-      },
-      {
-        "name": "Glock-18",
-        "kills": 1,
-        "hs_pct": 0,
-        "damage": 238,
-        "shots": 48,
-        "hits": 12,
-        "accuracy": 25
-      },
-      {
-        "name": "AUG",
-        "kills": 1,
-        "hs_pct": 0,
-        "damage": 231,
-        "shots": 42,
-        "hits": 9,
-        "accuracy": 21.43
-      },
-      {
-        "name": "SG 553",
-        "kills": 1,
-        "hs_pct": 0,
-        "damage": 98,
-        "shots": 27,
-        "hits": 4,
-        "accuracy": 14.81
-      },
-      {
-        "name": "Incendiary Grenade",
-        "kills": 0,
-        "hs_pct": 0,
-        "damage": 120,
-        "shots": 57,
-        "hits": 40,
-        "accuracy": 70.18
-      }
-    ],
-    "clutches": {
-      "overall": {
-        "total": 20,
-        "won": 3,
-        "lost": 17,
-        "avg_kills": 0.45,
-        "win_rate": 15,
-        "save_rate": 10
-      },
-      "by_type": {
-        "1v1": {
-          "total": 5,
-          "won": 2,
-          "lost": 3,
-          "avg_kills": 0.2,
-          "win_rate": 40,
-          "save_rate": 20
-        },
-        "1v2": {
-          "total": 4,
-          "won": 1,
-          "lost": 3,
-          "avg_kills": 0.75,
-          "win_rate": 25,
-          "save_rate": 0
-        },
-        "1v3": {
-          "total": 5,
-          "won": 0,
-          "lost": 5,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v4": {
-          "total": 3,
-          "won": 0,
-          "lost": 3,
-          "avg_kills": 1.33,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v5": {
-          "total": 2,
-          "won": 0,
-          "lost": 2,
-          "avg_kills": 0.5,
-          "win_rate": 0,
-          "save_rate": 50
-        },
-        "1v7": {
-          "total": 1,
-          "won": 0,
-          "lost": 1,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        }
-      }
-    }
-  },
-  {
-    "steam_id": "76561198882553039",
-    "name": "mrButters",
     "matches_played": 0,
     "wins": 0,
     "ties": 0,
@@ -2963,41 +2519,41 @@
   {
     "steam_id": "76561198100720196",
     "name": "Mustasem",
-    "matches_played": 0,
-    "wins": 0,
+    "matches_played": 5,
+    "wins": 2,
     "ties": 0,
-    "losses": 0,
-    "win_rate": 0,
-    "hltv_2": 0,
-    "hltv": 0,
-    "kast": 0,
-    "adr": 0,
-    "kd": 0,
-    "avg_kills_per_round": 0,
-    "avg_deaths_per_round": 0,
-    "hs_pct": 0,
-    "kills": 0,
-    "deaths": 0,
-    "assists": 0,
-    "headshots": 0,
-    "wallbang_kills": 0,
+    "losses": 3,
+    "win_rate": 40,
+    "hltv_2": 0.5239731907844544,
+    "hltv": 0.5306424021720886,
+    "kast": 57.309305572509764,
+    "adr": 43.95865707397461,
+    "kd": 0.43,
+    "avg_kills_per_round": 0.33,
+    "avg_deaths_per_round": 0.77,
+    "hs_pct": 29.73,
+    "kills": 37,
+    "deaths": 87,
+    "assists": 15,
+    "headshots": 11,
+    "wallbang_kills": 1,
     "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 0,
-      "traded_pct": 0,
-      "first_kills": 0,
-      "first_deaths": 0,
-      "best_weapon": null
+      "success_pct": 20,
+      "traded_pct": 20,
+      "first_kills": 4,
+      "first_deaths": 16,
+      "best_weapon": "MP7"
     },
     "rounds": {
-      "total": 0,
-      "ct": 0,
-      "t": 0
+      "total": 113,
+      "ct": 59,
+      "t": 54
     },
     "multi_kills": {
-      "k1": 0,
-      "k2": 0,
-      "k3": 0,
+      "k1": 25,
+      "k2": 5,
+      "k3": 1,
       "k4": 0,
       "k5": 0
     },
@@ -3006,27 +2562,167 @@
       "deaths_while_inspecting": 0
     },
     "objectives": {
-      "bomb_planted": 0,
+      "bomb_planted": 1,
       "bomb_defused": 0,
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 0,
-      "enemies_flashed": 0,
-      "avg_he_damage": 0,
-      "avg_smokes_thrown": 0
+      "avg_blind_time": 2.4,
+      "enemies_flashed": 12.2,
+      "avg_he_damage": 191,
+      "avg_smokes_thrown": 16.4
     },
-    "weapons": [],
+    "weapons": [
+      {
+        "name": "MP7",
+        "kills": 18,
+        "hs_pct": 22.22,
+        "damage": 2763,
+        "shots": 729,
+        "hits": 132,
+        "accuracy": 18.11
+      },
+      {
+        "name": "PP-Bizon",
+        "kills": 6,
+        "hs_pct": 33.33,
+        "damage": 851,
+        "shots": 217,
+        "hits": 39,
+        "accuracy": 17.97
+      },
+      {
+        "name": "HE Grenade",
+        "kills": 3,
+        "hs_pct": 0,
+        "damage": 955,
+        "shots": 70,
+        "hits": 46,
+        "accuracy": 65.71
+      },
+      {
+        "name": "M4A4",
+        "kills": 3,
+        "hs_pct": 33.33,
+        "damage": 358,
+        "shots": 53,
+        "hits": 12,
+        "accuracy": 22.64
+      },
+      {
+        "name": "SCAR-20",
+        "kills": 3,
+        "hs_pct": 33.33,
+        "damage": 344,
+        "shots": 31,
+        "hits": 5,
+        "accuracy": 16.13
+      },
+      {
+        "name": "Glock-18",
+        "kills": 2,
+        "hs_pct": 50,
+        "damage": 396,
+        "shots": 86,
+        "hits": 17,
+        "accuracy": 19.77
+      },
+      {
+        "name": "USP-S",
+        "kills": 2,
+        "hs_pct": 100,
+        "damage": 197,
+        "shots": 48,
+        "hits": 6,
+        "accuracy": 12.5
+      },
+      {
+        "name": "AK-47",
+        "kills": 1,
+        "hs_pct": 100,
+        "damage": 173,
+        "shots": 21,
+        "hits": 3,
+        "accuracy": 14.29
+      },
+      {
+        "name": "Galil AR",
+        "kills": 1,
+        "hs_pct": 0,
+        "damage": 58,
+        "shots": 28,
+        "hits": 2,
+        "accuracy": 7.14
+      },
+      {
+        "name": "Molotov",
+        "kills": 0,
+        "hs_pct": 0,
+        "damage": 89,
+        "shots": 19,
+        "hits": 21,
+        "accuracy": 110.53
+      }
+    ],
     "clutches": {
       "overall": {
-        "total": 0,
-        "won": 0,
-        "lost": 0,
-        "avg_kills": 0,
-        "win_rate": 0,
-        "save_rate": 0
+        "total": 13,
+        "won": 2,
+        "lost": 11,
+        "avg_kills": 0.23,
+        "win_rate": 15.38,
+        "save_rate": 7.69
       },
-      "by_type": {}
+      "by_type": {
+        "1v1": {
+          "total": 2,
+          "won": 2,
+          "lost": 0,
+          "avg_kills": 1,
+          "win_rate": 100,
+          "save_rate": 0
+        },
+        "1v2": {
+          "total": 1,
+          "won": 0,
+          "lost": 1,
+          "avg_kills": 0,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v3": {
+          "total": 3,
+          "won": 0,
+          "lost": 3,
+          "avg_kills": 0.33,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v4": {
+          "total": 3,
+          "won": 0,
+          "lost": 3,
+          "avg_kills": 0,
+          "win_rate": 0,
+          "save_rate": 33.33
+        },
+        "1v5": {
+          "total": 3,
+          "won": 0,
+          "lost": 3,
+          "avg_kills": 0,
+          "win_rate": 0,
+          "save_rate": 0
+        },
+        "1v6": {
+          "total": 1,
+          "won": 0,
+          "lost": 1,
+          "avg_kills": 0,
+          "win_rate": 0,
+          "save_rate": 0
+        }
+      }
     }
   },
   {
@@ -3101,210 +2797,202 @@
   {
     "steam_id": "76561199508399712",
     "name": "Nerull",
-    "matches_played": 20,
-    "wins": 11,
+    "matches_played": 17,
+    "wins": 10,
     "ties": 0,
-    "losses": 9,
-    "win_rate": 55,
-    "hltv_2": 1.4450318798422814,
-    "hltv": 1.336497650295496,
-    "kast": 76.45828819274902,
-    "adr": 107.666263961792,
+    "losses": 7,
+    "win_rate": 58.82,
+    "hltv_2": 1.3996251926702612,
+    "hltv": 1.3450327059801888,
+    "kast": 74.25451547959271,
+    "adr": 101.18992569867302,
     "kd": 1.35,
-    "avg_kills_per_round": 0.99,
-    "avg_deaths_per_round": 0.74,
-    "hs_pct": 40.77,
-    "kills": 466,
-    "deaths": 345,
-    "assists": 142,
-    "headshots": 190,
-    "wallbang_kills": 6,
+    "avg_kills_per_round": 0.95,
+    "avg_deaths_per_round": 0.7,
+    "hs_pct": 39.62,
+    "kills": 366,
+    "deaths": 272,
+    "assists": 106,
+    "headshots": 145,
+    "wallbang_kills": 11,
     "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 55.1,
-      "traded_pct": 10.2,
-      "first_kills": 54,
-      "first_deaths": 44,
+      "success_pct": 43.75,
+      "traded_pct": 12.5,
+      "first_kills": 42,
+      "first_deaths": 54,
       "best_weapon": "M4A1"
     },
     "rounds": {
-      "total": 469,
-      "ct": 232,
-      "t": 237
+      "total": 387,
+      "ct": 187,
+      "t": 200
     },
     "multi_kills": {
-      "k1": 150,
-      "k2": 88,
-      "k3": 32,
-      "k4": 11,
+      "k1": 111,
+      "k2": 70,
+      "k3": 25,
+      "k4": 10,
       "k5": 0
     },
     "inspections": {
-      "total": 0,
+      "total": 5,
       "deaths_while_inspecting": 0
     },
     "objectives": {
-      "bomb_planted": 24,
-      "bomb_defused": 2,
+      "bomb_planted": 18,
+      "bomb_defused": 3,
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 2.8,
-      "enemies_flashed": 2.9,
-      "avg_he_damage": 172.3,
-      "avg_smokes_thrown": 18.3
+      "avg_blind_time": 2.2,
+      "enemies_flashed": 8.5,
+      "avg_he_damage": 133.9,
+      "avg_smokes_thrown": 15
     },
     "weapons": [
       {
         "name": "M4A1",
-        "kills": 204,
-        "hs_pct": 33.33,
-        "damage": 23974,
-        "shots": 3307,
-        "hits": 735,
-        "accuracy": 22.23
+        "kills": 144,
+        "hs_pct": 44.44,
+        "damage": 17553,
+        "shots": 2021,
+        "hits": 509,
+        "accuracy": 25.19
       },
       {
         "name": "Galil AR",
-        "kills": 148,
-        "hs_pct": 41.89,
-        "damage": 17614,
-        "shots": 2741,
-        "hits": 587,
-        "accuracy": 21.42
-      },
-      {
-        "name": "USP-S",
-        "kills": 36,
-        "hs_pct": 75,
-        "damage": 5158,
-        "shots": 546,
-        "hits": 156,
-        "accuracy": 28.57
+        "kills": 118,
+        "hs_pct": 31.36,
+        "damage": 13551,
+        "shots": 1911,
+        "hits": 462,
+        "accuracy": 24.18
       },
       {
         "name": "AK-47",
-        "kills": 26,
-        "hs_pct": 50,
-        "damage": 3512,
-        "shots": 554,
-        "hits": 105,
-        "accuracy": 18.95
+        "kills": 25,
+        "hs_pct": 52,
+        "damage": 2656,
+        "shots": 356,
+        "hits": 73,
+        "accuracy": 20.51
+      },
+      {
+        "name": "USP-S",
+        "kills": 23,
+        "hs_pct": 60.87,
+        "damage": 3498,
+        "shots": 391,
+        "hits": 99,
+        "accuracy": 25.32
+      },
+      {
+        "name": "AWP",
+        "kills": 22,
+        "hs_pct": 4.55,
+        "damage": 1837,
+        "shots": 51,
+        "hits": 22,
+        "accuracy": 43.14
       },
       {
         "name": "Glock-18",
-        "kills": 22,
-        "hs_pct": 54.55,
-        "damage": 3126,
-        "shots": 518,
-        "hits": 122,
-        "accuracy": 23.55
+        "kills": 14,
+        "hs_pct": 85.71,
+        "damage": 2529,
+        "shots": 414,
+        "hits": 103,
+        "accuracy": 24.88
       },
       {
-        "name": "MP9",
-        "kills": 8,
-        "hs_pct": 25,
-        "damage": 1228,
-        "shots": 220,
-        "hits": 58,
-        "accuracy": 26.36
+        "name": "MP7",
+        "kills": 10,
+        "hs_pct": 20,
+        "damage": 1231,
+        "shots": 183,
+        "hits": 48,
+        "accuracy": 26.23
       },
       {
-        "name": "MAC-10",
-        "kills": 6,
+        "name": "SG 553",
+        "kills": 3,
         "hs_pct": 33.33,
-        "damage": 714,
-        "shots": 107,
-        "hits": 29,
-        "accuracy": 27.1
-      },
-      {
-        "name": "FAMAS",
-        "kills": 4,
-        "hs_pct": 0,
-        "damage": 526,
-        "shots": 92,
-        "hits": 21,
-        "accuracy": 22.83
+        "damage": 265,
+        "shots": 32,
+        "hits": 8,
+        "accuracy": 25
       },
       {
         "name": "HE Grenade",
-        "kills": 3,
+        "kills": 2,
         "hs_pct": 0,
-        "damage": 3447,
-        "shots": 275,
-        "hits": 139,
-        "accuracy": 50.55
+        "damage": 2277,
+        "shots": 204,
+        "hits": 93,
+        "accuracy": 45.59
       },
       {
-        "name": "AUG",
-        "kills": 3,
-        "hs_pct": 100,
-        "damage": 424,
-        "shots": 76,
-        "hits": 11,
-        "accuracy": 14.47
+        "name": "FAMAS",
+        "kills": 2,
+        "hs_pct": 50,
+        "damage": 317,
+        "shots": 28,
+        "hits": 10,
+        "accuracy": 35.71
       }
     ],
     "clutches": {
       "overall": {
-        "total": 50,
-        "won": 11,
-        "lost": 39,
-        "avg_kills": 0.84,
-        "win_rate": 22,
-        "save_rate": 4
+        "total": 29,
+        "won": 3,
+        "lost": 26,
+        "avg_kills": 0.59,
+        "win_rate": 10.34,
+        "save_rate": 10.34
       },
       "by_type": {
         "1v1": {
-          "total": 6,
-          "won": 5,
+          "total": 2,
+          "won": 1,
           "lost": 1,
-          "avg_kills": 0.83,
-          "win_rate": 83.33,
+          "avg_kills": 0.5,
+          "win_rate": 50,
           "save_rate": 0
         },
         "1v2": {
-          "total": 15,
-          "won": 5,
-          "lost": 10,
-          "avg_kills": 0.8,
-          "win_rate": 33.33,
+          "total": 11,
+          "won": 2,
+          "lost": 9,
+          "avg_kills": 0.55,
+          "win_rate": 18.18,
           "save_rate": 0
         },
         "1v3": {
           "total": 9,
-          "won": 1,
-          "lost": 8,
-          "avg_kills": 0.78,
-          "win_rate": 11.11,
-          "save_rate": 0
+          "won": 0,
+          "lost": 9,
+          "avg_kills": 0.67,
+          "win_rate": 0,
+          "save_rate": 11.11
         },
         "1v4": {
-          "total": 11,
+          "total": 4,
           "won": 0,
-          "lost": 11,
-          "avg_kills": 0.64,
+          "lost": 4,
+          "avg_kills": 0.75,
           "win_rate": 0,
-          "save_rate": 18.18
+          "save_rate": 25
         },
         "1v5": {
-          "total": 7,
+          "total": 2,
           "won": 0,
-          "lost": 7,
-          "avg_kills": 1.43,
+          "lost": 2,
+          "avg_kills": 0.5,
           "win_rate": 0,
-          "save_rate": 0
+          "save_rate": 50
         },
         "1v6": {
-          "total": 1,
-          "won": 0,
-          "lost": 1,
-          "avg_kills": 1,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v7": {
           "total": 1,
           "won": 0,
           "lost": 1,
@@ -3387,206 +3075,206 @@
   {
     "steam_id": "76561198995435616",
     "name": "sedo",
-    "matches_played": 18,
-    "wins": 8,
+    "matches_played": 17,
+    "wins": 9,
     "ties": 0,
-    "losses": 10,
-    "win_rate": 44.44,
-    "hltv_2": 1.0447037294507027,
-    "hltv": 0.9073137119412422,
-    "kast": 73.37738990783691,
-    "adr": 77.12718603346083,
-    "kd": 0.88,
-    "avg_kills_per_round": 0.65,
-    "avg_deaths_per_round": 0.73,
-    "hs_pct": 25.81,
-    "kills": 279,
-    "deaths": 316,
-    "assists": 130,
-    "headshots": 72,
-    "wallbang_kills": 8,
+    "losses": 8,
+    "win_rate": 52.94,
+    "hltv_2": 1.2576295803574955,
+    "hltv": 1.1445158825201147,
+    "kast": 76.46044899435604,
+    "adr": 84.11450285070083,
+    "kd": 1.21,
+    "avg_kills_per_round": 0.82,
+    "avg_deaths_per_round": 0.68,
+    "hs_pct": 28.62,
+    "kills": 318,
+    "deaths": 262,
+    "assists": 87,
+    "headshots": 91,
+    "wallbang_kills": 5,
     "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 48.39,
-      "traded_pct": 9.68,
-      "first_kills": 30,
-      "first_deaths": 32,
+      "success_pct": 40.82,
+      "traded_pct": 16.33,
+      "first_kills": 20,
+      "first_deaths": 29,
       "best_weapon": "AK-47"
     },
     "rounds": {
-      "total": 432,
-      "ct": 225,
-      "t": 207
+      "total": 387,
+      "ct": 201,
+      "t": 186
     },
     "multi_kills": {
-      "k1": 129,
-      "k2": 48,
-      "k3": 19,
-      "k4": 0,
+      "k1": 132,
+      "k2": 58,
+      "k3": 21,
+      "k4": 2,
       "k5": 0
     },
     "inspections": {
-      "total": 135,
+      "total": 502,
       "deaths_while_inspecting": 1
     },
     "objectives": {
-      "bomb_planted": 21,
-      "bomb_defused": 5,
+      "bomb_planted": 25,
+      "bomb_defused": 14,
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 2.6,
-      "enemies_flashed": 5.9,
-      "avg_he_damage": 78.4,
-      "avg_smokes_thrown": 8.4
+      "avg_blind_time": 2.3,
+      "enemies_flashed": 6.9,
+      "avg_he_damage": 94.2,
+      "avg_smokes_thrown": 9.9
     },
     "weapons": [
       {
         "name": "AK-47",
-        "kills": 85,
-        "hs_pct": 28.24,
-        "damage": 10793,
-        "shots": 1685,
-        "hits": 350,
-        "accuracy": 20.77
+        "kills": 86,
+        "hs_pct": 23.26,
+        "damage": 9888,
+        "shots": 1356,
+        "hits": 324,
+        "accuracy": 23.89
       },
       {
         "name": "M4A4",
-        "kills": 53,
-        "hs_pct": 22.64,
-        "damage": 5943,
-        "shots": 1133,
-        "hits": 208,
-        "accuracy": 18.36
+        "kills": 48,
+        "hs_pct": 22.92,
+        "damage": 5521,
+        "shots": 863,
+        "hits": 203,
+        "accuracy": 23.52
+      },
+      {
+        "name": "AUG",
+        "kills": 44,
+        "hs_pct": 22.73,
+        "damage": 4378,
+        "shots": 740,
+        "hits": 182,
+        "accuracy": 24.59
+      },
+      {
+        "name": "MP7",
+        "kills": 34,
+        "hs_pct": 14.71,
+        "damage": 4058,
+        "shots": 803,
+        "hits": 182,
+        "accuracy": 22.67
       },
       {
         "name": "Galil AR",
-        "kills": 28,
-        "hs_pct": 21.43,
-        "damage": 3704,
-        "shots": 613,
-        "hits": 152,
-        "accuracy": 24.8
-      },
-      {
-        "name": "USP-S",
-        "kills": 22,
-        "hs_pct": 27.27,
-        "damage": 2841,
-        "shots": 382,
-        "hits": 103,
-        "accuracy": 26.96
+        "kills": 31,
+        "hs_pct": 41.94,
+        "damage": 3106,
+        "shots": 507,
+        "hits": 104,
+        "accuracy": 20.51
       },
       {
         "name": "Glock-18",
         "kills": 20,
-        "hs_pct": 50,
-        "damage": 2794,
-        "shots": 443,
-        "hits": 115,
-        "accuracy": 25.96
-      },
-      {
-        "name": "AUG",
-        "kills": 20,
-        "hs_pct": 5,
-        "damage": 1817,
-        "shots": 364,
-        "hits": 78,
-        "accuracy": 21.43
-      },
-      {
-        "name": "MP9",
-        "kills": 11,
-        "hs_pct": 36.36,
-        "damage": 1971,
-        "shots": 414,
-        "hits": 97,
-        "accuracy": 23.43
+        "hs_pct": 60,
+        "damage": 2609,
+        "shots": 398,
+        "hits": 111,
+        "accuracy": 27.89
       },
       {
         "name": "M4A1",
-        "kills": 11,
-        "hs_pct": 36.36,
-        "damage": 1656,
-        "shots": 243,
-        "hits": 52,
-        "accuracy": 21.4
+        "kills": 17,
+        "hs_pct": 23.53,
+        "damage": 2182,
+        "shots": 289,
+        "hits": 65,
+        "accuracy": 22.49
       },
       {
-        "name": "MP7",
-        "kills": 11,
-        "hs_pct": 36.36,
-        "damage": 1545,
-        "shots": 234,
-        "hits": 67,
-        "accuracy": 28.63
+        "name": "USP-S",
+        "kills": 16,
+        "hs_pct": 75,
+        "damage": 2012,
+        "shots": 248,
+        "hits": 58,
+        "accuracy": 23.39
       },
       {
-        "name": "AWP",
-        "kills": 10,
+        "name": "Knife",
+        "kills": 5,
         "hs_pct": 0,
-        "damage": 849,
-        "shots": 26,
-        "hits": 11,
-        "accuracy": 42.31
+        "damage": 459,
+        "shots": 19,
+        "hits": 13,
+        "accuracy": 68.42
+      },
+      {
+        "name": "SG 553",
+        "kills": 5,
+        "hs_pct": 40,
+        "damage": 346,
+        "shots": 55,
+        "hits": 13,
+        "accuracy": 23.64
       }
     ],
     "clutches": {
       "overall": {
-        "total": 49,
-        "won": 4,
-        "lost": 45,
-        "avg_kills": 0.39,
-        "win_rate": 8.16,
-        "save_rate": 4.08
+        "total": 52,
+        "won": 11,
+        "lost": 41,
+        "avg_kills": 0.9,
+        "win_rate": 21.15,
+        "save_rate": 9.62
       },
       "by_type": {
         "1v1": {
-          "total": 8,
+          "total": 6,
           "won": 2,
-          "lost": 6,
-          "avg_kills": 0.38,
-          "win_rate": 25,
+          "lost": 4,
+          "avg_kills": 0.33,
+          "win_rate": 33.33,
           "save_rate": 0
         },
         "1v2": {
-          "total": 14,
-          "won": 2,
-          "lost": 12,
-          "avg_kills": 0.21,
-          "win_rate": 14.29,
-          "save_rate": 0
+          "total": 16,
+          "won": 7,
+          "lost": 9,
+          "avg_kills": 1.25,
+          "win_rate": 43.75,
+          "save_rate": 6.25
         },
         "1v3": {
-          "total": 7,
-          "won": 0,
-          "lost": 7,
-          "avg_kills": 0.71,
-          "win_rate": 0,
-          "save_rate": 14.29
+          "total": 13,
+          "won": 2,
+          "lost": 11,
+          "avg_kills": 1,
+          "win_rate": 15.38,
+          "save_rate": 0
         },
         "1v4": {
-          "total": 12,
+          "total": 10,
           "won": 0,
-          "lost": 12,
-          "avg_kills": 0.5,
+          "lost": 10,
+          "avg_kills": 0.7,
           "win_rate": 0,
-          "save_rate": 8.33
+          "save_rate": 30
         },
         "1v5": {
-          "total": 7,
+          "total": 6,
           "won": 0,
-          "lost": 7,
-          "avg_kills": 0.29,
+          "lost": 6,
+          "avg_kills": 0.67,
           "win_rate": 0,
-          "save_rate": 0
+          "save_rate": 16.67
         },
         "1v6": {
           "total": 1,
           "won": 0,
           "lost": 1,
-          "avg_kills": 0,
+          "avg_kills": 1,
           "win_rate": 0,
           "save_rate": 0
         }
@@ -3596,42 +3284,42 @@
   {
     "steam_id": "76561198084388347",
     "name": "Titus",
-    "matches_played": 14,
-    "wins": 7,
+    "matches_played": 15,
+    "wins": 6,
     "ties": 0,
-    "losses": 7,
-    "win_rate": 50,
-    "hltv_2": 1.1591788594211851,
-    "hltv": 1.0718267176832472,
-    "kast": 74.52885273524693,
-    "adr": 74.2316312789917,
-    "kd": 1.12,
-    "avg_kills_per_round": 0.76,
-    "avg_deaths_per_round": 0.68,
-    "hs_pct": 45.11,
-    "kills": 235,
-    "deaths": 209,
-    "assists": 49,
-    "headshots": 106,
-    "wallbang_kills": 2,
-    "collateral_kills": 1,
+    "losses": 9,
+    "win_rate": 40,
+    "hltv_2": 1.0471025149027506,
+    "hltv": 0.9321075240770976,
+    "kast": 70.59741770426432,
+    "adr": 76.67995707194011,
+    "kd": 0.95,
+    "avg_kills_per_round": 0.71,
+    "avg_deaths_per_round": 0.74,
+    "hs_pct": 51.01,
+    "kills": 247,
+    "deaths": 259,
+    "assists": 81,
+    "headshots": 126,
+    "wallbang_kills": 6,
+    "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 53.13,
-      "traded_pct": 6.25,
-      "first_kills": 17,
-      "first_deaths": 15,
+      "success_pct": 53.85,
+      "traded_pct": 11.54,
+      "first_kills": 28,
+      "first_deaths": 24,
       "best_weapon": "M4A1"
     },
     "rounds": {
-      "total": 309,
-      "ct": 149,
-      "t": 160
+      "total": 349,
+      "ct": 172,
+      "t": 177
     },
     "multi_kills": {
-      "k1": 111,
-      "k2": 38,
-      "k3": 15,
-      "k4": 1,
+      "k1": 121,
+      "k2": 42,
+      "k3": 10,
+      "k4": 3,
       "k5": 0
     },
     "inspections": {
@@ -3639,157 +3327,157 @@
       "deaths_while_inspecting": 0
     },
     "objectives": {
-      "bomb_planted": 23,
-      "bomb_defused": 5,
+      "bomb_planted": 22,
+      "bomb_defused": 4,
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 2.8,
-      "enemies_flashed": 3.8,
-      "avg_he_damage": 140.2,
-      "avg_smokes_thrown": 11.9
+      "avg_blind_time": 3.3,
+      "enemies_flashed": 5.7,
+      "avg_he_damage": 93.7,
+      "avg_smokes_thrown": 12.5
     },
     "weapons": [
       {
         "name": "M4A1",
-        "kills": 102,
-        "hs_pct": 42.16,
-        "damage": 10629,
-        "shots": 1581,
-        "hits": 300,
-        "accuracy": 18.98
+        "kills": 85,
+        "hs_pct": 56.47,
+        "damage": 11470,
+        "shots": 1352,
+        "hits": 307,
+        "accuracy": 22.71
       },
       {
         "name": "AK-47",
-        "kills": 40,
-        "hs_pct": 55,
-        "damage": 3907,
-        "shots": 701,
-        "hits": 103,
-        "accuracy": 14.69
+        "kills": 49,
+        "hs_pct": 61.22,
+        "damage": 5513,
+        "shots": 926,
+        "hits": 148,
+        "accuracy": 15.98
       },
       {
         "name": "Galil AR",
-        "kills": 31,
-        "hs_pct": 25.81,
-        "damage": 2755,
-        "shots": 523,
-        "hits": 87,
-        "accuracy": 16.63
-      },
-      {
-        "name": "USP-S",
-        "kills": 19,
-        "hs_pct": 84.21,
-        "damage": 2793,
-        "shots": 346,
-        "hits": 66,
-        "accuracy": 19.08
+        "kills": 36,
+        "hs_pct": 33.33,
+        "damage": 4155,
+        "shots": 630,
+        "hits": 123,
+        "accuracy": 19.52
       },
       {
         "name": "FAMAS",
-        "kills": 13,
-        "hs_pct": 23.08,
-        "damage": 1361,
-        "shots": 261,
+        "kills": 20,
+        "hs_pct": 30,
+        "damage": 2475,
+        "shots": 328,
+        "hits": 88,
+        "accuracy": 26.83
+      },
+      {
+        "name": "P2000",
+        "kills": 17,
+        "hs_pct": 70.59,
+        "damage": 2215,
+        "shots": 277,
         "hits": 56,
-        "accuracy": 21.46
+        "accuracy": 20.22
       },
       {
         "name": "Glock-18",
-        "kills": 11,
-        "hs_pct": 63.64,
-        "damage": 1313,
-        "shots": 272,
-        "hits": 50,
-        "accuracy": 18.38
+        "kills": 16,
+        "hs_pct": 68.75,
+        "damage": 2282,
+        "shots": 358,
+        "hits": 82,
+        "accuracy": 22.91
       },
       {
-        "name": "SG 553",
-        "kills": 7,
-        "hs_pct": 57.14,
-        "damage": 705,
-        "shots": 106,
-        "hits": 23,
-        "accuracy": 21.7
+        "name": "M4A4",
+        "kills": 6,
+        "hs_pct": 66.67,
+        "damage": 729,
+        "shots": 108,
+        "hits": 19,
+        "accuracy": 17.59
+      },
+      {
+        "name": "AUG",
+        "kills": 4,
+        "hs_pct": 25,
+        "damage": 406,
+        "shots": 63,
+        "hits": 17,
+        "accuracy": 26.98
       },
       {
         "name": "MAC-10",
-        "kills": 5,
-        "hs_pct": 60,
-        "damage": 819,
-        "shots": 179,
-        "hits": 34,
-        "accuracy": 18.99
+        "kills": 3,
+        "hs_pct": 33.33,
+        "damage": 468,
+        "shots": 128,
+        "hits": 16,
+        "accuracy": 12.5
       },
       {
-        "name": "HE Grenade",
-        "kills": 4,
+        "name": "G3SG1",
+        "kills": 3,
         "hs_pct": 0,
-        "damage": 1963,
-        "shots": 106,
-        "hits": 67,
-        "accuracy": 63.21
-      },
-      {
-        "name": "Molotov",
-        "kills": 2,
-        "hs_pct": 0,
-        "damage": 393,
-        "shots": 64,
-        "hits": 89,
-        "accuracy": 139.06
+        "damage": 220,
+        "shots": 26,
+        "hits": 4,
+        "accuracy": 15.38
       }
     ],
     "clutches": {
       "overall": {
-        "total": 37,
-        "won": 8,
-        "lost": 29,
-        "avg_kills": 0.86,
-        "win_rate": 21.62,
-        "save_rate": 10.81
+        "total": 46,
+        "won": 5,
+        "lost": 41,
+        "avg_kills": 0.46,
+        "win_rate": 10.87,
+        "save_rate": 8.7
       },
       "by_type": {
         "1v1": {
-          "total": 5,
+          "total": 7,
           "won": 3,
-          "lost": 2,
-          "avg_kills": 0.8,
-          "win_rate": 60,
-          "save_rate": 0
+          "lost": 4,
+          "avg_kills": 0.43,
+          "win_rate": 42.86,
+          "save_rate": 14.29
         },
         "1v2": {
-          "total": 13,
-          "won": 4,
-          "lost": 9,
-          "avg_kills": 0.92,
-          "win_rate": 30.77,
+          "total": 14,
+          "won": 2,
+          "lost": 12,
+          "avg_kills": 0.57,
+          "win_rate": 14.29,
           "save_rate": 0
         },
         "1v3": {
-          "total": 10,
-          "won": 1,
-          "lost": 9,
-          "avg_kills": 0.9,
-          "win_rate": 10,
-          "save_rate": 20
+          "total": 11,
+          "won": 0,
+          "lost": 11,
+          "avg_kills": 0.36,
+          "win_rate": 0,
+          "save_rate": 0
         },
         "1v4": {
-          "total": 7,
+          "total": 12,
           "won": 0,
-          "lost": 7,
-          "avg_kills": 0.71,
+          "lost": 12,
+          "avg_kills": 0.5,
           "win_rate": 0,
-          "save_rate": 14.29
+          "save_rate": 25
         },
         "1v5": {
           "total": 2,
           "won": 0,
           "lost": 2,
-          "avg_kills": 1,
+          "avg_kills": 0,
           "win_rate": 0,
-          "save_rate": 50
+          "save_rate": 0
         }
       }
     }
@@ -3797,200 +3485,200 @@
   {
     "steam_id": "76561197996079017",
     "name": "Uncle Iroh",
-    "matches_played": 10,
-    "wins": 4,
+    "matches_played": 11,
+    "wins": 6,
     "ties": 0,
-    "losses": 6,
-    "win_rate": 40,
-    "hltv_2": 0.9367855083197355,
-    "hltv": 0.8828397817909718,
-    "kast": 66.77522315979004,
-    "adr": 66.41505928039551,
-    "kd": 0.91,
-    "avg_kills_per_round": 0.61,
-    "avg_deaths_per_round": 0.67,
-    "hs_pct": 25.95,
-    "kills": 131,
-    "deaths": 144,
-    "assists": 48,
-    "headshots": 34,
+    "losses": 5,
+    "win_rate": 54.55,
+    "hltv_2": 0.8557563613761555,
+    "hltv": 0.7948147315870632,
+    "kast": 65.76469490744851,
+    "adr": 66.85321357033469,
+    "kd": 0.73,
+    "avg_kills_per_round": 0.57,
+    "avg_deaths_per_round": 0.78,
+    "hs_pct": 30.87,
+    "kills": 149,
+    "deaths": 203,
+    "assists": 74,
+    "headshots": 46,
     "wallbang_kills": 3,
-    "collateral_kills": 1,
+    "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 68.75,
-      "traded_pct": 6.25,
+      "success_pct": 44,
+      "traded_pct": 14,
       "first_kills": 22,
-      "first_deaths": 10,
+      "first_deaths": 28,
       "best_weapon": "AK-47"
     },
     "rounds": {
-      "total": 216,
-      "ct": 110,
-      "t": 106
+      "total": 261,
+      "ct": 130,
+      "t": 131
     },
     "multi_kills": {
-      "k1": 61,
-      "k2": 23,
-      "k3": 8,
-      "k4": 0,
+      "k1": 62,
+      "k2": 25,
+      "k3": 11,
+      "k4": 1,
       "k5": 0
     },
     "inspections": {
-      "total": 1,
+      "total": 9,
       "deaths_while_inspecting": 0
     },
     "objectives": {
-      "bomb_planted": 9,
-      "bomb_defused": 4,
+      "bomb_planted": 11,
+      "bomb_defused": 9,
       "hostage_rescued": 0
     },
     "utilities": {
       "avg_blind_time": 2.5,
       "enemies_flashed": 6.8,
-      "avg_he_damage": 38.5,
-      "avg_smokes_thrown": 16.2
+      "avg_he_damage": 176.9,
+      "avg_smokes_thrown": 20.1
     },
     "weapons": [
       {
         "name": "AK-47",
-        "kills": 33,
-        "hs_pct": 36.36,
-        "damage": 3485,
-        "shots": 872,
-        "hits": 101,
-        "accuracy": 11.58
+        "kills": 49,
+        "hs_pct": 36.73,
+        "damage": 5968,
+        "shots": 966,
+        "hits": 186,
+        "accuracy": 19.25
       },
       {
         "name": "M4A4",
-        "kills": 26,
-        "hs_pct": 11.54,
-        "damage": 2965,
-        "shots": 654,
-        "hits": 109,
-        "accuracy": 16.67
-      },
-      {
-        "name": "SCAR-20",
-        "kills": 15,
-        "hs_pct": 6.67,
-        "damage": 1829,
-        "shots": 166,
-        "hits": 32,
-        "accuracy": 19.28
-      },
-      {
-        "name": "Glock-18",
-        "kills": 11,
-        "hs_pct": 36.36,
-        "damage": 1627,
-        "shots": 208,
-        "hits": 67,
-        "accuracy": 32.21
-      },
-      {
-        "name": "FAMAS",
-        "kills": 10,
-        "hs_pct": 10,
-        "damage": 1125,
-        "shots": 280,
-        "hits": 42,
-        "accuracy": 15
-      },
-      {
-        "name": "USP-S",
-        "kills": 9,
-        "hs_pct": 55.56,
-        "damage": 1678,
-        "shots": 253,
-        "hits": 62,
-        "accuracy": 24.51
+        "kills": 21,
+        "hs_pct": 42.86,
+        "damage": 2736,
+        "shots": 603,
+        "hits": 96,
+        "accuracy": 15.92
       },
       {
         "name": "AUG",
-        "kills": 7,
-        "hs_pct": 42.86,
-        "damage": 1013,
-        "shots": 238,
-        "hits": 37,
-        "accuracy": 15.55
+        "kills": 15,
+        "hs_pct": 13.33,
+        "damage": 1519,
+        "shots": 266,
+        "hits": 55,
+        "accuracy": 20.68
       },
       {
         "name": "Galil AR",
-        "kills": 6,
-        "hs_pct": 50,
-        "damage": 930,
-        "shots": 120,
-        "hits": 27,
-        "accuracy": 22.5
+        "kills": 11,
+        "hs_pct": 45.45,
+        "damage": 1317,
+        "shots": 296,
+        "hits": 45,
+        "accuracy": 15.2
       },
       {
-        "name": "AWP",
-        "kills": 4,
+        "name": "Glock-18",
+        "kills": 8,
+        "hs_pct": 37.5,
+        "damage": 1448,
+        "shots": 306,
+        "hits": 73,
+        "accuracy": 23.86
+      },
+      {
+        "name": "P2000",
+        "kills": 7,
+        "hs_pct": 57.14,
+        "damage": 1700,
+        "shots": 215,
+        "hits": 59,
+        "accuracy": 27.44
+      },
+      {
+        "name": "FAMAS",
+        "kills": 7,
         "hs_pct": 0,
-        "damage": 289,
-        "shots": 7,
-        "hits": 4,
-        "accuracy": 57.14
+        "damage": 911,
+        "shots": 196,
+        "hits": 38,
+        "accuracy": 19.39
+      },
+      {
+        "name": "SCAR-20",
+        "kills": 5,
+        "hs_pct": 20,
+        "damage": 695,
+        "shots": 44,
+        "hits": 12,
+        "accuracy": 27.27
       },
       {
         "name": "G3SG1",
-        "kills": 3,
+        "kills": 5,
         "hs_pct": 0,
-        "damage": 314,
-        "shots": 25,
-        "hits": 6,
-        "accuracy": 24
+        "damage": 486,
+        "shots": 43,
+        "hits": 9,
+        "accuracy": 20.93
+      },
+      {
+        "name": "AWP",
+        "kills": 5,
+        "hs_pct": 0,
+        "damage": 348,
+        "shots": 12,
+        "hits": 5,
+        "accuracy": 41.67
       }
     ],
     "clutches": {
       "overall": {
-        "total": 28,
-        "won": 3,
-        "lost": 25,
-        "avg_kills": 0.32,
-        "win_rate": 10.71,
-        "save_rate": 7.14
+        "total": 26,
+        "won": 9,
+        "lost": 17,
+        "avg_kills": 0.65,
+        "win_rate": 34.62,
+        "save_rate": 3.85
       },
       "by_type": {
         "1v1": {
-          "total": 4,
-          "won": 2,
-          "lost": 2,
-          "avg_kills": 0.25,
-          "win_rate": 50,
+          "total": 6,
+          "won": 5,
+          "lost": 1,
+          "avg_kills": 0.83,
+          "win_rate": 83.33,
           "save_rate": 0
         },
         "1v2": {
-          "total": 5,
-          "won": 1,
+          "total": 7,
+          "won": 3,
           "lost": 4,
-          "avg_kills": 0.6,
-          "win_rate": 20,
+          "avg_kills": 1.29,
+          "win_rate": 42.86,
           "save_rate": 0
         },
         "1v3": {
-          "total": 4,
+          "total": 6,
           "won": 0,
-          "lost": 4,
-          "avg_kills": 0.75,
+          "lost": 6,
+          "avg_kills": 0.5,
           "win_rate": 0,
           "save_rate": 0
         },
         "1v4": {
-          "total": 8,
-          "won": 0,
-          "lost": 8,
-          "avg_kills": 0.13,
-          "win_rate": 0,
-          "save_rate": 25
+          "total": 5,
+          "won": 1,
+          "lost": 4,
+          "avg_kills": 0,
+          "win_rate": 20,
+          "save_rate": 0
         },
         "1v5": {
-          "total": 7,
+          "total": 2,
           "won": 0,
-          "lost": 7,
-          "avg_kills": 0.14,
+          "lost": 2,
+          "avg_kills": 0,
           "win_rate": 0,
-          "save_rate": 0
+          "save_rate": 50
         }
       }
     }
@@ -4015,7 +3703,7 @@
     "assists": 0,
     "headshots": 0,
     "wallbang_kills": 0,
-    "collateral_kills": 16,
+    "collateral_kills": 12,
     "opening_duels": {
       "success_pct": 0,
       "traded_pct": 0,
@@ -4053,20 +3741,11 @@
     "weapons": [
       {
         "name": "C4",
-        "kills": 46,
+        "kills": 33,
         "hs_pct": 0,
-        "damage": 7624,
+        "damage": 6663,
         "shots": 0,
-        "hits": 137,
-        "accuracy": 0
-      },
-      {
-        "name": "World",
-        "kills": 1,
-        "hs_pct": 0,
-        "damage": 0,
-        "shots": 0,
-        "hits": 0,
+        "hits": 114,
         "accuracy": 0
       }
     ],
@@ -4126,214 +3805,206 @@
   {
     "steam_id": "76561198051285785",
     "name": "wormik",
-    "matches_played": 18,
-    "wins": 9,
+    "matches_played": 12,
+    "wins": 7,
     "ties": 0,
-    "losses": 9,
-    "win_rate": 50,
-    "hltv_2": 0.8851936674780316,
-    "hltv": 0.8209004931979709,
-    "kast": 67.2802168528239,
-    "adr": 64.26593610975478,
-    "kd": 0.75,
+    "losses": 5,
+    "win_rate": 58.33,
+    "hltv_2": 0.8395654211441675,
+    "hltv": 0.7861470778783163,
+    "kast": 65.8446912765503,
+    "adr": 62.62304496765137,
+    "kd": 0.73,
     "avg_kills_per_round": 0.55,
-    "avg_deaths_per_round": 0.73,
-    "hs_pct": 22.27,
-    "kills": 238,
-    "deaths": 316,
-    "assists": 86,
-    "headshots": 53,
-    "wallbang_kills": 10,
+    "avg_deaths_per_round": 0.75,
+    "hs_pct": 17.09,
+    "kills": 158,
+    "deaths": 217,
+    "assists": 54,
+    "headshots": 27,
+    "wallbang_kills": 7,
     "collateral_kills": 0,
     "opening_duels": {
-      "success_pct": 36.28,
-      "traded_pct": 11.5,
-      "first_kills": 41,
-      "first_deaths": 72,
+      "success_pct": 38.67,
+      "traded_pct": 10.67,
+      "first_kills": 29,
+      "first_deaths": 46,
       "best_weapon": "SCAR-20"
     },
     "rounds": {
-      "total": 432,
-      "ct": 212,
-      "t": 220
+      "total": 288,
+      "ct": 139,
+      "t": 149
     },
     "multi_kills": {
-      "k1": 118,
-      "k2": 41,
-      "k3": 12,
-      "k4": 1,
-      "k5": 0
+      "k1": 78,
+      "k2": 29,
+      "k3": 6,
+      "k4": 0,
+      "k5": 1
     },
     "inspections": {
-      "total": 9,
+      "total": 3,
       "deaths_while_inspecting": 0
     },
     "objectives": {
-      "bomb_planted": 14,
-      "bomb_defused": 6,
+      "bomb_planted": 17,
+      "bomb_defused": 4,
       "hostage_rescued": 0
     },
     "utilities": {
-      "avg_blind_time": 2.3,
-      "enemies_flashed": 0.4,
-      "avg_he_damage": 58.4,
-      "avg_smokes_thrown": 1.6
+      "avg_blind_time": 2.7,
+      "enemies_flashed": 0.2,
+      "avg_he_damage": 27.8,
+      "avg_smokes_thrown": 3.5
     },
     "weapons": [
       {
         "name": "SCAR-20",
         "kills": 56,
-        "hs_pct": 19.64,
-        "damage": 6983,
-        "shots": 640,
-        "hits": 118,
-        "accuracy": 18.44
+        "hs_pct": 8.93,
+        "damage": 6002,
+        "shots": 511,
+        "hits": 108,
+        "accuracy": 21.14
       },
       {
         "name": "Negev",
-        "kills": 54,
-        "hs_pct": 27.78,
-        "damage": 6606,
-        "shots": 3192,
-        "hits": 226,
-        "accuracy": 7.08
+        "kills": 24,
+        "hs_pct": 29.17,
+        "damage": 3297,
+        "shots": 1497,
+        "hits": 114,
+        "accuracy": 7.62
       },
       {
         "name": "G3SG1",
-        "kills": 36,
-        "hs_pct": 19.44,
-        "damage": 4046,
-        "shots": 417,
-        "hits": 75,
-        "accuracy": 17.99
+        "kills": 19,
+        "hs_pct": 15.79,
+        "damage": 1843,
+        "shots": 227,
+        "hits": 33,
+        "accuracy": 14.54
+      },
+      {
+        "name": "MP5-SD",
+        "kills": 18,
+        "hs_pct": 16.67,
+        "damage": 3165,
+        "shots": 609,
+        "hits": 135,
+        "accuracy": 22.17
       },
       {
         "name": "M4A1",
-        "kills": 19,
-        "hs_pct": 21.05,
-        "damage": 2723,
-        "shots": 328,
-        "hits": 90,
-        "accuracy": 27.44
-      },
-      {
-        "name": "AWP",
-        "kills": 18,
-        "hs_pct": 0,
-        "damage": 1643,
-        "shots": 50,
-        "hits": 19,
-        "accuracy": 38
+        "kills": 13,
+        "hs_pct": 7.69,
+        "damage": 1617,
+        "shots": 241,
+        "hits": 51,
+        "accuracy": 21.16
       },
       {
         "name": "AK-47",
-        "kills": 17,
-        "hs_pct": 11.76,
-        "damage": 2387,
-        "shots": 433,
-        "hits": 85,
-        "accuracy": 19.63
-      },
-      {
-        "name": "USP-S",
-        "kills": 9,
-        "hs_pct": 33.33,
-        "damage": 1400,
-        "shots": 226,
-        "hits": 52,
-        "accuracy": 23.01
+        "kills": 10,
+        "hs_pct": 20,
+        "damage": 1432,
+        "shots": 368,
+        "hits": 44,
+        "accuracy": 11.96
       },
       {
         "name": "Glock-18",
-        "kills": 8,
-        "hs_pct": 37.5,
-        "damage": 1301,
-        "shots": 245,
-        "hits": 54,
-        "accuracy": 22.04
+        "kills": 5,
+        "hs_pct": 60,
+        "damage": 873,
+        "shots": 182,
+        "hits": 35,
+        "accuracy": 19.23
+      },
+      {
+        "name": "USP-S",
+        "kills": 5,
+        "hs_pct": 40,
+        "damage": 662,
+        "shots": 111,
+        "hits": 28,
+        "accuracy": 25.23
+      },
+      {
+        "name": "AWP",
+        "kills": 4,
+        "hs_pct": 0,
+        "damage": 605,
+        "shots": 17,
+        "hits": 7,
+        "accuracy": 41.18
       },
       {
         "name": "P90",
-        "kills": 4,
-        "hs_pct": 25,
-        "damage": 624,
-        "shots": 117,
-        "hits": 33,
-        "accuracy": 28.21
-      },
-      {
-        "name": "R8 Revolver",
-        "kills": 4,
-        "hs_pct": 0,
-        "damage": 578,
-        "shots": 30,
-        "hits": 10,
-        "accuracy": 33.33
+        "kills": 3,
+        "hs_pct": 33.33,
+        "damage": 406,
+        "shots": 76,
+        "hits": 17,
+        "accuracy": 22.37
       }
     ],
     "clutches": {
       "overall": {
-        "total": 38,
-        "won": 5,
-        "lost": 33,
-        "avg_kills": 0.42,
-        "win_rate": 13.16,
-        "save_rate": 13.16
+        "total": 30,
+        "won": 4,
+        "lost": 26,
+        "avg_kills": 0.4,
+        "win_rate": 13.33,
+        "save_rate": 6.67
       },
       "by_type": {
         "1v1": {
-          "total": 7,
-          "won": 2,
-          "lost": 5,
-          "avg_kills": 0.29,
-          "win_rate": 28.57,
-          "save_rate": 0
+          "total": 5,
+          "won": 3,
+          "lost": 2,
+          "avg_kills": 0.6,
+          "win_rate": 60,
+          "save_rate": 20
         },
         "1v2": {
-          "total": 9,
-          "won": 2,
-          "lost": 7,
-          "avg_kills": 0.67,
-          "win_rate": 22.22,
+          "total": 10,
+          "won": 0,
+          "lost": 10,
+          "avg_kills": 0.2,
+          "win_rate": 0,
           "save_rate": 0
         },
         "1v3": {
-          "total": 9,
+          "total": 5,
           "won": 1,
-          "lost": 8,
-          "avg_kills": 0.67,
-          "win_rate": 11.11,
-          "save_rate": 33.33
+          "lost": 4,
+          "avg_kills": 0.2,
+          "win_rate": 20,
+          "save_rate": 0
         },
         "1v4": {
-          "total": 5,
-          "won": 0,
-          "lost": 5,
-          "avg_kills": 0.2,
-          "win_rate": 0,
-          "save_rate": 20
-        },
-        "1v5": {
           "total": 6,
           "won": 0,
           "lost": 6,
-          "avg_kills": 0.17,
+          "avg_kills": 0.67,
           "win_rate": 0,
           "save_rate": 16.67
+        },
+        "1v5": {
+          "total": 3,
+          "won": 0,
+          "lost": 3,
+          "avg_kills": 0.33,
+          "win_rate": 0,
+          "save_rate": 0
         },
         "1v6": {
           "total": 1,
           "won": 0,
           "lost": 1,
-          "avg_kills": 0,
-          "win_rate": 0,
-          "save_rate": 0
-        },
-        "1v7": {
-          "total": 1,
-          "won": 0,
-          "lost": 1,
-          "avg_kills": 0,
+          "avg_kills": 1,
           "win_rate": 0,
           "save_rate": 0
         }

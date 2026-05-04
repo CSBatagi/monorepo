@@ -6,6 +6,13 @@ import MatchDetails from "./MatchDetails";
 import { buildSeasonWindowOptions, filterDataBySeason } from "@/lib/seasonRanges";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useStatsRefresh } from "@/lib/useStatsRefresh";
+import {
+  buildPeriodWindowOptions,
+  dateKeysForPeriodPayload,
+  isDateKeyedPeriodPayload,
+  loadDateKeyedPeriodSelection,
+  type DateKeyedPeriodPayload,
+} from "@/lib/statsPeriods";
 
 interface Team {
   name: string;
@@ -22,17 +29,27 @@ interface MacSonuclariClientProps {
   allData: Record<string, any>;
   dates: string[];
   seasonStarts: string[];
+  periodPayload?: DateKeyedPeriodPayload<any> | null;
 }
 
-export default function MacSonuclariClient({ allData: initialData, seasonStarts }: MacSonuclariClientProps) {
+export default function MacSonuclariClient({ allData: initialData, dates: initialDates, seasonStarts, periodPayload: initialPeriodPayload }: MacSonuclariClientProps) {
   const [allData, setAllData] = useState<Record<string, any>>(initialData);
+  const [periodPayload, setPeriodPayload] = useState<DateKeyedPeriodPayload<any> | null>(initialPeriodPayload || null);
+  const [periodData, setPeriodData] = useState<Record<string, Record<string, any>>>(initialPeriodPayload?.data || {});
+  const [dates, setDates] = useState<string[]>(initialDates);
 
   useStatsRefresh({
-    keys: ['sonmac_by_date_all', 'sonmac_by_date'],
+    keys: ['sonmac_by_date_periods'],
     onData: (j) => {
-      const incoming = j?.sonmac_by_date_all || j?.sonmac_by_date;
-      if (incoming && typeof incoming === "object" && Object.keys(incoming).length > 0) {
-        setAllData(incoming);
+      if (isDateKeyedPeriodPayload<any>(j?.sonmac_by_date_periods)) {
+        setPeriodPayload(j.sonmac_by_date_periods);
+        setPeriodData(j.sonmac_by_date_periods.data || {});
+      } else {
+        const incoming = j?.sonmac_by_date;
+        if (incoming && typeof incoming === "object" && Object.keys(incoming).length > 0) {
+          setAllData(incoming);
+          setDates(Object.keys(incoming).sort((a, b) => b.localeCompare(a)));
+        }
       }
     },
   });
@@ -41,15 +58,22 @@ export default function MacSonuclariClient({ allData: initialData, seasonStarts 
     () => Object.keys(allData || {}).sort((a, b) => new Date(b).getTime() - new Date(a).getTime()),
     [allData]
   );
+  const allPeriodDates = useMemo(() => dateKeysForPeriodPayload(periodPayload), [periodPayload]);
 
-  const seasonOptions = useMemo(() => buildSeasonWindowOptions(seasonStarts || [], allDates), [seasonStarts, allDates]);
-  const [selectedSeasonId, setSelectedSeasonId] = useState<string>(seasonOptions[0]?.id || "all_time");
+  const seasonOptions = useMemo(
+    () => buildPeriodWindowOptions(periodPayload, seasonStarts || [], allPeriodDates.length ? allPeriodDates : (allDates.length ? allDates : dates)),
+    [periodPayload, seasonStarts, allPeriodDates, allDates, dates]
+  );
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>(initialPeriodPayload?.current_period || seasonOptions[0]?.id || "all_time");
   const selectedSeason = useMemo(
     () => seasonOptions.find((s) => s.id === selectedSeasonId) || seasonOptions[0] || { id: "all_time", label: "Tum Zamanlar", startDate: null, endDate: null },
     [seasonOptions, selectedSeasonId]
   );
 
-  const scopedData = useMemo(() => filterDataBySeason(allData, selectedSeason), [allData, selectedSeason]);
+  const scopedData = useMemo(
+    () => periodPayload ? (periodData[selectedSeasonId] || {}) : filterDataBySeason(allData, selectedSeason),
+    [periodPayload, periodData, selectedSeasonId, allData, selectedSeason]
+  );
   const scopedDates = useMemo(
     () => Object.keys(scopedData || {}).sort((a, b) => new Date(b).getTime() - new Date(a).getTime()),
     [scopedData]
@@ -62,6 +86,22 @@ export default function MacSonuclariClient({ allData: initialData, seasonStarts 
       setSelectedSeasonId(seasonOptions[0]?.id || "all_time");
     }
   }, [seasonOptions, selectedSeasonId]);
+
+  useEffect(() => {
+    if (!periodPayload || periodData[selectedSeasonId]) return;
+    let cancelled = false;
+    loadDateKeyedPeriodSelection<any>({
+      dataset: "sonmac_by_date",
+      payload: periodPayload,
+      periodId: selectedSeasonId,
+      loadedData: periodData,
+    }).then((nextData) => {
+      if (!cancelled) setPeriodData(nextData);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [periodPayload, periodData, selectedSeasonId]);
 
   useEffect(() => {
     if (selectedDate && !scopedDates.includes(selectedDate)) {

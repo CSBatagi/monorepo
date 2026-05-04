@@ -75,9 +75,10 @@ async function fetchIncrementalSnapshot(lastKnownVersion: number | null, cacheBu
 
 export async function fetchStats(...keys: string[]): Promise<Record<string, any>> {
   const now = Date.now();
-  if ((now - cachedAt < CACHE_TTL_MS) && hasAllCachedKeys(keys)) {
+  const cache = cachedData;
+  if ((now - cachedAt < CACHE_TTL_MS) && cache && hasAllCachedKeys(keys)) {
     const result: Record<string, any> = {};
-    for (const k of keys) result[k] = cachedData[k] ?? null;
+    for (const k of keys) result[k] = cache[k] ?? null;
     return result;
   }
 

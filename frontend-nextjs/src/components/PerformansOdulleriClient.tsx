@@ -5,6 +5,13 @@ import AwardsListClient from "./AwardsListClient";
 import { buildSeasonWindowOptions, filterDataBySeason } from "@/lib/seasonRanges";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useStatsRefresh } from "@/lib/useStatsRefresh";
+import {
+  buildPeriodWindowOptions,
+  dateKeysForPeriodPayload,
+  isDateKeyedPeriodPayload,
+  loadDateKeyedPeriodSelection,
+  type DateKeyedPeriodPayload,
+} from "@/lib/statsPeriods";
 
 interface PlayerAward {
   name: string;
@@ -109,36 +116,68 @@ function calculateAwardsByMonth(allData: Record<string, any[]>, monthKey: string
 export default function PerformansOdulleriClient({
   allData: initialData,
   seasonStarts,
+  periodPayload: initialPeriodPayload,
 }: {
   allData: Record<string, any[]>;
   seasonStarts: string[];
+  periodPayload?: DateKeyedPeriodPayload<any[]> | null;
 }) {
   const [allData, setAllData] = useState<Record<string, any[]>>(initialData);
+  const [periodPayload, setPeriodPayload] = useState<DateKeyedPeriodPayload<any[]> | null>(initialPeriodPayload || null);
+  const [periodData, setPeriodData] = useState<Record<string, Record<string, any[]>>>(initialPeriodPayload?.data || {});
 
   useStatsRefresh({
-    keys: ['night_avg_all', 'night_avg'],
+    keys: ['night_avg_periods'],
     onData: (j) => {
-      const incoming = j?.night_avg_all || j?.night_avg;
-      if (incoming && typeof incoming === "object" && Object.keys(incoming).length > 0) {
-        setAllData(incoming);
+      if (isDateKeyedPeriodPayload<any[]>(j?.night_avg_periods)) {
+        setPeriodPayload(j.night_avg_periods);
+        setPeriodData(j.night_avg_periods.data || {});
+      } else {
+        const incoming = j?.night_avg;
+        if (incoming && typeof incoming === "object" && Object.keys(incoming).length > 0) {
+          setAllData(incoming);
+        }
       }
     },
   });
 
   const allDates = useMemo(() => Object.keys(allData || {}).sort(), [allData]);
-  const seasonOptions = useMemo(() => buildSeasonWindowOptions(seasonStarts || [], allDates), [seasonStarts, allDates]);
-  const [selectedSeasonId, setSelectedSeasonId] = useState<string>(seasonOptions[0]?.id || "all_time");
+  const allPeriodDates = useMemo(() => dateKeysForPeriodPayload(periodPayload), [periodPayload]);
+  const seasonOptions = useMemo(
+    () => buildPeriodWindowOptions(periodPayload, seasonStarts || [], allPeriodDates.length ? allPeriodDates : allDates),
+    [periodPayload, seasonStarts, allPeriodDates, allDates]
+  );
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>(initialPeriodPayload?.current_period || seasonOptions[0]?.id || "all_time");
   const selectedSeason = useMemo(
     () => seasonOptions.find((s) => s.id === selectedSeasonId) || seasonOptions[0] || { id: "all_time", label: "Tum Zamanlar", startDate: null, endDate: null },
     [seasonOptions, selectedSeasonId]
   );
-  const scopedData = useMemo(() => filterDataBySeason(allData || {}, selectedSeason), [allData, selectedSeason]);
+  const scopedData = useMemo(
+    () => periodPayload ? (periodData[selectedSeasonId] || {}) : filterDataBySeason(allData || {}, selectedSeason),
+    [periodPayload, periodData, selectedSeasonId, allData, selectedSeason]
+  );
   const monthPeriods = useMemo(() => getMonthPeriods(scopedData), [scopedData]);
   const awardsByPeriod = useMemo(
     () => monthPeriods.map((period) => ({ period, awards: calculateAwardsByMonth(scopedData, period.key) })).reverse(),
     [monthPeriods, scopedData]
   );
   const { isDark } = useTheme();
+
+  useEffect(() => {
+    if (!periodPayload || periodData[selectedSeasonId]) return;
+    let cancelled = false;
+    loadDateKeyedPeriodSelection<any[]>({
+      dataset: "night_avg",
+      payload: periodPayload,
+      periodId: selectedSeasonId,
+      loadedData: periodData,
+    }).then((nextData) => {
+      if (!cancelled) setPeriodData(nextData);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [periodPayload, periodData, selectedSeasonId]);
 
   return (
     <div className="space-y-6">

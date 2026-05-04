@@ -39,7 +39,7 @@ export async function readJson(filename: string): Promise<any> {
   }
   
   // Return appropriate defaults for different file types
-  if (filename.includes('season_avg_periods') || filename.includes('players_stats_periods') || filename.includes('sonmac_by_date_all') || filename.includes('night_avg_all')) {
+  if (filename.includes('season_avg_periods') || filename.includes('players_stats_periods') || filename.includes('sonmac_by_date_periods') || filename.includes('night_avg_periods')) {
     return {};
   } else if (filename.includes('last10') || filename.includes('season_avg') || filename.includes('players_stats') || filename.includes('map_stats')) {
     return [];

@@ -2,6 +2,7 @@ import MacSonuclariClient from "@/components/MacSonuclariClient";
 import { readJson } from "@/lib/dataReader";
 import { fetchStats } from "@/lib/statsServer";
 import { normalizeSeasonStarts } from "@/lib/seasonRanges";
+import { getDateKeyedPeriodData, isDateKeyedPeriodPayload } from "@/lib/statsPeriods";
 
 export const revalidate = 60; // seconds – data changes only when stats regenerate
 
@@ -12,8 +13,11 @@ export default async function MacSonuclariPage() {
     [seasonStartRaw?.season_start].filter(Boolean) as string[]
   );
 
-  const stats = await fetchStats('sonmac_by_date_all', 'sonmac_by_date');
-  let allData: Record<string, any> = stats.sonmac_by_date_all || {};
+  const stats = await fetchStats('sonmac_by_date_periods', 'sonmac_by_date');
+  const periodPayload = isDateKeyedPeriodPayload<any>(stats.sonmac_by_date_periods) ? stats.sonmac_by_date_periods : null;
+  let allData: Record<string, any> = periodPayload?.current_period
+    ? getDateKeyedPeriodData(periodPayload, periodPayload.current_period)
+    : stats.sonmac_by_date || {};
   if (!Object.keys(allData).length) {
     allData = stats.sonmac_by_date || {};
   }
@@ -22,7 +26,7 @@ export default async function MacSonuclariPage() {
   return (
     <div id="page-mac-sonuclari" className="page-content page-content-container">
       <h2 className="text-2xl font-semibold text-blue-600 mb-4">Mac Sonuclari</h2>
-      <MacSonuclariClient allData={allData} dates={dates} seasonStarts={seasonStarts} />
+      <MacSonuclariClient allData={allData} dates={dates} seasonStarts={seasonStarts} periodPayload={periodPayload} />
     </div>
   );
 }
