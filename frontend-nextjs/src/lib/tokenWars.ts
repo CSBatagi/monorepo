@@ -103,9 +103,22 @@ export function performancePointsFromDiff(
   diff: number,
   brackets: PerformanceBracket[],
 ): number {
+  const roundedDiff = Number(diff.toFixed(2));
+
   for (const b of brackets) {
-    if (diff >= b.min && diff <= b.max) return b.points;
+    if (b.min <= -999) {
+      if (roundedDiff < b.max) return b.points;
+      continue;
+    }
+
+    if (b.max >= 999) {
+      if (roundedDiff >= b.min) return b.points;
+      continue;
+    }
+
+    if (roundedDiff >= b.min && roundedDiff <= b.max) return b.points;
   }
+
   return 0;
 }
 
