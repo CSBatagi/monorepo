@@ -6,7 +6,15 @@ export async function readJson(filename: string): Promise<any> {
   const runtimeDir = process.env.STATS_DATA_DIR || path.join(process.cwd(), 'runtime-data');
 
   // Static files (always in public/data)
-  const staticFiles = ['kabile.json', 'maps.json', 'players.json', 'season_start.json', 'batak_allstars_season_start.json'];
+  const staticFiles = [
+    'kabile.json',
+    'maps.json',
+    'players.json',
+    'season_start.json',
+    'batak_allstars_season_start.json',
+    'batak_allstars_config.json',
+    'token_wars_config.json',
+  ];
   
   if (staticFiles.includes(filename)) {
     // For static files, only check public/data locations
