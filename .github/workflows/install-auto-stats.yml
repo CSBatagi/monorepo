@@ -1,0 +1,88 @@
+name: Install / Update Auto Stats Analyzer
+
+on:
+  workflow_dispatch:
+    inputs:
+      forceReinstall:
+        description: 'Force reinstallation of dependencies (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  install-auto-stats:
+    name: Install Auto Stats Mechanism on Game VM
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }} # secret only
+      CSDM_ANALYZE_EXTRA_ARGS: ${{ secrets.AUTO_STATS_CSDM_EXTRA_ARGS }} # optional
+      # Hardcoded values per user instruction
+      HARD_DB_HOST: csbatagi.com
+      HARD_DB_PORT: 5432
+      HARD_DB_NAME: csdm 
+      HARD_DB_USER: postgres 
+      HARD_WATCH_PATH: /home/steam/cs2/game/csgo/mounted_bucket
+    steps:
+      - name: Checkout (for scripts)
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        run: |
+          missing=0
+          # Validate secret(s)
+          if [ -z "${DB_PASSWORD}" ]; then echo "Missing DB_PASSWORD secret (AUTO_STATS_DB_PASSWORD)"; missing=1; fi
+          # Validate hardcoded constants exist (defensive)
+          for v in HARD_DB_HOST HARD_DB_PORT HARD_DB_NAME HARD_DB_USER HARD_WATCH_PATH; do
+            if [ -z "${!v}" ]; then echo "Hardcoded var missing unexpectedly: $v"; missing=1; fi
+          done
+          [ -z "${{ secrets.GOOGLE_CREDENTIALS }}" ] && echo "Missing secret: GOOGLE_CREDENTIALS" && missing=1 || true
+          [ -z "${{ secrets.GCP_GAME_VM_NAME }}" ] && echo "Missing secret: GCP_GAME_VM_NAME" && missing=1 || true
+          [ -z "${{ secrets.GCP_GAME_VM_ZONE }}" ] && echo "Missing secret: GCP_GAME_VM_ZONE" && missing=1 || true
+          if [ $missing -ne 0 ]; then exit 1; fi
+          echo "All required secrets present"
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          version: '>= 363.0.0'
+
+      - name: Copy auto-stats scripts to Game VM
+        run: |
+          gcloud compute scp \
+            --zone=${{ secrets.GCP_GAME_VM_ZONE }} \
+            --recurse scripts/auto-stats \
+            ${{ secrets.GCP_GAME_VM_NAME }}:/tmp/ \
+            --ssh-key-expire-after=1m
+
+      - name: Prepare and upload environment file
+        run: |
+          FORCE_REINSTALL=${{ github.event.inputs.forceReinstall }}
+          printf "WATCH_PATH=%s\nDB_HOST=%s\nDB_PORT=%s\nDB_NAME=%s\nDB_USER=%s\nDB_PASSWORD=%s\nCSDM_ANALYZE_EXTRA_ARGS=%s\nFORCE_REINSTALL=%s\n" \
+            "$HARD_WATCH_PATH" "$HARD_DB_HOST" "$HARD_DB_PORT" "$HARD_DB_NAME" "$HARD_DB_USER" "$DB_PASSWORD" "${CSDM_ANALYZE_EXTRA_ARGS:-}" "$FORCE_REINSTALL" > env_remote
+          gcloud compute scp \
+            --zone=${{ secrets.GCP_GAME_VM_ZONE }} \
+            env_remote ${{ secrets.GCP_GAME_VM_NAME }}:/tmp/auto-stats/.env \
+            --ssh-key-expire-after=1m
+
+      - name: Run remote installation
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_GAME_VM_NAME }} --zone=${{ secrets.GCP_GAME_VM_ZONE }} \
+            --command="chmod +x /tmp/auto-stats/install-remote.sh && set -a && source /tmp/auto-stats/.env && /tmp/auto-stats/install-remote.sh"
+
+      - name: Output service log tail
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_GAME_VM_NAME }} --zone=${{ secrets.GCP_GAME_VM_ZONE }} \
+            --command="sudo journalctl -u csdm-auto-analyzer.service -n 50 --no-pager || true"
+
+      - name: Show running processes (debug)
+        if: always()
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_GAME_VM_NAME }} --zone=${{ secrets.GCP_GAME_VM_ZONE }} \
+            --command="ps -ef | grep run-watcher | grep -v grep || true"
