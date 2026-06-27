@@ -111,7 +111,7 @@ export function displayNameForSteamId(steamId: string, index: PlayersIndex): str
 }
 
 // Analyzes maps for a night and returns which maps are "main league" vs "casual third match"
-function getMainLeagueMapsForDate(sonmacByDate: SonmacByDate, date: string): string[] | null {
+export function getMainLeagueMapsForDate(sonmacByDate: SonmacByDate, date: string): string[] | null {
   const night = date ? sonmacByDate?.[date] : null;
   const maps = night?.maps;
   if (!maps) return null;

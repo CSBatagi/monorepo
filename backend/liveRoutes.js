@@ -592,6 +592,68 @@ router.post('/token-wars-captains/set', async (req, res) => {
   }
 });
 
+// ─── Superliga Captains ──────────────────────────────────────────────────────
+
+router.get('/superliga-captains', async (req, res) => {
+  try {
+    const clientVersion = parseInt(req.query.v) || 0;
+    const serverVersion = await getVersion('superliga_captains');
+    if (clientVersion && clientVersion >= serverVersion) {
+      return res.status(304).end();
+    }
+
+    const rows = await pool.query(
+      `SELECT date, team_key, steam_id, steam_name, team_name, set_by_uid, set_by_name, set_at FROM superliga_captains ORDER BY date, team_key`
+    );
+
+    const captainsByDate = {};
+    for (const r of rows.rows) {
+      if (!captainsByDate[r.date]) captainsByDate[r.date] = {};
+      captainsByDate[r.date][r.team_key] = {
+        steamId: r.steam_id,
+        steamName: r.steam_name || undefined,
+        date: r.date,
+        teamKey: r.team_key,
+        teamName: r.team_name || undefined,
+        setByUid: r.set_by_uid || undefined,
+        setByName: r.set_by_name || undefined,
+        setAt: r.set_at ? Number(r.set_at) : undefined,
+      };
+    }
+
+    res.json({ version: serverVersion, captainsByDate });
+  } catch (e) {
+    console.error('[live/superliga-captains GET]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/superliga-captains/set', async (req, res) => {
+  try {
+    const { date, teamKey, steamId, steamName, teamName, setByUid, setByName, setAt } = req.body;
+    if (!date || !teamKey || !steamId) {
+      return res.status(400).json({ error: 'date, teamKey, steamId required' });
+    }
+
+    await pool.query(
+      `INSERT INTO superliga_captains (date, team_key, steam_id, steam_name, team_name, set_by_uid, set_by_name, set_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+       ON CONFLICT (date, team_key) DO UPDATE SET
+         steam_id = $3, steam_name = $4, team_name = $5,
+         set_by_uid = $6, set_by_name = $7, set_at = $8,
+         updated_at = NOW()`,
+      [date, teamKey, steamId, steamName || null, teamName || null, setByUid || null, setByName || null, setAt || null]
+    );
+
+    await bumpVersion('superliga_captains');
+    const version = await getVersion('superliga_captains');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/superliga-captains/set POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Batak Super Kupa ────────────────────────────────────────────────────────
 
 router.get('/batak-super-kupa', async (req, res) => {

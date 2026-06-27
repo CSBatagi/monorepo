@@ -15,6 +15,7 @@ const navLinks = [
   { href: "/attendance", label: "Katılım" },
   { href: "/team-picker", label: "Takım Seçme" },
   { href: "/token-wars", label: "Batak Token Wars" },
+  { href: "/superliga", label: "Superliga" },
   { href: "/sonmac", label: "Son Maç" },
   { href: "/performans-odulleri", label: "Performans Ödülleri" },
   { href: "/gece-ortalama", label: "Gece Ortalaması" },

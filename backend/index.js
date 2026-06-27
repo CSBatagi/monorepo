@@ -866,7 +866,7 @@ if (!TEST_MODE) {
       `CREATE TABLE IF NOT EXISTS team_picker (id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1), team_a_players JSONB NOT NULL DEFAULT '{}', team_b_players JSONB NOT NULL DEFAULT '{}', team_a_name_mode TEXT NOT NULL DEFAULT 'generic', team_b_name_mode TEXT NOT NULL DEFAULT 'generic', team_a_captain TEXT NOT NULL DEFAULT '', team_b_captain TEXT NOT NULL DEFAULT '', team_a_kabile TEXT NOT NULL DEFAULT '', team_b_kabile TEXT NOT NULL DEFAULT '', maps JSONB NOT NULL DEFAULT '{}', overrides JSONB NOT NULL DEFAULT '{}', updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       `INSERT INTO team_picker (id) VALUES (1) ON CONFLICT DO NOTHING`,
       `CREATE TABLE IF NOT EXISTS live_version (key TEXT PRIMARY KEY, version BIGINT NOT NULL DEFAULT 0)`,
-      `INSERT INTO live_version (key, version) VALUES ('attendance', 0), ('team_picker', 0), ('mvp_votes', 0), ('batak_captains', 0), ('batak_super_kupa', 0), ('token_wars', 0), ('token_wars_captains', 0) ON CONFLICT DO NOTHING`,
+      `INSERT INTO live_version (key, version) VALUES ('attendance', 0), ('team_picker', 0), ('mvp_votes', 0), ('batak_captains', 0), ('batak_super_kupa', 0), ('token_wars', 0), ('token_wars_captains', 0), ('superliga_captains', 0) ON CONFLICT DO NOTHING`,
       `CREATE TABLE IF NOT EXISTS notification_inbox (id TEXT PRIMARY KEY, user_uid TEXT NOT NULL, topic TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, data JSONB, read BOOLEAN NOT NULL DEFAULT FALSE, deleted BOOLEAN NOT NULL DEFAULT FALSE, created_at BIGINT NOT NULL, event_id TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notification_inbox' AND column_name='deleted') THEN ALTER TABLE notification_inbox ADD COLUMN deleted BOOLEAN NOT NULL DEFAULT FALSE; END IF; END $$`,
       `CREATE INDEX IF NOT EXISTS notification_inbox_user_created_idx ON notification_inbox (user_uid, created_at DESC)`,
@@ -880,6 +880,8 @@ if (!TEST_MODE) {
       // Token Wars tables — separated from Batak AllStars season state
       `CREATE TABLE IF NOT EXISTS token_wars_captains (date TEXT NOT NULL, team_key TEXT NOT NULL, steam_id TEXT NOT NULL, steam_name TEXT, team_name TEXT, set_by_uid TEXT, set_by_name TEXT, set_at BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (date, team_key))`,
       `CREATE TABLE IF NOT EXISTS token_wars (id SERIAL PRIMARY KEY, actor_steam_id TEXT NOT NULL, target_steam_id TEXT NOT NULL, token_type TEXT NOT NULL, set_by_uid TEXT, set_by_name TEXT, set_at BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+      // Superliga tables — puan bazlı tek liste lig, kaptan atamaları
+      `CREATE TABLE IF NOT EXISTS superliga_captains (date TEXT NOT NULL, team_key TEXT NOT NULL, steam_id TEXT NOT NULL, steam_name TEXT, team_name TEXT, set_by_uid TEXT, set_by_name TEXT, set_at BIGINT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (date, team_key))`,
       // Admin table — email-based admin lookup
       `CREATE TABLE IF NOT EXISTS admins (email TEXT PRIMARY KEY, is_admin BOOLEAN NOT NULL DEFAULT TRUE, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
       // Notification preferences — replaces Firebase RTDB notifications/preferences/{uid}

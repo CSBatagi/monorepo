@@ -14,6 +14,7 @@ export async function readJson(filename: string): Promise<any> {
     'batak_allstars_season_start.json',
     'batak_allstars_config.json',
     'token_wars_config.json',
+    'superliga_config.json',
   ];
   
   if (staticFiles.includes(filename)) {
