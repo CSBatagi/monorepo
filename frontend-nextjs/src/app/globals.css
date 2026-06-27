@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== Pull-to-refresh ===== */
+/* Suppress the browser's native pull-to-refresh / scroll-chaining so the
+   custom PullToRefresh gesture is the single source of truth on every platform. */
+html,
+body {
+  overscroll-behavior-y: contain;
+}
+
+@keyframes ptr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ===== Dark Mode Color Tokens (CSS Custom Properties) ===== */
 /* Single source of truth — update here to change everywhere */
 :root {

@@ -15,6 +15,13 @@ interface UseStatsRefreshOptions {
   refreshOnResume?: boolean;
   /** Minimum time between foreground-triggered checks for the same key set. Default: 30s. */
   minIntervalMs?: number;
+  /**
+   * Background poll cadence while the page is visible. Installed PWAs keep a
+   * single document alive for the whole session, so without this an open page
+   * only ever refreshes on resume events — which iOS standalone apps fire
+   * unreliably. Set to 0/null to disable. Default: 90s.
+   */
+  pollIntervalMs?: number | null;
   /** Dataset keys this client can consume. The global stats version still controls freshness. */
   keys?: string[];
 }
@@ -33,6 +40,7 @@ export function useStatsRefresh({
   checkOnMount,
   refreshOnResume = true,
   minIntervalMs = 30_000,
+  pollIntervalMs = 90_000,
   keys = [],
 }: UseStatsRefreshOptions) {
   const onDataRef = useRef(onData);
@@ -53,6 +61,9 @@ export function useStatsRefresh({
 
     let cancelled = false;
     let inFlight = false;
+    // Coalesces the burst of resume events (visibilitychange + focus + pageshow
+    // often fire together) so a single return-to-foreground triggers one check.
+    let lastForcedAt = 0;
     const refreshKey = keyParam || 'all';
 
     async function checkForStatsUpdate(force = false) {
@@ -60,8 +71,13 @@ export function useStatsRefresh({
       if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
 
       const now = Date.now();
-      const lastAttempt = lastRefreshAttemptByKey.get(refreshKey) || 0;
-      if (!force && now - lastAttempt < minIntervalMs) return;
+      if (force) {
+        if (now - lastForcedAt < 3_000) return;
+        lastForcedAt = now;
+      } else {
+        const lastAttempt = lastRefreshAttemptByKey.get(refreshKey) || 0;
+        if (now - lastAttempt < minIntervalMs) return;
+      }
 
       lastRefreshAttemptByKey.set(refreshKey, now);
       inFlight = true;
@@ -100,18 +116,45 @@ export function useStatsRefresh({
       void checkForStatsUpdate(true);
     }
 
-    if (!refreshOnResume) {
-      return () => { cancelled = true; };
+    // Background poll keeps an already-open page fresh without a resume event.
+    // Throttled (force=false) so it never beats minIntervalMs, and paused while
+    // the page is hidden so a backgrounded PWA does no network work.
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    const startPolling = () => {
+      if (pollTimer || !pollIntervalMs) return;
+      pollTimer = setInterval(() => {
+        if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+          void checkForStatsUpdate();
+        }
+      }, pollIntervalMs);
+    };
+    const stopPolling = () => {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    };
+
+    if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+      startPolling();
     }
 
+    if (!refreshOnResume) {
+      return () => { cancelled = true; stopPolling(); };
+    }
+
+    // Force on resume so the 30s throttle can't swallow the one check that
+    // matters most — the user just brought the app back to the foreground.
     const handleVisible = () => {
-      if (document.visibilityState === 'visible') void checkForStatsUpdate();
+      if (document.visibilityState === 'visible') {
+        void checkForStatsUpdate(true);
+        startPolling();
+      } else {
+        stopPolling();
+      }
     };
     const handleFocus = () => {
-      void checkForStatsUpdate();
+      void checkForStatsUpdate(true);
     };
     const handlePageShow = () => {
-      void checkForStatsUpdate();
+      void checkForStatsUpdate(true);
     };
 
     document.addEventListener('visibilitychange', handleVisible);
@@ -120,9 +163,10 @@ export function useStatsRefresh({
 
     return () => {
       cancelled = true;
+      stopPolling();
       document.removeEventListener('visibilitychange', handleVisible);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('pageshow', handlePageShow);
     };
-  }, [enabled, keyParam, minIntervalMs, refreshOnResume, shouldCheckOnMount]);
+  }, [enabled, keyParam, minIntervalMs, pollIntervalMs, refreshOnResume, shouldCheckOnMount]);
 }
