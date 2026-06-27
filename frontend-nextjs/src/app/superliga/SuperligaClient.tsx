@@ -69,7 +69,8 @@ function ScoringReference({ config }: { config: SuperligaConfig }) {
         <li>Kazanılan her haritadan <span className="font-medium">{s.winPoints} puan + averaj</span> (skor farkı) kazanılır.</li>
         <li>Kaptanlar, kaptanlık yaptıkları her gece için <span className="font-medium">+{s.captainBonus} puan</span> alır.</li>
         <li>Uzatmaya giden haritalarda <span className="font-medium">kaybeden takım</span> her uzatma serisi için <span className="font-medium">+{s.overtimeConsolationPerSeries} teselli puanı</span> alır (en fazla {s.maxOvertimeConsolationSeries} seri = {s.maxOvertimeConsolationSeries * s.overtimeConsolationPerSeries} puan).</li>
-        <li>Token sistemi, saldırı/savunma/koruma ve HLTV faktörü <span className="font-medium">yoktur</span>. Puanlar kümülatiftir; en önemli kriter kazanmaktır.</li>
+        <li>Sıralama, oyuncunun <span className="font-medium">gece başına ortalama puanına</span> göre yapılır (toplam değil).</li>
+        <li>Token sistemi, saldırı/savunma/koruma ve HLTV faktörü <span className="font-medium">yoktur</span>. En önemli kriter kazanmaktır.</li>
       </ul>
       <div className="mt-3 rounded border border-purple-100 bg-white p-3 text-xs text-gray-600">
         <div className="mb-1 font-medium text-gray-700">Örnek — Darbe 2 - Cago 1</div>
@@ -83,6 +84,66 @@ function ScoringReference({ config }: { config: SuperligaConfig }) {
         1. ve 2. sıra doğrudan yarı finale çıkar. 3-6 ve 4-5 eşleşerek eleme oynar.
         Ardından 1 vs (4-5 galibi) ve 2 vs (3-6 galibi) yarı final oynar; galipler finalde karşılaşır.
       </div>
+    </div>
+  );
+}
+
+function SeasonProgressBar({
+  played,
+  total,
+  selectedIndex,
+  onSelectIndex,
+  dates,
+}: {
+  played: number;
+  total: number;
+  selectedIndex: number | null;
+  onSelectIndex: (i: number | null) => void;
+  dates: string[];
+}) {
+  const effectiveIndex = selectedIndex === null ? played : Math.min(selectedIndex, played);
+  const totalBoxes = Math.max(total, played);
+  const gamesLeft = Math.max(0, total - played);
+  const squares = [];
+
+  for (let i = 0; i < totalBoxes; i++) {
+    const matchNum = i + 1;
+    const isPlayed = i < played;
+    const isSelected = effectiveIndex === matchNum;
+    const isBeforeSelected = matchNum <= effectiveIndex;
+    const bgClass = isPlayed ? (isSelected ? 'bg-purple-600' : isBeforeSelected ? 'bg-purple-400' : 'bg-purple-200') : 'bg-gray-200';
+    const textClass = isPlayed ? (isSelected || isBeforeSelected ? 'text-white' : 'text-purple-600') : 'text-gray-400';
+    const borderClass = isSelected ? 'ring-2 ring-purple-800 ring-offset-1' : '';
+
+    squares.push(
+      <button
+        key={i}
+        type="button"
+        onClick={() => (isPlayed ? onSelectIndex(selectedIndex === matchNum ? null : matchNum) : onSelectIndex(null))}
+        className={`flex h-7 w-7 items-center justify-center rounded-sm text-xs font-medium transition-all duration-150 sm:h-8 sm:w-8 md:h-6 md:w-6 ${bgClass} ${textClass} ${borderClass} ${isPlayed ? 'cursor-pointer hover:scale-110' : 'cursor-default opacity-60'}`}
+        title={isPlayed ? `Maç ${matchNum}: ${dates[i] || ''}` : `Maç ${matchNum} (oynanmadı)`}
+      >
+        {matchNum}
+      </button>,
+    );
+  }
+
+  const viewingText = selectedIndex === null || selectedIndex >= played ? `Güncel (${played} maç)` : `Maç ${selectedIndex} sonrası`;
+
+  return (
+    <div className="flex flex-col items-center gap-2 py-3">
+      <div className="flex flex-wrap justify-center gap-1 sm:gap-1.5">{squares}</div>
+      <div className="text-xs text-gray-500">
+        {played} / {total} maç oynandı · <span className="font-medium text-purple-600">{gamesLeft} maç kaldı</span>
+      </div>
+      <div className="text-xs text-gray-500">
+        Görüntülenen: <span className="font-medium text-purple-600">{viewingText}</span>
+      </div>
+      {selectedIndex !== null && selectedIndex < played && (
+        <button type="button" onClick={() => onSelectIndex(null)} className="text-xs text-purple-500 underline hover:text-purple-700">
+          Güncel duruma dön
+        </button>
+      )}
     </div>
   );
 }
@@ -161,8 +222,11 @@ export default function SuperligaClient({
     return sortDatesDesc(filtered);
   }, [sonmacByDate, seasonStart]);
 
+  const seasonLength = effectiveConfig.seasonLength && effectiveConfig.seasonLength > 0 ? effectiveConfig.seasonLength : 15;
+
   const [activeTab, setActiveTab] = useState<ActiveTab>('standings');
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
+  const [selectedProgressIndex, setSelectedProgressIndex] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [captainDraftSteamIds, setCaptainDraftSteamIds] = useState<Record<TeamKey, string>>({ team1: '', team2: '' });
   const [captainDraftDirty, setCaptainDraftDirty] = useState<Record<TeamKey, boolean>>({ team1: false, team2: false });
@@ -186,21 +250,37 @@ export default function SuperligaClient({
   }, [captainsByDate, effectiveConfig, playersIndex, seasonStart, sonmacByDate]);
 
   const totalPlayedNights = standingsData?.datesIncluded?.length ?? 0;
+  const effectiveProgressIndex = selectedProgressIndex === null ? null : Math.min(selectedProgressIndex, totalPlayedNights);
 
-  const previousStandingsData = useMemo(() => {
-    if (totalPlayedNights <= 1) return null;
+  // Standings as of the selected night (history viewing). Null/last → current.
+  const filteredStandingsData = useMemo(() => {
+    if (effectiveProgressIndex === null || effectiveProgressIndex >= totalPlayedNights) return standingsData;
     return computeSuperligaStandings({
       config: effectiveConfig,
       sonmacByDate,
       captainsByDate,
       seasonStart,
       playersIndex,
-      upToNight: totalPlayedNights - 1,
+      upToNight: effectiveProgressIndex,
     });
-  }, [captainsByDate, effectiveConfig, playersIndex, seasonStart, sonmacByDate, totalPlayedNights]);
+  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, playersIndex, seasonStart, sonmacByDate, standingsData, totalPlayedNights]);
+
+  // The night before the currently-viewed one, for position-change arrows.
+  const previousStandingsData = useMemo(() => {
+    const currentNightCount = effectiveProgressIndex ?? totalPlayedNights;
+    if (currentNightCount <= 1) return null;
+    return computeSuperligaStandings({
+      config: effectiveConfig,
+      sonmacByDate,
+      captainsByDate,
+      seasonStart,
+      playersIndex,
+      upToNight: currentNightCount - 1,
+    });
+  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, playersIndex, seasonStart, sonmacByDate, totalPlayedNights]);
 
   const standingsWithChange = useMemo(() => {
-    const rows = standingsData?.league?.standings || [];
+    const rows = filteredStandingsData?.league?.standings || [];
     const prevMap = new Map<string, number>();
     previousStandingsData?.league?.standings?.forEach((player, idx) => prevMap.set(player.steamId, idx));
 
@@ -211,7 +291,7 @@ export default function SuperligaClient({
       else if (prevIdx !== undefined) positionChange = idx < prevIdx ? 'up' : idx > prevIdx ? 'down' : 'same';
       return { ...player, positionChange };
     });
-  }, [standingsData, previousStandingsData]);
+  }, [filteredStandingsData, previousStandingsData]);
 
   const rawDates = useMemo(() => sortDatesDesc(standingsData?.datesIncluded || []), [standingsData]);
 
@@ -310,7 +390,15 @@ export default function SuperligaClient({
 
       {activeTab === 'standings' && (
         <div className="rounded border p-3">
-          <div className="mb-2 text-sm text-gray-500">{totalPlayedNights} gece oynandı</div>
+          {totalPlayedNights > 0 && (
+            <SeasonProgressBar
+              played={totalPlayedNights}
+              total={seasonLength}
+              selectedIndex={selectedProgressIndex}
+              onSelectIndex={setSelectedProgressIndex}
+              dates={standingsData?.datesIncluded || []}
+            />
+          )}
           {(effectiveConfig.leagues?.[0]?.players || []).length === 0 ? (
             <div className="text-sm text-gray-700">Oyuncular tanımlı değil.</div>
           ) : (
@@ -324,7 +412,8 @@ export default function SuperligaClient({
                     <th className="px-2 py-2 text-right font-semibold text-gray-800" title="Oynanan gece">Gece</th>
                     <th className="hidden px-2 py-2 text-right font-semibold text-gray-800 sm:table-cell" title="Kazanılan / oynanan harita">Harita</th>
                     <th className="hidden px-2 py-2 text-right font-semibold text-gray-800 sm:table-cell" title="Kaptanlık gecesi">Kpt.</th>
-                    <th className="px-2 py-2 text-right font-semibold text-gray-800">Puan</th>
+                    <th className="hidden px-2 py-2 text-right font-semibold text-gray-800 sm:table-cell" title="Toplam puan">Top.</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-800" title="Gece başına ortalama puan">Ort.</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -350,11 +439,12 @@ export default function SuperligaClient({
                           <td className="px-2 py-2 text-right">{player.nightsPlayed}</td>
                           <td className="hidden px-2 py-2 text-right font-mono text-xs sm:table-cell">{player.mapsWon}/{player.mapsPlayed}</td>
                           <td className="hidden px-2 py-2 text-right sm:table-cell">{player.captainNights}</td>
-                          <td className="px-2 py-2 text-right font-mono font-semibold text-purple-700">{player.totalPoints}</td>
+                          <td className="hidden px-2 py-2 text-right font-mono text-xs text-gray-500 sm:table-cell">{player.totalPoints}</td>
+                          <td className="px-2 py-2 text-right font-mono font-semibold text-purple-700">{player.avgPoints.toFixed(1)}</td>
                         </tr>
                         {isExpanded && player.nightBreakdown.length > 0 && (
                           <tr className="border-t bg-gray-50">
-                            <td colSpan={7} className="px-3 py-2">
+                            <td colSpan={8} className="px-3 py-2">
                               <table className="w-full text-xs">
                                 <thead className="text-gray-500">
                                   <tr>
@@ -407,6 +497,7 @@ export default function SuperligaClient({
                       </th>
                     ))}
                     <th className="px-3 py-2 text-right font-semibold text-gray-800">Toplam</th>
+                    <th className="px-3 py-2 text-right font-semibold text-gray-800">Ort.</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -429,7 +520,8 @@ export default function SuperligaClient({
                             </td>
                           );
                         })}
-                        <td className="px-3 py-2 text-right font-mono font-semibold text-purple-700">{player.totalPoints}</td>
+                        <td className="px-3 py-2 text-right font-mono font-semibold text-gray-700">{player.totalPoints}</td>
+                        <td className="px-3 py-2 text-right font-mono font-semibold text-purple-700">{player.avgPoints.toFixed(1)}</td>
                       </tr>
                     );
                   })}

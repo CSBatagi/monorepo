@@ -34,6 +34,7 @@ export { buildPlayersIndex, displayNameForSteamId, deriveTeamsForDate, getMainLe
 export type SuperligaConfig = {
   version: number;
   seasonStart?: string;
+  seasonLength?: number;
   scoring: {
     winPoints: number;
     captainBonus: number;
@@ -87,7 +88,8 @@ export type SuperligaPlayerStanding = {
   mapsPlayed: number;
   mapsWon: number;
   captainNights: number;
-  totalPoints: number;
+  totalPoints: number;     // tüm gecelerin toplam puanı (referans için)
+  avgPoints: number;       // gece başına ortalama puan (sıralama bu puana göre)
   nightBreakdown: SuperligaNightEntry[];
   positionChange?: 'up' | 'down' | 'same' | 'new';
 };
@@ -245,29 +247,29 @@ export function computeSuperligaStandings(params: {
       nightBreakdown.push({ date, isCaptain, captainBonus, mapPoints, points, maps });
     }
 
-    // Kaptanlık yaptığı ama maç oynamadığı (kadroda görünmediği) geceler için de bonus ekle
-    for (const date of captainDates) {
-      if (byDate && byDate.has(date)) continue;
-      const captainBonus = scoring.captainBonus;
-      totalPoints += captainBonus;
-      nightBreakdown.push({ date, isCaptain: true, captainBonus, mapPoints: 0, points: captainBonus, maps: [] });
-    }
     nightBreakdown.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+    const nightsPlayed = nightDates.length;
+    // Ortalama: gece başına puan (toplam değil). Oynamayan oyuncu 0 alır.
+    const avgPoints = nightsPlayed > 0 ? totalPoints / nightsPlayed : 0;
+    // Kaptanlık bonusu sadece oynanan gecelere uygulanır.
+    const captainNights = nightDates.filter((d) => captainDates.has(d)).length;
 
     standings.push({
       steamId,
       name,
-      nightsPlayed: nightDates.length,
+      nightsPlayed,
       mapsPlayed,
       mapsWon,
-      captainNights: captainDates.size,
+      captainNights,
       totalPoints,
+      avgPoints,
       nightBreakdown,
     });
   }
 
   standings.sort((a, b) => {
-    if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+    if (b.avgPoints !== a.avgPoints) return b.avgPoints - a.avgPoints;
     if (b.mapsWon !== a.mapsWon) return b.mapsWon - a.mapsWon;
     return a.name.localeCompare(b.name, 'tr');
   });

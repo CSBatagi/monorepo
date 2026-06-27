@@ -1,6 +1,7 @@
 {
   "version": 1,
   "seasonStart": "2026-06-22",
+  "seasonLength": 15,
   "scoring": {
     "winPoints": 15,
     "captainBonus": 5,
