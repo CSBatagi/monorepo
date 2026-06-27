@@ -7,6 +7,7 @@ import { SessionProvider } from "@/contexts/SessionContext";
 import AdminStatsButton from "@/components/AdminStatsButton";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import AutoPushRegistration from "@/components/AutoPushRegistration";
+import PullToRefresh from "@/components/PullToRefresh";
 
 export default function Providers({ children }: { children: ReactNode }) {
   const content = (
@@ -20,6 +21,7 @@ export default function Providers({ children }: { children: ReactNode }) {
       <SessionProvider>
         <NotificationProvider>
           <AutoPushRegistration />
+          <PullToRefresh />
           <Layout>
             {content}
             <AdminStatsButton />
