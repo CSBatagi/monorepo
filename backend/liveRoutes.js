@@ -654,6 +654,92 @@ router.post('/superliga-captains/set', async (req, res) => {
   }
 });
 
+// ─── Superliga Manuel Maç Sonucu Override'ları ───────────────────────────────
+
+router.get('/superliga-map-overrides', async (req, res) => {
+  try {
+    const clientVersion = parseInt(req.query.v) || 0;
+    const serverVersion = await getVersion('superliga_map_overrides');
+    if (clientVersion && clientVersion >= serverVersion) {
+      return res.status(304).end();
+    }
+
+    const rows = await pool.query(
+      `SELECT date, map_name, team1_name, team1_score, team2_name, team2_score, set_by_uid, set_by_name, set_at FROM superliga_map_overrides ORDER BY date, map_name`
+    );
+
+    const overridesByDate = {};
+    for (const r of rows.rows) {
+      if (!overridesByDate[r.date]) overridesByDate[r.date] = [];
+      overridesByDate[r.date].push({
+        date: r.date,
+        mapName: r.map_name,
+        team1Name: r.team1_name || undefined,
+        team1Score: r.team1_score,
+        team2Name: r.team2_name || undefined,
+        team2Score: r.team2_score,
+        setByUid: r.set_by_uid || undefined,
+        setByName: r.set_by_name || undefined,
+        setAt: r.set_at ? Number(r.set_at) : undefined,
+      });
+    }
+
+    res.json({ version: serverVersion, overridesByDate });
+  } catch (e) {
+    console.error('[live/superliga-map-overrides GET]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/superliga-map-overrides/set', async (req, res) => {
+  try {
+    const { date, mapName, team1Name, team1Score, team2Name, team2Score, setByUid, setByName, setAt } = req.body;
+    if (!date || !mapName) {
+      return res.status(400).json({ error: 'date, mapName required' });
+    }
+    const s1 = Number(team1Score);
+    const s2 = Number(team2Score);
+    if (!Number.isInteger(s1) || !Number.isInteger(s2) || s1 < 0 || s2 < 0) {
+      return res.status(400).json({ error: 'team1Score and team2Score must be non-negative integers' });
+    }
+
+    await pool.query(
+      `INSERT INTO superliga_map_overrides (date, map_name, team1_name, team1_score, team2_name, team2_score, set_by_uid, set_by_name, set_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+       ON CONFLICT (date, map_name) DO UPDATE SET
+         team1_name = $3, team1_score = $4, team2_name = $5, team2_score = $6,
+         set_by_uid = $7, set_by_name = $8, set_at = $9,
+         updated_at = NOW()`,
+      [date, mapName, team1Name || null, s1, team2Name || null, s2, setByUid || null, setByName || null, setAt || null]
+    );
+
+    await bumpVersion('superliga_map_overrides');
+    const version = await getVersion('superliga_map_overrides');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/superliga-map-overrides/set POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/superliga-map-overrides/delete', async (req, res) => {
+  try {
+    const { date, mapName } = req.body;
+    if (!date || !mapName) {
+      return res.status(400).json({ error: 'date, mapName required' });
+    }
+
+    await pool.query(`DELETE FROM superliga_map_overrides WHERE date = $1 AND map_name = $2`, [date, mapName]);
+
+    await bumpVersion('superliga_map_overrides');
+    const version = await getVersion('superliga_map_overrides');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/superliga-map-overrides/delete POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Batak Super Kupa ────────────────────────────────────────────────────────
 
 router.get('/batak-super-kupa', async (req, res) => {

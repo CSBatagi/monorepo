@@ -117,6 +117,27 @@ export function setSuperligaCaptain(fields: {
   return livePost('superliga-captains', { action: 'set', ...fields });
 }
 
+export function setSuperligaMapOverride(fields: {
+  date: string;
+  mapName: string;
+  team1Name?: string;
+  team1Score: number;
+  team2Name?: string;
+  team2Score: number;
+  setByUid?: string;
+  setByName?: string;
+  setAt?: number;
+}) {
+  return livePost('superliga-map-overrides', { action: 'set', ...fields });
+}
+
+export function deleteSuperligaMapOverride(fields: {
+  date: string;
+  mapName: string;
+}) {
+  return livePost('superliga-map-overrides', { action: 'delete', ...fields });
+}
+
 // --- Super Kupa ---
 
 export function setSuperKupaMatch(fields: {

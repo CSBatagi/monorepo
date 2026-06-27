@@ -4,13 +4,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useSession } from '@/contexts/SessionContext';
 import { useLivePolling } from '@/lib/useLivePolling';
 import { useStatsRefresh } from '@/lib/useStatsRefresh';
-import { setSuperligaCaptain } from '@/lib/liveApi';
+import { setSuperligaCaptain, setSuperligaMapOverride, deleteSuperligaMapOverride } from '@/lib/liveApi';
 import { getDateKeyedPeriodData, isDateKeyedPeriodPayload } from '@/lib/statsPeriods';
 import {
   ArrowDown,
   ArrowUp,
   Circle,
   Crown,
+  PlusCircle,
   Sparkles,
   Star,
   Trophy,
@@ -23,11 +24,15 @@ import type {
 } from '@/lib/batakAllStars';
 import {
   buildPlayersIndex,
+  computeMapPoints,
   computeSuperligaStandings,
+  deriveMainLeagueTeamsForDate,
   deriveTeamsForDate,
   displayNameForSteamId,
   DEFAULT_SUPERLIGA_SCORING,
   type SuperligaConfig,
+  type SuperligaMapOverride,
+  type SuperligaMapOverridesByDate,
   type SuperligaNightEntry,
   type SuperligaPlayerStanding,
 } from '@/lib/superliga';
@@ -35,7 +40,7 @@ import {
 const CLEAR_ATTENDANCE_PASSWORD = process.env.NEXT_PUBLIC_CLEAR_ATTENDANCE_PASSWORD || 'osirikler';
 
 type TeamKey = 'team1' | 'team2';
-type ActiveTab = 'standings' | 'raw' | 'kaptanlik';
+type ActiveTab = 'standings' | 'raw' | 'kaptanlik' | 'overrides';
 
 function sortDatesDesc(dates: string[]): string[] {
   return [...dates].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
@@ -158,12 +163,262 @@ function NightMapsDetail({ entry }: { entry: SuperligaNightEntry }) {
         <span
           key={`${mp.mapName}-${i}`}
           className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] ${mp.won ? 'bg-green-100 text-green-800' : mp.points > 0 ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-500'}`}
-          title={`${mp.mapName} ${mp.scoreFor}-${mp.scoreAgainst}${mp.overtimes ? ` (${mp.overtimes} uzatma)` : ''}`}
+          title={`${mp.mapName} ${mp.scoreFor}-${mp.scoreAgainst}${mp.overtimes ? ` (${mp.overtimes} uzatma)` : ''}${mp.manual ? ' · elle eklendi' : ''}`}
         >
+          {mp.manual && <PlusCircle className="h-3 w-3 text-purple-500" />}
           {mp.mapName.replace(/^de_/, '')} {mp.scoreFor}-{mp.scoreAgainst}
+          {mp.overtimes > 0 && <span className="rounded bg-orange-200 px-1 text-[9px] font-semibold text-orange-800">{mp.overtimes} OT</span>}
           <span className="font-mono font-semibold">+{mp.points}</span>
         </span>
       ))}
+    </div>
+  );
+}
+
+function MapOverridePanel({
+  config,
+  availableDates,
+  sonmacByDate,
+  mapOverrides,
+  user,
+  onSaved,
+}: {
+  config: SuperligaConfig;
+  availableDates: string[];
+  sonmacByDate: SonmacByDate;
+  mapOverrides: SuperligaMapOverridesByDate | null;
+  user: ReturnType<typeof useSession>['user'];
+  onSaved: () => Promise<void> | void;
+}) {
+  const scoring = config.scoring || DEFAULT_SUPERLIGA_SCORING;
+  const [date, setDate] = useState('');
+  const [mapName, setMapName] = useState('');
+  const [score1, setScore1] = useState('');
+  const [score2, setScore2] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!date && availableDates.length) setDate(availableDates[0]);
+  }, [availableDates, date]);
+
+  const teams = useMemo(() => (date ? deriveMainLeagueTeamsForDate(sonmacByDate || {}, date) : null), [date, sonmacByDate]);
+  const team1Name = teams?.team1Name || 'Takım 1';
+  const team2Name = teams?.team2Name || 'Takım 2';
+
+  const dateOverrides = useMemo(() => (date ? mapOverrides?.[date] || [] : []), [date, mapOverrides]);
+
+  const preview = useMemo(() => {
+    const s1 = Number(score1);
+    const s2 = Number(score2);
+    if (!Number.isInteger(s1) || !Number.isInteger(s2) || s1 < 0 || s2 < 0) return null;
+    const r1 = computeMapPoints(s1, s2, scoring);
+    const r2 = computeMapPoints(s2, s1, scoring);
+    if (!r1 || !r2) return null;
+    return { r1, r2, overtimes: r1.overtimes };
+  }, [score1, score2, scoring]);
+
+  const resetForm = () => {
+    setMapName('');
+    setScore1('');
+    setScore2('');
+  };
+
+  const handleEdit = (ov: SuperligaMapOverride) => {
+    setMapName(ov.mapName);
+    // Align stored scores to the night's team1/team2 orientation for display
+    if (ov.team1Name && ov.team2Name && ov.team1Name === team2Name && ov.team2Name === team1Name) {
+      setScore1(String(ov.team2Score));
+      setScore2(String(ov.team1Score));
+    } else {
+      setScore1(String(ov.team1Score));
+      setScore2(String(ov.team2Score));
+    }
+    setMsg(null);
+  };
+
+  const handleSave = async () => {
+    if (!user) {
+      setMsg('Giriş yapmanız gerekiyor.');
+      return;
+    }
+    if (!date || !mapName.trim()) {
+      setMsg('Tarih ve harita adı gerekli.');
+      return;
+    }
+    const s1 = Number(score1);
+    const s2 = Number(score2);
+    if (!Number.isInteger(s1) || !Number.isInteger(s2) || s1 < 0 || s2 < 0) {
+      setMsg('Geçerli skorlar girin (negatif olmayan tam sayı).');
+      return;
+    }
+    if (s1 === s2) {
+      setMsg('Skorlar eşit olamaz (haritada berabere olmaz).');
+      return;
+    }
+    if (!teams) {
+      setMsg('Bu gece için takım kadrosu bulunamadı; en az bir gerçek harita gerekli.');
+      return;
+    }
+
+    const password = window.prompt('Maç sonucu eklemek için şifre girin:');
+    if (password !== CLEAR_ATTENDANCE_PASSWORD) {
+      setMsg('Hatalı şifre.');
+      return;
+    }
+
+    setSaving(true);
+    setMsg(null);
+    try {
+      await setSuperligaMapOverride({
+        date,
+        mapName: mapName.trim(),
+        team1Name,
+        team1Score: s1,
+        team2Name,
+        team2Score: s2,
+        setByUid: user.uid,
+        setByName: user.name || user.email || '',
+        setAt: Date.now(),
+      });
+      setMsg('Maç sonucu kaydedildi.');
+      resetForm();
+      await onSaved();
+    } catch (error: unknown) {
+      setMsg(`Hata: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (ov: SuperligaMapOverride) => {
+    const password = window.prompt('Silmek için şifre girin:');
+    if (password !== CLEAR_ATTENDANCE_PASSWORD) return;
+    setSaving(true);
+    try {
+      await deleteSuperligaMapOverride({ date: ov.date, mapName: ov.mapName });
+      await onSaved();
+      setMsg('Silindi.');
+    } catch (error: unknown) {
+      setMsg(`Hata: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="rounded border border-slate-200 bg-slate-50 p-4 shadow-sm">
+        <p className="text-sm text-gray-700">Manuel maç sonucu eklemek için giriş yapmalısınız.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded border border-slate-200 bg-slate-50 p-4 shadow-sm">
+      <h4 className="mb-1 flex items-center gap-1 font-semibold text-gray-800"><PlusCircle className="h-4 w-4" />Eksik Maç Sonucu Ekle (Admin)</h4>
+      <p className="mb-3 text-xs text-gray-500">
+        Bazı gecelerde bazı haritaların sonuçları eksik olabilir. Buradan elle ekleyebilirsiniz; lig hesabına dahil edilir.
+        Uzatmaya giden skorlar otomatik algılanır ve ek teselli puanı verilir.
+      </p>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <div>
+          <label className="mb-1 block text-xs text-gray-600">Tarih</label>
+          <select
+            value={date}
+            onChange={(e) => { setDate(e.target.value); setMsg(null); resetForm(); }}
+            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800 shadow-sm"
+          >
+            {availableDates.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-gray-600">Harita</label>
+          <input
+            type="text"
+            value={mapName}
+            onChange={(e) => { setMapName(e.target.value); setMsg(null); }}
+            placeholder="de_mirage"
+            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800 shadow-sm"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block max-w-[120px] truncate text-xs text-gray-600" title={team1Name}>{team1Name}</label>
+          <input
+            type="number" min={0}
+            value={score1}
+            onChange={(e) => { setScore1(e.target.value); setMsg(null); }}
+            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800 shadow-sm"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block max-w-[120px] truncate text-xs text-gray-600" title={team2Name}>{team2Name}</label>
+          <input
+            type="number" min={0}
+            value={score2}
+            onChange={(e) => { setScore2(e.target.value); setMsg(null); }}
+            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800 shadow-sm"
+          />
+        </div>
+        <div className="flex items-end">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full rounded bg-purple-600 px-3 py-1.5 text-sm text-white shadow-sm transition-colors hover:bg-purple-700 disabled:opacity-50"
+          >
+            {saving ? 'Kaydediliyor...' : 'Kaydet'}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3 rounded border border-purple-100 bg-white px-3 py-2 text-sm text-gray-700">
+        {preview ? (
+          <span>
+            <span className="font-medium">Önizleme: </span>
+            {team1Name} {preview.r1.won ? 'kazanır' : 'kaybeder'} (+{preview.r1.points}), {team2Name} {preview.r2.won ? 'kazanır' : 'kaybeder'} (+{preview.r2.points}).
+            {preview.overtimes > 0 && (
+              <span className="ml-1 font-medium text-orange-700">{preview.overtimes} uzatma — kaybeden takıma teselli puanı.</span>
+            )}
+          </span>
+        ) : (
+          <span className="text-gray-500">Skorları girince puan önizlemesi ve uzatma tespiti burada görünür.</span>
+        )}
+      </div>
+
+      {msg && (
+        <p className={`mt-3 text-sm ${msg.startsWith('Hata') ? 'text-red-600' : 'text-green-600'}`}>{msg}</p>
+      )}
+
+      {dateOverrides.length > 0 && (
+        <div className="mt-4">
+          <h5 className="mb-2 text-sm font-medium text-gray-700">{date} — Elle Eklenen Maçlar ({dateOverrides.length})</h5>
+          <div className="space-y-1">
+            {dateOverrides.map((ov) => {
+              const r = computeMapPoints(Number(ov.team1Score), Number(ov.team2Score), scoring);
+              return (
+                <div key={ov.mapName} className="flex items-center justify-between rounded border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <PlusCircle className="h-3.5 w-3.5 text-purple-500" />
+                    <span className="font-medium">{ov.mapName}</span>
+                    <span className="text-gray-600">{ov.team1Name} {ov.team1Score} - {ov.team2Score} {ov.team2Name}</span>
+                    {r && r.overtimes > 0 && (
+                      <span className="rounded bg-orange-200 px-1.5 py-0.5 text-[10px] font-semibold text-orange-800">{r.overtimes} uzatma</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => handleEdit(ov)} className="text-xs text-blue-500 hover:text-blue-700">Düzenle</button>
+                    <button type="button" onClick={() => handleDelete(ov)} className="text-xs text-red-400 hover:text-red-600" title="Sil">×</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -216,6 +471,13 @@ export default function SuperligaClient({
   });
   const captainsByDate = captainsData.captainsByDate || null;
 
+  const { data: overridesData, refetch: refetchOverrides } = useLivePolling<{ overridesByDate: SuperligaMapOverridesByDate }>({
+    url: '/api/live/superliga-map-overrides',
+    intervalMs: 5000,
+    initialData: { overridesByDate: {} },
+  });
+  const mapOverrides = overridesData.overridesByDate || null;
+
   const availableDates = useMemo(() => {
     const dates = Object.keys(sonmacByDate || {});
     const filtered = seasonStart ? dates.filter((date) => date >= seasonStart) : dates;
@@ -244,10 +506,11 @@ export default function SuperligaClient({
       config: effectiveConfig,
       sonmacByDate,
       captainsByDate,
+      mapOverrides,
       seasonStart,
       playersIndex,
     });
-  }, [captainsByDate, effectiveConfig, playersIndex, seasonStart, sonmacByDate]);
+  }, [captainsByDate, mapOverrides, effectiveConfig, playersIndex, seasonStart, sonmacByDate]);
 
   const totalPlayedNights = standingsData?.datesIncluded?.length ?? 0;
   const effectiveProgressIndex = selectedProgressIndex === null ? null : Math.min(selectedProgressIndex, totalPlayedNights);
@@ -259,11 +522,12 @@ export default function SuperligaClient({
       config: effectiveConfig,
       sonmacByDate,
       captainsByDate,
+      mapOverrides,
       seasonStart,
       playersIndex,
       upToNight: effectiveProgressIndex,
     });
-  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, playersIndex, seasonStart, sonmacByDate, standingsData, totalPlayedNights]);
+  }, [captainsByDate, mapOverrides, effectiveConfig, effectiveProgressIndex, playersIndex, seasonStart, sonmacByDate, standingsData, totalPlayedNights]);
 
   // The night before the currently-viewed one, for position-change arrows.
   const previousStandingsData = useMemo(() => {
@@ -273,11 +537,12 @@ export default function SuperligaClient({
       config: effectiveConfig,
       sonmacByDate,
       captainsByDate,
+      mapOverrides,
       seasonStart,
       playersIndex,
       upToNight: currentNightCount - 1,
     });
-  }, [captainsByDate, effectiveConfig, effectiveProgressIndex, playersIndex, seasonStart, sonmacByDate, totalPlayedNights]);
+  }, [captainsByDate, mapOverrides, effectiveConfig, effectiveProgressIndex, playersIndex, seasonStart, sonmacByDate, totalPlayedNights]);
 
   const standingsWithChange = useMemo(() => {
     const rows = filteredStandingsData?.league?.standings || [];
@@ -376,6 +641,7 @@ export default function SuperligaClient({
           { key: 'standings', label: 'Puan Durumu' },
           { key: 'raw', label: 'Ham Veri' },
           { key: 'kaptanlik', label: 'Kaptan Atama' },
+          { key: 'overrides', label: 'Eksik Maç Ekle' },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -592,6 +858,17 @@ export default function SuperligaClient({
 
           {message && <p className="text-sm text-amber-600">{message}</p>}
         </div>
+      )}
+
+      {activeTab === 'overrides' && (
+        <MapOverridePanel
+          config={effectiveConfig}
+          availableDates={availableDates}
+          sonmacByDate={sonmacByDate}
+          mapOverrides={mapOverrides}
+          user={user}
+          onSaved={refetchOverrides}
+        />
       )}
     </div>
   );
