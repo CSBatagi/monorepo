@@ -138,6 +138,28 @@ export function deleteSuperligaMapOverride(fields: {
   return livePost('superliga-map-overrides', { action: 'delete', ...fields });
 }
 
+// --- Superliga Manuel Geceler (demo olmayan, tamamen elle girilen geceler) ---
+
+export function setSuperligaManualNight(fields: {
+  date: string;
+  team1Name?: string;
+  team2Name?: string;
+  team1Players: Array<{ steamId: string; name?: string }>;
+  team2Players: Array<{ steamId: string; name?: string }>;
+  maps: Array<{ mapName: string; team1Score: number; team2Score: number }>;
+  setByUid?: string;
+  setByName?: string;
+  setAt?: number;
+}) {
+  return livePost('superliga-manual-nights', { action: 'set', ...fields });
+}
+
+export function deleteSuperligaManualNight(fields: {
+  date: string;
+}) {
+  return livePost('superliga-manual-nights', { action: 'delete', ...fields });
+}
+
 // --- Super Kupa ---
 
 export function setSuperKupaMatch(fields: {
