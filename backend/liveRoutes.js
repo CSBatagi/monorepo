@@ -740,6 +740,130 @@ router.post('/superliga-map-overrides/delete', async (req, res) => {
   }
 });
 
+// ─── Superliga Tamamen Manuel Geceler ────────────────────────────────────────
+// Demo/istatistik olmayan geceler (ör. sadece oyun gecesi) için takım kadroları
+// ve harita skorları elle girilir; lig hesabına dahil edilir.
+
+function normalizeManualPlayers(arr) {
+  return (Array.isArray(arr) ? arr : [])
+    .map((p) => ({
+      steamId: String(p?.steamId || '').trim(),
+      name: p?.name != null ? String(p.name) : undefined,
+    }))
+    .filter((p) => p.steamId);
+}
+
+function normalizeManualMaps(arr) {
+  return (Array.isArray(arr) ? arr : [])
+    .map((m) => ({
+      mapName: String(m?.mapName || '').trim(),
+      team1Score: Number(m?.team1Score),
+      team2Score: Number(m?.team2Score),
+    }))
+    .filter(
+      (m) =>
+        m.mapName &&
+        Number.isInteger(m.team1Score) &&
+        Number.isInteger(m.team2Score) &&
+        m.team1Score >= 0 &&
+        m.team2Score >= 0
+    );
+}
+
+router.get('/superliga-manual-nights', async (req, res) => {
+  try {
+    const clientVersion = parseInt(req.query.v) || 0;
+    const serverVersion = await getVersion('superliga_manual_nights');
+    if (clientVersion && clientVersion >= serverVersion) {
+      return res.status(304).end();
+    }
+
+    const rows = await pool.query(
+      `SELECT date, team1_name, team2_name, team1_players, team2_players, maps, set_by_uid, set_by_name, set_at FROM superliga_manual_nights ORDER BY date`
+    );
+
+    const manualNightsByDate = {};
+    for (const r of rows.rows) {
+      manualNightsByDate[r.date] = {
+        date: r.date,
+        team1Name: r.team1_name || undefined,
+        team2Name: r.team2_name || undefined,
+        team1Players: Array.isArray(r.team1_players) ? r.team1_players : [],
+        team2Players: Array.isArray(r.team2_players) ? r.team2_players : [],
+        maps: Array.isArray(r.maps) ? r.maps : [],
+        setByUid: r.set_by_uid || undefined,
+        setByName: r.set_by_name || undefined,
+        setAt: r.set_at ? Number(r.set_at) : undefined,
+      };
+    }
+
+    res.json({ version: serverVersion, manualNightsByDate });
+  } catch (e) {
+    console.error('[live/superliga-manual-nights GET]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/superliga-manual-nights/set', async (req, res) => {
+  try {
+    const { date, team1Name, team2Name, team1Players, team2Players, maps, setByUid, setByName, setAt } = req.body;
+    if (!date) {
+      return res.status(400).json({ error: 'date required' });
+    }
+    const t1 = normalizeManualPlayers(team1Players);
+    const t2 = normalizeManualPlayers(team2Players);
+    const normMaps = normalizeManualMaps(maps);
+    if (!normMaps.length) {
+      return res.status(400).json({ error: 'at least one valid map (non-negative integer scores) required' });
+    }
+
+    await pool.query(
+      `INSERT INTO superliga_manual_nights (date, team1_name, team2_name, team1_players, team2_players, maps, set_by_uid, set_by_name, set_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+       ON CONFLICT (date) DO UPDATE SET
+         team1_name = $2, team2_name = $3, team1_players = $4, team2_players = $5, maps = $6,
+         set_by_uid = $7, set_by_name = $8, set_at = $9,
+         updated_at = NOW()`,
+      [
+        date,
+        team1Name || null,
+        team2Name || null,
+        JSON.stringify(t1),
+        JSON.stringify(t2),
+        JSON.stringify(normMaps),
+        setByUid || null,
+        setByName || null,
+        setAt || null,
+      ]
+    );
+
+    await bumpVersion('superliga_manual_nights');
+    const version = await getVersion('superliga_manual_nights');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/superliga-manual-nights/set POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/superliga-manual-nights/delete', async (req, res) => {
+  try {
+    const { date } = req.body;
+    if (!date) {
+      return res.status(400).json({ error: 'date required' });
+    }
+
+    await pool.query(`DELETE FROM superliga_manual_nights WHERE date = $1`, [date]);
+
+    await bumpVersion('superliga_manual_nights');
+    const version = await getVersion('superliga_manual_nights');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/superliga-manual-nights/delete POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Batak Super Kupa ────────────────────────────────────────────────────────
 
 router.get('/batak-super-kupa', async (req, res) => {

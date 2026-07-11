@@ -92,6 +92,81 @@ export type SuperligaMapOverride = {
 
 export type SuperligaMapOverridesByDate = Record<string, SuperligaMapOverride[]>;
 
+// ── Tamamen manuel gece ────────────────────────────────────────────────────────
+// Bazı geceler (ör. sadece oyun gecesi) hiç demo/istatistik üretmez. Bu geceler
+// için admin, takım kadrolarını ve harita skorlarını tamamen elle girer; lig
+// hesabına normal bir gece gibi dahil edilir. (Override'lardan farkı: burada
+// kadro bilgisi de elle verilir, çünkü çıkarılacak sonmac verisi yoktur.)
+
+export type SuperligaManualMap = {
+  mapName: string;
+  team1Score: number;
+  team2Score: number;
+};
+
+export type SuperligaManualNight = {
+  date: string;
+  team1Name?: string;
+  team2Name?: string;
+  team1Players: Array<{ steamId: string; name?: string }>;
+  team2Players: Array<{ steamId: string; name?: string }>;
+  maps: SuperligaManualMap[];
+  setByUid?: string;
+  setByName?: string;
+  setAt?: number;
+};
+
+export type SuperligaManualNightsByDate = Record<string, SuperligaManualNight>;
+
+// ── Takım kadrosu çıkarımı (demo veya manuel) ──────────────────────────────────
+// Bir gecenin takımlarını önce sonmac (demo) verisinden çıkarmaya çalışır; yoksa
+// elle girilen manuel geceden döndürür. Kaptan atama gibi UI akışları her iki
+// gece türüyle de çalışabilsin diye tek noktadan derlenir.
+
+export type SuperligaDerivedTeams = {
+  team1Name: string;
+  team2Name: string;
+  team1Players: Array<{ steamId: string; name?: string }>;
+  team2Players: Array<{ steamId: string; name?: string }>;
+  mapWinsTeam1: number;
+  mapWinsTeam2: number;
+  manual: boolean;
+};
+
+export function deriveSuperligaTeamsForDate(
+  sonmacByDate: SonmacByDate,
+  manualNights: SuperligaManualNightsByDate | null | undefined,
+  date: string,
+): SuperligaDerivedTeams | null {
+  const demo = deriveMainLeagueTeamsForDate(sonmacByDate, date);
+  if (demo) return { ...demo, manual: false };
+
+  const mn = manualNights?.[date];
+  if (mn) {
+    let mapWinsTeam1 = 0;
+    let mapWinsTeam2 = 0;
+    for (const m of mn.maps || []) {
+      const s1 = Number(m.team1Score);
+      const s2 = Number(m.team2Score);
+      if (Number.isFinite(s1) && Number.isFinite(s2)) {
+        if (s1 > s2) mapWinsTeam1 += 1;
+        else if (s2 > s1) mapWinsTeam2 += 1;
+      }
+    }
+    return {
+      team1Name: mn.team1Name || 'Takım 1',
+      team2Name: mn.team2Name || 'Takım 2',
+      team1Players: (mn.team1Players || []).map((p) => ({ steamId: String(p.steamId || '').trim(), name: p.name })),
+      team2Players: (mn.team2Players || []).map((p) => ({ steamId: String(p.steamId || '').trim(), name: p.name })),
+      mapWinsTeam1,
+      mapWinsTeam2,
+      manual: true,
+    };
+  }
+
+  return null;
+}
+
 export type SuperligaNightEntry = {
   date: string;
   isCaptain: boolean;
@@ -151,6 +226,7 @@ export function computeSuperligaStandings(params: {
   sonmacByDate: SonmacByDate;
   captainsByDate: CaptainsByDateSnapshot | null;
   mapOverrides?: SuperligaMapOverridesByDate | null;
+  manualNights?: SuperligaManualNightsByDate | null;
   seasonStart: string | null;
   playersIndex: PlayersIndex;
   upToNight?: number;
@@ -159,7 +235,7 @@ export function computeSuperligaStandings(params: {
   datesIncluded: string[];
   warnings: string[];
 } {
-  const { config, sonmacByDate, captainsByDate, mapOverrides, seasonStart, playersIndex, upToNight } = params;
+  const { config, sonmacByDate, captainsByDate, mapOverrides, manualNights, seasonStart, playersIndex, upToNight } = params;
   const scoring = config.scoring || DEFAULT_SUPERLIGA_SCORING;
   const leagueMeta = config.leagues?.[0] || { id: 'superliga', name: 'Superliga', players: [] };
 
@@ -179,6 +255,13 @@ export function computeSuperligaStandings(params: {
     if (start && d < start) continue;
     if (!(mapOverrides?.[d] || []).length) continue;
     if (deriveMainLeagueTeamsForDate(sonmacByDate, d)) dateSet.add(d);
+  }
+  // Tamamen manuel geceler: demo verisi olmayan, en az bir harita sonucu elle
+  // girilmiş her gece dahil edilir.
+  for (const d of Object.keys(manualNights || {})) {
+    if (start && d < start) continue;
+    if (!(manualNights?.[d]?.maps || []).length) continue;
+    dateSet.add(d);
   }
   let datesIncluded = [...dateSet].sort();
 
@@ -280,6 +363,17 @@ export function computeSuperligaStandings(params: {
           }
           awardMap(date, ov.mapName, t1Ids, t2Ids, s1, s2, true);
         }
+      }
+    }
+
+    // Tamamen manuel gece — demo verisi yoksa, elle girilen kadro ve skorları kullanır.
+    // (Demo verisi olan bir gecede manuel gece yok sayılır ki çift sayım olmasın.)
+    const manualNight = manualNights?.[date];
+    if (manualNight && mapNames.length === 0) {
+      const t1Ids = (manualNight.team1Players || []).map((p) => String(p?.steamId || '').trim());
+      const t2Ids = (manualNight.team2Players || []).map((p) => String(p?.steamId || '').trim());
+      for (const m of manualNight.maps || []) {
+        awardMap(date, m.mapName, t1Ids, t2Ids, Number(m.team1Score), Number(m.team2Score), true);
       }
     }
   }
