@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSession } from '@/contexts/SessionContext';
 import { Player } from '@/types';
 import { useLivePolling } from '@/lib/useLivePolling';
+import { useStatsRefresh } from '@/lib/useStatsRefresh';
 import {
   assignPlayer as apiAssignPlayer,
   removePlayer as apiRemovePlayer,
@@ -250,9 +251,11 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
   const [mapNameLookup, setMapNameLookup] = useState<Record<string, string>>({});
   // Derive state from polling data (replaces Firebase onValue listeners)
   const firebaseAttendance: FirebaseAttendanceData = firebaseAttendancePoll;
-  const teamAPlayers: TeamPlayerData = teamPickerData.teamA?.players || {};
-  const teamBPlayers: TeamPlayerData = teamPickerData.teamB?.players || {};
-  const playerStatsOverrides: PlayerStatsOverrides = teamPickerData.overrides || {};
+  // Memoized so the `|| {}` fallbacks don't hand every dependent hook a brand-new
+  // object on each render.
+  const teamAPlayers: TeamPlayerData = useMemo(() => teamPickerData.teamA?.players || {}, [teamPickerData.teamA?.players]);
+  const teamBPlayers: TeamPlayerData = useMemo(() => teamPickerData.teamB?.players || {}, [teamPickerData.teamB?.players]);
+  const playerStatsOverrides: PlayerStatsOverrides = useMemo(() => teamPickerData.overrides || {}, [teamPickerData.overrides]);
   const teamANameMode: TeamNameMode = (teamPickerData.teamA?.nameMode === 'captain' ? 'captain' : 'generic');
   const teamBNameMode: TeamNameMode = (teamPickerData.teamB?.nameMode === 'captain' ? 'captain' : 'generic');
   const teamACaptainSteamId: string = teamPickerData.teamA?.captainSteamId || '';
@@ -283,34 +286,19 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
   const [stopServerModalOpen, setStopServerModalOpen] = useState(false);
   const [stoppingServer, setStoppingServer] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchStats = async () => {
-      try {
-        // Use /api/stats/check (backed by backend memory) for stats data.
-        // The endpoint returns { updated: false } when nothing changed — only
-        // overwrite local state when the response actually contains data keys.
-        const params = new URLSearchParams({
-          keys: 'last10,season_avg',
-          _cb: String(Date.now()),
-        });
-        const res = await fetch(`/api/stats/check?${params.toString()}`, { cache: 'no-store' });
-        const data = await res.json();
-        if (cancelled) return;
-        if (data.updated) {
-          if ('last10' in data) setLast10Stats(Array.isArray(data.last10) ? data.last10 : []);
-          if ('season_avg' in data) setSeasonStats(Array.isArray(data.season_avg) ? data.season_avg : []);
-        }
-        setLoadingStats(false);
-      } catch {
-        if (!cancelled) {
-          setLoadingStats(false);
-        }
-      }
-    };
-    fetchStats();
-    return () => { cancelled = true; };
-  }, []);
+  // Same refresh path as /last10 and /season-avg. The picker used to run its own
+  // one-shot fetch without a lastKnownVersion, so /api/stats/check compared against
+  // the server snapshot instead of this browser's, answered updated:false, and the
+  // page kept its server-rendered numbers for as long as it stayed open — which is
+  // how the picker ended up showing different values than the stats pages.
+  useStatsRefresh({
+    keys: ['last10', 'season_avg'],
+    onData: (payload) => {
+      if (Array.isArray(payload.last10)) setLast10Stats(payload.last10);
+      if (Array.isArray(payload.season_avg)) setSeasonStats(payload.season_avg);
+    },
+    onSettled: () => setLoadingStats(false),
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -413,6 +401,20 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
     const override = playerStatsOverrides[steamId] || {};
     return { ...base, ...override };
   }, [getBaseStatsBySteamId, playerStatsOverrides]);
+
+  // One derivation path for every number the picker renders. assignPlayer persists a
+  // copy of the player's stats at the moment of assignment; that copy goes stale as
+  // soon as stats regenerate, so it is never read back for display — team rows, the
+  // per-team TEAM AVG footer and the comparison table/radar all resolve stats live
+  // from last10 + season_avg (plus manual overrides) by steam id.
+  const withLiveStats = useCallback(
+    (players: TeamPlayerData): Player[] =>
+      Object.values(players).map((p) => ({ ...p, stats: getStatsBySteamId(p.steamId) })),
+    [getStatsBySteamId]
+  );
+
+  const teamAPlayerList = useMemo(() => withLiveStats(teamAPlayers), [withLiveStats, teamAPlayers]);
+  const teamBPlayerList = useMemo(() => withLiveStats(teamBPlayers), [withLiveStats, teamBPlayers]);
 
   const openEditStatsModal = useCallback((steamId: string, name: string) => {
     const stats = getStatsBySteamId(steamId);
@@ -838,7 +840,7 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
   };
 
   // Table for team lists
-  const renderTeamList = (team: 'A' | 'B', players: TeamPlayerData, isLoadingTeam: boolean) => {
+  const renderTeamList = (team: 'A' | 'B', isLoadingTeam: boolean) => {
     const teamName = team === 'A' ? teamAName : teamBName;
     const teamColor = team === 'A' ? 'blue' : 'green';
     const bgColor = team === 'A' ? 'bg-blue-100' : 'bg-green-100';
@@ -852,11 +854,7 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
     if (isLoadingTeam) {
       return <p className="text-sm text-gray-500">Loading {teamName}...</p>;
     }
-    const playerArray = Object.values(players)
-      .map((p) => ({
-        ...p,
-        stats: getStatsBySteamId(p.steamId),
-      }))
+    const playerArray = (team === 'A' ? teamAPlayerList : teamBPlayerList)
       .slice() // copy to avoid mutating state
       .sort((a, b) => {
         const aHLTV2 = a.stats?.L10_HLTV2 ?? -Infinity;
@@ -984,9 +982,10 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
     );
   };
 
-  // Calculate team averages for comparison
-  const teamAAvgs = getTeamAverages(Object.values(teamAPlayers));
-  const teamBAvgs = getTeamAverages(Object.values(teamBPlayers));
+  // Calculate team averages for comparison — same live-stat lists the team tables
+  // render, so the comparison table, the radar and each table's TEAM AVG row agree.
+  const teamAAvgs = getTeamAverages(teamAPlayerList);
+  const teamBAvgs = getTeamAverages(teamBPlayerList);
 
   return (
     <div className="w-full min-w-0 p-2">
@@ -1017,11 +1016,11 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
           <div className="flex flex-col xl:flex-row gap-3 mb-3">
             <div className="xl:w-1/2 min-w-0">
               <h3 className="text-base font-semibold text-blue-700 mb-2">Team A ({Object.keys(teamAPlayers).length})</h3>
-              {renderTeamList('A', teamAPlayers, loadingTeamA)}
+              {renderTeamList('A', loadingTeamA)}
             </div>
             <div className="xl:w-1/2 min-w-0">
               <h3 className="text-base font-semibold text-green-700 mb-2">Team B ({Object.keys(teamBPlayers).length})</h3>
-              {renderTeamList('B', teamBPlayers, loadingTeamB)}
+              {renderTeamList('B', loadingTeamB)}
             </div>
           </div>
           {/* Team averages comparison table and radar chart */}
