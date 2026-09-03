@@ -87,6 +87,7 @@ function ScoringReference({ config }: { config: SuperligaConfig }) {
         <li>Kaptanlar, kaptanlık yaptıkları her gece için <span className="font-medium">+{s.captainBonus} puan</span> alır.</li>
         <li>Uzatmaya giden haritalarda <span className="font-medium">kaybeden takım</span> her uzatma serisi için <span className="font-medium">+{s.overtimeConsolationPerSeries} teselli puanı</span> alır (en fazla {s.maxOvertimeConsolationSeries} seri = {s.maxOvertimeConsolationSeries * s.overtimeConsolationPerSeries} puan).</li>
         <li>Sıralama, oyuncunun <span className="font-medium">gece başına ortalama puanına</span> göre yapılır (toplam değil).</li>
+        <li>Bir gecenin lige sayılması için <span className="font-medium">her iki takıma da kaptan atanmış olmalıdır</span>; kaptanı işlenmemiş geceler sıralamaya girmez.</li>
         <li>Token sistemi, saldırı/savunma/koruma ve HLTV faktörü <span className="font-medium">yoktur</span>. En önemli kriter kazanmaktır.</li>
       </ul>
       <div className="mt-3 rounded border border-purple-100 bg-white p-3 text-xs text-gray-600">

@@ -10,6 +10,9 @@
  *     teselli puanı (en fazla 3 seri = 15 puan).
  *   - Kaptanlar, kaptanlık yaptıkları her gece için +5 ekstra puan alır.
  *
+ * Bir gecenin lig hesabına girmesi için o gece her iki takıma da kaptan
+ * atanmış olmalıdır. Kaptanı işlenmemiş geceler sıralamaya dahil edilmez.
+ *
  * Toplam puan kümülatiftir (ortalama değil): oyuncular kazandıkça yukarı tırmanır.
  */
 
@@ -242,9 +245,8 @@ export function computeSuperligaStandings(params: {
   const start = seasonStart || config.seasonStart || null;
 
   // Bir geceyi dahil etmek için: sezon başlangıcından sonra ve ana lig haritası olan
-  // her sonmac gecesi. Kaptan atamasından bağımsızdır (puanlama maç sonuçlarından gelir).
-  // Ayrıca elle eklenen (override) maç sonucu olan, takım kadrosu çıkarılabilen
-  // geceler de dahil edilir.
+  // her sonmac gecesi. Ayrıca elle eklenen (override) maç sonucu olan, takım
+  // kadrosu çıkarılabilen geceler de dahil edilir.
   const dateSet = new Set<string>();
   for (const d of Object.keys(sonmacByDate || {})) {
     if (start && d < start) continue;
@@ -263,6 +265,19 @@ export function computeSuperligaStandings(params: {
     if (!(manualNights?.[d]?.maps || []).length) continue;
     dateSet.add(d);
   }
+
+  // Kaptan filtresi: bir gece ancak her iki takıma da kaptan atanmışsa lig
+  // hesabına girer. Kaptanı işlenmemiş geceler sıralamaya hiç dahil edilmez.
+  const skippedNoCaptain: string[] = [];
+  for (const d of [...dateSet]) {
+    const rec = captainsByDate?.[d];
+    if (!rec?.team1?.steamId || !rec?.team2?.steamId) {
+      dateSet.delete(d);
+      skippedNoCaptain.push(d);
+    }
+  }
+  skippedNoCaptain.sort();
+
   let datesIncluded = [...dateSet].sort();
 
   if (upToNight !== undefined && upToNight > 0) {
@@ -434,7 +449,13 @@ export function computeSuperligaStandings(params: {
 
   const warnings: string[] = [];
   if (!datesIncluded.length) {
-    warnings.push('Henüz Superliga gecesi yok (sezon başlangıcından sonra maç sonucu girilince burada görünür).');
+    warnings.push('Henüz Superliga gecesi yok (sezon başlangıcından sonra maç sonucu girilip kaptanlar atanınca burada görünür).');
+  }
+  if (skippedNoCaptain.length) {
+    warnings.push(
+      `Kaptan atanmadığı için sıralamaya girmeyen ${skippedNoCaptain.length} gece: ${skippedNoCaptain.join(', ')}. ` +
+      'Her iki takıma da kaptan atanınca bu geceler otomatik olarak hesaba katılır.',
+    );
   }
 
   return { league: { id: leagueMeta.id, name: leagueMeta.name, standings }, datesIncluded, warnings };
