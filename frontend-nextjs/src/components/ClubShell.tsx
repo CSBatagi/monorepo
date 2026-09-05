@@ -75,7 +75,7 @@ export default function ClubShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="club-sidebar-bottom">
           <button onClick={() => setDesign('classic')}><LayoutTemplate size={17} /> Klasik arayüze geç <ArrowUpRight size={15} /></button>
-          <span>AYNI EKİP. YENİ BİR GECE.</span>
+          <span>AYNI TAYFA. AYNI BAHANELER.</span>
         </div>
       </aside>
       <div className="club-workspace">
@@ -95,7 +95,7 @@ export default function ClubShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <div id="club-content" tabIndex={-1} className="club-content">{children}</div>
-        <footer className="club-footer"><span>CS BATAĞI <span className="club-footer-dot">/</span> Oyun biter, muhabbet bitmez.</span><Link prefetch={false} href="/notifications">Bildirim tercihleri <ArrowUpRight size={13} /></Link></footer>
+        <footer className="club-footer"><span>CS BATAĞI <span className="club-footer-dot">/</span> Maç biter, bahanesi bitmez.</span><Link prefetch={false} href="/notifications">Bildirim tercihleri <ArrowUpRight size={13} /></Link></footer>
       </div>
     </div>
   );
