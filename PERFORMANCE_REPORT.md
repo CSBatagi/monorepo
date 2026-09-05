@@ -101,3 +101,16 @@ If further memory reduction is needed:
 
 1. **Add swap space** (1-2 GB) on the VM as OOM safety net
 2. **Re-enable Next.js image optimization** or use a CDN for static images
+
+
+## Live loading investigation (2026-09-05)
+
+Code inspection found that `live_version.version` is BIGINT and node-postgres returns it as a string. The live hook previously accepted only numeric versions, leaving its conditional version at zero and fetching full snapshots on every poll. Backend responses now normalize versions, with browser compatibility for older string responses. Unchanged attendance reads execute only the version query instead of both the version and attendance queries, and return no JSON body. No live data TTL cache was added.
+
+Slow requests previously overlapped every three seconds, including in hidden tabs. Live polling now waits for completion before scheduling another request, stops in hidden tabs, and validates immediately on return. Explicit mutation refreshes supersede older requests. This reduces idle VM work and prevents late pre-write responses from replacing fresh data. Attendance mutations and version bumps now commit together, including single edits and resets. Conditional reads use equality so restored database versions recover correctly.
+
+Stats refresh previously used a localStorage version shared across pages/tabs without sharing the corresponding data. Each consumer now starts with explicit version zero, then validates only the version it has actually received. This intentionally pays for one payload on mounting a page to avoid retaining old ISR props. Existing stats publish timing, 10s caches, disk fallback, and ISR policy remain in place. Attendance displays a retry notice when its live refresh fails.
+
+Validation: install both backend and frontend development dependencies, run `cd backend && npm test` (hook regressions use the existing frontend TypeScript compiler), then `cd ../frontend-nextjs && npx tsc --noEmit` and `npm run build -- --no-lint`. Tests cover version string handling, unchanged reads, database version rollback, transaction failure, request races, hidden-tab resume, and independent stats consumers.
+
+These are code-level improvements; production p50/p95 latency and VM memory/CPU have not been measured in this investigation. After deploying both services, verify attendance requests move from `v=0` to the returned version and unchanged polls return 304; edit from a second browser and confirm the next visible poll receives the change. Measure cold navigation and loaded-VM latency separately before deciding whether more infrastructure is needed.

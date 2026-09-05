@@ -62,7 +62,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
   const [isClearing, setIsClearing] = useState(false);
   const tekerFollowUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: liveData, loading: loadingLiveData, refetch } = useLivePolling<LiveAttendancePayload>({
+  const { data: liveData, loading: loadingLiveData, error: liveError, refetch } = useLivePolling<LiveAttendancePayload>({
     url: '/api/live/attendance',
     intervalMs: 3000,
     enabled: !!user,
@@ -309,6 +309,12 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
 
   return (
     <div id="page-attendance" className="w-full max-w-none p-3 sm:p-4 md:p-6">
+      {liveError && (
+        <p role="alert" className="mb-4 rounded border border-amber-500 p-3 text-sm">
+          Canlı katılım verisi alınamadı. Görünen bilgiler güncel olmayabilir. Otomatik olarak yeniden deneniyor.
+          <button className="ml-2 underline" onClick={() => void refetch()}>Tekrar dene</button>
+        </p>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 min-w-0 lg:max-w-3xl">
           <h2 className="text-xl sm:text-2xl font-semibold text-blue-600 mb-3 sm:mb-4">Katılım Durumu</h2>

@@ -26,11 +26,10 @@ interface UseStatsRefreshOptions {
   keys?: string[];
 }
 
-const lastRefreshAttemptByKey = new Map<string, number>();
 
 /**
  * Shared client-side stats refresh hook.
- * Fetches /api/stats/check, manages localStorage stats_version,
+ * Fetches /api/stats/check with the version actually received by this consumer,
  * and refreshes installed mobile/PWA sessions when they resume from the background.
  */
 export function useStatsRefresh({
@@ -64,7 +63,10 @@ export function useStatsRefresh({
     // Coalesces the burst of resume events (visibilitychange + focus + pageshow
     // often fire together) so a single return-to-foreground triggers one check.
     let lastForcedAt = 0;
-    const refreshKey = keyParam || 'all';
+    // A global/localStorage version says nothing about this mounted page's data.
+    // Start unversioned so stale ISR props and newly opened tabs are refreshed.
+    let receivedVersion: string | null = null;
+    let lastAttempt = 0;
 
     async function checkForStatsUpdate(force = false) {
       if (cancelled || inFlight) return;
@@ -75,17 +77,17 @@ export function useStatsRefresh({
         if (now - lastForcedAt < 3_000) return;
         lastForcedAt = now;
       } else {
-        const lastAttempt = lastRefreshAttemptByKey.get(refreshKey) || 0;
         if (now - lastAttempt < minIntervalMs) return;
       }
 
-      lastRefreshAttemptByKey.set(refreshKey, now);
+      lastAttempt = now;
       inFlight = true;
 
       try {
-        const lastKnownVersion = localStorage.getItem('stats_version');
+        const lastKnownVersion = receivedVersion;
         const params = new URLSearchParams();
-        if (lastKnownVersion) params.set('lastKnownVersion', lastKnownVersion);
+        // Explicit zero prevents the proxy substituting its disk snapshot version.
+        params.set('lastKnownVersion', lastKnownVersion || '0');
         if (keyParam) params.set('keys', keyParam);
         params.set('_cb', String(now));
 
@@ -98,11 +100,9 @@ export function useStatsRefresh({
         const data = await response.json();
         if (cancelled) return;
 
-        if (data.statsVersion) {
-          try { localStorage.setItem('stats_version', String(data.statsVersion)); } catch {}
-        }
         if (data.updated) {
           onDataRef.current(data);
+          if (data.statsVersion) receivedVersion = String(data.statsVersion);
         }
       } catch {
         // The next foreground event will retry; callers only need loading cleared.

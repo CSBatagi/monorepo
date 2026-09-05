@@ -19,9 +19,8 @@ interface UseLivePollingResult<T> {
 }
 
 /**
- * Polls a /api/live/* endpoint at a fixed interval.
- * Uses version-based 304 responses to minimize data transfer.
- * Replaces Firebase RTDB onValue listeners with local PostgreSQL-backed polling.
+ * Version-validated live reads. Only one scheduled request runs at a time;
+ * explicit post-write refreshes supersede any older read already in flight.
  */
 export function useLivePolling<T>({
   url,
@@ -30,93 +29,94 @@ export function useLivePolling<T>({
   initialData,
 }: UseLivePollingOptions<T>): UseLivePollingResult<T> {
   const [data, setData] = useState<T>(initialData);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
-  const versionRef = useRef(0);
-  const mountedRef = useRef(true);
-  const loadingRef = useRef(true);
-  const intervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const fetchData = useCallback(async (forceRefresh = false) => {
-    if (!enabled) return;
-    try {
-      const v = forceRefresh ? 0 : versionRef.current;
-      const res = await fetch(`${url}?v=${v}`);
-      if (res.status === 304) {
-        // No changes
-        if (mountedRef.current && loadingRef.current) {
-          loadingRef.current = false;
-          setLoading(false);
-        }
-        return;
-      }
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const json = await res.json();
-      if (!mountedRef.current) return;
-      if (typeof json.version === 'number') {
-        versionRef.current = json.version;
-      }
-      // Remove 'version' from the data passed to consumers
-      const { version: _, ...rest } = json;
-      setData(rest as unknown as T);
-      setError(null);
-      if (loadingRef.current) {
-        loadingRef.current = false;
-        setLoading(false);
-      }
-    } catch (e: any) {
-      if (mountedRef.current) {
-        setError(e.message);
-        if (loadingRef.current) {
-          loadingRef.current = false;
-          setLoading(false);
-        }
-      }
-    }
-  }, [url, enabled]);
-
-  const refetch = useCallback(() => {
-    // Reset the polling interval so the next scheduled poll is pushed back,
-    // avoiding a redundant request right after this manual refetch.
-    if (intervalIdRef.current !== null) {
-      clearInterval(intervalIdRef.current);
-      intervalIdRef.current = setInterval(fetchData, intervalMs);
-    }
-    return fetchData(true);
-  }, [fetchData, intervalMs]);
+  const [version, setVersion] = useState(0);
+  const initialDataRef = useRef(initialData);
+  initialDataRef.current = initialData;
+  const refreshRef = useRef<() => Promise<void>>(async () => {});
+  const refetch = useCallback(() => refreshRef.current(), []);
 
   useEffect(() => {
-    mountedRef.current = true;
-    if (!enabled) {
-      loadingRef.current = false;
-      setLoading(false);
-      return;
-    }
+    let disposed = false;
+    let currentVersion = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let active: AbortController | null = null;
+    const visible = () => document.visibilityState !== 'hidden';
+    const clearTimer = () => { clearTimeout(timer); timer = undefined; };
 
-    // When (re-)enabled, mark as loading until the first fetch resolves.
-    // Without this, the UI briefly shows default/empty data with no indicator
-    // between the moment `enabled` flips true and the first response arrives.
-    if (!loadingRef.current && versionRef.current === 0) {
-      loadingRef.current = true;
-      setLoading(true);
-    }
+    setData(initialDataRef.current);
+    setVersion(0);
+    setError(null);
+    setLoading(enabled);
+    if (!enabled) return;
 
-    // Initial fetch immediately
-    fetchData();
-
-    // Set up polling interval
-    intervalIdRef.current = setInterval(fetchData, intervalMs);
-
-    return () => {
-      mountedRef.current = false;
-      if (intervalIdRef.current !== null) {
-        clearInterval(intervalIdRef.current);
-        intervalIdRef.current = null;
+    async function fetchData(force = false): Promise<void> {
+      if (disposed || (!force && (!visible() || active))) return;
+      clearTimer();
+      // A mutation refresh must begin AFTER the mutation, never reuse an older read.
+      active?.abort();
+      const controller = new AbortController();
+      active = controller;
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const separator = url.includes('?') ? '&' : '?';
+        const res = await fetch(`${url}${separator}v=${force ? 0 : currentVersion}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        if (res.status !== 304) {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = await res.json();
+          // Handles PostgreSQL BIGINT strings from older backend deployments too.
+          const nextVersion = Number(json.version);
+          if (!Number.isSafeInteger(nextVersion) || nextVersion < 0) {
+            throw new Error('Invalid live version');
+          }
+          if (disposed || active !== controller || controller.signal.aborted) return;
+          const { version: _, ...rest } = json;
+          currentVersion = nextVersion;
+          setVersion(nextVersion);
+          setData(rest as T);
+        }
+        if (!disposed && active === controller && !controller.signal.aborted) {
+          setError(null);
+          setLoading(false);
+        }
+      } catch (e: unknown) {
+        if (!disposed && active === controller) {
+          setError(controller.signal.aborted ? 'Live data request timed out' :
+            e instanceof Error ? e.message : 'Live data request failed');
+          setLoading(false);
+        }
+      } finally {
+        clearTimeout(timeout);
+        if (!disposed && active === controller) {
+          active = null;
+          if (visible()) timer = setTimeout(() => { void fetchData(); }, intervalMs);
+        }
       }
-    };
-  }, [url, intervalMs, enabled, fetchData]);
+    }
 
-  return { data, loading, version: versionRef.current, error, refetch };
+    refreshRef.current = () => fetchData(true);
+    const resume = () => {
+      if (visible()) void fetchData();
+      else clearTimer();
+    };
+    void fetchData();
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('pageshow', resume);
+    window.addEventListener('online', resume);
+    return () => {
+      disposed = true;
+      clearTimer();
+      active?.abort();
+      refreshRef.current = async () => {};
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('pageshow', resume);
+      window.removeEventListener('online', resume);
+    };
+  }, [url, intervalMs, enabled]);
+
+  return { data, loading, version, error, refetch };
 }

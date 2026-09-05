@@ -37,6 +37,13 @@ describe('GET /stats/incremental (integration light)', () => {
     expect(res.body).toHaveProperty('updated');
   });
 
+  test('explicit zero returns a payload for a newly mounted consumer', async () => {
+    const res = await request(app).get('/stats/incremental').query({ lastKnownVersion: '0' });
+    expect(res.status).toBe(200);
+    expect(res.body.updated).toBe(true);
+    expect(res.body.statsVersion).toBe(1);
+  });
+
   test('second call with lastKnownVersion does not mark updated again', async () => {
     const first = await request(app).get('/stats/incremental');
     const second = await request(app).get('/stats/incremental').query({ lastKnownVersion: first.body.statsVersion });

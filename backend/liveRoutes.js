@@ -4,6 +4,12 @@
 const express = require('express');
 const router = express.Router();
 
+// Live state is always validated against PostgreSQL, never an HTTP cache.
+router.use((_req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 // Pool is injected via setup function
 let pool = null;
 
@@ -21,7 +27,26 @@ async function bumpVersion(key, queryable) {
 
 async function getVersion(key) {
   const r = await pool.query(`SELECT version FROM live_version WHERE key = $1`, [key]);
-  return r.rows[0]?.version ?? 0;
+  const version = Number(r.rows[0]?.version ?? 0);
+  if (!Number.isSafeInteger(version) || version < 0) throw new Error('Invalid live version');
+  return version;
+}
+
+// Publish attendance data and its version atomically: failed version updates
+// must never leave committed changes invisible to conditional readers.
+async function mutateAttendance(write) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await write(client);
+    await bumpVersion('attendance', client);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 // =============================================================================
@@ -35,7 +60,7 @@ router.get('/attendance', async (req, res) => {
     const clientVersion = parseInt(req.query.v) || 0;
     const serverVersion = await getVersion('attendance');
 
-    if (clientVersion && clientVersion >= serverVersion) {
+    if (clientVersion && clientVersion === serverVersion) {
       return res.status(304).end();
     }
 
@@ -113,8 +138,7 @@ router.post('/attendance/bulk', async (req, res) => {
 // NOTE: Must be defined BEFORE /attendance/:steamId to avoid Express matching 'reset' as a steamId.
 router.post('/attendance/reset', async (req, res) => {
   try {
-    await pool.query(`DELETE FROM attendance`);
-    await bumpVersion('attendance');
+    await mutateAttendance((client) => client.query(`DELETE FROM attendance`));
     const version = await getVersion('attendance');
     res.json({ ok: true, version });
   } catch (e) {
@@ -134,7 +158,7 @@ router.post('/attendance/:steamId', async (req, res) => {
       return res.status(400).json({ error: 'steamId and name required' });
     }
 
-    await pool.query(
+    await mutateAttendance((client) => client.query(
       `INSERT INTO attendance (steam_id, name, status, emoji_status, is_kaptan, kaptan_timestamp, updated_at)
        VALUES ($1, $2, COALESCE($3, 'no_response'), COALESCE($4, 'normal'), COALESCE($5, false), $6, NOW())
        ON CONFLICT (steam_id) DO UPDATE SET
@@ -145,9 +169,7 @@ router.post('/attendance/:steamId', async (req, res) => {
          kaptan_timestamp = CASE WHEN $5 = false THEN NULL WHEN $6 IS NOT NULL THEN $6 ELSE attendance.kaptan_timestamp END,
          updated_at = NOW()`,
       [steamId, name, status || null, emoji_status || null, is_kaptan ?? null, kaptan_timestamp ?? null]
-    );
-
-    await bumpVersion('attendance');
+    ));
     const version = await getVersion('attendance');
     res.json({ ok: true, version });
   } catch (e) {
@@ -166,7 +188,7 @@ router.get('/team-picker', async (req, res) => {
     const clientVersion = parseInt(req.query.v) || 0;
     const serverVersion = await getVersion('team_picker');
 
-    if (clientVersion && clientVersion >= serverVersion) {
+    if (clientVersion && clientVersion === serverVersion) {
       return res.status(304).end();
     }
 
@@ -369,7 +391,7 @@ router.get('/mvp-votes', async (req, res) => {
   try {
     const clientVersion = parseInt(req.query.v) || 0;
     const serverVersion = await getVersion('mvp_votes');
-    if (clientVersion && clientVersion >= serverVersion) {
+    if (clientVersion && clientVersion === serverVersion) {
       return res.status(304).end();
     }
 
@@ -474,7 +496,7 @@ router.get('/batak-captains', async (req, res) => {
   try {
     const clientVersion = parseInt(req.query.v) || 0;
     const serverVersion = await getVersion('batak_captains');
-    if (clientVersion && clientVersion >= serverVersion) {
+    if (clientVersion && clientVersion === serverVersion) {
       return res.status(304).end();
     }
 
@@ -536,7 +558,7 @@ router.get('/token-wars-captains', async (req, res) => {
   try {
     const clientVersion = parseInt(req.query.v) || 0;
     const serverVersion = await getVersion('token_wars_captains');
-    if (clientVersion && clientVersion >= serverVersion) {
+    if (clientVersion && clientVersion === serverVersion) {
       return res.status(304).end();
     }
 
@@ -598,7 +620,7 @@ router.get('/superliga-captains', async (req, res) => {
   try {
     const clientVersion = parseInt(req.query.v) || 0;
     const serverVersion = await getVersion('superliga_captains');
-    if (clientVersion && clientVersion >= serverVersion) {
+    if (clientVersion && clientVersion === serverVersion) {
       return res.status(304).end();
     }
 
@@ -660,7 +682,7 @@ router.get('/superliga-map-overrides', async (req, res) => {
   try {
     const clientVersion = parseInt(req.query.v) || 0;
     const serverVersion = await getVersion('superliga_map_overrides');
-    if (clientVersion && clientVersion >= serverVersion) {
+    if (clientVersion && clientVersion === serverVersion) {
       return res.status(304).end();
     }
 
@@ -774,7 +796,7 @@ router.get('/superliga-manual-nights', async (req, res) => {
   try {
     const clientVersion = parseInt(req.query.v) || 0;
     const serverVersion = await getVersion('superliga_manual_nights');
-    if (clientVersion && clientVersion >= serverVersion) {
+    if (clientVersion && clientVersion === serverVersion) {
       return res.status(304).end();
     }
 
@@ -870,7 +892,7 @@ router.get('/batak-super-kupa', async (req, res) => {
   try {
     const clientVersion = parseInt(req.query.v) || 0;
     const serverVersion = await getVersion('batak_super_kupa');
-    if (clientVersion && clientVersion >= serverVersion) {
+    if (clientVersion && clientVersion === serverVersion) {
       return res.status(304).end();
     }
 
@@ -972,7 +994,7 @@ router.get('/token-wars', async (req, res) => {
   try {
     const clientVersion = parseInt(req.query.v) || 0;
     const currentVersion = await getVersion('token_wars');
-    if (clientVersion > 0 && clientVersion >= currentVersion) {
+    if (clientVersion > 0 && clientVersion === currentVersion) {
       return res.status(304).end();
     }
 
