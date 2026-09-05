@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ClubQuotes from "./ClubQuotes";
 import { ArrowRight, ArrowUpRight, BarChart3, Check, ClipboardList, Coins, Crosshair, Crown, Film, Flag, ListOrdered, Moon, Shield, Star, Swords, Target, TrendingUp, Trophy, Users } from "lucide-react";
 import { useSession } from "@/contexts/SessionContext";
 import { useLivePolling } from "@/lib/useLivePolling";
@@ -30,19 +31,19 @@ export default function ClubHome() {
   const available = !!user && !loading && !error;
   const value = (number: number) => available ? number : '—';
   return <div className="club-home">
-    <div className="club-page-heading"><div><p className="club-eyebrow">CS BATAĞI / TOPLANIN</p><h1>Gelin. <span>Elinize verelim.</span></h1><p>Kadroyu kur, skoru aç. Kimin kime verdiği belli olsun.</p></div><Link prefetch={false} className="club-text-link" href="/sonmac">Son maça bak <ArrowUpRight size={17} /></Link></div>
+    <div className="club-page-heading"><ClubQuotes /><Link prefetch={false} className="club-text-link" href="/sonmac">Son maça bak <ArrowUpRight size={17} /></Link></div>
     <section className="club-night-grid" aria-label="Maç gecesi hazırlığı">
       <div className="club-night-card">
-        <div className="club-card-top"><span className="club-eyebrow">MAÇ GECESİ</span><span className="club-label"><Swords size={14} /> 5 vs 5</span></div>
+        <div className="club-card-top"><span className="club-eyebrow">MAÇ GECESİ</span><span className="club-label"><Swords size={14} /> Özel maç</span></div>
         <h2>Beyler, akşama <br />kimler geliyor?</h2>
-        <p>On kişi olalım da.<br />Kimin kimi taşıdığını sonra tartışırız.</p>
+        <p>Gelen gelsin.<br />Kimin kimi taşıdığını sonra tartışırız.</p>
         <div className="club-night-actions"><Link prefetch={false} href="/attendance" className="club-primary-button">Geliyor musun, yaz <ArrowUpRight size={19} /></Link><Link prefetch={false} href="/team-picker" className="club-secondary-button">Takımları seç <ArrowRight size={17} /></Link></div>
         <div className="club-night-bottom"><Crosshair size={17} /><span>COUNTER-STRIKE 2</span><span>DOSTLUK MAÇ BAŞLAYANA KADAR.</span></div>
       </div>
       <div className="club-attendance-card">
         <div className="club-card-top"><h2><ClipboardList size={18} /> Katılım özeti</h2><span className={`club-live-label ${available ? '' : 'is-unavailable'}`}><i />{error ? 'Bağlantı kesildi' : available ? 'Canlı' : 'Yükleniyor'}</span></div>
-        <div className="club-attendance-number"><strong>{value(coming)}</strong><span>/ 10 oyuncu<br /><b>{available && coming >= 10 ? 'Teker döndü!' : 'Maç için hazır'}</b></span></div>
-        <div className="club-roster-slots" aria-label={available ? `${coming} oyuncu geliyor, hedef 10` : 'Katılım yükleniyor'}>{Array.from({ length: 10 }, (_, i) => <span className={available && i < coming ? 'filled' : ''} key={i}>{available && i < coming ? <Check size={15} /> : <Users size={14} />}</span>)}</div>
+        <div className="club-attendance-number"><strong>{value(coming)}</strong><span>oyuncu geliyor<br /><b>{available && coming >= 10 ? 'Teker döndü!' : 'Maç için hazır'}</b></span></div>
+        <div className="club-roster-slots" aria-label={available ? `${coming} oyuncu geliyor, teker dönme eşiği 10` : 'Katılım yükleniyor'}>{Array.from({ length: 10 }, (_, i) => <span className={available && i < coming ? 'filled' : ''} key={i}>{available && i < coming ? <Check size={15} /> : <Users size={14} />}</span>)}</div>
         <div className="club-attendance-stats"><span><i className="club-dot-green" />Geliyor <b>{value(coming)}</b></span><span><i className="club-dot-amber" />Belirsiz <b>{value(uncertain)}</b></span></div>
         <Link prefetch={false} href="/attendance" className="club-card-bottom-link">{error ? 'Katılımı aç ve tekrar dene' : 'Kim geliyor, kim yan çiziyor?'}<ArrowRight size={17} /></Link>
       </div>

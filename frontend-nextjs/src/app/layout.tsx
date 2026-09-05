@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CS BataÄŸÄ±",
+  title: "CS Batağı",
   description: "CS Batağı — katılım, takım seçimi, ligler ve Counter-Strike maç istatistikleri.",
   manifest: "/manifest.json",
 };
