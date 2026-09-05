@@ -42,7 +42,8 @@ export default function ClubHome() {
       </div>
       <div className="club-attendance-card">
         <div className="club-card-top"><h2><ClipboardList size={18} /> Katılım özeti</h2><span className={`club-live-label ${available ? '' : 'is-unavailable'}`}><i />{error ? 'Bağlantı kesildi' : available ? 'Canlı' : 'Yükleniyor'}</span></div>
-        <div className="club-attendance-number"><strong>{value(coming)}</strong><span>oyuncu geliyor<br /><b>{available && coming >= 10 ? 'Teker döndü!' : 'Maç için hazır'}</b></span></div>
+        <div className="club-attendance-number"><strong>{value(coming)}</strong><span>oyuncu geliyor<br /><b>{available ? (coming >= 10 ? 'Teker döndü!' : `Tekerin dönmesine ${10 - coming} kişi kaldı`) : 'Katılım bekleniyor'}</b></span></div>
+        <p className="text-xs text-gray-500 mb-2">Tekerin dönmesi için en az 10 kişi lazım. Fazlasına da yer var!</p>
         <div className="club-roster-slots" aria-label={available ? `${coming} oyuncu geliyor, teker dönme eşiği 10` : 'Katılım yükleniyor'}>{Array.from({ length: 10 }, (_, i) => <span className={available && i < coming ? 'filled' : ''} key={i}>{available && i < coming ? <Check size={15} /> : <Users size={14} />}</span>)}</div>
         <div className="club-attendance-stats"><span><i className="club-dot-green" />Geliyor <b>{value(coming)}</b></span><span><i className="club-dot-amber" />Belirsiz <b>{value(uncertain)}</b></span></div>
         <Link prefetch={false} href="/attendance" className="club-card-bottom-link">{error ? 'Katılımı aç ve tekrar dene' : 'Kim geliyor, kim yan çiziyor?'}<ArrowRight size={17} /></Link>
