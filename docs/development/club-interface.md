@@ -23,7 +23,7 @@ The modern design uses charcoal, orange, and neutral surfaces. Attendance retain
 
 ## Performance and accessibility
 
-No packages, remote fonts, large imagery, animation libraries, polling caches, or backend changes were added. Existing Geist fonts, logo, and Lucide icons are reused. New navigation links disable automatic Next.js prefetching so opening the dashboard does not render every stats route on the small VM. Home performs one visible-page attendance poll using the existing non-overlapping, visibility-aware hook.
+No packages, remote fonts, animation libraries, polling caches, or backend changes were added. Existing Geist fonts, logo, and Lucide icons are reused. The home hero uses a locally hosted, generated game-atmosphere illustration (`public/images/club-match-night.webp`, approximately 105 KiB); competition artwork uses CSS and existing Lucide icons. Brighter charcoal surfaces and bordered section panels separate content from the dark canvas. New navigation links disable automatic Next.js prefetching so opening the dashboard does not render every stats route on the small VM. Home performs one visible-page attendance poll using the existing non-overlapping, visibility-aware hook.
 
 Motion is limited to short transitions and home entrance; reduced-motion preferences disable it. Keyboard focus is visible, the mobile menu supports Escape, active routes use `aria-current`, and a skip link targets page content. Tables retain horizontal scrolling and numeric alignment.
 
