@@ -19,8 +19,8 @@ const QUOTES = [
   "Beyler info?",
   "Teknik mi Tarık mı?",
 ];
-const ROTATION_MS = 3000;
-const FADE_MS = 500;
+const ROTATION_MS = 4200;
+const FADE_MS = 1100;
 
 export default function ClubQuotes() {
   const [index, setIndex] = useState(0);
@@ -64,7 +64,7 @@ export default function ClubQuotes() {
   }, [visible]);
 
   return <div className="club-quotes">
-    <p className="club-eyebrow"><Quote size={14} aria-hidden="true" /> CS BATAĞI / SESLİ SOHBETTEN</p>
+    <p className="club-eyebrow"><Quote size={14} aria-hidden="true" /> CS BATAĞI / TOPLANIN</p>
     {/* All quotes occupy one grid cell: even the longest mobile quote reserves its height. */}
     <h1 className="club-quote-stage">
       {QUOTES.map((quote, i) => <span key={quote} className={`club-quote-line ${index === i && shown ? 'is-active' : ''}`} aria-hidden={index !== i}>
