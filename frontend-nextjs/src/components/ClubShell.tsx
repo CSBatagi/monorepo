@@ -41,7 +41,8 @@ export const navigation = [
 
 export default function ClubShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { setDesign } = useTheme();
+  const { setDesign, clubVersion, cycleClubVersion } = useTheme();
+  const versionLabel = { original: '1/3 · Orijinal', panels: '2/3 · Görsel paneller', warm: '3/3 · Sıcak gri' }[clubVersion];
   const { user, ready, logout } = useSession();
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -94,6 +95,7 @@ export default function ClubShell({ children }: { children: ReactNode }) {
             </details> : ready && <Link prefetch={false} className="club-signin" href="/login">Giriş yap <ArrowUpRight size={15} /></Link>}
           </div>
         </header>
+        <div className="club-version-toolbar"><button type="button" className="club-version-switch" onClick={cycleClubVersion} aria-label={`Tasarım ${versionLabel}. Sonraki tasarıma geç`}><LayoutTemplate size={16} /><span aria-live="polite">Tasarım {versionLabel}</span><ChevronRight size={16} /></button></div>
         <div id="club-content" tabIndex={-1} className="club-content">{children}</div>
         <footer className="club-footer"><span>CS BATAĞI <span className="club-footer-dot">/</span> Maç biter, bahanesi bitmez.</span><Link prefetch={false} href="/notifications">Bildirim tercihleri <ArrowUpRight size={13} /></Link></footer>
       </div>

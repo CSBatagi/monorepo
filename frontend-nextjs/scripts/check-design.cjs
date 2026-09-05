@@ -42,3 +42,23 @@ h.render().setDesign('modern'); h.render(); assert.equal(new URL(h.window.locati
 h = app({}, '', true); h.render().setDesign('classic'); assert.equal(h.render().design, 'classic');
 h.render().toggleTheme(); assert.equal(h.render().theme, 'dark');
 console.log('Interface checks passed: default, saved choice, independent themes, URL override, URL switching, blocked storage.');
+
+// The comparison starts at the pre-image design and wraps through all three snapshots.
+h = app();
+assert.equal(h.render().clubVersion, 'original');
+for (const version of ['panels', 'warm', 'original']) {
+  h.render().cycleClubVersion();
+  assert.equal(h.render().clubVersion, version);
+  assert.equal(h.document.documentElement.dataset.clubVersion, version);
+  assert.equal(h.storage.get('cs-batagi-club-version'), version);
+}
+h = app({ 'cs-batagi-club-version': 'warm' });
+assert.equal(h.render().clubVersion, 'warm');
+h.render().setDesign('classic'); h.render().setDesign('modern');
+assert.equal(h.render().clubVersion, 'warm');
+h = app({ 'cs-batagi-club-version': 'unknown' });
+assert.equal(h.render().clubVersion, 'original');
+h = app({}, '', true);
+h.render().cycleClubVersion();
+assert.equal(h.render().clubVersion, 'panels');
+console.log('Version checks passed: cycle, wraparound, persistence, classic switch, invalid value, blocked storage.');

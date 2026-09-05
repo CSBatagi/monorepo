@@ -4,6 +4,7 @@ The default interface is the modern club dashboard. The classic header, home scr
 
 ## Switching
 
+- Modern pages have a **Tasarım 1/3** button below the top bar. It cycles through **Orijinal** (pre-image, `622ca54`), **Görsel paneller** (`f56691c`), and **Sıcak gri** (`73dc390`), then returns to the original. The initial choice is original; the browser remembers later choices in `cs-batagi-club-version`, independently of classic/modern and light/dark preferences. Blocked storage still permits cycling for the current session.
 - Modern sidebar: **Klasik arayüze geç**.
 - Classic interface: fixed **Yeni arayüze geç** button at the bottom left.
 - Login has the same switch.
@@ -17,6 +18,7 @@ The default interface is the modern club dashboard. The classic header, home scr
 - `src/components/ClubHome.tsx`: match-night actions, actual attendance summary, competition links, match links, and analysis tools. Counts use the existing version-validated `useLivePolling` hook; unavailable data is shown as a dash, never invented counts.
 - `src/components/ClassicHome.tsx`: original home component, preserved verbatim apart from the component name.
 - `src/styles/club-design.css`: modern palette, typography, responsive layouts, status colors, tables, controls, login, and motion. Shared-page overrides are scoped under `html[data-design="modern"]`. Do not place new shared-page rules outside this scope.
+- `src/styles/club-versions.css`: historical differences for the two image-based designs, scoped by `data-club-version`. The base stylesheet preserves the original design; `ClubHome` switches only the corresponding artwork markup, sharing the same data and links across all versions.
 - `src/contexts/ThemeContext.tsx`: interface and light/dark preferences. An early root script applies saved palette preferences before hydration.
 
 The modern design uses charcoal, orange, and neutral surfaces. Attendance retains meaningful green/amber/red states; team and statistical heatmap colors are not globally recolored. The data pages use their existing components and operations in both interfaces. Domination's embedded external Figma content remains controlled by that external document.

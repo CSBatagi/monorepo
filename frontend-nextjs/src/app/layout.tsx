@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "@/styles/table-styles.css";
 import "@/styles/club-design.css";
+import "@/styles/club-versions.css";
 import Providers from "@/components/Providers";
 
 const geistSans = Geist({
@@ -27,9 +28,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" data-design="modern" suppressHydrationWarning>
+    <html lang="tr" data-design="modern" data-club-version="original" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var d=new URLSearchParams(location.search).get('ui')||localStorage.getItem('cs-batagi-design')||'modern';d=d==='classic'?'classic':'modern';document.documentElement.dataset.design=d;var t=localStorage.getItem(d==='classic'?'cs-batagi-theme':'cs-batagi-modern-theme')||(d==='classic'?'light':'dark');document.documentElement.classList.toggle('dark',t==='dark')}catch(e){document.documentElement.classList.add('dark')}})();` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var d=new URLSearchParams(location.search).get('ui')||localStorage.getItem('cs-batagi-design')||'modern';d=d==='classic'?'classic':'modern';document.documentElement.dataset.design=d;var v=localStorage.getItem('cs-batagi-club-version');document.documentElement.dataset.clubVersion=['original','panels','warm'].includes(v)?v:'original';var t=localStorage.getItem(d==='classic'?'cs-batagi-theme':'cs-batagi-modern-theme')||(d==='classic'?'light':'dark');document.documentElement.classList.toggle('dark',t==='dark')}catch(e){document.documentElement.classList.add('dark')}})();` }} />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body suppressHydrationWarning
