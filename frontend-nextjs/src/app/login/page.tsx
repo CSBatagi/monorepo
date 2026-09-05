@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Suspense } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -18,7 +19,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 function LoginPageInner() {
-  const { isDark } = useTheme();
+  const { isDark, design } = useTheme();
   const params = useSearchParams();
   const nextParam = params.get("next") || "/";
   const errorCode = params.get("error");
@@ -46,13 +47,19 @@ function LoginPageInner() {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-6 ${isDark ? 'bg-dark-bg' : 'bg-gray-50'}`}>
-      <div className={`w-full max-w-md rounded-xl shadow-md p-6 ${isDark ? 'bg-dark-surface border border-dark-border' : 'bg-white'}`}>
+    <div className={`${design === "modern" ? "club-login" : ""} min-h-screen flex items-center justify-center p-6 ${isDark ? 'bg-dark-bg' : 'bg-gray-50'}`}>
+      {design === 'modern' && <div className="club-login-story">
+        <div className="club-brand"><Image src="/images/BatakLogo192.png" width={44} height={44} alt="" /><span>CS BATAĞI<small>COUNTER-STRIKE KULÜBÜ</small></span></div>
+        <h2>Aynı ekip.<br />Yeni bir <span>gece.</span></h2>
+        <p>Katılımını bildir, takımını kur, maçlarını takip et. Ekibin burada.</p>
+        <small>COUNTER-STRIKE 2 / CS BATAĞI</small>
+      </div>}
+      <div className={`${design === "modern" ? "club-login-form" : ""} w-full max-w-md rounded-xl shadow-md p-6 ${isDark ? 'bg-dark-surface border border-dark-border' : 'bg-white'}`}>
         <h1 className={`text-2xl font-semibold text-center mb-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
-          CS Batagi - Giris
+          {design === "modern" ? "Kulübe hoş geldin." : "CS Batagi - Giris"}
         </h1>
         <p className={`text-center text-sm mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          Giris yapinca tum sayfalara erisebileceksiniz.
+          {design === "modern" ? "Devam etmek için Google hesabınla giriş yap." : "Giris yapinca tum sayfalara erisebileceksiniz."}
         </p>
 
         {errorMessage && (
@@ -75,11 +82,11 @@ function LoginPageInner() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          <span>Google ile Giris Yap</span>
+          <span>{design === "modern" ? "Google ile giriş yap" : "Google ile Giris Yap"}</span>
         </button>
 
         <p className={`text-xs text-center mt-6 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-          Giristen sonra yonlendirileceginiz yer: {nextParam}
+          {design === "modern" ? "Katılım · Takım seçimi · Maç istatistikleri" : `Giristen sonra yonlendirileceginiz yer: ${nextParam}`}
         </p>
       </div>
     </div>

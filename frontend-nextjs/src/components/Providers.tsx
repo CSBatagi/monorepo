@@ -11,7 +11,7 @@ import PullToRefresh from "@/components/PullToRefresh";
 
 export default function Providers({ children }: { children: ReactNode }) {
   const content = (
-    <main className="container mx-auto max-w-7xl p-4 md:p-8">
+    <main className="app-content container mx-auto max-w-7xl p-4 md:p-8">
       {children}
     </main>
   );

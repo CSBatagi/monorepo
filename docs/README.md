@@ -13,6 +13,8 @@ Use this folder as the canonical context source.
 
 ## Topic Map
 
+- Modern and classic interfaces: [`development/club-interface.md`](development/club-interface.md)
+
 - Development setup: [`development/local-setup.md`](development/local-setup.md)
 - Stats architecture and data contracts: [`development/stats-runtime.md`](development/stats-runtime.md)
 - Production stats publishing runbook: [`operations/stats-publishing.md`](operations/stats-publishing.md)
