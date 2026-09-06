@@ -19,6 +19,11 @@ export default function CinematicScene({ progress, motion, detail }: {
     const battlefield = ctx ? new Battlefield(ctx) : null;
     let width = 1, height = 1, frame = 0, lastTime = 0;
     let pointerX = 0, pointerY = 0, smoothX = 0, smoothY = 0;
+    // Mouse parallax never fires on a touch screen and the landing view opens unscrolled,
+    // so there the camera drifts on its own to keep the opening frame alive. A real mouse
+    // move hands the camera back for good, so a pointer the media query missed still wins.
+    const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+    let steered = false;
     const paint = (time: number) => {
       const dt = lastTime ? Math.min(time - lastTime, 50) : 0;
       lastTime = time;
@@ -26,6 +31,7 @@ export default function CinematicScene({ progress, motion, detail }: {
       const easing = 1 - Math.exp(-Math.max(dt, 16) / 180);
       if (motion) {
         cameraPosition.current += (progress.current - cameraPosition.current) * easing;
+        if (!steered && !fine.matches) { pointerX = Math.sin(sceneTime.current * .19) * .85; pointerY = Math.sin(sceneTime.current * .13 + 1.1) * .6; }
         smoothX += (pointerX - smoothX) * easing; smoothY += (pointerY - smoothY) * easing;
       }
       const bounded = Math.max(0, Math.min(3, cameraPosition.current));
@@ -40,7 +46,7 @@ export default function CinematicScene({ progress, motion, detail }: {
       if (motion && !document.hidden) frame = requestAnimationFrame(paint);
     };
     const resize = () => {
-      width = window.innerWidth; height = window.innerHeight;
+      width = surface.clientWidth || window.innerWidth; height = surface.clientHeight || window.innerHeight;
       const dpr = Math.min(window.devicePixelRatio || 1, width < 700 ? 1 : 1.5);
       surface.width = Math.round(width * dpr); surface.height = Math.round(height * dpr);
       ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -48,6 +54,7 @@ export default function CinematicScene({ progress, motion, detail }: {
     };
     const pointer = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse') return;
+      steered = true;
       pointerX = (event.clientX / width - .5) * 2; pointerY = (event.clientY / height - .5) * 2;
     };
     const resetPointer = () => { pointerX = pointerY = 0; };
