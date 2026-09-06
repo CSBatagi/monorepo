@@ -62,3 +62,20 @@ h = app({}, '', true);
 h.render().cycleClubVersion();
 assert.equal(h.render().clubVersion, 'panels');
 console.log('Version checks passed: cycle, wraparound, persistence, classic switch, invalid value, blocked storage.');
+
+// Cinematic is a separate mode, so visiting it must not overwrite earlier palettes.
+h = app({ 'cs-batagi-modern-theme': 'light', 'cs-batagi-theme': 'dark', 'cs-batagi-club-version': 'graphite' }, '?ui=cinematic');
+assert.equal(h.render().design, 'cinematic');
+assert.equal(h.render().theme, 'dark');
+assert.equal(h.document.documentElement.dataset.design, 'cinematic');
+assert.equal(h.storage.get('cs-batagi-modern-theme'), 'light');
+h.render().setDesign('modern');
+assert.equal(h.render().theme, 'light');
+assert.equal(h.render().clubVersion, 'graphite');
+h.render().setDesign('cinematic'); h.render().setDesign('classic');
+assert.equal(h.render().theme, 'dark');
+h = app({ 'cs-batagi-design': 'cinematic' }); assert.equal(h.render().design, 'cinematic');
+h = app({}, '?ui=cinematic', true); assert.equal(h.render().design, 'cinematic');
+h.render().setDesign('modern'); assert.equal(h.render().design, 'modern');
+assert.equal(new URL(h.window.location.href).searchParams.get('ui'), 'modern');
+console.log('Cinematic checks passed: direct URL, saved mode, palette/version preservation, blocked storage, exit switch.');

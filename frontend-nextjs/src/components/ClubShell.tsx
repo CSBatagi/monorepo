@@ -75,6 +75,7 @@ export default function ClubShell({ children }: { children: ReactNode }) {
           </div>)}
         </nav>
         <div className="club-sidebar-bottom">
+          <button onClick={() => setDesign('cinematic')} style={{ marginBottom: 16 }}><Film size={17} /> Sinematik deneyim <ArrowUpRight size={15} /></button>
           <button onClick={() => setDesign('classic')}><LayoutTemplate size={17} /> Klasik arayüze geç <ArrowUpRight size={15} /></button>
           <span>AYNI TAYFA. AYNI BAHANELER.</span>
         </div>

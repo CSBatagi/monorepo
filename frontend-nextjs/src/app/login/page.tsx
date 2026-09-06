@@ -47,7 +47,7 @@ function LoginPageInner() {
   };
 
   return (
-    <div className={`${design === "modern" ? "club-login" : ""} min-h-screen flex items-center justify-center p-6 ${isDark ? 'bg-dark-bg' : 'bg-gray-50'}`}>
+    <div className={`${design === "modern" ? "club-login" : design === "cinematic" ? "cinema-login-page" : ""} min-h-screen flex items-center justify-center p-6 ${isDark ? 'bg-dark-bg' : 'bg-gray-50'}`}>
       {design === 'modern' && <div className="club-login-story">
         <div className="club-brand"><Image src="/images/BatakLogo192.png" width={44} height={44} alt="" /><span>CS BATAĞI<small>COUNTER-STRIKE KULÜBÜ</small></span></div>
         <h2>Aynı ekip.<br />Yeni bir <span>gece.</span></h2>

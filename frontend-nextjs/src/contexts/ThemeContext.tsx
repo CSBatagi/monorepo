@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 type Theme = "light" | "dark";
-type Design = "modern" | "classic";
+type Design = "modern" | "classic" | "cinematic";
 type ClubVersion = "original" | "panels" | "warm" | "graphite";
 const clubVersions: ClubVersion[] = ["original", "panels", "warm", "graphite"];
 interface ThemeContextType {
@@ -20,8 +20,9 @@ const ThemeContext = createContext<ThemeContextType>({
   clubVersion: "original", cycleClubVersion: () => {},
 });
 export function useTheme() { return useContext(ThemeContext); }
-const themeKey = (design: Design) => design === "classic" ? "cs-batagi-theme" : "cs-batagi-modern-theme";
+const themeKey = (design: Design) => design === "classic" ? "cs-batagi-theme" : design === "cinematic" ? "cs-batagi-cinematic-theme" : "cs-batagi-modern-theme";
 function readTheme(design: Design): Theme {
+  if (design === "cinematic") return "dark";
   try {
     const value = localStorage.getItem(themeKey(design));
     if (value === "light" || value === "dark") return value;
@@ -37,8 +38,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     let chosen: Design = "modern";
     try {
       const requested = new URLSearchParams(window.location.search).get("ui");
-      const saved = localStorage.getItem("cs-batagi-design");
-      chosen = (requested || saved) === "classic" ? "classic" : "modern";
+      let saved: string | null = null;
+      try { saved = localStorage.getItem("cs-batagi-design"); } catch {}
+      const value = requested || saved;
+      chosen = value === "classic" || value === "cinematic" ? value : "modern";
     } catch {}
     updateDesign(chosen);
     try {
