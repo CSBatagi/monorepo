@@ -28,6 +28,7 @@ export default function PullToRefresh() {
   const pullRef = useRef(0);
   const refreshingRef = useRef(false);
   const startY = useRef<number | null>(null);
+  const startX = useRef(0);
   const dragging = useRef(false);
 
   useEffect(() => {
@@ -41,33 +42,39 @@ export default function PullToRefresh() {
       setPull(v);
     };
 
-    const onStart = (e: TouchEvent) => {
-      if (refreshingRef.current || e.touches.length !== 1 || !atTop()) {
-        startY.current = null;
-        return;
-      }
-      startY.current = e.touches[0].clientY;
+    const cancel = () => {
+      startY.current = null;
       dragging.current = false;
+      if (!refreshingRef.current) setPullVal(0);
+    };
+
+    // A nested scroller owns its entire gesture, including at either boundary.
+    // Checking only window.scrollY traps upward scrolling in menus over a page at 0.
+    const hasLocalGestureOwner = (e: TouchEvent) => e.composedPath().some(node => {
+      if (!(node instanceof Element) || node === document.body || node === document.documentElement) return false;
+      if (node.matches('dialog, [role="dialog"], [data-pull-to-refresh-ignore], input, select, textarea, [contenteditable]:not([contenteditable="false"])')) return true;
+      const style = window.getComputedStyle(node);
+      return /auto|scroll/.test(`${style.overflowX} ${style.overflowY}`);
+    });
+
+    const onStart = (e: TouchEvent) => {
+      cancel();
+      if (refreshingRef.current || e.touches.length !== 1 || !atTop() || hasLocalGestureOwner(e)) return;
+      startY.current = e.touches[0].clientY;
+      startX.current = e.touches[0].clientX;
     };
 
     const onMove = (e: TouchEvent) => {
       if (refreshingRef.current || startY.current === null) return;
+      if (e.touches.length !== 1 || !atTop()) { cancel(); return; }
       const dy = e.touches[0].clientY - startY.current;
-      if (dy <= 0) {
-        if (dragging.current) {
-          dragging.current = false;
-          setPullVal(0);
-        }
-        return;
+      if (!dragging.current) {
+        const dx = Math.abs(e.touches[0].clientX - startX.current);
+        if (Math.max(dx, Math.abs(dy)) < 8) return;
+        // Once native scrolling or a horizontal swipe wins, do not steal a reversal.
+        if (dy <= 0 || dx >= dy) { cancel(); return; }
       }
-      if (!atTop()) {
-        startY.current = null;
-        if (dragging.current) {
-          dragging.current = false;
-          setPullVal(0);
-        }
-        return;
-      }
+      if (dy <= 0) { cancel(); return; }
       dragging.current = true;
       setPullVal(Math.min(MAX_PULL, dy * RESISTANCE));
       // Suppress native overscroll/bounce while we own the gesture.
@@ -92,13 +99,13 @@ export default function PullToRefresh() {
     window.addEventListener('touchstart', onStart, { passive: true });
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onEnd, { passive: true });
-    window.addEventListener('touchcancel', onEnd, { passive: true });
+    window.addEventListener('touchcancel', cancel, { passive: true });
 
     return () => {
       window.removeEventListener('touchstart', onStart);
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend', onEnd);
-      window.removeEventListener('touchcancel', onEnd);
+      window.removeEventListener('touchcancel', cancel);
     };
   }, []);
 

@@ -46,6 +46,7 @@ html[data-design="cinematic"] .cinema-shell a { color: inherit; text-decoration:
 .cinema-menu-button { padding: 5px; }
 .cinema-menu { position: fixed; inset: 0; width: min(1100px, 94vw); max-height: 90svh; margin: auto; border: 1px solid #5a5d50; padding: 35px; background: #131611; color: #eeeae2; box-shadow: 0 20px 100px #0009; }
 .cinema-menu::backdrop { background: #050706c9; backdrop-filter: blur(12px); }
+.cinema-menu { overflow-y: auto; overscroll-behavior-y: contain; }
 .cinema-menu-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 35px; font: 11px var(--font-geist-mono), monospace; letter-spacing: 2px; }
 .cinema-menu nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
 .cinema-menu nav p { font: 10px var(--font-geist-mono), monospace; color: var(--cinema-accent) !important; letter-spacing: 1px; margin-bottom: 18px; }

@@ -59,8 +59,8 @@ export default function ClubShell({ children }: { children: ReactNode }) {
   return (
     <div className="club-shell">
       <a className="club-skip" href="#club-content">İçeriğe geç</a>
-      {open && <button className="club-scrim" onClick={() => setOpen(false)} aria-label="Menüyü kapat" tabIndex={-1} />}
-      <aside id="club-navigation" className={`club-sidebar ${open ? 'is-open' : ''}`}>
+      {open && <button className="club-scrim" data-pull-to-refresh-ignore onClick={() => setOpen(false)} aria-label="Menüyü kapat" tabIndex={-1} />}
+      <aside id="club-navigation" data-pull-to-refresh-ignore className={`club-sidebar ${open ? 'is-open' : ''}`}>
         <Link prefetch={false} href="/" className="club-brand" aria-label="CS Batağı ana sayfa">
           <Image src="/images/BatakLogo192.png" width={42} height={42} alt="" />
           <span>CS BATAĞI<small>COUNTER-STRIKE KULÜBÜ</small></span>

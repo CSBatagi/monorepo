@@ -278,6 +278,7 @@ export default function NotificationBell() {
           {/* Mobile backdrop */}
           <div
             className="fixed inset-0 z-40 bg-black/30 md:hidden"
+            data-pull-to-refresh-ignore
             onClick={() => setIsOpen(false)}
             aria-hidden="true"
           />
@@ -349,7 +350,7 @@ export default function NotificationBell() {
           </div>
 
           {/* Body */}
-          <div className="overflow-y-auto" style={{ maxHeight: "min(400px, 55vh)" }}>
+          <div className="overflow-y-auto overscroll-y-contain" style={{ maxHeight: "min(400px, 55vh)" }}>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />

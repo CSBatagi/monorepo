@@ -35,7 +35,7 @@ html[data-design="modern"] .club-shell a { text-decoration: none; color: inherit
 .club-brand img { border-radius: 12px; }
 .club-brand > span { font-size: 1.188rem; font-weight: 850; letter-spacing: -.7px; line-height: 1.25; }
 .club-brand small { display: block; color: var(--club-muted); font-size: 0.75rem; letter-spacing: .1px; font-weight: 600; margin-top: 5px; }
-.club-nav { padding: 0 12px 16px; overflow-y: auto; flex: 1; }
+.club-nav { padding: 0 12px 16px; overflow-y: auto; overscroll-behavior-y: contain; min-height: 0; flex: 1; }
 .club-nav-group { margin-bottom: 20px; }
 .club-nav-group > p { font-size: 0.75rem; font-weight: 700; letter-spacing: 1.65px; margin: 0 12px 7px; color: var(--club-muted); }
 html[data-design="modern"] .club-nav-link { display: flex; align-items: center; gap: 11px; min-height: 40px; padding: 8px 12px; margin: 2px 0; border-radius: 6px; font-size: 0.875rem; font-weight: 500; color: var(--club-muted); }
