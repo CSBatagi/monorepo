@@ -9,17 +9,29 @@ import CinematicQuote from './CinematicQuote';
 export default function CinematicHome() {
   return <div className="cinema-home">
     <section className="cinema-chapter cinema-hero" id="kulup" data-cinema-chapter="0" aria-labelledby="cinema-title">
-      <div className="cinema-hero-copy">
-        <p className="cinema-kicker"><span /> CS BATAĞI / TOPLANIN</p>
-        <h1 id="cinema-title">Beyler, akşama<br /><span>kimler geliyor?</span></h1>
-        <CinematicQuote />
-        <div className="cinema-actions">
+      <div className="cinema-hero-stage">
+        <div className="cinema-hero-copy">
+          <p className="cinema-kicker"><span /> CS BATAĞI / COUNTER-STRIKE 2</p>
+          <h1 id="cinema-title">Beyler, akşama<br /><span>kimler geliyor?</span></h1>
+          <CinematicQuote />
+        </div>
+        <div className="cinema-scene-window" aria-hidden="true">
+          <div className="cinema-scene-map"><span>DE_DUST II</span><strong>A BÖLGESİ</strong></div>
+          <span className="cinema-scene-serial">RAUND <b>01</b></span>
+          <span className="cinema-scene-corner cinema-scene-corner-start" />
+          <span className="cinema-scene-corner cinema-scene-corner-end" />
+          <div className="cinema-team-labels"><span>CT <i /> SAVUN</span><span>T <i /> HÜCUM</span></div>
+        </div>
+        <div className="cinema-actions cinema-hero-actions">
           <a href="#cinema-attendance-title" className="cinema-button">Katılım bildir <ArrowUpRight size={20} /></a>
           <Link prefetch={false} href="/team-picker" className="cinema-text-button"><Swords size={16} /> Takımları seç</Link>
         </div>
+        <div className="cinema-chapter-bottom"><a href="#cinema-attendance-title" className="cinema-scroll"><span className="cinema-scroll-line" /> TAYFA TOPLANIYOR <ArrowDown size={14} /></a><span>AYNI OYUN. BİZİM HİKÂYEMİZ.</span></div>
       </div>
-      <CinematicBriefing />
-      <div className="cinema-chapter-bottom"><a href="#rekabet" className="cinema-scroll"><span className="cinema-scroll-line" /> YOKLAMA TAMAMSA, HESAPLAŞMAYA GEÇ <ArrowDown size={14} /></a><span>01 — ÖNCE YOKLAMA</span></div>
+      <div className="cinema-match-night">
+        <div className="cinema-match-night-intro"><p className="cinema-kicker"><span /> LOBİ AÇIK</p><p>Beyler, akşama kimler geliyor?</p><a href="#rekabet" aria-label="Rekabet bölümüne geç">01 / 04 <ArrowDown size={15} /></a></div>
+        <CinematicBriefing />
+      </div>
     </section>
 
     <section className="cinema-chapter cinema-rivalry" id="rekabet" data-cinema-chapter="1" aria-labelledby="rivalry-title">

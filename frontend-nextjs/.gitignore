@@ -15,6 +15,9 @@
 
 # next.js
 /.next/
+/.next-cinematic-preview/
+/.next-cinematic-build/
+/tsconfig.cinematic-preview.json
 /out/
 
 # production

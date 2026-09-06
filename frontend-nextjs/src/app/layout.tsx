@@ -5,6 +5,7 @@ import "@/styles/table-styles.css";
 import "@/styles/club-design.css";
 import "@/styles/club-versions.css";
 import "@/styles/cinematic.css";
+import "@/styles/cinematic-3d.css";
 import Providers from "@/components/Providers";
 
 const geistSans = Geist({

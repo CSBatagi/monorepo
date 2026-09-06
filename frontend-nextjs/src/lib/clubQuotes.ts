@@ -23,7 +23,7 @@ export const QUOTE_FADE_MS = 1100;
 const ROTATION_MS = 4200;
 
 /** Cross-fades one quote at a time and pauses in hidden tabs. */
-export function useRotatingQuote() {
+export function useRotatingQuote(enabled = true) {
   const [index, setIndex] = useState(0);
   const [shown, setShown] = useState(false);
   const [visible, setVisible] = useState(true);
@@ -38,7 +38,7 @@ export function useRotatingQuote() {
   }, []);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || !enabled) return;
     let timer: ReturnType<typeof setTimeout>;
     const showNext = () => {
       if (!remaining.current.length) {
@@ -62,7 +62,7 @@ export function useRotatingQuote() {
     };
     showNext();
     return () => clearTimeout(timer);
-  }, [visible]);
+  }, [visible, enabled]);
 
   return { index, shown };
 }

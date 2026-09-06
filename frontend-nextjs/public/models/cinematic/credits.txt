@@ -1,0 +1,16 @@
+CS2 cinematic character credits
+
+This work is based on "SAS | CS2 Agent Model Blue"
+https://sketchfab.com/3d-models/sas-cs2-agent-model-blue-7f18aaccd0ee4694a36646101a12339e
+by gettan (https://sketchfab.com/kill6lucius), licensed under CC BY 4.0.
+Original game character credit: Valve.
+
+This work is based on "PHOENIX | CS2 Agent Model"
+https://sketchfab.com/3d-models/phoenix-cs2-agent-model-de446174eb33494e841e974da31ba872
+by Alex (https://sketchfab.com/alyax), licensed under CC BY 4.0.
+Original game character credit: Valve.
+
+License: https://creativecommons.org/licenses/by/4.0/
+Changes: removed editor animation data and unused texture maps; resized and
+re-encoded textures; repacked geometry buffers; authored scroll choreography
+and procedural rifles. The creators do not endorse this site.

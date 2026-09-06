@@ -1,0 +1,25 @@
+/* Renderer layers. UI styles remain in cinematic.css. */
+.cinema-scene { background: #0b0d0f; }
+.cinema-scene-light { position: absolute; inset: 0; background: radial-gradient(ellipse at 80% 42%, #b8afa539, transparent 53%), linear-gradient(105deg, transparent 39%, #59606610 57%, #c4b7a01c); }
+.cinema-webgl { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 800ms ease; }
+.cinema-scene .cinema-artwork { transform: none; will-change: auto; filter: saturate(.2); opacity: .7; }
+.cinema-scene[data-renderer="webgl"] .cinema-artwork { visibility: hidden; }
+.cinema-scene[data-renderer="webgl"] .cinema-webgl { opacity: 1; }
+.cinema-scene .cinema-scene-shade { background: linear-gradient(90deg, #0b0d0ff0 0%, #0b0d0fb0 25%, #0b0d0f30 46%, transparent 65%), linear-gradient(0deg, #0b0d0fbb, transparent 25%, transparent 85%, #0b0d0f88); }
+.cinema-scene.is-detail .cinema-scene-shade { background: #0b0d0fcc; }
+.cinema-scene .cinema-grain { opacity: .022; }
+.cinema-quality-button { color: #e0d4c5; }
+.cinema-shell .cinema-quote-stage > .cinema-quote-line { color: #c3c5c3 !important; }
+@media (max-width: 760px) {
+  .cinema-scene .cinema-scene-shade { background: linear-gradient(0deg, #0b0d0ff0 2%, transparent 28%, transparent 52%, #0b0d0fde 82%); }
+  .cinema-scene-light { background: radial-gradient(ellipse at 65% 56%, #b8afa53a, transparent 53%); }
+  .cinema-scene .cinema-artwork { background-position: 60% center; }
+  .cinema-scene .cinema-grain { display: none; }
+  .cinema-hud .cinema-quality-button { font-size: 7px; letter-spacing: .4px; }
+  .cinema-hud > span { letter-spacing: .4px; }
+  .cinema-hud button { min-width: 40px; min-height: 44px; }
+}
+@media (max-width: 600px) {
+  .cinema-hud button[aria-pressed] > span { display: none; }
+  .cinema-hud-divider { display: none; }
+}

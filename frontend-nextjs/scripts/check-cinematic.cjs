@@ -55,3 +55,30 @@ for (let time = 0; time < 40; time += .17) for (let i = 0; i < 64; i++) {
   assert(p.age >= 0 && p.age < 9);
 }
 console.log('Motion checks passed: autonomous travel, rotation, projectile lifetime, stable recycling.');
+
+const { cameraAt, chooseTier, renderPixelRatio } = load('src/components/cinematic/camera-path.ts');
+assert.notEqual(cameraAt(0).x, cameraAt(1).x, 'Scroll travels to the opposing side of real geometry');
+assert(cameraAt(3).y > cameraAt(0).y * 2, 'Final chapter is an overhead view');
+for (const p of [-100, 0, .2, 1, 2.8, 3, 100, NaN]) {
+  for (const value of Object.values(cameraAt(p))) assert(Number.isFinite(value));
+}
+assert.equal(chooseTier('auto', 390, 8, 8), 'low');
+assert.equal(chooseTier('auto', 1440, 4, 8), 'low');
+assert.equal(chooseTier('auto', 1440, 8, 4), 'low');
+assert.equal(chooseTier('lite', 1440, 16, 16), 'low');
+assert.equal(chooseTier('auto', 1440, 8, 8), 'high');
+for (const tier of ['low', 'high']) for (const [width, height] of [[390, 844], [1440, 900], [3840, 2160]]) {
+  const ratio = renderPixelRatio(width, height, 3, tier);
+  assert(width * height * ratio * ratio <= (tier === 'low' ? 850000 : 1900000) + 1);
+}
+console.log('3D checks passed: camera travel, bounded values, modest hardware tiers, hard pixel budgets.');
+
+const { encounterAt, footAt, impactAt } = load('src/components/cinematic/encounter-motion.ts');
+assert(encounterAt(.9, true).distance > 1, 'Actual travel to cover');
+assert.equal(encounterAt(1.4, true).distance, encounterAt(1.8, true).distance, 'Stationary while firing');
+assert(encounterAt(3, true).distance < encounterAt(2, true).distance, 'Withdraw after the exchange');
+assert.equal(impactAt(0, 0).active, false);
+assert.equal(impactAt(1.4, 0).active, true);
+assert.equal(footAt(1.3, true).planted, true);
+assert.equal(footAt(1.3, false).planted, true);
+console.log('Encounter checks passed: approach, planted firing stance, withdrawal, and shot-timed impacts.');
