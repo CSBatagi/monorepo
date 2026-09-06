@@ -4,8 +4,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 type Theme = "light" | "dark";
 type Design = "modern" | "classic" | "cinematic";
-type ClubVersion = "original" | "panels" | "warm" | "graphite";
-const clubVersions: ClubVersion[] = ["original", "panels", "warm", "graphite"];
+type ClubVersion = "original" | "panels" | "warm" | "graphite" | "warm-graphite";
+const clubVersions: ClubVersion[] = ["original", "panels", "warm", "graphite", "warm-graphite"];
+const defaultClubVersion: ClubVersion = "warm-graphite";
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
@@ -17,7 +18,7 @@ interface ThemeContextType {
 }
 const ThemeContext = createContext<ThemeContextType>({
   theme: "dark", toggleTheme: () => {}, isDark: true, design: "modern", setDesign: () => {},
-  clubVersion: "original", cycleClubVersion: () => {},
+  clubVersion: defaultClubVersion, cycleClubVersion: () => {},
 });
 export function useTheme() { return useContext(ThemeContext); }
 const themeKey = (design: Design) => design === "classic" ? "cs-batagi-theme" : design === "cinematic" ? "cs-batagi-cinematic-theme" : "cs-batagi-modern-theme";
@@ -33,7 +34,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
   const [design, updateDesign] = useState<Design>("modern");
   const [mounted, setMounted] = useState(false);
-  const [clubVersion, setClubVersion] = useState<ClubVersion>("original");
+  const [clubVersion, setClubVersion] = useState<ClubVersion>(defaultClubVersion);
   useEffect(() => {
     let chosen: Design = "modern";
     try {
