@@ -57,7 +57,8 @@ html[data-design="modern"][data-club-version="panels"] .club-analysis-icon { dis
 }
 
 
-/* warm: 73dc390 */
+/* warm: 73dc390. The layout rules use a version prefix so the fifth design,
+   "warm-graphite", reuses this layout with its own palette below. */
 html[data-club-version="warm"][data-design="modern"] {
   --club-bg: #f2f0ed; --club-surface: #faf8f5; --club-raised: #eeebe6;
   --club-line: #d8d1c8; --club-text: #292622; --club-muted: #726b62;
@@ -75,50 +76,50 @@ html[data-club-version="warm"][data-design="modern"].dark {
   --dark-line: #514a43; --dark-accent: #ff9257;
   color-scheme: dark;
 }
-html[data-design="modern"][data-club-version="warm"] .club-night-card { min-height: 390px; isolation: isolate; background: #24211f; border-color: #776350; box-shadow: 0 12px 32px #0002; }
-html[data-design="modern"][data-club-version="warm"] .club-night-art { position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, #2b2825 0%, #2b2825bf 37%, #2b282508 78%), url('/images/club-match-night.webp') 65% center / cover; }
-html[data-design="modern"][data-club-version="warm"] .club-night-card .club-card-top { margin-bottom: 34px; }
-html[data-design="modern"][data-club-version="warm"] .club-night-card .club-label { background: #171a1ec9; }
-html[data-club-version="warm"][data-design="modern"] .club-night-card > p { color: #e0d7cf; }
-html[data-design="modern"][data-club-version="warm"] .club-night-actions { margin-top: 28px; }
-html[data-club-version="warm"][data-design="modern"] .club-night-card .club-secondary-button { background: #202227d9; border-color: #9a8775; }
-html[data-design="modern"][data-club-version="warm"] .club-night-bottom { border-color: #c3a38655; color: #e1c9b7; }
-html[data-design="modern"][data-club-version="warm"] .club-attendance-card { background: linear-gradient(145deg, var(--club-raised), var(--club-surface)); box-shadow: inset 0 1px 0 #ffffff0c, 0 12px 32px #0002; }
-html[data-design="modern"][data-club-version="warm"] .club-match-strip { background: var(--club-raised); margin-bottom: 40px; }
-html[data-design="modern"][data-club-version="warm"] .club-competitions-section { padding: 26px; border: 1px solid var(--club-line); border-radius: 16px; background: var(--club-surface); }
-html[data-design="modern"][data-club-version="warm"] .club-competition-card { --art-color: #a9b6d3; position: relative; isolation: isolate; min-width: 0; min-height: 246px; display: flex; flex-direction: column; overflow: hidden; background: var(--club-raised); }
-html[data-design="modern"][data-club-version="warm"] .club-competition-card.tokens { --art-color: #dfbc7e; }
-html[data-design="modern"][data-club-version="warm"] .club-competition-card.allstars { --art-color: #bea5cf; }
-html[data-design="modern"][data-club-version="warm"] .club-competition-art { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; color: var(--art-color); background: radial-gradient(ellipse at 100% 45%, color-mix(in srgb, var(--art-color) 19%, transparent), transparent 75%); }
-html[data-design="modern"][data-club-version="warm"] .club-competition-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--club-raised) 8%, color-mix(in srgb, var(--club-raised) 96%, transparent) 32%, color-mix(in srgb, var(--club-raised) 72%, transparent) 56%, color-mix(in srgb, var(--club-raised) 12%, transparent) 100%); }
-html[data-design="modern"][data-club-version="warm"] .club-emblem { position: absolute; right: -20px; top: 30px; display: grid; place-items: center; width: 148px; height: 148px; transform: rotate(-14deg); border: 1px solid color-mix(in srgb, var(--art-color) 55%, transparent); border-radius: 30px; background: linear-gradient(135deg, #ffffff18, #00000030); box-shadow: 9px 12px 0 #00000015, inset 0 1px 0 #ffffff30; }
-html[data-design="modern"][data-club-version="warm"] .club-emblem svg { width: 96px; height: 96px; }
-html[data-design="modern"][data-club-version="warm"] .tokens .club-emblem { border-radius: 50%; transform: rotate(12deg); }
-html[data-design="modern"][data-club-version="warm"] .allstars .club-emblem { transform: rotate(10deg); border-radius: 36px 10px; }
-html[data-design="modern"][data-club-version="warm"] .club-emblem-orbit { position: absolute; right: -67px; top: -15px; width: 245px; height: 245px; border: 1px solid color-mix(in srgb, var(--art-color) 22%, transparent); border-radius: 50%; }
-html[data-design="modern"][data-club-version="warm"] .club-emblem-orbit::after { content: ''; position: absolute; inset: 17px; border: 1px dashed color-mix(in srgb, var(--art-color) 18%, transparent); border-radius: 50%; }
-html[data-club-version="warm"][data-design="modern"] .club-competition-card .club-eyebrow { margin: 0 0 17px; }
-html[data-design="modern"][data-club-version="warm"] .club-competition-card > p:not(.club-eyebrow) { max-width: 78%; margin-bottom: 24px; }
-html[data-design="modern"][data-club-version="warm"] .club-competition-card .club-competition-cta { margin-top: auto; }
-html[data-design="modern"][data-club-version="warm"] .club-analysis-section { border: 1px solid var(--club-line); border-radius: 16px; padding: 30px; background: var(--club-surface); gap: 30px; }
-html[data-design="modern"][data-club-version="warm"] .club-analysis-section > div:first-child { border-left: 3px solid var(--club-accent); padding-left: 22px; }
-html[data-design="modern"][data-club-version="warm"] .club-analysis-links { gap: 12px; }
-html[data-design="modern"][data-club-version="warm"] .club-analysis-links > a { padding: 14px; border: 1px solid var(--club-line); border-radius: 9px; background: var(--club-raised); }
-html[data-design="modern"][data-club-version="warm"] .club-analysis-links > a:hover { background: var(--club-hover); border-color: var(--club-accent); }
-html[data-design="modern"][data-club-version="warm"] .club-analysis-icon { display: grid; place-items: center; width: 36px; height: 40px; color: var(--club-accent); }
+html[data-design="modern"][data-club-version^="warm"] .club-night-card { min-height: 390px; isolation: isolate; background: #24211f; border-color: #776350; box-shadow: 0 12px 32px #0002; }
+html[data-design="modern"][data-club-version^="warm"] .club-night-art { position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, #2b2825 0%, #2b2825bf 37%, #2b282508 78%), url('/images/club-match-night.webp') 65% center / cover; }
+html[data-design="modern"][data-club-version^="warm"] .club-night-card .club-card-top { margin-bottom: 34px; }
+html[data-design="modern"][data-club-version^="warm"] .club-night-card .club-label { background: #171a1ec9; }
+html[data-club-version^="warm"][data-design="modern"] .club-night-card > p { color: #e0d7cf; }
+html[data-design="modern"][data-club-version^="warm"] .club-night-actions { margin-top: 28px; }
+html[data-club-version^="warm"][data-design="modern"] .club-night-card .club-secondary-button { background: #202227d9; border-color: #9a8775; }
+html[data-design="modern"][data-club-version^="warm"] .club-night-bottom { border-color: #c3a38655; color: #e1c9b7; }
+html[data-design="modern"][data-club-version^="warm"] .club-attendance-card { background: linear-gradient(145deg, var(--club-raised), var(--club-surface)); box-shadow: inset 0 1px 0 #ffffff0c, 0 12px 32px #0002; }
+html[data-design="modern"][data-club-version^="warm"] .club-match-strip { background: var(--club-raised); margin-bottom: 40px; }
+html[data-design="modern"][data-club-version^="warm"] .club-competitions-section { padding: 26px; border: 1px solid var(--club-line); border-radius: 16px; background: var(--club-surface); }
+html[data-design="modern"][data-club-version^="warm"] .club-competition-card { --art-color: #a9b6d3; position: relative; isolation: isolate; min-width: 0; min-height: 246px; display: flex; flex-direction: column; overflow: hidden; background: var(--club-raised); }
+html[data-design="modern"][data-club-version^="warm"] .club-competition-card.tokens { --art-color: #dfbc7e; }
+html[data-design="modern"][data-club-version^="warm"] .club-competition-card.allstars { --art-color: #bea5cf; }
+html[data-design="modern"][data-club-version^="warm"] .club-competition-art { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; color: var(--art-color); background: radial-gradient(ellipse at 100% 45%, color-mix(in srgb, var(--art-color) 19%, transparent), transparent 75%); }
+html[data-design="modern"][data-club-version^="warm"] .club-competition-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--club-raised) 8%, color-mix(in srgb, var(--club-raised) 96%, transparent) 32%, color-mix(in srgb, var(--club-raised) 72%, transparent) 56%, color-mix(in srgb, var(--club-raised) 12%, transparent) 100%); }
+html[data-design="modern"][data-club-version^="warm"] .club-emblem { position: absolute; right: -20px; top: 30px; display: grid; place-items: center; width: 148px; height: 148px; transform: rotate(-14deg); border: 1px solid color-mix(in srgb, var(--art-color) 55%, transparent); border-radius: 30px; background: linear-gradient(135deg, #ffffff18, #00000030); box-shadow: 9px 12px 0 #00000015, inset 0 1px 0 #ffffff30; }
+html[data-design="modern"][data-club-version^="warm"] .club-emblem svg { width: 96px; height: 96px; }
+html[data-design="modern"][data-club-version^="warm"] .tokens .club-emblem { border-radius: 50%; transform: rotate(12deg); }
+html[data-design="modern"][data-club-version^="warm"] .allstars .club-emblem { transform: rotate(10deg); border-radius: 36px 10px; }
+html[data-design="modern"][data-club-version^="warm"] .club-emblem-orbit { position: absolute; right: -67px; top: -15px; width: 245px; height: 245px; border: 1px solid color-mix(in srgb, var(--art-color) 22%, transparent); border-radius: 50%; }
+html[data-design="modern"][data-club-version^="warm"] .club-emblem-orbit::after { content: ''; position: absolute; inset: 17px; border: 1px dashed color-mix(in srgb, var(--art-color) 18%, transparent); border-radius: 50%; }
+html[data-club-version^="warm"][data-design="modern"] .club-competition-card .club-eyebrow { margin: 0 0 17px; }
+html[data-design="modern"][data-club-version^="warm"] .club-competition-card > p:not(.club-eyebrow) { max-width: 78%; margin-bottom: 24px; }
+html[data-design="modern"][data-club-version^="warm"] .club-competition-card .club-competition-cta { margin-top: auto; }
+html[data-design="modern"][data-club-version^="warm"] .club-analysis-section { border: 1px solid var(--club-line); border-radius: 16px; padding: 30px; background: var(--club-surface); gap: 30px; }
+html[data-design="modern"][data-club-version^="warm"] .club-analysis-section > div:first-child { border-left: 3px solid var(--club-accent); padding-left: 22px; }
+html[data-design="modern"][data-club-version^="warm"] .club-analysis-links { gap: 12px; }
+html[data-design="modern"][data-club-version^="warm"] .club-analysis-links > a { padding: 14px; border: 1px solid var(--club-line); border-radius: 9px; background: var(--club-raised); }
+html[data-design="modern"][data-club-version^="warm"] .club-analysis-links > a:hover { background: var(--club-hover); border-color: var(--club-accent); }
+html[data-design="modern"][data-club-version^="warm"] .club-analysis-icon { display: grid; place-items: center; width: 36px; height: 40px; color: var(--club-accent); }
 @media (max-width: 1199px) {
-  html[data-design="modern"][data-club-version="warm"] .club-competitions-section { padding: 20px; }
-  html[data-design="modern"][data-club-version="warm"] .club-analysis-section { grid-template-columns: 1fr; }
+  html[data-design="modern"][data-club-version^="warm"] .club-competitions-section { padding: 20px; }
+  html[data-design="modern"][data-club-version^="warm"] .club-analysis-section { grid-template-columns: 1fr; }
 }
 @media (max-width: 639px) {
-  html[data-design="modern"][data-club-version="warm"] .club-night-card { min-height: 410px; }
-  html[data-design="modern"][data-club-version="warm"] .club-night-art { background-position: 70% center; }
-  html[data-design="modern"][data-club-version="warm"] .club-night-card .club-card-top { margin-bottom: 42px; }
-  html[data-design="modern"][data-club-version="warm"] .club-competitions-section { padding: 16px; border-radius: 12px; }
-  html[data-design="modern"][data-club-version="warm"] .club-section-heading { align-items: flex-start; flex-wrap: wrap; }
-  html[data-design="modern"][data-club-version="warm"] .club-competition-card { display: flex; min-height: 230px; }
-  html[data-design="modern"][data-club-version="warm"] .club-analysis-section { padding: 22px 16px; }
-  html[data-design="modern"][data-club-version="warm"] .club-analysis-section > div:first-child { padding-left: 16px; }
+  html[data-design="modern"][data-club-version^="warm"] .club-night-card { min-height: 410px; }
+  html[data-design="modern"][data-club-version^="warm"] .club-night-art { background-position: 70% center; }
+  html[data-design="modern"][data-club-version^="warm"] .club-night-card .club-card-top { margin-bottom: 42px; }
+  html[data-design="modern"][data-club-version^="warm"] .club-competitions-section { padding: 16px; border-radius: 12px; }
+  html[data-design="modern"][data-club-version^="warm"] .club-section-heading { align-items: flex-start; flex-wrap: wrap; }
+  html[data-design="modern"][data-club-version^="warm"] .club-competition-card { display: flex; min-height: 230px; }
+  html[data-design="modern"][data-club-version^="warm"] .club-analysis-section { padding: 22px 16px; }
+  html[data-design="modern"][data-club-version^="warm"] .club-analysis-section > div:first-child { padding-left: 16px; }
 }
 
 
@@ -145,3 +146,20 @@ html[data-design="modern"][data-club-version="graphite"]:not(.dark) :is(.club-at
 html[data-design="modern"][data-club-version="graphite"] :is(.club-analysis-section, .club-footer) {
   border-top-color: #e2e2e2;
 }
+
+/* Fifth design: the third design's layout carrying the fourth design's graphite palette.
+   The layout comes from the "warm" rules above; only colours change here. */
+html[data-design="modern"][data-club-version="warm-graphite"] {
+  --club-line: #3c424b;
+}
+/* Cards, strips, and link tiles take the graphite surface. The hover tone is derived from
+   it, because this layout hovers surfaces the fourth design leaves flat. */
+html[data-design="modern"][data-club-version="warm-graphite"] :is(.club-attendance-card, .club-match-strip, .club-competition-card, .club-analysis-links > a) {
+  --club-surface: #21242b; --club-raised: #21242b; --club-hover: #2b3038; color: var(--club-text);
+}
+/* On a light page those surfaces stay graphite, so their text follows the dark palette. */
+html[data-design="modern"][data-club-version="warm-graphite"]:not(.dark) :is(.club-attendance-card, .club-match-strip, .club-competition-card, .club-analysis-links > a) {
+  --club-text: #eeeef0; --club-muted: #a1a1aa;
+}
+html[data-design="modern"][data-club-version="warm-graphite"] .club-night-art { background: linear-gradient(90deg, #24211f 0%, #24211fbf 37%, #24211f08 78%), url('/images/club-match-night.webp') 65% center / cover; }
+html[data-design="modern"][data-club-version="warm-graphite"] .club-footer { border-top-color: #e2e2e2; }
