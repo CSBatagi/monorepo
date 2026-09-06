@@ -287,10 +287,74 @@ html[data-design="cinematic"] .cinema-attendance-form select { display: block; w
   .cinema-hero .cinema-actions { gap: 15px; }
   .cinema-briefing { margin-top: 24px; } .cinema-brief-panel { padding: 18px 15px 0; }
   .cinema-panel-heading { flex-wrap: wrap; gap: 7px; }
-  .cinema-attendance-choices button { font-size: 9px; gap: 4px; }
-  .cinema-leader-labels, .cinema-leader { grid-template-columns: minmax(0, 1fr) 45px 40px 37px; gap: 5px; }
-  .cinema-night-maps > div { grid-template-columns: 52px minmax(0, 1fr) 50px minmax(0, 1fr); gap: 4px; }
   .cinema-roster-summary > strong { font-size: 43px; } .cinema-roster-summary { gap: 13px; }
-  .cinema-chapter-bottom { font-size: 6px; letter-spacing: .7px; }
   .cinema-competition h3 { font-size: 26px; line-height: 1.3; }
+}
+
+/* Mobile reading scale: body 14–16px, compact data labels 12px. */
+@media (max-width: 760px) {
+  .cinema-shell .cinema-brief-panel h2 { font-size: 18px; line-height: 1.4; }
+  .cinema-panel-heading, .cinema-night-meta { flex-wrap: wrap; }
+  .cinema-data-status, .cinema-panel-heading time,
+  .cinema-night-meta, .cinema-night-meta > span:first-child,
+  .cinema-leader-labels, .cinema-leader small { font-size: 12px; line-height: 1.5; }
+  .cinema-roster-summary > div { min-width: 0; }
+  .cinema-roster-summary > div > span { font-size: 16px; }
+  .cinema-roster-summary small { display: inline-block; font-size: 14px; }
+  .cinema-roster-summary p, .cinema-roster-names,
+  .cinema-attendance-form label, .cinema-preview-note,
+  .cinema-save-feedback, .cinema-night-quip, .cinema-empty { font-size: 14px; line-height: 1.6; }
+  .cinema-roster-names { overflow-wrap: anywhere; }
+  html[data-design="cinematic"] .cinema-attendance-form select { height: 46px; font-size: 16px; }
+  .cinema-attendance-choices { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .cinema-attendance-choices button { min-height: 46px; font-size: 14px; line-height: 1.4; gap: 6px; padding: 10px 6px; }
+  .cinema-attendance-choices button svg { flex-shrink: 0; }
+  .cinema-save-feedback { padding: 10px 0 14px; }
+  .cinema-panel-link, .cinema-panel-bottom a,
+  .cinema-retry, .cinema-sign-in-attendance { min-height: 46px; font-size: 14px; line-height: 1.5; }
+  .cinema-panel-link { gap: 12px; padding: 10px 0; }
+  .cinema-panel-link svg { flex-shrink: 0; }
+  .cinema-panel-bottom { gap: 0 16px; }
+  .cinema-leader-labels, .cinema-leader { grid-template-columns: minmax(0, 1fr) 48px 46px 40px; gap: 6px; }
+  .cinema-leader-labels { color: #b3bda5; }
+  .cinema-leader { min-height: 46px; font-size: 14px; }
+  .cinema-leader > span:first-child { gap: 6px; }
+  .cinema-night-maps > div { grid-template-columns: minmax(0, 1fr) 60px minmax(0, 1fr); gap: 6px; padding: 10px 0; font-size: 14px; }
+  .cinema-night-maps > div > span:first-child { grid-column: 1 / -1; font-size: 12px; }
+  .cinema-night-maps strong { font-size: 14px; }
+}
+@media (max-width: 600px) {
+  .cinema-brand small { max-width: 145px; font-size: 9px; line-height: 1.4; letter-spacing: .5px; }
+  .cinema-header { padding: 12px 16px; }
+  .cinema-header-actions { gap: 8px; }
+  .cinema-login, .cinema-account { font-size: 14px; }
+  .cinema-account summary, .cinema-menu-button { min-width: 44px; min-height: 44px; }
+  .cinema-menu-button { display: grid; place-items: center; }
+  .cinema-kicker { font-size: 12px; letter-spacing: 1px; }
+  .cinema-lede { font-size: 16px; line-height: 1.7; }
+  .cinema-hero .cinema-quote-stage { font-size: 17px; line-height: 1.5; }
+  html[data-design="cinematic"] .cinema-shell .cinema-button { font-size: 16px; min-height: 48px; letter-spacing: 0; }
+  .cinema-text-button, .cinema-inline-links a { font-size: 14px; min-height: 44px; }
+  .cinema-card-top, .cinema-card-cta, .cinema-row-number,
+  .cinema-stat-index, .cinema-chapter-bottom, .cinema-endnote { font-size: 12px; line-height: 1.5; letter-spacing: .5px; }
+  .cinema-competition p, .cinema-match-links p { font-size: 14px; line-height: 1.6; }
+  .cinema-stats-links > a { font-size: 16px; }
+  .cinema-endnote { flex-wrap: wrap; }
+  .cinema-hud { padding: 4px 16px; min-height: 57px; height: auto; flex-wrap: wrap; gap: 0 12px; font-size: 10px; letter-spacing: .3px; }
+  .cinema-hud > div { margin-left: auto; }
+  .cinema-hud button, .cinema-hud a { min-height: 44px; }
+  .cinema-page-intro > a, .cinema-page-intro nav a { font-size: 14px; min-height: 44px; }
+  .cinema-menu nav a, .cinema-menu-designs { font-size: 16px; line-height: 1.5; }
+  .cinema-menu nav a > svg { flex-shrink: 0; }
+  .cinema-menu-heading, .cinema-menu nav p { font-size: 12px; line-height: 1.5; }
+}
+@media (max-width: 420px) {
+  .cinema-attendance-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cinema-attendance-choices button:last-child { grid-column: 1 / -1; }
+  .cinema-menu nav { grid-template-columns: 1fr; }
+}
+@media (max-width: 360px) {
+  .cinema-brand small { display: none; }
+  .cinema-chapter { padding-left: 16px; padding-right: 16px; }
+  .cinema-hud > span { max-width: 85px; }
 }
