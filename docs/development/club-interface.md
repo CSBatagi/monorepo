@@ -4,7 +4,7 @@ The default interface is the modern club dashboard. The classic header, home scr
 
 ## Switching
 
-- Modern pages have a **Tasarım 1/3** button below the top bar. It cycles through **Orijinal** (pre-image, `622ca54`), **Görsel paneller** (`f56691c`), and **Sıcak gri** (`73dc390`), then returns to the original. The initial choice is original; the browser remembers later choices in `cs-batagi-club-version`, independently of classic/modern and light/dark preferences. Blocked storage still permits cycling for the current session.
+- Modern pages have a **Tasarım 1/4** button below the top bar. It cycles through **Orijinal** (pre-image, `622ca54`), **Görsel paneller** (`f56691c`), **Sıcak gri** (`73dc390`), and **Grafit** (original layout with `#776350` hero border, `#3c424b` card borders, `#21242b` card backgrounds, and `#e2e2e2` analysis/footer dividers), then returns to the original. The initial choice is original; the browser remembers later choices in `cs-batagi-club-version`, independently of classic/modern and light/dark preferences. Blocked storage still permits cycling for the current session.
 - Modern sidebar: **Klasik arayüze geç**.
 - Classic interface: fixed **Yeni arayüze geç** button at the bottom left.
 - Login has the same switch.

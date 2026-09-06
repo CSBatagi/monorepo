@@ -42,7 +42,7 @@ export const navigation = [
 export default function ClubShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { setDesign, clubVersion, cycleClubVersion } = useTheme();
-  const versionLabel = { original: '1/3 · Orijinal', panels: '2/3 · Görsel paneller', warm: '3/3 · Sıcak gri' }[clubVersion];
+  const versionLabel = { original: '1/4 · Orijinal', panels: '2/4 · Görsel paneller', warm: '3/4 · Sıcak gri', graphite: '4/4 · Grafit' }[clubVersion];
   const { user, ready, logout } = useSession();
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);

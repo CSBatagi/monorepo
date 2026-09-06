@@ -127,3 +127,21 @@ html[data-design="modern"] .club-version-toolbar { display: flex; justify-conten
 html[data-design="modern"] .club-version-switch { display: inline-flex; align-items: center; gap: 9px; min-height: 40px; padding: 8px 13px; border: 1px solid var(--club-line); border-radius: 8px; background: var(--club-surface); color: var(--club-text); font-size: .8125rem; cursor: pointer; }
 html[data-design="modern"] .club-version-switch:hover { background: var(--club-hover); border-color: var(--club-accent); }
 @media (max-width: 639px) { html[data-design="modern"] .club-version-toolbar { padding: 12px 16px 0; } }
+
+/* Fourth design: original layout with graphite cards and bright section rules. */
+html[data-design="modern"][data-club-version="graphite"] {
+  --club-line: #3c424b;
+}
+html[data-design="modern"][data-club-version="graphite"] :is(.club-attendance-card, .club-match-strip, .club-competition-card) {
+  --club-surface: #21242b;
+}
+html[data-design="modern"][data-club-version="graphite"] .club-night-card {
+  border-color: #776350;
+}
+html[data-design="modern"][data-club-version="graphite"]:not(.dark) :is(.club-attendance-card, .club-match-strip, .club-competition-card) {
+  --club-text: #eeeef0;
+  --club-muted: #a1a1aa;
+}
+html[data-design="modern"][data-club-version="graphite"] :is(.club-analysis-section, .club-footer) {
+  border-top-color: #e2e2e2;
+}

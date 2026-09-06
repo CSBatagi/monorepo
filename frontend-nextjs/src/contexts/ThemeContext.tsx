@@ -4,8 +4,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 type Theme = "light" | "dark";
 type Design = "modern" | "classic";
-type ClubVersion = "original" | "panels" | "warm";
-const clubVersions: ClubVersion[] = ["original", "panels", "warm"];
+type ClubVersion = "original" | "panels" | "warm" | "graphite";
+const clubVersions: ClubVersion[] = ["original", "panels", "warm", "graphite"];
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
