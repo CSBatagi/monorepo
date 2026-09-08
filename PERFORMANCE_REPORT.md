@@ -97,6 +97,13 @@ The scheduler runs in the **backend** Express process (`backend/notificationSche
 
 ## Remaining Optimization Opportunities
 
+Production was measured on 2026-09-08: the VM already has 1 GiB swap, and
+application memory paging plus backend connection timeouts were observed.
+Attendance GET now bypasses Next.js at Caddy; host swappiness was reduced from
+60 to 10. See [the production investigation](docs/operations/live-loading.md)
+for evidence, validation limits, and rollback. The historical estimates below
+are not a substitute for those measurements.
+
 If further memory reduction is needed:
 
 1. **Add swap space** (1-2 GB) on the VM as OOM safety net

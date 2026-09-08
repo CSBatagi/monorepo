@@ -35,6 +35,24 @@ csbatagi.com {
 		reverse_proxy backend:3000
 	}
 
+	# Attendance reads are public and already served at /backend/live/attendance.
+	# Avoid waking/queuing behind Next.js rendering just to proxy a live read.
+	# Match GET only: mutations still use the Next.js authorization/proxy path.
+	@attendanceRead {
+		method GET
+		path /api/live/attendance
+	}
+	handle @attendanceRead {
+		header >Cache-Control "no-store"
+		reverse_proxy backend:3000 {
+			rewrite /live/attendance
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 12s
+			}
+		}
+	}
+
 	handle {
 		reverse_proxy frontend-nextjs:3000
 	}

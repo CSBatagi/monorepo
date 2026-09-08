@@ -127,6 +127,7 @@ Only these paths should write generated stats into frontend `runtime-data/`:
 Attendance and team-picker state migrated from Firebase RTDB to PostgreSQL. See `docs/FIREBASE_MIGRATION_PLAN.md`.
 
 - **Backend routes**: `GET/POST /live/attendance`, `GET/POST /live/team-picker/*` (`liveRoutes.js`)
+- **Production attendance reads**: Caddy routes GET `/api/live/attendance` directly to backend `/live/attendance`, preserving `v` and `no-store` behavior. POST continues through Next.js; the Next.js GET proxy also remains for local development. See [`../operations/live-loading.md`](../operations/live-loading.md) for production measurements and rollback.
 - **Rate limiting**: `/live/*` routes are exempt from the 30 req/min rate limiter (high-frequency polling, shared Docker IP)
 - **Frontend polling**: `useLivePolling` hook polls every 3s with version-based 304 responses
   - PostgreSQL BIGINT versions are normalized to safe JSON numbers; the browser also accepts numeric strings during rolling deployments.
