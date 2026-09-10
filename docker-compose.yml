@@ -48,8 +48,10 @@ services:
     environment:
       DB_HOST: postgres # Hostname matches the service name below
       DB_DATABASE: csdm
-      VM_NAME: backend-1
-      GCP_ZONE: us-east1-d
+      CS2_VM_NAME: cs2-server
+      CS2_GCP_ZONE: europe-west3-c
+      CS2_RCON_HOST: 10.156.0.11
+      CS2_MATCH_DIR: /app/cs2-control
       SEASON_START_FILE: /app/config/season_start.json
       PLAYERS_FILE: /app/players.json
       NODE_OPTIONS: "--max-old-space-size=128"
@@ -61,6 +63,7 @@ services:
         required: false
     volumes:
       - ./credentials.json:/app/../credentials.json
+      - ./cs2-control:/app/cs2-control
       # Mount static config files from public/data (single source of truth)
       - ./frontend-nextjs/public/data/season_start.json:/app/config/season_start.json:ro
       - ./frontend-nextjs/public/data/players.json:/app/players.json:ro

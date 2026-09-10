@@ -1,54 +1,44 @@
 const Rcon = require('rcon');
 
 module.exports = class RconConnection {
-
-  constructor() {
-    this.matchCommand = 'exec load_match.cfg';
-    this.pluginsCommand = 'exec load_all.cfg';
-    this.conn = null;  // Will be initialized when needed
-    this.isConnected = false;  // Track connection state
-
+  executeCommand(command) {
+    return new Promise((resolve, reject) => {
+      const connection = new Rcon(process.env.CS2_RCON_HOST || '10.156.0.11', 27015, process.env.RCON_PASSWORD);
+      let settled = false;
+      const finish = (error, result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        connection.disconnect();
+        error ? reject(error) : resolve(result);
+      };
+      const timer = setTimeout(() => finish(new Error('Game server RCON timed out')), 8000);
+      connection.on('auth', () => connection.send(command));
+      connection.on('response', response => finish(null, response));
+      connection.on('error', () => finish(new Error('Game server RCON failed')));
+      connection.on('end', () => { if (!settled) finish(new Error('Game server closed RCON without a response')); });
+      connection.connect();
+    });
   }
 
-  async startMatch() {
-    if (this.isConnected) {
-      console.log('Already connected to RCON server.');
-      return;
+  async status() {
+    const response = await this.executeCommand('csbatagi_status');
+    const start = response.indexOf('{');
+    const end = response.lastIndexOf('}');
+    if (start < 0 || end < start) throw new Error('Game server did not return its status');
+    return JSON.parse(response.slice(start, end + 1));
+  }
+
+  async startMatch(id) {
+    await this.executeCommand(`matchzy_loadmatch_url "https://csbatagi.com/backend/get-match/${id}"`);
+    const deadline = Date.now() + 45000;
+    while (Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      try {
+        const status = await this.status();
+        if (status.matchLoaded && status.matchId === id) return status;
+      } catch { /* A map change can temporarily interrupt RCON. */ }
     }
-    await this.executeCommand(this.matchCommand);
+    throw new Error('Match saved, but the game server did not acknowledge loading it');
   }
-
-  async loadAllPlugins() {
-    if (this.isConnected) {
-      console.log('Already connected to RCON server.');
-      return;
-    }
-    await this.executeCommand(this.pluginsCommand);
-  }
-
-  async executeCommand(command) {
-    this.conn = Rcon('cs2.csbatagi.com', 27015, process.env.RCON_PASSWORD);
-    this.conn.on('auth', () => {
-      console.log('Authenticated to RCON server.');
-      this.isConnected = true;
-      this.conn.send(command);
-    });
-
-    this.conn.on('response', (str) => {
-      console.log('Server response:', str);
-      this.conn.disconnect();  // Close the connection after receiving a response
-    });
-
-    this.conn.on('end', () => {
-      console.log('Connection to RCON server closed.');
-      this.isConnected = false;  // Reset the connection status
-    });
-
-    this.conn.on('error', (err) => {
-      console.error('Error:', err);
-    });
-
-    this.conn.connect();  // Establish connection
-  }
-
-}
+};

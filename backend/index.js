@@ -15,7 +15,6 @@ const gcpManager = new GcpManager();
 const app = express();
 
 app.use(json()); // Parse JSON request bodies
-let matchData = {};
 const ajv = new Ajv();
 const schemaPath = path.join(__dirname, 'schema.json');
 console.log('Schema path:', schemaPath);
@@ -748,81 +747,8 @@ if (pool) {
   });
 }
 
-// POST  endpoint to store a match json and stores in the memory until the GET end point is called
-app.post('/start-match', async (req, res) => {
-  try {
-    const match = req.body; // Get the match from the request body
-    // check if the match is compliant with the JSON schema at schema.json
-    console.log('Match:', match);
-    const valid = validate(match);
-    if (!valid) {
-      return res.status(400).json({ error: 'Match is not compliant with the schema.', details: validate.errors });
-    } 
-    matchData = match;
-    await rconConnection.startMatch();
-
-    res.json({ message: 'Match stored successfully' });
-  } catch (err) {
-    console.error('Error parsing request body:', err);
-    res.status(400).json({ error: 'Failed to parse request body.', details: err.message });
-  }
-});
-
-// POST endpoint to load all plugins on the RCON server
-app.post('/load-plugins', async (req, res) => {
-  try {
-    await rconConnection.loadAllPlugins();
-    res.json({ message: 'Plugins load command executed' });
-  } catch (err) {
-    console.error('Error loading plugins via RCON:', err);
-    res.status(500).json({ error: 'Failed to load plugins', details: err.message });
-  }
-});
-
-// GET endpoint to retrieve the stored match json
-app.get('/get-match', async (req, res) => {
-  try {
-    res.json(matchData);
-    matchData = {};
-  } catch (err) {
-    console.error('Error parsing request body:', err);
-    res.status(400).json({ error: 'Failed to parse request body.', details: err.message });
-  }
-});
-
-// POST endpoint to start a GCP VM
-app.post('/start-vm', async (req, res) => {
-  try {
-    console.log('Starting GCP VM');
-    const result = await gcpManager.startVm();
-
-    if (result.success) {
-      res.json({ message: result.message });
-    } else {
-      res.status(500).json({ error: 'Failed to start VM', details: result.error });
-    }
-  } catch (err) {
-    console.error('Error starting VM:', err);
-    res.status(500).json({ error: 'Failed to start VM', details: err.message });
-  }
-});
-
-// POST endpoint to stop a GCP VM
-app.post('/stop-vm', async (req, res) => {
-  try {
-    console.log('Stopping GCP VM');
-    const result = await gcpManager.stopVm();
-
-    if (result.success) {
-      res.json({ message: result.message });
-    } else {
-      res.status(500).json({ error: 'Failed to stop VM', details: result.error });
-    }
-  } catch (err) {
-    console.error('Error stopping VM:', err);
-    res.status(500).json({ error: 'Failed to stop VM', details: err.message });
-  }
-});
+// Game controls use persistent match IDs and verified admin sessions.
+require('./gameServer').registerGameServer(app, { pool, rcon: rconConnection, gcp: gcpManager });
 
 // Start the server
 if (!TEST_MODE) {

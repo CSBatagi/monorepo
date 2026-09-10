@@ -9,9 +9,9 @@ module.exports = class GcpManager {
     const credentialsPath = path.join(__dirname, '..', 'credentials.json');
 
     // Use environment variables if available, otherwise read from .gcp_parameters file
-    if (process.env.VM_NAME && process.env.GCP_ZONE) {
-      this.vmName = process.env.VM_NAME;
-      this.zone = process.env.GCP_ZONE;
+    if (process.env.CS2_VM_NAME && process.env.CS2_GCP_ZONE) {
+      this.vmName = process.env.CS2_VM_NAME;
+      this.zone = process.env.CS2_GCP_ZONE;
       console.log(`Using environment variables: VM_NAME=${this.vmName}, GCP_ZONE=${this.zone}`);
     } else {
       // Read GCP parameters from file as fallback
@@ -40,6 +40,10 @@ module.exports = class GcpManager {
 
   async performVmOperation(operationType) {
     try {
+      if (this.vmName !== 'cs2-server' || this.zone !== 'europe-west3-c') {
+        throw new Error('Refusing to operate on a VM other than the configured CS2 game server');
+      }
+      if (!['start', 'stop'].includes(operationType)) throw new Error('Invalid VM operation');
       const action = operationType === 'start' ? 'Starting' : 'Stopping';
       console.log(`${action} VM: ${this.vmName} in zone: ${this.zone}`);
 

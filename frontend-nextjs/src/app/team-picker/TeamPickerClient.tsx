@@ -15,6 +15,7 @@ import {
 } from '@/lib/liveApi';
 import TeamAveragesTable from '@/components/TeamAveragesTable';
 import TeamComparisonRadar from '@/components/TeamComparisonRadar';
+import GameServerStatus from '@/components/GameServerStatus';
 
 interface FirebaseAttendanceData {
   [steamId: string]: { name?: string; status: string; };
@@ -279,7 +280,6 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
   const [pluginsMessage, setPluginsMessage] = useState<string | null>(null);
 
   const [serverModalOpen, setServerModalOpen] = useState(false);
-  const [serverPassword, setServerPassword] = useState('');
   const [serverMessage, setServerMessage] = useState<string | null>(null);
   const [creatingServer, setCreatingServer] = useState(false);
 
@@ -568,10 +568,6 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
         map_sides: mapSides,
         clinch_series: true,
         players_per_team: Object.keys(team1.players).length,
-        cvars: {
-          tv_enable: 1,
-          hostname: `${team1.name} vs ${team2.name}`,
-        },
       };
       // 4. POST to worker
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''; // Get basePath from env
@@ -603,7 +599,6 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
       const resp = await fetch(`${basePath}/api/start-vm`, { // Prepend basePath
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: serverPassword }),
       });
       if (!resp.ok) {
         const err = await resp.text();
@@ -649,7 +644,6 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
       const resp = await fetch(`${basePath}/api/stop-vm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: serverPassword }),
       });
       if (!resp.ok) {
         const err = await resp.text();
@@ -1034,6 +1028,7 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
           {/* Map selection after the graph comparison */}
           <MapSelection teamAName={teamAName || 'A'} teamBName={teamBName || 'B'} mapsState={mapsState} onMapsChange={() => { void refetchTeamPicker(); }} />
           <div className="flex flex-col items-center mt-4 gap-2">
+            <GameServerStatus />
             <div className="flex flex-row gap-2">
               <button
                 className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1070,27 +1065,19 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
       {serverModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-xs">
-            <h2 className="text-lg font-bold mb-4 text-gray-800">Server Açmak için Şifre</h2>
-            <input
-              type="password"
-              className="w-full border px-3 py-2 rounded mb-4 text-black"
-              placeholder="Şifre"
-              value={serverPassword}
-              onChange={e => setServerPassword(e.target.value)}
-              autoFocus
-            />
+            <h2 className="text-lg font-bold mb-4 text-gray-800">Oyun sunucusu başlatılsın mı?</h2>
+            <p className="mb-4 text-sm text-gray-600">Bu işlem yönetici hesabınızla gerçekleştirilir.</p>
             <div className="flex gap-2">
               <button
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
                 onClick={async () => {
                   setServerModalOpen(false);
-                  setServerPassword('');
                   await handleStartServer();
                 }}
               >Onayla</button>
               <button
                 className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded"
-                onClick={() => { setServerModalOpen(false); setServerPassword(''); }}
+                onClick={() => { setServerModalOpen(false); }}
               >İptal</button>
             </div>
           </div>
@@ -1100,27 +1087,19 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
       {stopServerModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-xs">
-            <h2 className="text-lg font-bold mb-4 text-gray-800">Server Kapatmak için Şifre</h2>
-            <input
-              type="password"
-              className="w-full border px-3 py-2 rounded mb-4 text-black"
-              placeholder="Şifre"
-              value={serverPassword}
-              onChange={e => setServerPassword(e.target.value)}
-              autoFocus
-            />
+            <h2 className="text-lg font-bold mb-4 text-gray-800">Oyun sunucusu kapatılsın mı?</h2>
+            <p className="mb-4 text-sm text-gray-600">Bu işlem yönetici hesabınızla gerçekleştirilir.</p>
             <div className="flex gap-2">
               <button
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded"
                 onClick={async () => {
                   setStopServerModalOpen(false);
-                  setServerPassword('');
                   await handleStopServer();
                 }}
               >Onayla</button>
               <button
                 className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded"
-                onClick={() => { setStopServerModalOpen(false); setServerPassword(''); }}
+                onClick={() => { setStopServerModalOpen(false); }}
               >İptal</button>
             </div>
           </div>
