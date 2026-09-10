@@ -18,6 +18,7 @@ Use this folder as the canonical context source.
 - Development setup: [`development/local-setup.md`](development/local-setup.md)
 - Stats architecture and data contracts: [`development/stats-runtime.md`](development/stats-runtime.md)
 - Production stats publishing runbook: [`operations/stats-publishing.md`](operations/stats-publishing.md)
+- CS2 game server deployment and tests: [`operations/cs2-resurrection-deployment.md`](operations/cs2-resurrection-deployment.md)
 - Security and secrets handling: [`operations/security-secrets.md`](operations/security-secrets.md)
 - Steam avatar integration: [`features/steam-integration.md`](features/steam-integration.md)
 - Mobile app and notifications plan: [`features/mobile-app-notifications.md`](features/mobile-app-notifications.md)

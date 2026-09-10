@@ -1,0 +1,11 @@
+/home/steam/cs2-console.log {
+    su steam steam
+    weekly
+    rotate 4
+    size 50M
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}

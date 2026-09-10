@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.dem
+*.tgz
+*.zip
+*.dll
+csbatagi_secrets.cfg
+csbatagi-web-token

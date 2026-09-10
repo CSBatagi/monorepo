@@ -1,0 +1,26 @@
+[Unit]
+Description=CS Batagi CS2 competitive server
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=steam
+Group=steam
+WorkingDirectory=/home/steam/cs2
+Environment=HOME=/home/steam
+ExecStart=/usr/local/lib/csbatagi/launch.py
+ExecStop=/usr/local/lib/csbatagi/rcon-local.py quit
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=45
+KillSignal=SIGINT
+LimitNOFILE=65536
+UMask=0027
+StandardOutput=append:/home/steam/cs2-console.log
+StandardError=append:/home/steam/cs2-console.log
+
+[Install]
+WantedBy=multi-user.target

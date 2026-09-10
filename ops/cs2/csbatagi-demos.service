@@ -1,0 +1,16 @@
+[Unit]
+Description=CS Batagi durable demo archive worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=steam
+Group=steam
+Environment=HOME=/home/steam
+ExecStart=/usr/bin/python3 /usr/local/lib/csbatagi/demo-uploader.py
+Restart=always
+RestartSec=15
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
