@@ -23,7 +23,7 @@ backup.mkdir(mode=0o700)
 (backup / 'images.json').write_text(json.dumps(before, indent=2))
 for name in targets:
     folder = stage / name
-    (folder / 'Dockerfile').write_text(f'FROM {before[name]}\n' + ('COPY index.js cosmetics.js cosmeticsRoutes.js /app/\nCOPY data/ /app/data/\n' if name == 'backend' else 'USER root\nRUN rm -rf /app/.next\nCOPY --chown=nextjs:nodejs .next /app/.next\n'))
+    (folder / 'Dockerfile').write_text(f'FROM {before[name]}\n' + ('COPY index.js cosmetics.js cosmeticsRoutes.js cosmeticProgression.js cosmeticProgressionStore.js /app/\nCOPY data/ /app/data/\n' if name == 'backend' else 'USER root\nRUN rm -rf /app/.next\nCOPY --chown=nextjs:nodejs .next /app/.next\n'))
     run('docker', 'build', '-t', f'csbatagi-cosmetics-{name}:{stamp}', str(folder))
 override = root / 'docker-compose.cosmetics.yml'
 images = {name: f'csbatagi-cosmetics-{name}:{stamp}' if name in targets else image for name, image in before.items()}

@@ -64,11 +64,13 @@ test('requires both bearer and valid session for member routes; forged/expired s
 });
 test('save resolves identity from session, strips payload identity and checks revision', async () => {
   const { app, pool, member } = setup();
-  pool.query.mockResolvedValue({ rows: [{ revision: 4 }] });
+  const client = { query: jest.fn(async sql => ({ rows: sql.startsWith('SELECT steam_id') ? [{ steam_id: '76561198000000001' }] : sql.startsWith('SELECT item_id') ? state().profiles[0].items.flatMap(i => [i.id, ...i.stickers, i.charm]).filter(Boolean).map(item_id => ({ item_id })) : sql.startsWith('UPDATE cosmetic_accounts') ? [{ revision: 4 }] : [] })), release: jest.fn() };
+  pool.connect.mockResolvedValue(client);
   await member(request(app).post('/cosmetics/save')).send({ email: 'victim@example.test', steamId: '76561198000000001', state: state(), revision: 3 }).expect(200);
-  expect(pool.query.mock.calls[0][1][0]).toBe('member@example.test');
-  expect(pool.query.mock.calls[0][1][2]).toBe(3);
-  pool.query.mockResolvedValue({ rows: [] });
+  const update = client.query.mock.calls.find(([sql]) => sql.startsWith('UPDATE cosmetic_accounts'));
+  expect(update[1][0]).toBe('member@example.test');
+  expect(update[1][2]).toBe(3);
+  client.query.mockImplementation(async sql => ({ rows: sql.startsWith('SELECT steam_id') ? [{ steam_id: '76561198000000001' }] : sql.startsWith('SELECT item_id') ? state().profiles[0].items.flatMap(i => [i.id, ...i.stickers, i.charm]).filter(Boolean).map(item_id => ({ item_id })) : [] }));
   await member(request(app).post('/cosmetics/save')).send({ state: state(), revision: 3 }).expect(409);
 });
 test('catalog is paged and filters names/model without accepting untrusted definitions', async () => {

@@ -18,6 +18,8 @@ async function call(url, payload, web = false, expected = 200) {
 }
 async function main() {
   assert.equal((await pool.query('SELECT 1 FROM cosmetic_accounts WHERE steam_id=$1', [steamId])).rowCount, 0, 'Synthetic Steam ID is already assigned; refusing to touch it');
+  assert.equal((await pool.query('SELECT 1 FROM cosmetic_wallets WHERE steam_id=$1', [steamId])).rowCount, 0, 'Synthetic Steam ID has a wallet; refusing to touch it');
+  assert.equal((await pool.query('SELECT 1 FROM players WHERE steam_id=$1 LIMIT 1', [steamId])).rowCount, 0, 'Synthetic Steam ID has match history; refusing to touch it');
   const base = 'https://csbatagi.com/api/cosmetics/';
   try {
     assert.equal((await call(base + 'me', undefined, true)).steamId, null);
@@ -32,6 +34,16 @@ async function main() {
       return { id: item.id, team: item.teams[0], wear: item.minWear, seed: 321, nametag: 'Smoke test', stattrak: true, stickers: [find('sticker').id, null, null, null, null], charm: find('charm').id };
     });
     const state = { active: 0, profiles: [{ name: 'Smoke test', items }] };
+    await call(base + 'save', { state, revision: account.revision }, true, 403);
+    await call(base + 'award', {}, true, 403);
+    // Isolated synthetic fixture only; no real member currency is modified.
+    await pool.query('UPDATE cosmetic_wallets SET xp=1200,tokens=3000,premium_tokens=10 WHERE steam_id=$1', [steamId]);
+    for (const itemId of new Set([...items.map(i => i.id), find('sticker').id, find('charm').id])) {
+      const unlocked = await call(base + 'unlock', { itemId }, true);
+      const retry = await call(base + 'unlock', { itemId }, true);
+      assert.equal(retry.progress.tokens, unlocked.progress.tokens);
+      assert.equal(retry.progress.premiumTokens, unlocked.progress.premiumTokens);
+    }
     const saved = await call(base + 'save', { state, revision: account.revision }, true);
     assert.equal(saved.revision, account.revision + 1);
     await call(base + 'save', { state, revision: account.revision }, true, 409);
@@ -48,12 +60,13 @@ async function main() {
     assert.ok((await call(base + 'catalog?kind=knife&q=Doppler', undefined, true)).total > 0);
     const unauth = await fetch('http://localhost:3000/cosmetics/api/equipped/v5/' + steamId + '.json');
     assert.equal(unauth.status, 403);
-    console.log('PASS: frontend session proxy, linking, replay rejection, catalog, persistent save, revision conflict, all equipment categories, authenticated game API.');
+    console.log('PASS: frontend session proxy, linking, replay rejection, ownership enforcement, admin-only awards, permanent unlocks without repeat charges, persistent save, revision conflict, all equipment categories, authenticated game API.');
   } finally {
     await pool.query('DELETE FROM cosmetic_link_codes WHERE email=$1', [email]);
     await pool.query('DELETE FROM cosmetic_accounts WHERE email=$1', [email]);
+    for (const table of ['cosmetic_premium_awards', 'cosmetic_unlocks', 'cosmetic_rewards', 'cosmetic_wallets']) await pool.query(`DELETE FROM ${table} WHERE steam_id=$1`, [steamId]);
     await pool.end();
-    console.log('Synthetic test account and code removed.');
+    console.log('Synthetic test account, code, wallet and progression records removed.');
   }
 }
 main().catch(error => { console.error(error.message); process.exitCode = 1; });

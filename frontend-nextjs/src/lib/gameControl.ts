@@ -14,7 +14,7 @@ export async function gameControl(req: NextRequest, endpoint: string, method = '
   const token = process.env.MATCHMAKING_TOKEN || process.env.AUTH_TOKEN;
   if (!token) return NextResponse.json({ error: 'Server authentication is not configured' }, { status: 503 });
   let body;
-  if (endpoint === 'start-match' || endpoint === 'cosmetics/save') {
+  if (endpoint === 'start-match' || ['cosmetics/save', 'cosmetics/unlock', 'cosmetics/award'].includes(endpoint)) {
     try { body = JSON.stringify(await req.json()); }
     catch { return NextResponse.json({ error: 'Invalid match JSON' }, { status: 400 }); }
   }
