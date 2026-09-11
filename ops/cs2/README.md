@@ -55,6 +55,15 @@ If recording stalls, keep players paused, diagnose disk/CSTV, and use `csbatagi_
 
 Normal single-map completion resets to warmup. The bot simulation can remove CSTV at match end; the integration reloads the map after closing the demo if CSTV is missing. Do not interrupt an active recording with a plugin reload or map change. `css_endmatch` is a destructive match reset intended for admins.
 
+## Automatic analysis
+
+`csbatagi-analyzer.service` runs [`demo-analyzer.py`](demo-analyzer.py) as `steam`. It reports the local demo inventory to the backend every minute, and when the backend hands back jobs and no match is live, it runs `csdm analyze <file> --source matchzy` (the CS Demo Manager CLI, pinned to the desktop app's version) under `nice`/`ionice`. The backend queues finished website matches automatically and verifies every result against the CS Demo Manager tables. Install with [`install-analyzer.sh`](install-analyzer.sh); the database credentials live only in `/home/steam/.config/csdm/settings.json` (mode 600). Details: [demo analysis and downloads](../../docs/operations/demo-analysis-and-downloads.md).
+
+```sh
+sudo systemctl status csbatagi-analyzer
+sudo journalctl -u csbatagi-analyzer --since today
+```
+
 ## Website control and deployment
 
 The frontend verifies the signed login session and forwards it with the server bearer token. The backend checks the `admins` table, validates rosters, persists the match JSON, asks MatchZy to fetch it through an authenticated URL, and waits for its match ID acknowledgment. RCON connects to private IP `10.156.0.11`. VM actions are restricted in code to `cs2-server` / `europe-west3-c`.

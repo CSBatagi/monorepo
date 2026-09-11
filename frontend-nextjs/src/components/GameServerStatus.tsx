@@ -23,6 +23,7 @@ export default function GameServerStatus({ status, phase, pending }: {
       <p>{status.map} · {status.humans} oyuncu · {status.preparing ? 'Demo kontrolü' : status.live ? 'Maç canlı' : 'Süresiz ısınma'}</p>
       <p className={status.demoFailed ? 'font-semibold text-red-700' : ''}>Demo: {status.demoFailed ? 'Kayıt sorunu — yönetici müdahalesi gerekiyor' : status.recording ? `Kaydediliyor (${(status.bytes / 1048576).toFixed(1)} MB)` : 'Canlı maç başlayınca otomatik kaydedilir'}</p>
       <p>Arşiv: {status.uploads ? status.uploads.pending ? `${status.uploads.pending} dosya kayıt/yükleme bekliyor` : 'Tüm demolar doğrulandı' : 'Durum bekleniyor'}</p>
+      <p><a className="text-blue-700 underline" href="/demolar">Demolar ve istatistik analizi</a></p>
     </div>}
   </div>;
 }

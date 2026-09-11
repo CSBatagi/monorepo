@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, BarChart3, ChevronRight, ClipboardList, Coins, Crosshair, Crown, Film, Flag, Home, LayoutTemplate, ListOrdered, LogOut, Map, Menu, Moon, Settings, Shield, Star, Swords, Target, TrendingUp, Trophy, Users, X } from "lucide-react";
+import { ArrowUpRight, BarChart3, ChevronRight, ClipboardList, Coins, Crosshair, Crown, Download, Film, Flag, Home, LayoutTemplate, ListOrdered, LogOut, Map, Menu, Moon, Settings, Shield, Star, Swords, Target, TrendingUp, Trophy, Users, X } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSession } from "@/contexts/SessionContext";
 import ThemeToggle from "./ThemeToggle";
@@ -27,6 +27,7 @@ export const navigation = [
     { href: "/sonmac", label: "Son Maç", icon: Crosshair },
     { href: "/mac-sonuclari", label: "Maç Sonuçları", icon: Flag },
     { href: "/mac-videolari", label: "Maç Videoları", icon: Film },
+    { href: "/demolar", label: "Demolar", icon: Download },
   ] },
   { label: "İSTATİSTİK", links: [
     { href: "/oyuncular", label: "Oyuncular", icon: Users },

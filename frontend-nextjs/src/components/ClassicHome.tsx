@@ -9,6 +9,7 @@ import {
   Star,
   Coins,
   Crosshair,
+  Download,
   Target,
   Moon,
   ListOrdered,
@@ -41,6 +42,7 @@ const tiles: { href: string; title: string; desc: string; icon: LucideIcon }[] =
   { href: '/gecenin-mvpsi', title: "Gecenin MVP'si", desc: 'Gecenin en etkili oyuncusu.', icon: Crown },
   { href: '/mac-sonuclari', title: 'Maç Sonuçları', desc: 'Maç skorları ve oyuncu listeleri.', icon: FileText },
   { href: '/mac-videolari', title: 'Maç Videoları', desc: 'Maç tekrar videolarını izleyin.', icon: Clapperboard },
+  { href: '/demolar', title: 'Demolar', desc: 'Maç demolarını indirin, analiz durumunu görün.', icon: Download },
 ];
 
 export default function ClassicHome() {

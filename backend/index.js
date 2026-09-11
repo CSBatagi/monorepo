@@ -749,6 +749,9 @@ if (pool) {
 
 // Game controls use persistent match IDs and verified admin sessions.
 require('./gameServer').registerGameServer(app, { pool, rcon: rconConnection, gcp: gcpManager });
+// Demo archive listing, signed downloads and the analysis queue fed by the game VM worker.
+const { registerDemoRoutes, DEMO_FILES_MIGRATIONS } = require('./demoRoutes');
+if (pool) registerDemoRoutes(app, { pool });
 
 // Start the server
 if (!TEST_MODE) {
@@ -820,6 +823,8 @@ if (!TEST_MODE) {
       `CREATE TABLE IF NOT EXISTS notification_subscriptions (uid TEXT NOT NULL, device_id TEXT NOT NULL, token TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT TRUE, platform TEXT, user_agent TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (uid, device_id))`,
       // Notification events — replaces Firebase RTDB notifications/events/{eventId}
       `CREATE TABLE IF NOT EXISTS notification_events (event_id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'pending', topic TEXT, title TEXT, body TEXT, data JSONB, created_by_uid TEXT, created_by_name TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), sent_at TIMESTAMPTZ, failed_at TIMESTAMPTZ, recipient_count INT, success_count INT, failure_count INT, errors JSONB, error TEXT)`,
+      // Demo archive and analysis queue state (see demoRoutes.js)
+      ...DEMO_FILES_MIGRATIONS,
     ];
     for (const tableName of STATS_SOURCE_TABLES) {
       migrations.push(

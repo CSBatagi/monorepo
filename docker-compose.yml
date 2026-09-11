@@ -52,6 +52,9 @@ services:
       CS2_GCP_ZONE: europe-west3-c
       CS2_RCON_HOST: 10.156.0.11
       CS2_MATCH_DIR: /app/cs2-control
+      # Demo analysis production write switch. Keep "false" until the analyzer has been proven on a
+      # manually queued demo; then set "true" so finished website matches are analyzed unattended.
+      DEMO_AUTO_ANALYZE: "false"
       SEASON_START_FILE: /app/config/season_start.json
       PLAYERS_FILE: /app/players.json
       NODE_OPTIONS: "--max-old-space-size=128"

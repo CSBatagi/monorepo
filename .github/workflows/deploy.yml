@@ -72,6 +72,7 @@ jobs:
           
             echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > .pg_secrets
             echo "POSTGRES_READONLY_PASSWORD=${{ secrets.POSTGRES_READONLY_PASSWORD }}" >> .pg_secrets
+            echo "CSDM_ANALYZER_PASSWORD=${{ secrets.CSDM_ANALYZER_PASSWORD }}" >> .pg_secrets
           
             echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
 
@@ -198,7 +199,7 @@ jobs:
           
           # Run all SQL migrations
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="for f in ~/migrations/*.sql; do echo \"Running migration: \$f\"; sudo docker compose -f ~/docker-compose.yml exec -T postgres psql -U \$(sudo docker compose -f ~/docker-compose.yml exec -T postgres printenv POSTGRES_USER | tr -d '\\r') -d csdm -f - < \"\$f\" 2>&1 || true; done" \
+            --command="ANALYZER_PW=\$(grep '^CSDM_ANALYZER_PASSWORD=' ~/.pg_secrets | cut -d= -f2- | tr -d '\\r'); for f in ~/migrations/*.sql; do echo \"Running migration: \$f\"; sudo docker compose -f ~/docker-compose.yml exec -T postgres psql -U \$(sudo docker compose -f ~/docker-compose.yml exec -T postgres printenv POSTGRES_USER | tr -d '\\r') -d csdm -v csdm_analyzer_password=\"\$ANALYZER_PW\" -f - < \"\$f\" 2>&1 || true; done" \
             --ssh-key-expire-after=2m
           
           # Cleanup migration files

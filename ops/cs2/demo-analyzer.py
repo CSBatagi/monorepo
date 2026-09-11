@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+"""Analyze finished match demos into the club database with the CS Demo Manager CLI.
+
+Runs on the game VM as the steam user. The backend decides which demos to analyze
+(finished recordings of website matches, or admin requests); this worker reports what
+exists locally, runs the CLI only while no match is live, and reports the outcome.
+It never deletes demo files.
+"""
+import json
+import os
+import pathlib
+import sqlite3
+import subprocess
+import time
+import urllib.error
+import urllib.request
+
+GAME = pathlib.Path(os.environ.get('CS2_GAME', '/home/steam/cs2/game/csgo'))
+STATE = GAME / 'csbatagi-state'
+DEMOS = GAME / 'demos'
+# Bucket copies for re-analysis live outside demos/ so the archive worker never re-uploads them.
+RESTORED = STATE / 'analysis-downloads'
+BACKEND = os.environ.get('CSBATAGI_BACKEND', 'https://csbatagi.com/backend').rstrip('/')
+TOKEN_FILE = pathlib.Path(os.environ.get('CSBATAGI_TOKEN_FILE', str(GAME / 'cfg/csbatagi-web-token')))
+CSDM = os.environ.get('CSDM_CLI', '/usr/local/bin/csdm')
+BUCKET = os.environ.get('DEMO_BUCKET', 'csbatagi-demos')
+INTERVAL = int(os.environ.get('ANALYZER_INTERVAL', '60'))
+ANALYZE_TIMEOUT = int(os.environ.get('ANALYZER_TIMEOUT', '3600'))
+
+
+def api(route, payload):
+    request = urllib.request.Request(
+        BACKEND + route, data=json.dumps(payload).encode(), method='POST',
+        headers={'Authorization': 'Bearer ' + TOKEN_FILE.read_text().strip(), 'Content-Type': 'application/json'})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return json.load(response)
+
+
+def server_busy():
+    """True while a match is being prepared, played or recorded. A stale status file means CS2 is down."""
+    status_file = STATE / 'status.json'
+    try:
+        if time.time() - status_file.stat().st_mtime > 120:
+            return False
+        status = json.loads(status_file.read_text())
+    except (OSError, ValueError):
+        return False
+    return bool(status.get('live') or status.get('preparing') or status.get('recording'))
+
+
+def upload_states():
+    states = {}
+    database = STATE / 'uploads.sqlite'
+    if not database.exists():
+        return states
+    try:
+        connection = sqlite3.connect(f'file:{database}?mode=ro', uri=True)
+        for name, state, object_name in connection.execute('SELECT name, state, object FROM uploads'):
+            states[name] = (state, object_name)
+        connection.close()
+    except sqlite3.Error:
+        pass
+    return states
+
+
+def inventory():
+    uploads = upload_states()
+    demos = []
+    for path in sorted(DEMOS.glob('*.dem')):
+        recording_state, match_id = 'recording', None
+        marker = path.with_suffix('.dem.closed.json')
+        if marker.exists():
+            try:
+                data = json.loads(marker.read_text())
+                recording_state = str(data.get('state', 'unknown'))
+                match_id = data.get('matchId')
+            except ValueError:
+                recording_state = 'unknown'
+        upload_state, object_name = uploads.get(path.name, ('pending', None))
+        demos.append({
+            'name': path.name, 'size': path.stat().st_size, 'recordingState': recording_state,
+            'matchId': match_id if isinstance(match_id, int) else None,
+            'archiveState': upload_state, 'objectName': object_name,
+        })
+    return demos
+
+
+def locate(job):
+    local = DEMOS / job['name']
+    if local.exists():
+        return local
+    if not job.get('objectName'):
+        return None
+    RESTORED.mkdir(exist_ok=True)
+    target = RESTORED / job['name']
+    if not target.exists():
+        result = subprocess.run(
+            ['/snap/bin/gcloud', 'storage', 'cp', f"gs://{BUCKET}/{job['objectName']}", str(target), '--quiet'],
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=1200,
+            env={**os.environ, 'CLOUDSDK_CONFIG': '/home/steam/csbatagi-gcloud'})
+        if result.returncode != 0:
+            target.unlink(missing_ok=True)
+            raise RuntimeError('archive download failed: ' + result.stderr.decode(errors='replace')[-300:])
+    return target
+
+
+def analyze(job):
+    path = locate(job)
+    if path is None:
+        raise RuntimeError('demo is neither on the game server nor in the archive')
+    command = ['nice', '-n', '15', 'ionice', '-c', '3', CSDM, 'analyze', str(path), '--source', 'matchzy']
+    if job.get('force'):
+        command.append('--force')
+    result = subprocess.run(command, capture_output=True, text=True, timeout=ANALYZE_TIMEOUT,
+                            env={**os.environ, 'HOME': os.environ.get('HOME', '/home/steam')})
+    output = (result.stdout + '\n' + result.stderr).strip()
+    if result.returncode != 0:
+        raise RuntimeError(f'csdm exited {result.returncode}: {output[-500:]}')
+    return output[-500:]
+
+
+def run_once():
+    busy = server_busy()
+    response = api('/demo-analysis/sync', {'busy': busy, 'demos': inventory()})
+    for job in [] if busy else response.get('jobs', []):
+        if server_busy():
+            return
+        api('/demo-analysis/result', {'name': job['name'], 'state': 'analyzing'})
+        try:
+            log = analyze(job)
+            # The backend checks the CS Demo Manager tables before it believes this report.
+            api('/demo-analysis/result', {'name': job['name'], 'state': 'analyzed', 'log': log})
+            print('Analyzed:', job['name'], flush=True)
+        except Exception as error:  # noqa: BLE001 - every failure must be reported, not crash the loop
+            api('/demo-analysis/result', {'name': job['name'], 'state': 'failed', 'error': f'{type(error).__name__}: {error}'[-800:]})
+            print('Analysis failed:', job['name'], type(error).__name__, flush=True)
+
+
+def main():
+    STATE.mkdir(exist_ok=True)
+    while True:
+        try:
+            run_once()
+        except urllib.error.HTTPError as error:
+            print('Backend rejected request:', error.code, flush=True)
+        except Exception as error:  # noqa: BLE001
+            print('Worker error:', type(error).__name__, str(error)[:200], flush=True)
+        time.sleep(INTERVAL)
+
+
+if __name__ == '__main__':
+    main()
