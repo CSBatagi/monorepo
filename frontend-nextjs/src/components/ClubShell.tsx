@@ -15,6 +15,7 @@ export const navigation = [
     { href: "/", label: "Genel Bakış", icon: Home },
     { href: "/attendance", label: "Katılım", icon: ClipboardList },
     { href: "/team-picker", label: "Takım Seçme", icon: Swords },
+    { href: "/ekipman", label: "Ekipman", icon: Crosshair },
   ] },
   { label: "REKABET", links: [
     { href: "/superliga", label: "Superliga", icon: Shield },

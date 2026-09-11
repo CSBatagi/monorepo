@@ -273,6 +273,9 @@ if (typeof rateLimitCleanupTimer.unref === 'function') {
   rateLimitCleanupTimer.unref();
 }
 
+// Cosmetics authenticates every route and applies per-member/game-server limits.
+const { registerCosmeticsRoutes, COSMETICS_MIGRATIONS } = require('./cosmeticsRoutes');
+if (pool) registerCosmeticsRoutes(app, { pool });
 app.use(rateLimiter);
 
 // --- Auth middleware for non-GET requests ---
@@ -825,6 +828,7 @@ if (!TEST_MODE) {
       `CREATE TABLE IF NOT EXISTS notification_events (event_id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'pending', topic TEXT, title TEXT, body TEXT, data JSONB, created_by_uid TEXT, created_by_name TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), sent_at TIMESTAMPTZ, failed_at TIMESTAMPTZ, recipient_count INT, success_count INT, failure_count INT, errors JSONB, error TEXT)`,
       // Demo archive and analysis queue state (see demoRoutes.js)
       ...DEMO_FILES_MIGRATIONS,
+      ...COSMETICS_MIGRATIONS,
     ];
     for (const tableName of STATS_SOURCE_TABLES) {
       migrations.push(

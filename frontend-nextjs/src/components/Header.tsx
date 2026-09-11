@@ -26,6 +26,7 @@ const navLinks = [
   { href: "/mac-sonuclari", label: "Maç Sonuçları" },
   { href: "/mac-videolari", label: "Maç Videoları" },
   { href: "/demolar", label: "Demolar" },
+  { href: "/ekipman", label: "Ekipman" },
 ];
 
 const moreLinks = [

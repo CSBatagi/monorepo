@@ -30,6 +30,8 @@ The Ubuntu VM runs `cs2.service` as `steam`, with `csbatagi-demos.service` maint
 
 ## Player flow
 
+Members can configure weapon skins, knives, gloves, agents, stickers, charms and music at `/ekipman`. See the [equipment feature and deployment runbook](../../docs/features/server-cosmetics.md). The pinned Inventory Simulator plugin runs alongside MatchZy; `!ws` refreshes saved equipment for the next spawn.
+
 1. Join `cs2.csbatagi.com:27015` with the existing server password.
 2. Warm up indefinitely. `.guns` opens a primary-weapon menu; selections are remembered for the process lifetime. Default loadout is AK, Deagle and knife, with armor and unlimited reserve ammo. Respawns are enabled. Bots fill toward six total combatants when at least one human is connected.
 3. An authenticated website admin loads balanced rosters of 1–10 players per team from the team picker. Every rostered player uses `.ready`. There is no automatic ready countdown or knife round.

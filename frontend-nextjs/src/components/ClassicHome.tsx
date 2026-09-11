@@ -43,6 +43,7 @@ const tiles: { href: string; title: string; desc: string; icon: LucideIcon }[] =
   { href: '/mac-sonuclari', title: 'Maç Sonuçları', desc: 'Maç skorları ve oyuncu listeleri.', icon: FileText },
   { href: '/mac-videolari', title: 'Maç Videoları', desc: 'Maç tekrar videolarını izleyin.', icon: Clapperboard },
   { href: '/demolar', title: 'Demolar', desc: 'Maç demolarını indirin, analiz durumunu görün.', icon: Download },
+  { href: '/ekipman', title: 'Ekipman', desc: 'Skin, bıçak, eldiven ve ajanlarını seç.', icon: Crosshair },
 ];
 
 export default function ClassicHome() {

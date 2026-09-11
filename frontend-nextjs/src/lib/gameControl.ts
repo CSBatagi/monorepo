@@ -14,7 +14,7 @@ export async function gameControl(req: NextRequest, endpoint: string, method = '
   const token = process.env.MATCHMAKING_TOKEN || process.env.AUTH_TOKEN;
   if (!token) return NextResponse.json({ error: 'Server authentication is not configured' }, { status: 503 });
   let body;
-  if (endpoint === 'start-match') {
+  if (endpoint === 'start-match' || endpoint === 'cosmetics/save') {
     try { body = JSON.stringify(await req.json()); }
     catch { return NextResponse.json({ error: 'Invalid match JSON' }, { status: 400 }); }
   }
@@ -24,5 +24,5 @@ export async function gameControl(req: NextRequest, endpoint: string, method = '
       body, cache: 'no-store', signal: AbortSignal.timeout(60000),
     });
     return new NextResponse(await response.text(), { status: response.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
-  } catch { return NextResponse.json({ error: 'Game server request failed; check status before retrying' }, { status: 502 }); }
+  } catch { return NextResponse.json({ error: endpoint.startsWith('cosmetics/') ? 'Ekipman hizmeti yanıt vermedi. Biraz bekleyip yeniden yükleyin.' : 'Game server request failed; check status before retrying' }, { status: 502 }); }
 }
