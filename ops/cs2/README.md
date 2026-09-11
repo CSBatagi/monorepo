@@ -34,9 +34,9 @@ Members can configure weapon skins, knives, gloves, agents, stickers, charms and
 
 1. Join `cs2.csbatagi.com:27015` with the existing server password.
 2. Warm up indefinitely. `.guns` opens a primary-weapon menu; selections are remembered for the process lifetime. Default loadout is AK, Deagle and knife, with armor and unlimited reserve ammo. Respawns are enabled. Bots fill toward six total combatants when at least one human is connected.
-3. An authenticated website admin loads balanced rosters of 1–10 players per team from the team picker. Every rostered player uses `.ready`. There is no automatic ready countdown or knife round.
+3. An authenticated website admin loads balanced rosters of 1–10 players per team from the team picker. Connected players and reconnects are automatically moved onto the roster's configured CT/T sides during warmup. Every rostered player uses `.ready`. There is no automatic ready countdown or knife round. A new website match can replace a loaded warmup after its payload is fetched and validated; an active match or recording cannot be replaced.
 4. Gameplay bots are removed. Live rules are restored. The pistol freeze is held until the demo file exceeds 256 KiB and grows. Defaults are MR12, MR3 overtime, friendly fire, normal economy and no respawns.
-5. `.pause` requests a freeze-time pause. Both teams `.unpause` to resume; existing game admins can override. The pause count and duration are unlimited.
+5. `.pause` requests a freeze-time pause. Both teams `.unpause` to resume; existing game admins can override. The pause count and duration are unlimited. Completing demo preflight releases only the recorder's hold and preserves any player/admin pause. Unpause commands cannot release a preflight or failed-demo hold.
 
 Warmup uses all-talk. Live play isolates team voice. Only CSTV gets `All | ListenAll` voice flags, with `tv_relayvoice=1`; this must be tested using real client microphone packets. A bot-only demo cannot demonstrate microphone recording.
 
@@ -68,6 +68,8 @@ sudo journalctl -u csbatagi-analyzer --since today
 
 ## Website control and deployment
 
+The team picker and equipment page share an explicit CS2 launch link (`steam://run/730/` with an encoded `+connect` argument) to the reserved public game IP. They also show a copyable console command for clients where the browser/Steam launch handoff fails. The existing join password is still required; it is not embedded in public links.
+
 The frontend verifies the signed login session and forwards it with the server bearer token. The backend checks the `admins` table, validates rosters, persists the match JSON, asks MatchZy to fetch it through an authenticated URL, and waits for its match ID acknowledgment. RCON connects to private IP `10.156.0.11`. VM actions are restricted in code to `cs2-server` / `europe-west3-c`.
 
 Match map entries accept `de_...` stock names and positive numeric Workshop PublishedFileIds as strings, matching the team picker's `frontend-nextjs/public/data/maps.json` catalog and MatchZy's `host_workshop_map` support. Do not convert Workshop IDs to `de_...` names: for example, Tuscan is `3267671493`. The backend regression tests cover every catalog entry and the mixed Overpass/Tuscan/Vertigo series; the old stock-only validator rejected that series with HTTP 400 before contacting the game server.
@@ -77,3 +79,11 @@ On 11 September 2026 this validation fix was deployed as a local backend image l
 The initial deployment uses local derived Docker images on the backend VM. Commit/review/publish these source changes through the normal deployment process before replacing those images with a routine release. Never build the frontend on the 1 GiB backend VM; the tested build was produced locally, and Docker memory limits were preserved.
 
 The website stop action refuses while a match/recording is active or uploads are pending/stale. Google Cloud console actions can bypass that protection; wait for verified archives before an operator shutdown.
+
+### 11 September follow-up fixes (source only)
+
+The roster assignment, warmup replacement, demo/pause ownership and connection-link changes require rebuilding/deploying MatchZy, backend and frontend. They have not been applied to the running server in this task. Restart the game service during an agreed idle window; do not hot-reload MatchZy into an active game. The earlier Workshop-map deployment paragraph refers only to that earlier backend fix.
+
+Local validation: 29 focused backend tests passed (`gameServer.test.js` and `rcon.test.js`); standalone TypeScript checking and the Next production build passed; the plugin compiled from a fresh archive of the pinned revision, including a second patch application to check idempotence. These checks do not simulate the native CS2 engine or a browser-to-Steam handoff.
+
+After rollout, verify with real clients: load a roster while players are already connected and at team selection; reconnect a rostered player; replace the warmup with another map and reversed CT/T sides; pause during demo preflight and confirm it remains held until both teams unpause; repeat a pause during ordinary live play; open the CS2 link and try the console fallback. The existing bot-only deployment evidence does not cover these human flows.

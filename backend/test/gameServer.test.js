@@ -98,3 +98,38 @@ test('start-match persists a mixed Workshop series and waits for game acknowledg
     fs.rmSync(process.env.CS2_MATCH_DIR, { recursive: true, force: true });
   }
 });
+
+test.each(['live', 'preparing', 'recording', 'matchStarted'])('rejects map replacement while %s without saving or loading a match', async flag => {
+  process.env.AUTH_TOKEN = secret; process.env.MATCHMAKING_TOKEN = secret;
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'csbatagi-active-test-'));
+  process.env.CS2_MATCH_DIR = directory;
+  const app = express(); app.use(express.json());
+  const rcon = { status: jest.fn().mockResolvedValue({ [flag]: true }), startMatch: jest.fn() };
+  registerGameServer(app, { pool: { query: jest.fn().mockResolvedValue({ rows: [{}] }) }, rcon, gcp: {} });
+  try {
+    await request(app).post('/start-match').set('x-game-session', session()).send(match(5)).expect(409);
+    expect(rcon.startMatch).not.toHaveBeenCalled();
+    expect(fs.readdirSync(directory)).toEqual([]);
+  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('allows replacing a loaded warmup with a different map and roster', async () => {
+  process.env.AUTH_TOKEN = secret; process.env.MATCHMAKING_TOKEN = secret;
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'csbatagi-replace-test-'));
+  process.env.CS2_MATCH_DIR = directory;
+  const app = express(); app.use(express.json());
+  const rcon = {
+    status: jest.fn().mockResolvedValue({ matchLoaded: true, matchId: 123, warmup: true, live: false, recording: false, preparing: false, matchStarted: false }),
+    startMatch: jest.fn().mockImplementation(async id => ({ matchLoaded: true, matchId: id, map: 'de_inferno' })),
+  };
+  registerGameServer(app, { pool: { query: jest.fn().mockResolvedValue({ rows: [{}] }) }, rcon, gcp: {} });
+  const input = match(3); input.maplist = ['de_inferno'];
+  try {
+    const response = await request(app).post('/start-match').set('x-game-session', session()).send(input).expect(200);
+    expect(rcon.startMatch).toHaveBeenCalledWith(response.body.matchid);
+    const saved = JSON.parse(fs.readFileSync(path.join(directory, response.body.matchid + '.json')));
+    expect(saved.team1).toEqual(input.team1);
+    expect(saved.team2).toEqual(input.team2);
+    expect(saved.maplist).toEqual(['de_inferno']);
+  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});

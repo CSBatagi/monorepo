@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type GameStatus = {
-  warmup: boolean; live: boolean; preparing: boolean; recording: boolean; demoFailed: boolean;
+  warmup: boolean; live: boolean; preparing: boolean; recording: boolean; demoFailed: boolean; paused?: boolean;
   map: string; humans: number; bytes: number;
   uploads?: { pending: number; demos: { name: string; state: string }[] };
 };

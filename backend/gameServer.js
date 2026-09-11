@@ -75,7 +75,8 @@ function registerGameServer(app, { pool, rcon, gcp }) {
     loading = true;
     try {
       const status = await rcon.status();
-      if (status.live || status.preparing) return res.status(409).json({ error: 'A match is already active' });
+      if (status.live || status.preparing || status.recording || status.matchStarted)
+        return res.status(409).json({ error: 'A match is already active; finish it before loading another map' });
       fs.writeFileSync(path.join(directory, match.matchid + '.json'), JSON.stringify(match), { flag: 'wx', mode: 0o640 });
       const loaded = await rcon.startMatch(match.matchid);
       res.json({ message: 'Match loaded; waiting for both teams to ready', matchid: match.matchid, status: loaded });

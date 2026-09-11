@@ -30,7 +30,9 @@ module.exports = class RconConnection {
   }
 
   async startMatch(id) {
-    await this.executeCommand(`matchzy_loadmatch_url "https://csbatagi.com/backend/get-match/${id}"`);
+    const response = await this.executeCommand(`matchzy_loadmatch_url "https://csbatagi.com/backend/get-match/${id}"`);
+    if (response.includes('CSBATAGI_LOAD_ERROR:'))
+      throw new Error(response.slice(response.indexOf('CSBATAGI_LOAD_ERROR:')).trim());
     const deadline = Date.now() + 45000;
     while (Date.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, 1500));

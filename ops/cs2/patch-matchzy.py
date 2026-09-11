@@ -29,6 +29,39 @@ replace('src/MatchManagement.cs',
 replace('src/MatchManagement.cs',
         'Log($"[LoadMatchDataCommand] Match setup request received with URL: {url} headerName: {headerName} and headerValue: {headerValue}");',
         'Log($"[LoadMatchDataCommand] Match setup request received with URL: {url}; credentials redacted.");')
+replace('src/MatchManagement.cs',
+        'if (isMatchSetup)\n            {\n                string currentStatus = tournamentStatus.Value ?? string.Empty;',
+        'if (isMatchSetup && !BatagiCanReplaceWarmup)\n            {\n                string currentStatus = tournamentStatus.Value ?? string.Empty;')
+replace('src/MatchManagement.cs',
+        'Log($"[LoadMatchFromURL] Received following data: {jsonData}");',
+        '''// Fetch and validate before discarding the previous warmup roster.
+                    var replacement = JObject.Parse(jsonData);
+                    if (ValidateMatchJsonStructure(replacement) != "")
+                    {
+                        command.ReplyToCommand("CSBATAGI_LOAD_ERROR: Invalid match configuration");
+                        return;
+                    }
+                    if (isMatchSetup)
+                    {
+                        if (!BatagiCanReplaceWarmup)
+                        {
+                            command.ReplyToCommand("CSBATAGI_LOAD_ERROR: Match is already active");
+                            return;
+                        }
+                        ResetMatch(false);
+                    }''')
+replace('src/MatchManagement.cs',
+        '            SetTeamNames();\n            UpdatePlayersMap();\n            UpdateHostname();',
+        '            SetTeamNames();\n            UpdatePlayersMap();\n            BatagiAssignWarmupTeams();\n            UpdateHostname();')
+replace('src/Utility.cs',
+        'private void UnpauseMatch()\n        {',
+        '''private void UnpauseMatch()
+        {
+            if (isMatchLive && (batagiPreparing || batagiDemoFailed))
+            {
+                PrintToAllChat("[CS Batagi] Waiting for a healthy demo recording before unpausing.");
+                return;
+            }''')
 replace('src/Utility.cs', 'private void StartLive()', 'private void BatagiAnnounceLive()')
 replace('src/Utility.cs', 'private void ResetMatch(bool warmupCfgRequired = true)\n        {',
         'private void ResetMatch(bool warmupCfgRequired = true)\n        {\n            BatagiReset();')

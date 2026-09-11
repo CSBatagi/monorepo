@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Check, ChevronLeft, ChevronRight, Link2, Search, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { CosmeticAccount, CosmeticItem, CosmeticKind, CosmeticProgress, CosmeticSelection, CosmeticState, cosmeticKinds, selectionFor } from '@/lib/cosmetics';
 import EquipmentProgress from './EquipmentProgress';
+import GameServerConnect from './GameServerConnect';
 import './equipment.css';
 
 async function request<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
@@ -158,7 +159,7 @@ export default function EquipmentClient() {
         </main><aside className="equipment-loadout"><span className="equipment-eyebrow">{selectedProfile?.name}</span><h2>Maça hazır.</h2><div className="equipment-team">{[2, 3].map(value => <button key={value} aria-pressed={team === value} className={team === value ? 'active' : ''} onClick={() => setTeam(value)}>{value === 2 ? 'T' : 'CT'}</button>)}</div><p className="equipment-hint">Her takım için ayrı seçim yapabilirsin. Müzik iki takımda da aynı çalar.</p>
           {currentItems.length === 0 && <p className="equipment-empty">Bu takım için bir eşya seç.<br />Boş yuvalar Steam ekipmanını kullanır.</p>}
           {currentItems.map(selection => <div key={selection.id} className="equipment-loadout-item"><button onClick={() => { setEditing(structuredClone(selection)); setAttachment(null); }}>{known[selection.id]?.image && <img src={known[selection.id].image!} alt="" />}<span>{known[selection.id]?.name || selection.id}</span></button><button aria-label={`${known[selection.id]?.name} kaldır`} onClick={() => updateProfile(selectedProfile!.items.filter(i => i !== selection))}><Trash2 size={15} /></button></div>)}
-          <div className="equipment-instructions"><strong>1. Seç ve kaydet</strong><span>Aktif setin sunucuya gönderilir.</span><strong>2. Sunucuda !ws yaz</strong><span>Sonraki doğuşta yeni ekipmanını gör.</span><a href="steam://connect/cs2.csbatagi.com:27015">Sunucuya katıl ↗</a></div>
+          <div className="equipment-instructions"><strong>1. Seç ve kaydet</strong><span>Aktif setin sunucuya gönderilir.</span><strong>2. Sunucuda !ws yaz</strong><span>Sonraki doğuşta yeni ekipmanını gör.</span><GameServerConnect /></div>
         </aside></div>
       </fieldset>}
     </>}

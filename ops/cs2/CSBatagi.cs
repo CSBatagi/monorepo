@@ -5,6 +5,7 @@ using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.Modules.Timers;
+using CounterStrikeSharp.API.Modules.Utils;
 using System.Text.Json;
 
 namespace MatchZy;
@@ -23,6 +24,7 @@ public partial class MatchZy
     private readonly string[] batagiWeapons = { "ak47", "m4a1", "m4a1_silencer", "awp", "ssg08", "aug", "sg556", "mp9", "mac10", "deagle" };
     private string BatagiStateDir => Path.Combine(Server.GameDirectory, "csgo", "csbatagi-state");
     private static bool BatagiIsTv(CCSPlayerController p) => p.IsHLTV || (p.IsBot && p.TeamNum == 0 && p.PlayerName == "SourceTV");
+    private bool BatagiCanReplaceWarmup => isWarmup && !matchStarted && !isMatchLive && !batagiPreparing && !isDemoRecording;
 
     private void InitializeBatagi()
     {
@@ -62,6 +64,12 @@ public partial class MatchZy
             AddTimer(0.1f, () => { if (p?.IsValid == true) BatagiGiveGun(p); }, TimerFlags.STOP_ON_MAPCHANGE);
             return HookResult.Continue;
         });
+        RegisterEventHandler<EventPlayerConnectFull>((e, _) =>
+        {
+            var generation = batagiGeneration;
+            AddTimer(0.5f, () => { if (generation == batagiGeneration) BatagiAssignWarmupTeams(); }, TimerFlags.STOP_ON_MAPCHANGE);
+            return HookResult.Continue;
+        });
         RegisterListener<Listeners.OnMapEnd>(() =>
         {
             BatagiCloseMarker(activeDemoFile, "map-ended");
@@ -90,6 +98,22 @@ public partial class MatchZy
         });
         AddTimer(5, BatagiTick, TimerFlags.REPEAT);
         Log("[CSBatagi] Warmup, CSTV voice routing and demo verification loaded.");
+    }
+
+    private void BatagiAssignWarmupTeams()
+    {
+        if (!isMatchSetup || !isWarmup || matchStarted || isSimulationMode) return;
+        foreach (var player in Utilities.GetPlayers())
+        {
+            if (!player.IsValid || player.IsBot || player.IsHLTV || player.Connected != PlayerConnectedState.PlayerConnected) continue;
+            var team = GetPlayerTeam(player);
+            if (team != CsTeam.CounterTerrorist && team != CsTeam.Terrorist && team != CsTeam.Spectator) continue;
+            if (player.Team == team) continue;
+            // ChangeTeam also handles clients still on the initial team-selection screen.
+            // Reconcile only in warmup; live halftime/overtime sides belong to MatchZy.
+            player.ChangeTeam(team);
+            if (team != CsTeam.Spectator) player.Respawn();
+        }
     }
 
     private void BatagiGiveGun(CCSPlayerController p)
@@ -171,7 +195,8 @@ public partial class MatchZy
         return JsonSerializer.Serialize(new {
             time = DateTime.UtcNow, map = Server.MapName, matchId = liveMatchId,
             warmup = isWarmup, live = isMatchLive, matchLoaded = isMatchSetup,
-            paused = isPaused,
+            paused = isPaused || batagiPreparing || batagiDemoFailed,
+            playerPaused = isPaused, matchStarted,
             preparing = batagiPreparing, recording = isDemoRecording, demoFailed = batagiDemoFailed,
             demo = activeDemoFile, bytes = batagiObservedBytes,
             cstv = tv != null, cstvVoiceFlags = tv?.VoiceFlags.ToString(),
@@ -187,6 +212,7 @@ public partial class MatchZy
         try
         {
             var players = Utilities.GetPlayers().Where(p => p.IsValid).ToList();
+            BatagiAssignWarmupTeams();
             // Apply listen-all ONLY to CSTV, leaving human team voice isolation intact.
             foreach (var tv in players.Where(BatagiIsTv)) tv.VoiceFlags = VoiceFlags.All | VoiceFlags.ListenAll;
             if (isWarmup && !matchStarted && !isPractice && !isSimulationMode)
@@ -212,13 +238,16 @@ public partial class MatchZy
                 if (grew) batagiLastGrowth = DateTime.UtcNow;
                 batagiObservedBytes = size;
                 int delay = ConVar.Find("tv_delay")?.GetPrimitiveValue<int>() ?? 0;
-                if (batagiPreparing && grew && size > 256 * 1024 && (DateTime.UtcNow - batagiDemoStarted).TotalSeconds > delay + 5)
+                if (batagiPreparing && !batagiDemoFailed && grew && size > 256 * 1024 && (DateTime.UtcNow - batagiDemoStarted).TotalSeconds > delay + 5)
                 {
                     batagiPreparing = false;
                     ConVar.Find("sv_infinite_ammo")?.SetValue(0);
                     BatagiAnnounceLive();
-                    Server.ExecuteCommand("mp_unpause_match");
-                    PrintToAllChat("[CS Batagi] Demo is growing. Team voice is routed to CSTV. Match live!");
+                    // The recorder owns only its preflight hold, never a player/admin pause.
+                    if (!isPaused && !batagiDemoFailed) Server.ExecuteCommand("mp_unpause_match");
+                    PrintToAllChat(isPaused
+                        ? "[CS Batagi] Demo is ready. Match remains paused; both teams must .unpause."
+                        : "[CS Batagi] Demo is growing. Team voice is routed to CSTV. Match live!");
                 }
                 if (!batagiDemoFailed && (DateTime.UtcNow - batagiLastGrowth).TotalSeconds > Math.Max(90, delay + 60))
                 {
