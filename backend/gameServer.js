@@ -20,7 +20,10 @@ function validateMatch(input) {
   });
   if (new Set(ids).size !== ids.length) throw new Error('A player cannot appear in both teams');
   const maps = input.maplist;
-  if (!Array.isArray(maps) || maps.length < 1 || maps.length > 3 || maps.some(m => !/^de_[a-z0-9_]+$/.test(m))) throw new Error('Invalid map selection');
+  // MatchZy accepts stock map names and numeric Workshop PublishedFileIds.
+  // Preserve IDs as strings, and reject command/path characters in either form.
+  if (!Array.isArray(maps) || maps.length < 1 || maps.length > 3 || maps.some(m =>
+    typeof m !== 'string' || !/^(?:de_[a-z0-9_]+|[1-9]\d{0,19})$/.test(m))) throw new Error('Invalid map selection');
   const sides = input.map_sides;
   if (!Array.isArray(sides) || sides.length !== maps.length || sides.some(s => !['team1_ct', 'team1_t', 'team2_ct', 'team2_t', 'knife'].includes(s))) throw new Error('Invalid starting sides');
   return { matchid: crypto.randomInt(1, 2147483647), team1: teams[0], team2: teams[1], players_per_team: n,

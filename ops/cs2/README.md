@@ -70,6 +70,10 @@ sudo journalctl -u csbatagi-analyzer --since today
 
 The frontend verifies the signed login session and forwards it with the server bearer token. The backend checks the `admins` table, validates rosters, persists the match JSON, asks MatchZy to fetch it through an authenticated URL, and waits for its match ID acknowledgment. RCON connects to private IP `10.156.0.11`. VM actions are restricted in code to `cs2-server` / `europe-west3-c`.
 
+Match map entries accept `de_...` stock names and positive numeric Workshop PublishedFileIds as strings, matching the team picker's `frontend-nextjs/public/data/maps.json` catalog and MatchZy's `host_workshop_map` support. Do not convert Workshop IDs to `de_...` names: for example, Tuscan is `3267671493`. The backend regression tests cover every catalog entry and the mixed Overpass/Tuscan/Vertigo series; the old stock-only validator rejected that series with HTTP 400 before contacting the game server.
+
+On 11 September 2026 this validation fix was deployed as a local backend image layer containing only `gameServer.js`, with the backend recreated using `--no-deps --pull never`. Its 256 MiB memory limit was preserved; the game server was not restarted. The prior image is tagged `csbatagi-backend:before-workshop-map-fix-20260911` on the backend VM. Publish the source fix through CI before the next registry-image pull, which would replace this local image. Validation covered 21 focused tests and the deployed validator; this does not establish that every catalog Workshop item can still be downloaded or played.
+
 The initial deployment uses local derived Docker images on the backend VM. Commit/review/publish these source changes through the normal deployment process before replacing those images with a routine release. Never build the frontend on the 1 GiB backend VM; the tested build was produced locally, and Docker memory limits were preserved.
 
 The website stop action refuses while a match/recording is active or uploads are pending/stale. Google Cloud console actions can bypass that protection; wait for verified archives before an operator shutdown.

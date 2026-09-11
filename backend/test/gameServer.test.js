@@ -35,6 +35,33 @@ test('verifies session signatures and rejects expiry/tampering', () => {
   expect(sessionEmail(session(1), secret)).toBeNull();
   expect(sessionEmail(session() + 'x', secret)).toBeNull();
 });
+
+test('accepts the reported Overpass, Tuscan, Vertigo series without changing maps or sides', () => {
+  const input = match(5);
+  input.maplist = ['de_overpass', '3267671493', 'de_vertigo'];
+  input.map_sides = ['team2_ct', 'team1_ct', 'team2_ct'];
+  const result = validateMatch(input);
+  expect(result.maplist).toEqual(input.maplist);
+  expect(result.map_sides).toEqual(input.map_sides);
+  expect(result.num_maps).toBe(3);
+});
+
+test('accepts every map offered by the team picker', () => {
+  const maps = require('../../frontend-nextjs/public/data/maps.json');
+  for (const { id } of maps) {
+    const input = match(5);
+    input.maplist = [id];
+    expect(validateMatch(input).maplist).toEqual([id]);
+  }
+});
+
+test.each(['3267671493;quit', 'de_dust2\nquit', 'de_dust2\n', '3267671493\n', 'workshop/3267671493/de_tuscan',
+  'https://example.test/map', '0', '-1', '1.5', '123456789012345678901', '', 3267671493, null, {}])(
+  'rejects malformed or non-string map selection %p', map => {
+    const input = match(5);
+    input.maplist = [map];
+    expect(() => validateMatch(input)).toThrow('Invalid map selection');
+  });
 test('match lookup is authenticated, persistent and repeatable; failed loading is not success', async () => {
   process.env.AUTH_TOKEN = secret; process.env.MATCHMAKING_TOKEN = secret;
   process.env.CS2_MATCH_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'csbatagi-control-test-'));
@@ -48,4 +75,26 @@ test('match lookup is authenticated, persistent and repeatable; failed loading i
   const first = await request(app).get(`/get-match/${id}`).set('Authorization', `Bearer ${secret}`).expect(200);
   const second = await request(app).get(`/get-match/${id}`).set('Authorization', `Bearer ${secret}`).expect(200);
   expect(first.body).toEqual(second.body);
+});
+
+test('start-match persists a mixed Workshop series and waits for game acknowledgment', async () => {
+  process.env.AUTH_TOKEN = secret; process.env.MATCHMAKING_TOKEN = secret;
+  process.env.CS2_MATCH_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'csbatagi-workshop-test-'));
+  const app = express(); app.use(express.json());
+  const rcon = { status: jest.fn().mockResolvedValue({ live: false }),
+    startMatch: jest.fn().mockImplementation(async id => ({ matchLoaded: true, matchId: id })) };
+  registerGameServer(app, { pool: { query: jest.fn().mockResolvedValue({ rows: [{}] }) }, rcon, gcp: {} });
+  const input = match(5);
+  input.maplist = ['de_overpass', '3267671493', 'de_vertigo'];
+  input.map_sides = ['team2_ct', 'team1_ct', 'team2_ct'];
+  try {
+    const response = await request(app).post('/start-match').set('x-game-session', session()).send(input).expect(200);
+    const saved = await request(app).get(`/get-match/${response.body.matchid}`).set('Authorization', `Bearer ${secret}`).expect(200);
+    expect(saved.body.maplist).toEqual(input.maplist);
+    expect(saved.body.map_sides).toEqual(input.map_sides);
+    expect(rcon.startMatch).toHaveBeenCalledWith(response.body.matchid);
+    expect(response.body.status).toEqual({ matchLoaded: true, matchId: response.body.matchid });
+  } finally {
+    fs.rmSync(process.env.CS2_MATCH_DIR, { recursive: true, force: true });
+  }
 });
