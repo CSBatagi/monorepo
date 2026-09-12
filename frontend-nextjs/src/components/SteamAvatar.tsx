@@ -8,6 +8,7 @@ interface SteamAvatarProps {
   playerName: string;
   size?: 'small' | 'medium' | 'large';
   showLink?: boolean;
+  showName?: boolean;
   className?: string;
 }
 
@@ -24,6 +25,7 @@ export default function SteamAvatar({
   playerName, 
   size = 'large',
   showLink = true,
+  showName = false,
   className = '' 
 }: SteamAvatarProps) {
   const [steamData, setSteamData] = useState<SteamData | null>(null);
@@ -31,22 +33,31 @@ export default function SteamAvatar({
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    const controller = new AbortController();
+    setSteamData(null);
+    setError(false);
+    setLoading(true);
     if (!steamId) {
       setLoading(false);
       return;
     }
 
-    fetch(`/api/steam/avatar?steamid=${steamId}`)
-      .then(res => res.json())
+    fetch(`/api/steam/avatar?steamid=${encodeURIComponent(steamId)}`, { signal: controller.signal })
+      .then(res => {
+        if (!res.ok) throw new Error('Steam profile unavailable');
+        return res.json();
+      })
       .then(data => {
+        if (controller.signal.aborted) return;
         setSteamData(data);
         setLoading(false);
       })
-      .catch(err => {
-        console.error('Failed to fetch Steam avatar:', err);
+      .catch(() => {
+        if (controller.signal.aborted) return;
         setError(true);
         setLoading(false);
       });
+    return () => controller.abort();
   }, [steamId]);
 
   const sizeClasses = {
@@ -64,6 +75,7 @@ export default function SteamAvatar({
   const initials = playerName ? playerName.charAt(0).toUpperCase() : '?';
   const avatarUrl = steamData?.avatarUrl || defaultAvatar;
   const profileUrl = steamData?.profileUrl || `https://steamcommunity.com/profiles/${steamId}`;
+  const displayName = steamData?.personaName || playerName;
 
   const avatarElement = (
     <div className={`relative ${sizeClasses[size]} rounded-full overflow-hidden bg-blue-100 flex items-center justify-center ${className}`}>
@@ -78,7 +90,7 @@ export default function SteamAvatar({
       ) : (
         <Image
           src={avatarUrl}
-          alt={`${playerName} Steam Avatar`}
+          alt={`${displayName} Steam Avatar`}
           width={sizePixels[size]}
           height={sizePixels[size]}
           className="object-cover"
@@ -89,19 +101,23 @@ export default function SteamAvatar({
     </div>
   );
 
-  if (showLink && steamData?.profileUrl) {
+  const content = showName ? <span className="inline-flex items-center gap-4 min-w-0">
+    {avatarElement}<span className="steam-avatar-name">{displayName}</span>
+  </span> : avatarElement;
+
+  if (showLink && steamId) {
     return (
       <a 
         href={profileUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-block hover:opacity-80 transition-opacity"
-        title={`View ${playerName}'s Steam Profile`}
+        title={`View ${displayName}'s Steam Profile`}
       >
-        {avatarElement}
+        {content}
       </a>
     );
   }
 
-  return avatarElement;
+  return content;
 }

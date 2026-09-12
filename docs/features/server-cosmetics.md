@@ -17,11 +17,14 @@ The user experience follows the [xplay skinchanger](https://xplay.gg/blog/cs2-sk
 ## Member flow
 
 1. Sign in to the website and open **Ekipman**.
-2. Choose **Kod oluştur**, join `cs2.csbatagi.com:27015`, and enter `css_bagla CODE` in the game console (or `!bagla CODE` in chat). Codes expire after ten minutes and can only be used once. Use the console to keep the code out of public chat.
-3. Press **Bağlantıyı kontrol et**. No Steam password or manually entered Steam ID is required; the plugin identifies the connected player.
-4. Browse item tiers, spend earned tokens to permanently unlock an item, then choose T or CT and add it to a set. Free starter items need no purchase. Weapons support five sticker slots and one charm; attachments have their own permanent unlocks. Float is restricted to each finish's bounds, seed to 0–1000, and name tags to 20 characters.
-5. Maintain up to three named sets, choose the active one, and save. Sets persist in PostgreSQL.
-6. Join/reconnect or enter `!ws`. Changes apply at the next spawn, with a 30-second refresh cooldown. Immediate weapon replacement is disabled for competitive play. Unequipped slots use the player's original Steam inventory; music is a single shared slot across teams.
+2. If the signed-in email already has a Steam link in `cosmetic_accounts`, the page automatically loads that player's Steam avatar/name, level, XP, regular and premium tokens, collection and saved sets. No new code is needed. Steam profile lookup uses the existing avatar endpoint, with the login name and fallback avatar/initials when Steam is unavailable.
+3. Only members without a saved link choose **Kod oluştur**, join `cs2.csbatagi.com:27015`, and enter `css_bagla CODE` in the game console (or `!bagla CODE` in chat). Codes expire after ten minutes and can only be used once. Use the console to keep the code out of public chat.
+4. Press **Bağlantıyı kontrol et**. No Steam password or manually entered Steam ID is required; the plugin identifies the connected player.
+5. Browse item tiers, spend earned tokens to permanently unlock an item, then choose T or CT and add it to a set. Free starter items need no purchase. Weapons support five sticker slots and one charm; attachments have their own permanent unlocks. Float is restricted to each finish's bounds, seed to 0–1000, and name tags to 20 characters.
+6. Maintain up to three named sets, choose the active one, and save. Sets persist in PostgreSQL.
+7. Join/reconnect or enter `!ws`. Changes apply at the next spawn, with a 30-second refresh cooldown. Immediate weapon replacement is disabled for competitive play. Unequipped slots use the player's original Steam inventory; music is a single shared slot across teams.
+
+`frontend-nextjs/public/data/players.json` is a roster of player names, Steam IDs and activity status; it does not map Google login emails. The stats database's `steam_accounts` table also has no email identity. Neither source can establish account ownership by matching display names.
 
 StatTrak is a session counter, reset when the inventory is fetched again. Sticker position/rotation and charm offsets are not exposed; images show representative items, not a rendered preview of the chosen float/pattern. The catalogue currently includes 13,590 entries (including stickers and charms), not 13,590 weapon skins.
 

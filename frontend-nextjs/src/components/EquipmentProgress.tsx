@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Award, Coins, Trophy } from 'lucide-react';
+import { Award, Check, Coins, Trophy } from 'lucide-react';
 import { CosmeticAccount } from '@/lib/cosmetics';
+import { useSession } from '@/contexts/SessionContext';
+import SteamAvatar from './SteamAvatar';
 
 type Awards = {
   members: { email: string; steam_id: string }[];
@@ -68,11 +70,17 @@ function PremiumAwards() {
 
 export default function EquipmentProgress({ account, refresh, busy }: { account: CosmeticAccount; refresh: () => void; busy: boolean }) {
   const p = account.progress;
+  const { user } = useSession();
   return <>
     <section className="equipment-progression" aria-label="Ekipman ilerlemesi">
+      {account.steamId && <div className="equipment-player">
+        <div><span className="equipment-eyebrow">SENİN EKİPMANIN</span><SteamAvatar key={account.steamId} steamId={account.steamId} playerName={user?.name || 'Oyuncu'} size="medium" showName /></div>
+        <span className="equipment-linked"><Check size={16} /> Steam hesabın bağlı</span>
+      </div>}
       <div className="equipment-progress-top"><div><span className="equipment-eyebrow"><Trophy size={15} /> OYNA · KAZAN · TARZINI AÇ</span><h2>{p ? `Seviye ${p.level} · ${p.level >= 10 ? 'Batak efsanesi' : p.level >= 5 ? 'Gece ustası' : p.level >= 3 ? 'Müdavim' : 'Yeni yüz'}` : 'İlk ekipmanın bizden.'}</h2><p>{p ? `${p.matches} maç · ${p.nights} oyun gecesi · ${p.unlocks.length} kalıcı açılan eşya` : 'Steam hesabını bağla, 30 hoş geldin jetonuyla ilk seçimini yap.'}</p></div>
         <div className="equipment-wallet"><div><Coins size={19} /><strong>{p?.tokens ?? '30'}</strong><span>{p ? 'Jeton' : 'Hoş geldin'}</span></div><div className="premium"><Award size={19} /><strong>{p?.premiumTokens ?? 0}</strong><span>Premium</span></div></div></div>
       {p && <div className="equipment-xp"><div><span>{p.levelXp} / {p.nextLevelXp} XP</span><span>Seviye {p.level + 1}</span></div><progress aria-label="Sonraki seviyeye ilerleme" max={p.nextLevelXp} value={p.levelXp} /><button disabled={busy} onClick={refresh}>Maç ödüllerini yenile</button></div>}
+      {account.steamId && <details className="equipment-rules"><summary>Steam hesabı ve sunucu durumu</summary><p>Steam ID: {account.steamId}<br />{account.lastFetchedAt ? `Sunucu son okuma: ${new Date(account.lastFetchedAt).toLocaleString('tr-TR')}` : 'Sunucu henüz ekipmanı okumadı.'}<br />Kaydettiğin ekipmanı sunucuda !ws yazarak yenileyebilirsin; sonraki doğuşta uygulanır.</p></details>}
       <div className="equipment-rewards"><span><b>Her maç</b> +10 jeton · +100 XP</span><span><b>Gecenin ilk maçı</b> +5 jeton · +50 XP</span><span><b>Galibiyet</b> +2 jeton · +20 XP</span><span><b>1,20 rating veya 5 asist</b> +2 jeton · +20 XP</span></div>
       <div className="equipment-tier-road">{account.tiers.map(tier => <div key={tier.tier} className={tier.tier === 'premium' ? 'premium' : ''}><strong>{tier.label}</strong><span>{tier.cost === 0 ? 'Ücretsiz' : tier.currency === 'premiumTokens' ? '1 premium · yönetici ödülü' : `${tier.cost} jeton · Sv. ${tier.level}`}</span></div>)}</div>
       <details className="equipment-rules"><summary>Ödüller nasıl işler?</summary><p>Bir açılış, eşyayı her sette ve desteklenen iki takımda kalıcı kullanıma açar. Seviye, jeton ve koleksiyon sezon sonunda sıfırlanmaz. Premium jetonlar yalnızca yönetici ödüllerinden gelir.</p><p>Ödüller sistemin açıldığı {new Date(account.startsAt).toLocaleDateString('tr-TR')} tarihinden sonraki, istatistikleri yayımlanmış ve en az 12 raund oynanmış kayıtlı haritalar içindir. Eski maçlar geriye dönük sayılmaz. İstatistikler işlenirken biraz bekleyip yenileyebilirsin. Oyun gecesi Türkiye saatiyle 06.00’da değişir; gece yarısından sonra da aynı gecede kalırsın. Performans bonusu maç başına bir kez verilir; kaçırılan geceler için ceza yok.</p></details>
