@@ -275,6 +275,8 @@ if (typeof rateLimitCleanupTimer.unref === 'function') {
 
 // Cosmetics authenticates every route and applies per-member/game-server limits.
 const { registerCosmeticsRoutes, COSMETICS_MIGRATIONS } = require('./cosmeticsRoutes');
+const { registerSteamAuthRoutes, STEAM_AUTH_MIGRATIONS } = require('./steamAuth');
+if (pool) registerSteamAuthRoutes(app, { pool });
 if (pool) registerCosmeticsRoutes(app, { pool });
 app.use(rateLimiter);
 
@@ -733,21 +735,7 @@ if (pool) {
   app.use('/live/notifications/inbox', notificationInboxRoutes.router);
   app.use('/live/notifications', notificationRoutes.router);
 
-  // Admin check — lightweight GET, no auth middleware (only returns boolean)
-  app.get('/admin/check/:email', async (req, res) => {
-    try {
-      const { email } = req.params;
-      if (!email) return res.json({ isAdmin: false });
-      const r = await pool.query(
-        `SELECT is_admin FROM admins WHERE email = $1 AND is_admin = true`,
-        [email]
-      );
-      res.json({ isAdmin: r.rows.length > 0 });
-    } catch (e) {
-      console.error('[admin/check]', e.message);
-      res.json({ isAdmin: false });
-    }
-  });
+
 }
 
 // Game controls use persistent match IDs and verified admin sessions.
@@ -828,6 +816,7 @@ if (!TEST_MODE) {
       `CREATE TABLE IF NOT EXISTS notification_events (event_id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'pending', topic TEXT, title TEXT, body TEXT, data JSONB, created_by_uid TEXT, created_by_name TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), sent_at TIMESTAMPTZ, failed_at TIMESTAMPTZ, recipient_count INT, success_count INT, failure_count INT, errors JSONB, error TEXT)`,
       // Demo archive and analysis queue state (see demoRoutes.js)
       ...DEMO_FILES_MIGRATIONS,
+      ...STEAM_AUTH_MIGRATIONS,
       ...COSMETICS_MIGRATIONS,
     ];
     for (const tableName of STATS_SOURCE_TABLES) {

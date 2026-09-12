@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronLeft, ChevronRight, Link2, Search, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Search, ShieldCheck, Sparkles, RotateCcw } from 'lucide-react';
 import { CosmeticAccount, CosmeticItem, CosmeticKind, CosmeticProgress, CosmeticSelection, CosmeticState, cosmeticKinds, selectionFor } from '@/lib/cosmetics';
+import { useRecoveringRead } from '@/lib/useRecoveringRead';
 import EquipmentProgress from './EquipmentProgress';
 import GameServerConnect from './GameServerConnect';
 import './equipment.css';
@@ -29,13 +30,9 @@ export default function EquipmentClient() {
   const [tier, setTier] = useState('');
   const [offset, setOffset] = useState(0);
   const [listing, setListing] = useState<Listing>({ items: [], total: 0, weapons: [] });
-  const [loading, setLoading] = useState(true);
-  const [catalogLoading, setCatalogLoading] = useState(true);
-  const [catalogRetry, setCatalogRetry] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [code, setCode] = useState('');
   const [editing, setEditing] = useState<CosmeticSelection | null>(null);
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [attachmentQuery, setAttachmentQuery] = useState('');
@@ -51,13 +48,32 @@ export default function EquipmentClient() {
   const currentItems = useMemo(() => selectedProfile?.items.filter(item => item.team === team || known[item.id]?.kind === 'music') || [], [selectedProfile, team, known]);
 
   function remember(items: CosmeticItem[]) { setKnown(previous => ({ ...previous, ...Object.fromEntries(items.map(item => [item.id, item])) })); }
+  const { loading, error: accountError, refetch: reloadAccount } = useRecoveringRead<CosmeticAccount>({
+    url: '/api/cosmetics/me',
+    enabled: !dirty && !busy && !editing,
+    onData: result => {
+      if (dirty || busy || editing) return;
+      if (!account || result.state.active !== account.state.active) setProfile(result.state.active);
+      setAccount(result); setState(result.state); remember(result.items);
+    },
+  });
+  const { loading: catalogLoading, error: catalogError, refetch: reloadCatalog } = useRecoveringRead<Listing>({
+    url: `/api/cosmetics/catalog?${new URLSearchParams({ kind, q: query, weapon, tier, offset: String(offset) })}`,
+    debounceMs: 250,
+    onData: result => { setListing(result); remember(result.items); },
+  });
+  const { error: attachmentError } = useRecoveringRead<Listing>({
+    url: `/api/cosmetics/catalog?${new URLSearchParams({ kind: attachment?.kind || 'sticker', q: attachmentQuery })}`,
+    enabled: !!attachment,
+    debounceMs: 250,
+    onData: result => { setAttachmentItems(result.items); remember(result.items); },
+  });
+  const loadError = accountError || catalogError || attachmentError;
   async function reload() {
-    setError(''); setLoading(true); setCatalogRetry(value => value + 1);
-    try { const result = await request<CosmeticAccount>('me'); setAccount(result); setState(result.state); setProfile(result.state.active); remember(result.items); }
-    catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
+    if (dirty || busy || editing) return;
+    setError('');
+    await Promise.all([reloadAccount(), reloadCatalog()]);
   }
-  useEffect(() => { void reload(); }, []);
   useEffect(() => {
     if (!dirty) return;
     const handler = (event: BeforeUnloadEvent) => { event.preventDefault(); };
@@ -65,25 +81,9 @@ export default function EquipmentClient() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
   useEffect(() => {
-    const controller = new AbortController();
-    setCatalogLoading(true);
-    const timer = setTimeout(async () => {
-      try { const result = await request<Listing>(`catalog?${new URLSearchParams({ kind, q: query, weapon, tier, offset: String(offset) })}`, undefined, controller.signal); setListing(result); remember(result.items); }
-      catch (e) { if (!controller.signal.aborted) setError((e as Error).message); }
-      finally { if (!controller.signal.aborted) setCatalogLoading(false); }
-    }, 250);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [kind, query, weapon, tier, offset, catalogRetry]);
-  useEffect(() => {
-    if (!attachment) return;
-    const controller = new AbortController();
-    setAttachmentItems([]); setPendingAttachment(null);
-    const timer = setTimeout(async () => {
-      try { const result = await request<Listing>(`catalog?${new URLSearchParams({ kind: attachment.kind, q: attachmentQuery })}`, undefined, controller.signal); setAttachmentItems(result.items); remember(result.items); }
-      catch (e) { if (!controller.signal.aborted) setError((e as Error).message); }
-    }, 250);
-    return () => { clearTimeout(timer); controller.abort(); };
+    setPendingAttachment(null);
   }, [attachment, attachmentQuery]);
+  useEffect(() => { setAttachmentItems([]); }, [attachment?.kind, attachmentQuery]);
 
   function updateProfile(items: CosmeticSelection[]) {
     if (!state) return;
@@ -101,12 +101,6 @@ export default function EquipmentClient() {
     if (!account || !state) return;
     setBusy(true); setError(''); setNotice('');
     try { const result = await request<{ state: CosmeticState; revision: number }>('save', { state, revision: account.revision }); setAccount({ ...account, ...result }); setState(result.state); setNotice('Kaydedildi. Sunucuda !ws yazın; ekipmanınız sonraki doğuşta uygulanır.'); }
-    catch (e) { setError((e as Error).message); }
-    finally { setBusy(false); }
-  }
-  async function linkCode() {
-    setBusy(true); setError('');
-    try { const result = await request<{ code: string }>('link-code', {}); setCode(result.code); }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -137,12 +131,10 @@ export default function EquipmentClient() {
 
   return <div className="equipment">
     <header className="equipment-hero"><div><span className="equipment-eyebrow"><Sparkles size={14} /> CS BATAGI / ÖZEL SUNUCU</span><h1>Her gece bir adım.<br /><span>Her eşya bir hikâye.</span></h1><p>Maça gel, jeton kazan, koleksiyonunu büyüt. Tarzını kaydet, sunucuya taşı.</p></div><div className="equipment-hero-aside"><ShieldCheck size={30} /><strong>Kalıcı koleksiyon. Özel ödüller.</strong><span>Yalnızca CS Batagi sunucusunda görünür.<br />Steam envanterini değiştirmez.</span></div></header>
-    {error && <div className="equipment-message error" role="alert">{error} <button onClick={() => void reload()} disabled={dirty || busy}>Yeniden yükle</button>{dirty && <span> Kaydedilmemiş değişiklikler var.</span>}</div>}
+    {(error || loadError) && <div className="equipment-message error" role="alert">{error || loadError} <button onClick={() => void reload()} disabled={dirty || busy || !!editing}>Yeniden yükle</button>{dirty && <span> Kaydedilmemiş değişiklikler var.</span>}</div>}
     {notice && <div className="equipment-message" role="status"><Check size={18} />{notice}</div>}
-    {loading ? <p role="status">Ekipman yükleniyor…</p> : account && <>
-      {!account.steamId && <section className="equipment-account"><div><span className="equipment-eyebrow">STEAM BAĞLANTISI</span><strong>Oyun hesabını bir kez bağla</strong><p>Bu giriş hesabına bağlı bir Steam hesabı henüz yok. Bir kez bağladıktan sonra avatarın, seviyen ve jetonların her girişte otomatik yüklenir.</p></div><button className="equipment-primary" disabled={busy} onClick={() => void linkCode()}><Link2 size={16} /> Kod oluştur</button>
-        {code && <div className="equipment-link-code"><p>Sunucu konsoluna yaz (10 dakika geçerli):</p><code>css_bagla {code}</code><p>Bağlantı mesajını gördükten sonra:</p><button onClick={() => void reload()}>Bağlantıyı kontrol et</button></div>}
-      </section>}
+    {loading && !account ? <p role="status">Ekipman yükleniyor…</p> : account && <>
+      <section className="equipment-account"><div><span className="equipment-eyebrow">STEAM + KULÜP</span><strong>Satın aldığın Steam skinlerini de kullan.</strong><p>Skinlerini CS2 ekipmanında kuşan. Burada yalnızca değiştirmek istediğin yuvalara kulüp eşyası seç; diğer yuvalarda Steam ekipmanın kullanılır. Kendi skinlerin için kulüp jetonu gerekmez.</p></div></section>
       <EquipmentProgress account={account} refresh={() => void refreshProgress()} busy={busy} />
       {state && <fieldset className="equipment-workspace" disabled={busy}>
         <div className="equipment-sets"><div><label htmlFor="equipment-profile">EKİPMAN SETİ</label><select id="equipment-profile" value={profile} onChange={event => setProfile(Number(event.target.value))}>{state.profiles.map((p, index) => <option value={index} key={index}>{p.name}{state.active === index ? ' · Aktif' : ''}</option>)}</select></div><input aria-label="Set adı" maxLength={40} value={selectedProfile?.name || ''} onChange={event => setState({ ...state, profiles: state.profiles.map((p, i) => i === profile ? { ...p, name: event.target.value } : p) })} /><button disabled={state.profiles.length >= 3} onClick={() => { setState({ ...state, profiles: [...state.profiles, { name: `Set ${state.profiles.length + 1}`, items: [] }] }); setProfile(state.profiles.length); }}>+ Yeni set</button><button disabled={state.active === profile} onClick={() => setState({ ...state, active: profile })}>{state.active === profile ? 'Aktif set' : 'Aktif yap'}</button><button className="equipment-primary" disabled={busy || !dirty || !account.steamId} onClick={() => void save()}>{busy ? 'Kaydediliyor…' : dirty ? 'Değişiklikleri kaydet' : 'Kaydedildi'}</button></div>
@@ -157,8 +149,10 @@ export default function EquipmentClient() {
           {!catalogLoading && listing.total === 0 && <p className="equipment-empty">Eşya bulunamadı. Başka bir ad veya model deneyin.</p>}
           <div className="equipment-pagination"><button aria-label="Önceki sayfa" disabled={offset === 0 || catalogLoading} onClick={() => setOffset(offset - 48)}><ChevronLeft size={18} /></button><span>{Math.floor(offset / 48) + 1} / {Math.max(1, Math.ceil(listing.total / 48))}</span><button aria-label="Sonraki sayfa" disabled={offset + 48 >= listing.total || catalogLoading} onClick={() => setOffset(offset + 48)}><ChevronRight size={18} /></button></div>
         </main><aside className="equipment-loadout"><span className="equipment-eyebrow">{selectedProfile?.name}</span><h2>Maça hazır.</h2><div className="equipment-team">{[2, 3].map(value => <button key={value} aria-pressed={team === value} className={team === value ? 'active' : ''} onClick={() => setTeam(value)}>{value === 2 ? 'T' : 'CT'}</button>)}</div><p className="equipment-hint">Her takım için ayrı seçim yapabilirsin. Müzik iki takımda da aynı çalar.</p>
-          {currentItems.length === 0 && <p className="equipment-empty">Bu takım için bir eşya seç.<br />Boş yuvalar Steam ekipmanını kullanır.</p>}
-          {currentItems.map(selection => <div key={selection.id} className="equipment-loadout-item"><button onClick={() => { setEditing(structuredClone(selection)); setAttachment(null); }}>{known[selection.id]?.image && <img src={known[selection.id].image!} alt="" />}<span>{known[selection.id]?.name || selection.id}</span></button><button aria-label={`${known[selection.id]?.name} kaldır`} onClick={() => updateProfile(selectedProfile!.items.filter(i => i !== selection))}><Trash2 size={15} /></button></div>)}
+          {currentItems.length === 0 && <p className="equipment-empty">Bu takımda CS2'de kuşandığın Steam ekipmanı kullanılır.<br />İstersen bazı yuvalara kulüp eşyası ekle.</p>}
+          {currentItems.map(selection => <div key={selection.id} className="equipment-loadout-item"><button onClick={() => { setEditing(structuredClone(selection)); setAttachment(null); }}>{known[selection.id]?.image && <img src={known[selection.id].image!} alt="" />}<span>{known[selection.id]?.name || selection.id}</span></button><button className="equipment-steam-slot" aria-label={`${known[selection.id]?.name || selection.id} yerine Steam ekipmanımı kullan`} title="Bu yuvada CS2’de kuşandığın Steam eşyasını kullan" onClick={() => { updateProfile(selectedProfile!.items.filter(i => i !== selection)); setNotice(known[selection.id]?.kind === 'music' ? 'İki takımda da Steam müziğin kullanılacak. Değişiklikleri kaydet.' : 'Bu yuvada Steam ekipmanın kullanılacak. Değişiklikleri kaydet.'); }}><RotateCcw size={14} /> Steam</button></div>)}
+          <button className="equipment-steam-reset" disabled={!selectedProfile?.items.length} onClick={() => { updateProfile([]); setNotice('Bu sette T ve CT için Steam ekipmanın kullanılacak. Değişiklikleri kaydet; sunucuda !ws yazıp yeniden doğ.'); }}><RotateCcw size={15} /> Steam ekipmanımı kullan</button>
+          <p className="equipment-hint">Bu setteki T ve CT kulüp seçimlerini kaldırır. Açtığın eşyalar koleksiyonunda kalır.</p>
           <div className="equipment-instructions"><strong>1. Seç ve kaydet</strong><span>Aktif setin sunucuya gönderilir.</span><strong>2. Sunucuda !ws yaz</strong><span>Sonraki doğuşta yeni ekipmanını gör.</span><GameServerConnect /></div>
         </aside></div>
       </fieldset>}
@@ -173,7 +167,7 @@ export default function EquipmentClient() {
       }
     }}><button className="equipment-close" autoFocus onClick={() => setEditing(null)} aria-label="Kapat">×</button>{selectedItem.image && <img className="equipment-preview" src={selectedItem.image} alt={selectedItem.name} />}<span className="equipment-eyebrow">{editing.team === 2 ? 'TERRORIST' : 'COUNTER-TERRORIST'} · {selectedItem.access.label}</span><h2>{selectedItem.name}</h2>
       {error && <p className="equipment-message error" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
-      {!isOwned(selectedItem) && <div className="equipment-unlock-info"><strong>{priceLabel(selectedItem)} · Kalıcı açılış</strong><p>{selectedItem.access.currency === 'premiumTokens' ? 'Özel ödül koleksiyonu. Sezon başarın veya katkın için yöneticinin verdiği premium jetonla seçebilirsin.' : `Seviye ${selectedItem.access.level} gerekli. Bir kez aç, her setinde kullan.`}</p><small>Bakiyen: {account?.progress?.tokens ?? 0} jeton · {account?.progress?.premiumTokens ?? 0} premium</small>{!account?.steamId && <p>Önce Steam hesabını bağla.</p>}</div>}
+      {!isOwned(selectedItem) && <div className="equipment-unlock-info"><strong>{priceLabel(selectedItem)} · Kalıcı açılış</strong><p>{selectedItem.access.currency === 'premiumTokens' ? 'Özel ödül koleksiyonu. Sezon başarın veya katkın için yöneticinin verdiği premium jetonla seçebilirsin.' : `Seviye ${selectedItem.access.level} gerekli. Bir kez aç, her setinde kullan.`}</p><small>Bakiyen: {account?.progress?.tokens ?? 0} jeton · {account?.progress?.premiumTokens ?? 0} premium</small>{!account?.steamId && <p>Önce Steam hesabınla giriş yap.</p>}</div>}
       {editing.wear !== undefined && <div className="equipment-editor-fields"><label>Float / aşınma<input type="number" min={selectedItem.minWear} max={selectedItem.maxWear} step="0.00001" value={editing.wear} onChange={event => setEditing({ ...editing, wear: Number(event.target.value) })} /><small>{selectedItem.minWear} – {selectedItem.maxWear}</small></label><label>Desen / seed<input type="number" min={0} max={1000} step={1} value={editing.seed} onChange={event => setEditing({ ...editing, seed: Number(event.target.value) })} /></label></div>}
       {editing.nametag !== undefined && <div className="equipment-editor-fields"><label>İsim etiketi<input maxLength={20} value={editing.nametag} onChange={event => setEditing({ ...editing, nametag: event.target.value })} placeholder="20 karaktere kadar" /></label><label className="equipment-checkbox"><input type="checkbox" checked={editing.stattrak} onChange={event => setEditing({ ...editing, stattrak: event.target.checked })} /> StatTrak (oturum sayacı)</label></div>}
       {editing.stickers && <><label>Çıkartmalar</label><div className="equipment-stickers">{editing.stickers.map((id, slot) => <button key={slot} onClick={() => { setAttachment({ kind: 'sticker', slot }); setAttachmentQuery(''); }}>{id && known[id]?.image ? <img src={known[id].image!} alt={known[id].name} /> : <span>+ {slot + 1}</span>}</button>)}</div><button onClick={() => { setAttachment({ kind: 'charm', slot: 0 }); setAttachmentQuery(''); }}>{editing.charm ? known[editing.charm]?.name : '+ Uğurluk / charm'}</button></>}

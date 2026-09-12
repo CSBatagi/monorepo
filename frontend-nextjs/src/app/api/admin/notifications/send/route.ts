@@ -1,3 +1,4 @@
+import { checkSessionAdmin } from '@/lib/adminServer';
 import { NextRequest, NextResponse } from "next/server";
 
 import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/authSession";
@@ -20,16 +21,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const session = verifySessionToken(cookie);
-    if (!session?.email) {
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check admin status via backend PG
-    const adminRes = await fetch(`${BACKEND}/admin/check/${encodeURIComponent(session.email)}`, { cache: "no-store" });
-    const adminData = await adminRes.json();
-    if (!adminData.isAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    if (!await checkSessionAdmin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = (await req.json()) as SendBody;
     const title = body.title?.trim();

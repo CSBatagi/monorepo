@@ -22,6 +22,7 @@ Use this folder as the canonical context source.
 - Demo analysis worker and member downloads: [`operations/demo-analysis-and-downloads.md`](operations/demo-analysis-and-downloads.md)
 - Security and secrets handling: [`operations/security-secrets.md`](operations/security-secrets.md)
 - Steam avatar integration: [`features/steam-integration.md`](features/steam-integration.md)
+- Steam website login and migration: [`features/steam-login.md`](features/steam-login.md)
 - Community server skins and equipment: [`features/server-cosmetics.md`](features/server-cosmetics.md)
 - Mobile app and notifications plan: [`features/mobile-app-notifications.md`](features/mobile-app-notifications.md)
 - Performance and memory budget: [`../PERFORMANCE_REPORT.md`](../PERFORMANCE_REPORT.md)

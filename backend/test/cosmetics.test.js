@@ -12,7 +12,7 @@ function select(kind, team) {
 function state(items = [select('weapon')]) { return { active: 0, profiles: [{ name: 'Test', items }] }; }
 function session(email = 'member@example.test', exp = Date.now() / 1000 + 60) {
   const header = Buffer.from('{}').toString('base64url');
-  const body = Buffer.from(JSON.stringify({ email, exp })).toString('base64url');
+  const body = Buffer.from(JSON.stringify({ uid: '76561198000000001', steamId: '76561198000000001', provider: 'steam', exp })).toString('base64url');
   return `${header}.${body}.${crypto.createHmac('sha256', secret).update(`${header}.${body}`).digest('base64url')}`;
 }
 function setup() {
@@ -64,11 +64,11 @@ test('requires both bearer and valid session for member routes; forged/expired s
 });
 test('save resolves identity from session, strips payload identity and checks revision', async () => {
   const { app, pool, member } = setup();
-  const client = { query: jest.fn(async sql => ({ rows: sql.startsWith('SELECT steam_id') ? [{ steam_id: '76561198000000001' }] : sql.startsWith('SELECT item_id') ? state().profiles[0].items.flatMap(i => [i.id, ...i.stickers, i.charm]).filter(Boolean).map(item_id => ({ item_id })) : sql.startsWith('UPDATE cosmetic_accounts') ? [{ revision: 4 }] : [] })), release: jest.fn() };
+  const client = { query: jest.fn(async sql => ({ rows: sql.startsWith('SELECT steam_id') ? [{ steam_id: '76561198000000001' }] : sql.startsWith('SELECT item_id') ? state().profiles[0].items.flatMap(i => [i.id, ...i.stickers, i.charm]).filter(Boolean).map(item_id => ({ item_id })) : sql.startsWith('UPDATE cosmetic_loadouts') ? [{ revision: 4 }] : [] })), release: jest.fn() };
   pool.connect.mockResolvedValue(client);
   await member(request(app).post('/cosmetics/save')).send({ email: 'victim@example.test', steamId: '76561198000000001', state: state(), revision: 3 }).expect(200);
-  const update = client.query.mock.calls.find(([sql]) => sql.startsWith('UPDATE cosmetic_accounts'));
-  expect(update[1][0]).toBe('member@example.test');
+  const update = client.query.mock.calls.find(([sql]) => sql.startsWith('UPDATE cosmetic_loadouts'));
+  expect(update[1][0]).toBe('76561198000000001');
   expect(update[1][2]).toBe(3);
   client.query.mockImplementation(async sql => ({ rows: sql.startsWith('SELECT steam_id') ? [{ steam_id: '76561198000000001' }] : sql.startsWith('SELECT item_id') ? state().profiles[0].items.flatMap(i => [i.id, ...i.stickers, i.charm]).filter(Boolean).map(item_id => ({ item_id })) : [] }));
   await member(request(app).post('/cosmetics/save')).send({ state: state(), revision: 3 }).expect(409);
@@ -80,29 +80,13 @@ test('catalog is paged and filters names/model without accepting untrusted defin
   expect(result.body.total).toBeGreaterThan(48);
   expect(result.headers['cache-control']).toBe('no-store');
 });
-test('link codes have entropy, are stored as hashes and scoped to the session', async () => {
-  const { app, member, pool } = setup();
-  const result = await member(request(app).post('/cosmetics/link-code')).send({}).expect(200);
-  expect(result.body.code).toMatch(/^[A-F0-9]{16}$/);
-  expect(pool.query.mock.calls[0][1]).toEqual(['member@example.test', crypto.createHash('sha256').update(result.body.code).digest('hex')]);
+test('old code linking is retired and cannot mutate account ownership', async () => {
+  const { app, member, server, pool } = setup();
+  await member(request(app).post('/cosmetics/link-code')).send({}).expect(404);
+  await server(request(app).post('/cosmetics/server/link')).send({code:'ABCDEF1234567890',steamId:'76561198000000001'}).expect(410);
+  expect(pool.query).not.toHaveBeenCalled();
 });
-test('server link consumes a code transactionally, rejects replay/expiry, and rolls back conflicts', async () => {
-  const { app, server, pool } = setup();
-  const client = { query: jest.fn().mockResolvedValue({ rows: [] }), release: jest.fn() };
-  pool.connect.mockResolvedValue(client);
-  await request(app).post('/cosmetics/server/link').send({}).expect(403);
-  const payload = { steamId: '76561198000000001', code: 'ABCDEF1234567890' };
-  await server(request(app).post('/cosmetics/server/link')).send(payload).expect(400);
-  expect(client.query).toHaveBeenCalledWith('ROLLBACK');
-  client.query.mockReset().mockResolvedValue({ rows: [] });
-  client.query.mockImplementation(async sql => ({ rows: sql.startsWith('DELETE') ? [{ email: 'member@example.test' }] : sql.startsWith('SELECT') ? [{ steam_id: '76561198000000002' }] : [] }));
-  await server(request(app).post('/cosmetics/server/link')).send(payload).expect(409);
-  expect(client.query).not.toHaveBeenCalledWith('COMMIT');
-  client.query.mockImplementation(async sql => ({ rows: sql.startsWith('DELETE') ? [{ email: 'member@example.test' }] : [] }));
-  await server(request(app).post('/cosmetics/server/link')).send(payload).expect(200);
-  expect(client.query).toHaveBeenCalledWith('COMMIT');
-  expect(client.release).toHaveBeenCalledTimes(3);
-});
+
 test('game API requires bearer and returns a safe empty loadout for unlinked players', async () => {
   const { app, server } = setup();
   await request(app).get('/cosmetics/api/equipped/v5/76561198000000001.json').expect(403);

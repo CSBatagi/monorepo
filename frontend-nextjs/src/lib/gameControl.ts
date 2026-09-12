@@ -21,7 +21,9 @@ export async function gameControl(req: NextRequest, endpoint: string, method = '
   try {
     const response = await fetch(`${process.env.BACKEND_INTERNAL_URL || 'http://backend:3000'}/${endpoint}`, {
       method, headers: { Authorization: `Bearer ${token}`, 'X-Game-Session': session, 'Content-Type': 'application/json' },
-      body, cache: 'no-store', signal: AbortSignal.timeout(60000),
+      body, cache: 'no-store', signal: method === 'GET' && endpoint.startsWith('cosmetics/')
+        ? AbortSignal.any([req.signal, AbortSignal.timeout(12000)])
+        : AbortSignal.timeout(60000),
     });
     return new NextResponse(await response.text(), { status: response.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
   } catch { return NextResponse.json({ error: endpoint.startsWith('cosmetics/') ? 'Ekipman hizmeti yanıt vermedi. Biraz bekleyip yeniden yükleyin.' : 'Game server request failed; check status before retrying' }, { status: 502 }); }

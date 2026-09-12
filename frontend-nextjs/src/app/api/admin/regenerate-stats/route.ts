@@ -1,3 +1,4 @@
+import { checkSessionAdmin } from '@/lib/adminServer';
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/authSession';
@@ -7,27 +8,9 @@ const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
 
 export async function POST(req: NextRequest) {
   try {
-    // --- Auth: session cookie only ---
-    let email: string | null = null;
-
     const sessionCookie = req.cookies.get(SESSION_COOKIE_NAME)?.value;
-    if (sessionCookie) {
-      const payload = verifySessionToken(sessionCookie);
-      if (payload?.email) email = payload.email;
-    }
-
-    if (!email) {
-      console.warn('[regenerate-stats] Rejected: no valid auth');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check admin status via backend PG
-    const adminRes = await fetch(`${BACKEND}/admin/check/${encodeURIComponent(email)}`, { cache: 'no-store' });
-    const adminData = await adminRes.json();
-    if (!adminData.isAdmin) {
-      console.warn(`[regenerate-stats] Non-admin ${email} tried to regenerate stats`);
-      return NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
-    }
+    if (!sessionCookie || !verifySessionToken(sessionCookie)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!await checkSessionAdmin(req)) return NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
 
     const apiToken = process.env.MATCHMAKING_TOKEN;
 

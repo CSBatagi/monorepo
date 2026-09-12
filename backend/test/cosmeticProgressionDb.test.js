@@ -8,6 +8,7 @@ const { catalog, emptyState } = require('../cosmetics');
 const { itemAccess } = require('../cosmeticProgression');
 const { registerCosmeticsRoutes, COSMETICS_MIGRATIONS } = require('../cosmeticsRoutes');
 const { resolveSeasonConfig } = require('../seasonConfig');
+const { STEAM_AUTH_MIGRATIONS } = require('../steamAuth');
 const connectionString = process.env.COSMETICS_TEST_DATABASE_URL;
 const suite = connectionString ? describe : describe.skip;
 const secret = 'local-progression-test-secret';
@@ -16,7 +17,7 @@ const memberEmail = 'member@example.test';
 const adminEmail = 'admin@example.test';
 function session(email) {
   const h = Buffer.from('{}').toString('base64url');
-  const b = Buffer.from(JSON.stringify({ email, exp: Date.now() / 1000 + 600 })).toString('base64url');
+  const b = Buffer.from(JSON.stringify({ uid: email === adminEmail ? '76561198000000002' : steamId, steamId: email === adminEmail ? '76561198000000002' : steamId, provider: 'steam', exp: Date.now() / 1000 + 600 })).toString('base64url');
   return `${h}.${b}.${crypto.createHmac('sha256', secret).update(`${h}.${b}`).digest('base64url')}`;
 }
 suite('real PostgreSQL progression and authorization', () => {
@@ -33,33 +34,37 @@ suite('real PostgreSQL progression and authorization', () => {
       'CREATE TABLE admins(email TEXT PRIMARY KEY,is_admin BOOLEAN)',
       'CREATE TABLE stats_refresh_state(id INTEGER PRIMARY KEY,dirty BOOLEAN)',
       'INSERT INTO stats_refresh_state VALUES(1,false)',
-      'CREATE TABLE matches(checksum TEXT PRIMARY KEY,date TIMESTAMPTZ,winner_name TEXT)',
+      // Match timestamps live on demos in the CS Demo Manager production schema.
+      'CREATE TABLE demos(checksum VARCHAR PRIMARY KEY,date TIMESTAMPTZ)',
+      'CREATE TABLE matches(checksum VARCHAR PRIMARY KEY,winner_name TEXT)',
       'CREATE TABLE players(match_checksum TEXT,steam_id VARCHAR NOT NULL,team_name TEXT,hltv_rating_2 REAL,assist_count INTEGER)',
       'CREATE TABLE rounds(match_checksum TEXT,number INTEGER)',
+      ...STEAM_AUTH_MIGRATIONS,
       ...COSMETICS_MIGRATIONS,
     ]) await pool.query(sql);
     await pool.query("UPDATE cosmetic_economy SET starts_at=NOW()-INTERVAL '7 days'");
-    await pool.query('INSERT INTO admins VALUES($1,true)', [adminEmail]);
+    await pool.query("INSERT INTO steam_members(steam_id,uid,display_name,is_admin) VALUES($1,$1,'Admin',true),($2,$2,'Member',false)", ['76561198000000002',steamId]);
     app = express(); app.use(express.json()); registerCosmeticsRoutes(app, { pool });
   });
   beforeEach(async () => {
-    await pool.query('TRUNCATE cosmetic_premium_awards,cosmetic_unlocks,cosmetic_rewards,cosmetic_wallets,cosmetic_accounts,players,matches,rounds');
+    await pool.query('TRUNCATE cosmetic_premium_awards,cosmetic_unlocks,cosmetic_rewards,cosmetic_wallets,cosmetic_accounts,cosmetic_loadouts,players,matches,demos,rounds');
     await pool.query('UPDATE stats_refresh_state SET dirty=false');
-    await pool.query('INSERT INTO cosmetic_accounts(email,steam_id,state) VALUES($1,$2,$3)', [memberEmail, steamId, JSON.stringify(emptyState())]);
+    await pool.query('INSERT INTO cosmetic_loadouts(steam_id,state) VALUES($1,$2)', [steamId, JSON.stringify(emptyState())]);
   });
   afterAll(async () => {
     if (pool) await pool.end();
     if (owner) { if (schema) await owner.query(`DROP SCHEMA ${schema} CASCADE`); await owner.end(); }
   });
   async function match(checksum, { days = 2, rounds = 24, rating = 1.3, assists = 5, win = true } = {}) {
-    await pool.query("INSERT INTO matches VALUES($1,date_trunc('day',NOW())-($2 * INTERVAL '1 day')+INTERVAL '20 hours',$3)", [checksum, days, win ? 'A' : 'B']);
+    await pool.query("INSERT INTO demos VALUES($1,date_trunc('day',NOW())-($2 * INTERVAL '1 day')+INTERVAL '20 hours')", [checksum, days]);
+    await pool.query('INSERT INTO matches VALUES($1,$2)', [checksum, win ? 'A' : 'B']);
     await pool.query("INSERT INTO players VALUES($1,$2,'A',$3,$4)", [checksum, steamId, rating, assists]);
     await pool.query('INSERT INTO rounds SELECT $1,generate_series(1,$2::integer)', [checksum, rounds]);
   }
   test('starter allowance is once per Steam identity and reads are idempotent', async () => {
     const results = await Promise.all([call('get', 'me'), call('get', 'me')]);
     for (const r of results) { expect(r.status).toBe(200); expect(r.body.progress).toMatchObject({ tokens: 30, xp: 0, premiumTokens: 0 }); }
-    await pool.query('UPDATE cosmetic_accounts SET email=$1 WHERE steam_id=$2', ['recovered@example.test', steamId]);
+    // A changed optional email does not change the signed Steam identity or wallet.
     expect((await call('get', 'me', 'recovered@example.test')).body.progress.tokens).toBe(30);
   });
   test('match and night rewards settle once across concurrent refresh, duplicate rows and reanalysis', async () => {
@@ -79,7 +84,7 @@ suite('real PostgreSQL progression and authorization', () => {
   });
   test('night boundary uses 06:00 Istanbul and missed nights impose no penalty', async () => {
     await match('late'); await match('early'); await match('next-night');
-    await pool.query("UPDATE matches SET date=date_trunc('day',NOW())-INTERVAL '2 days'+CASE checksum WHEN 'late' THEN INTERVAL '22 hours' WHEN 'early' THEN INTERVAL '26 hours' ELSE INTERVAL '27 hours' END");
+    await pool.query("UPDATE demos SET date=date_trunc('day',NOW())-INTERVAL '2 days'+CASE checksum WHEN 'late' THEN INTERVAL '22 hours' WHEN 'early' THEN INTERVAL '26 hours' ELSE INTERVAL '27 hours' END");
     const r = await call('get', 'me');
     expect(r.status).toBe(200); expect(r.body.progress).toMatchObject({ matches: 3, nights: 2, tokens: 82, xp: 520 });
   });
@@ -115,17 +120,17 @@ suite('real PostgreSQL progression and authorization', () => {
     expect(unlock.body.progress.unlocks).toContain(premium.id);
     expect((await call('post', 'unlock').send({ itemId: premium.id })).status).toBe(200);
     const history = await call('get', 'awards', adminEmail);
-    expect(history.body.awards).toHaveLength(1); expect(history.body.awards[0].admin_email).toBe(adminEmail);
-    await pool.query('UPDATE admins SET is_admin=false');
+    expect(history.body.awards).toHaveLength(1); expect(history.body.awards[0].admin_steam_id).toBe('76561198000000002');
+    await pool.query("UPDATE steam_members SET is_admin=false WHERE steam_id='76561198000000002'");
     expect((await call('post', 'award', adminEmail).send({ ...award, requestId: crypto.randomUUID() })).status).toBe(403);
-    await pool.query('UPDATE admins SET is_admin=true');
+    await pool.query("UPDATE steam_members SET is_admin=true WHERE steam_id='76561198000000002'");
   });
   test('save and game output both exclude unowned premium items and attachments, including legacy sets', async () => {
     const weapon = catalog.items.find(i => i.kind === 'weapon' && itemAccess(i).cost === 0);
     const sticker = catalog.items.find(i => i.kind === 'sticker' && itemAccess(i).tier === 'premium');
     const state = { active: 0, profiles: [{ name: 'Test', items: [{ id: weapon.id, team: 2, wear: weapon.minWear, seed: 1, stattrak: false, nametag: '', stickers: [sticker.id, null, null, null, null], charm: null }] }] };
     expect((await call('post', 'save').send({ state, revision: 0 })).status).toBe(403);
-    await pool.query('UPDATE cosmetic_accounts SET state=$1', [JSON.stringify(state)]);
+    await pool.query('UPDATE cosmetic_loadouts SET state=$1', [JSON.stringify(state)]);
     const legacy = await call('get', 'me');
     expect(legacy.body.removedLockedItems).toBe(true);
     const game = await call('get', `api/equipped/v5/${steamId}.json`);

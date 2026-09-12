@@ -32,7 +32,7 @@ Never commit:
 
 ## Session Authentication
 
-User sessions use HMAC-SHA256 tokens signed with `MATCHMAKING_TOKEN` (or `AUTH_TOKEN` fallback). The implementation is in `frontend-nextjs/src/lib/authSession.ts`. Tokens are stored as `csbatagi_session` cookies with a 5-day expiry. Edge middleware (`middleware.ts`) validates the signature and expiry on each request.
+User sessions use HMAC-SHA256 tokens signed with `MATCHMAKING_TOKEN` (or `AUTH_TOKEN` fallback). The implementation is in `frontend-nextjs/src/lib/authSession.ts`. Tokens are stored as `csbatagi_session` cookies with a 30-day expiry, renewed during active browsing at most every 30 minutes. Renewal requires a still-valid Steam session, current roster membership and the stored SteamID/UID pair; idle polling does not extend login. Steam OpenID supplies identity, and only the player roster's SteamIDs can sign in. Edge middleware and Node API routes validate the signature, Steam identity and expiry. See [Steam login](../features/steam-login.md) for renewal, account/admin migration and current public-read boundaries.
 
 If `MATCHMAKING_TOKEN` is rotated, all existing user sessions will be invalidated (users must re-login).
 
@@ -40,8 +40,6 @@ If `MATCHMAKING_TOKEN` is rotated, all existing user sessions will be invalidate
 
 | Secret | Used By | Purpose |
 |--------|---------|---------|
-| `GOOGLE_CLIENT_ID` | Frontend | Google OAuth 2.0 client ID (for login) |
-| `GOOGLE_CLIENT_SECRET` | Frontend | Google OAuth 2.0 client secret (for token exchange) |
 | `VAPID_PUBLIC_KEY` | Frontend + Backend | Web Push VAPID public key (for push subscriptions) |
 | `VAPID_PRIVATE_KEY` | Backend | Web Push VAPID private key (for sending push notifications) |
 | `AUTH_TOKEN` | Frontend + Backend | Shared API auth token (also used as `MATCHMAKING_TOKEN` for session signing) |

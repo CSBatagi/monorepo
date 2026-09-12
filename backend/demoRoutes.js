@@ -8,7 +8,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { sessionEmail } = require('./gameServer');
+const { sessionUser, isSteamAdmin } = require('./steamAuth');
 
 const BUCKET = process.env.DEMO_BUCKET || 'csbatagi-demos';
 const BUCKET_REFRESH_MS = Number(process.env.DEMO_BUCKET_REFRESH_MS || 5 * 60 * 1000);
@@ -123,18 +123,17 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, now
     next();
   };
   const member = (req, res, next) => {
-    const email = sessionEmail(req.get('x-game-session'), process.env.MATCHMAKING_TOKEN || process.env.AUTH_TOKEN);
-    if (!email) return res.status(401).json({ error: 'Sign in to see the demos' });
-    req.memberEmail = email;
+    const user = sessionUser(req.get('x-game-session'), process.env.MATCHMAKING_TOKEN || process.env.AUTH_TOKEN);
+    if (!user) return res.status(401).json({ error: 'Sign in to see the demos' });
+    req.memberSteamId = user.steamId;
     next();
   };
   const admin = async (req, res, next) => {
-    const email = sessionEmail(req.get('x-game-session'), process.env.MATCHMAKING_TOKEN || process.env.AUTH_TOKEN);
-    if (!email) return res.status(401).json({ error: 'Sign in first' });
+    const user = sessionUser(req.get('x-game-session'), process.env.MATCHMAKING_TOKEN || process.env.AUTH_TOKEN);
+    if (!user) return res.status(401).json({ error: 'Sign in first' });
     try {
-      const result = await pool.query('SELECT 1 FROM admins WHERE email=$1 AND is_admin=true', [email]);
-      if (!result.rows.length) return res.status(403).json({ error: 'Demo analysis requests require an admin' });
-      req.memberEmail = email;
+      if (!await isSteamAdmin(pool, user.steamId)) return res.status(403).json({ error: 'Demo analysis requests require an admin' });
+      req.memberSteamId = user.steamId;
       next();
     } catch { res.status(503).json({ error: 'Unable to check admin access' }); }
   };
@@ -331,7 +330,7 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, now
       const force = Boolean(row.checksum) || row.analysis_state === 'analyzed';
       const updated = await pool.query(
         `UPDATE demo_files SET analysis_state = 'queued', analysis_force = $2, analysis_requested_by = $3, analysis_requested_at = NOW(), analysis_error = NULL, updated_at = NOW()
-         WHERE name = $1 RETURNING name, analysis_state, analysis_force, analysis_requested_by, analysis_requested_at`, [name, force, req.memberEmail]);
+         WHERE name = $1 RETURNING name, analysis_state, analysis_force, analysis_requested_by, analysis_requested_at`, [name, force, req.memberSteamId]);
       res.json({ message: force ? 'Re-analysis queued' : 'Analysis queued', demo: updated.rows[0] });
     } catch (error) {
       console.error('[demos] analyze request failed:', error.message);

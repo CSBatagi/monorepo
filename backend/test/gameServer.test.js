@@ -1,5 +1,6 @@
+const { sessionUser } = require('../steamAuth');
 const crypto = require('crypto');
-const { validateMatch, sessionEmail, registerGameServer } = require('../gameServer');
+const { validateMatch, registerGameServer } = require('../gameServer');
 const express = require('express');
 const request = require('supertest');
 const fs = require('fs');
@@ -9,7 +10,7 @@ const path = require('path');
 const secret = 'test-only-game-control-key';
 function session(exp = Math.floor(Date.now() / 1000) + 60) {
   const h = Buffer.from('{}').toString('base64url');
-  const b = Buffer.from(JSON.stringify({ email: 'admin@example.test', exp })).toString('base64url');
+  const b = Buffer.from(JSON.stringify({ uid: '76561198000000001', steamId: '76561198000000001', provider: 'steam', exp })).toString('base64url');
   return `${h}.${b}.${crypto.createHmac('sha256', secret).update(`${h}.${b}`).digest('base64url')}`;
 }
 function match(n) {
@@ -31,9 +32,9 @@ test('rejects oversized, unequal, duplicate and command-injecting rosters', () =
   const injection = match(6); injection.team1.name = 'A;quit'; expect(() => validateMatch(injection)).toThrow();
 });
 test('verifies session signatures and rejects expiry/tampering', () => {
-  expect(sessionEmail(session(), secret)).toBe('admin@example.test');
-  expect(sessionEmail(session(1), secret)).toBeNull();
-  expect(sessionEmail(session() + 'x', secret)).toBeNull();
+  expect(sessionUser(session(), secret)).toMatchObject({ steamId: '76561198000000001' });
+  expect(sessionUser(session(1), secret)).toBeNull();
+  expect(sessionUser(session() + 'x', secret)).toBeNull();
 });
 
 test('accepts the reported Overpass, Tuscan, Vertigo series without changing maps or sides', () => {

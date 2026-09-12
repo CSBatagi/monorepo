@@ -1,3 +1,4 @@
+const { sessionUser, isSteamAdmin } = require('./steamAuth');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -31,29 +32,15 @@ function validateMatch(input) {
     clinch_series: true, spectators: { players: {} }, cvars: {} };
 }
 
-function sessionEmail(token, secret) {
-  try {
-    if (!secret || !token) return null;
-    const [header, body, signature, extra] = token.split('.');
-    if (extra !== undefined) return null;
-    const expected = crypto.createHmac('sha256', secret).update(`${header}.${body}`).digest();
-    const supplied = Buffer.from(signature, 'base64url');
-    if (supplied.length !== expected.length || !crypto.timingSafeEqual(expected, supplied)) return null;
-    const payload = JSON.parse(Buffer.from(body, 'base64url'));
-    return payload.exp > Date.now() / 1000 && typeof payload.email === 'string' ? payload.email : null;
-  } catch { return null; }
-}
-
 function registerGameServer(app, { pool, rcon, gcp }) {
   const directory = process.env.CS2_MATCH_DIR || path.join(__dirname, 'cs2-control');
   fs.mkdirSync(directory, { recursive: true });
   let loading = false;
   const admin = async (req, res, next) => {
-    const email = sessionEmail(req.get('x-game-session'), process.env.MATCHMAKING_TOKEN || process.env.AUTH_TOKEN);
-    if (!email) return res.status(401).json({ error: 'Sign in to control the game server' });
+    const user = sessionUser(req.get('x-game-session'), process.env.MATCHMAKING_TOKEN || process.env.AUTH_TOKEN);
+    if (!user) return res.status(401).json({ error: 'Sign in to control the game server' });
     try {
-      const result = await pool.query('SELECT 1 FROM admins WHERE email=$1 AND is_admin=true', [email]);
-      if (!result.rows.length) return res.status(403).json({ error: 'Game server controls require an admin' });
+      if (!await isSteamAdmin(pool, user.steamId)) return res.status(403).json({ error: 'Game server controls require an admin' });
       next();
     } catch { res.status(503).json({ error: 'Unable to check admin access' }); }
   };
@@ -106,4 +93,4 @@ function registerGameServer(app, { pool, rcon, gcp }) {
   });
 }
 
-module.exports = { registerGameServer, validateMatch, sessionEmail };
+module.exports = { registerGameServer, validateMatch };

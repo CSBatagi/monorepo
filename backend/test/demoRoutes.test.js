@@ -9,7 +9,7 @@ const { parseDemoName, isDemoName, signedDownloadUrl, autoQueueCandidates, regis
 const secret = 'test-only-demo-key';
 function session(email = 'member@example.test') {
   const h = Buffer.from('{}').toString('base64url');
-  const b = Buffer.from(JSON.stringify({ email, exp: Math.floor(Date.now() / 1000) + 60 })).toString('base64url');
+  const b = Buffer.from(JSON.stringify({ uid: '76561198000000001', steamId: '76561198000000001', provider: 'steam', exp: Math.floor(Date.now() / 1000) + 60 })).toString('base64url');
   return `${h}.${b}.${crypto.createHmac('sha256', secret).update(`${h}.${b}`).digest('base64url')}`;
 }
 
@@ -81,7 +81,7 @@ function buildApp(pool) {
 
 test('listing and download links need a signed session; analysis requests need an admin', async () => {
   const query = jest.fn(async sql => {
-    if (/FROM admins/.test(sql)) return { rows: [] };
+    if (/FROM steam_members/.test(sql)) return { rows: [] };
     if (/SELECT object_name FROM demo_files/.test(sql)) return { rows: [{ object_name: 'resurrection/x.dem' }] };
     if (/SELECT analysis_state, checksum/.test(sql)) return { rows: [{ analysis_state: 'none', checksum: null, on_game_server: true, object_name: null }] };
     return { rows: [] };
@@ -101,7 +101,7 @@ test('listing and download links need a signed session; analysis requests need a
 test('admins queue analysis once; the worker sync hands the job out and the result is verified in the database', async () => {
   const state = { analysis_state: 'none', checksum: null, on_game_server: true, object_name: null };
   const query = jest.fn(async (sql, params) => {
-    if (/FROM admins/.test(sql)) return { rows: [{}] };
+    if (/FROM steam_members/.test(sql)) return { rows: [{}] };
     if (/SELECT analysis_state, checksum/.test(sql)) return { rows: [{ ...state }] };
     if (/SET analysis_state = 'queued', analysis_force = \$2/.test(sql)) { state.analysis_state = 'queued'; return { rows: [{ name: params[0], analysis_state: 'queued', analysis_force: params[1], analysis_requested_by: params[2] }] }; }
     if (/WHERE analysis_state = 'queued' ORDER BY/.test(sql)) return { rows: state.analysis_state === 'queued' ? [{ name: 'x.dem', objectName: null, force: false, onGameServer: true }] : [] };
@@ -113,7 +113,7 @@ test('admins queue analysis once; the worker sync hands the job out and the resu
   const app = buildApp({ query });
   const auth = r => r.set('Authorization', `Bearer ${secret}`).set('x-game-session', session('admin@example.test'));
   const queued = await auth(request(app).post('/demos/x.dem/analyze')).expect(200);
-  expect(queued.body.demo).toMatchObject({ analysis_state: 'queued', analysis_force: false, analysis_requested_by: 'admin@example.test' });
+  expect(queued.body.demo).toMatchObject({ analysis_state: 'queued', analysis_force: false, analysis_requested_by: '76561198000000001' });
   await auth(request(app).post('/demos/x.dem/analyze')).expect(409);
 
   const sync = await request(app).post('/demo-analysis/sync').set('Authorization', `Bearer ${secret}`)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/authSession';
+import { checkSessionAdmin } from '@/lib/adminServer';
 
 const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
 
@@ -12,14 +13,12 @@ export async function GET(req: NextRequest) {
   }
 
   const payload = verifySessionToken(cookie);
-  if (!payload?.email) {
+  if (!payload) {
     return NextResponse.json({ isAdmin: false });
   }
 
   try {
-    const res = await fetch(`${BACKEND}/admin/check/${encodeURIComponent(payload.email)}`, { cache: 'no-store' });
-    const data = await res.json();
-    return NextResponse.json({ isAdmin: !!data.isAdmin });
+    return NextResponse.json({ isAdmin: await checkSessionAdmin(req) });
   } catch {
     return NextResponse.json({ isAdmin: false });
   }

@@ -7,8 +7,8 @@ import { useSession } from '@/contexts/SessionContext';
 import SteamAvatar from './SteamAvatar';
 
 type Awards = {
-  members: { email: string; steam_id: string }[];
-  awards: { request_id: string; steam_id: string; admin_email: string; amount: number; reason: string; season_start: string; awarded_at: string }[];
+  members: { display_name: string; steam_id: string }[];
+  awards: { request_id: string; steam_id: string; admin_email: string | null; admin_steam_id: string | null; amount: number; reason: string; season_start: string; awarded_at: string }[];
   seasonStart: string; seasonStarts: string[];
 };
 async function awardRequest(body?: unknown): Promise<Awards> {
@@ -58,13 +58,13 @@ function PremiumAwards() {
     {error && <p role="alert">{error} <button type="button" onClick={() => void load()}>Listeyi yenile</button></p>}
     {notice && <p role="status">{notice}</p>}
     {data && <form onSubmit={event => void award(event)}><fieldset disabled={busy}>
-      <label>Üye<select required value={steamId} onChange={e => setSteamId(e.target.value)}><option value="">Bağlı üyeyi seç</option>{data.members.map(member => <option key={member.steam_id} value={member.steam_id}>{member.email} · {member.steam_id}</option>)}</select></label>
+      <label>Üye<select required value={steamId} onChange={e => setSteamId(e.target.value)}><option value="">Bağlı üyeyi seç</option>{data.members.map(member => <option key={member.steam_id} value={member.steam_id}>{member.display_name} · {member.steam_id}</option>)}</select></label>
       <label>Sezon<select value={seasonStart} onChange={e => setSeasonStart(e.target.value)}>{data.seasonStarts.map(season => <option key={season}>{season}</option>)}</select></label>
       <label>Jeton<input type="number" min={1} max={10} required value={amount} onChange={e => setAmount(Number(e.target.value))} /></label>
       <label>Ödül açıklaması<input required minLength={3} maxLength={200} list="equipment-award-reasons" value={reason} onChange={e => setReason(e.target.value)} /><datalist id="equipment-award-reasons"><option value="Sezon MVP" /><option value="Sezon şampiyonu kaptan" /><option value="Topluluğa özel katkı" /></datalist></label>
       <button className="equipment-primary" disabled={!steamId || busy} type="submit">{busy ? 'Veriliyor…' : `${amount} premium jeton ver`}</button>
     </fieldset></form>}
-    {data && <div className="equipment-award-history"><strong>Son ödüller</strong>{data.awards.length === 0 && <p>Henüz premium ödül verilmedi.</p>}{data.awards.map(award => <p key={award.request_id}><b>+{award.amount} premium</b> · {data.members.find(member => member.steam_id === award.steam_id)?.email || award.steam_id}<br />{award.reason} · Sezon {award.season_start.slice(0, 10)}<br /><small>{new Date(award.awarded_at).toLocaleString('tr-TR')} · {award.admin_email}</small></p>)}</div>}
+    {data && <div className="equipment-award-history"><strong>Son ödüller</strong>{data.awards.length === 0 && <p>Henüz premium ödül verilmedi.</p>}{data.awards.map(award => <p key={award.request_id}><b>+{award.amount} premium</b> · {data.members.find(member => member.steam_id === award.steam_id)?.display_name || award.steam_id}<br />{award.reason} · Sezon {award.season_start.slice(0, 10)}<br /><small>{new Date(award.awarded_at).toLocaleString('tr-TR')} · {data.members.find(member => member.steam_id === award.admin_steam_id)?.display_name || award.admin_steam_id || award.admin_email}</small></p>)}</div>}
   </details>;
 }
 

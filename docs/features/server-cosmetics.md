@@ -16,15 +16,23 @@ The user experience follows the [xplay skinchanger](https://xplay.gg/blog/cs2-sk
 
 ## Member flow
 
-1. Sign in to the website and open **Ekipman**.
-2. If the signed-in email already has a Steam link in `cosmetic_accounts`, the page automatically loads that player's Steam avatar/name, level, XP, regular and premium tokens, collection and saved sets. No new code is needed. Steam profile lookup uses the existing avatar endpoint, with the login name and fallback avatar/initials when Steam is unavailable.
-3. Only members without a saved link choose **Kod oluştur**, join `cs2.csbatagi.com:27015`, and enter `css_bagla CODE` in the game console (or `!bagla CODE` in chat). Codes expire after ten minutes and can only be used once. Use the console to keep the code out of public chat.
-4. Press **Bağlantıyı kontrol et**. No Steam password or manually entered Steam ID is required; the plugin identifies the connected player.
-5. Browse item tiers, spend earned tokens to permanently unlock an item, then choose T or CT and add it to a set. Free starter items need no purchase. Weapons support five sticker slots and one charm; attachments have their own permanent unlocks. Float is restricted to each finish's bounds, seed to 0–1000, and name tags to 20 characters.
-6. Maintain up to three named sets, choose the active one, and save. Sets persist in PostgreSQL.
-7. Join/reconnect or enter `!ws`. Changes apply at the next spawn, with a 30-second refresh cooldown. Immediate weapon replacement is disabled for competitive play. Unequipped slots use the player's original Steam inventory; music is a single shared slot across teams.
+1. Sign in through **Steam** and open **Ekipman**. Only SteamIDs in the player roster can sign in. Steam proves the player's identity, so no linking code or Gmail mapping is needed.
+2. The page loads the player's Steam avatar/name, level, XP, regular and premium tokens, collection and saved sets automatically.
+3. Browse item tiers, spend earned tokens to permanently unlock an item, then choose T or CT and add it to a set. Free starter items need no purchase. Weapons support five sticker slots and one charm; attachments have their own permanent unlocks. Float is restricted to each finish's bounds, seed to 0–1000, and name tags to 20 characters.
+4. Maintain up to three named sets, choose the active one, and save. Sets persist in PostgreSQL.
+5. Join/reconnect or enter `!ws`. Changes apply at the next spawn, with a 30-second refresh cooldown. Immediate weapon replacement is disabled for competitive play. Unequipped slots use the player's original Steam inventory; music is a single shared slot across teams.
 
-`frontend-nextjs/public/data/players.json` is a roster of player names, Steam IDs and activity status; it does not map Google login emails. The stats database's `steam_accounts` table also has no email identity. Neither source can establish account ownership by matching display names.
+See [Steam login and migration](steam-login.md) for preserving existing loadouts, wallets, notification identities and administrator access.
+
+### Mixing owned Steam skins and club equipment
+
+Players equip purchased items in CS2's normal loadout. Club selections override only the corresponding slot and team; every other slot keeps the real Steam-equipped item. For example, a purchased AK-47 skin can be used alongside a club knife. Native Steam items do not require club tokens or level unlocks. This uses CS2's own equipped inventory; it does not import the Steam inventory as a second website catalog or request trades.
+
+The equipment page explains this and offers a **Steam** action beside each club selection to return that slot to the normal CS2 loadout. **Steam ekipmanımı kullan** clears club selections from the currently edited set for both T and CT, while other sets and purchased club unlocks remain intact. Changes are local until **Değişiklikleri kaydet**; make the desired set active, save, use `!ws`, and respawn (or reconnect). Music is shared across teams.
+
+The pinned plugin's `GetItemInLoadout` hook changes the game item only when the website supplies an override. An absent override returns `HookResult.Continue`, preserving the native item. `invsim_fallback_team=false` prevents the other team's club selection filling an empty slot, and `invsim_minmodels=0` allows native agents. Source reference: [InventorySimulator.Hooks.cs](https://github.com/ianlucas/cs2-css-inventory-simulator/blob/5e3c96283b3d3f5aeba44822a38031df2e213376/source/InventorySimulator/InventorySimulator.Hooks.cs#L79).
+
+The explicit Steam controls were deployed in frontend image `csbatagi-cosmetics-frontend-nextjs:20260912t230509z` after a successful production build and TypeScript check. The backend and game plugin were not changed for this UI update, and no personal loadout was saved by the verification. Rollback override: `/home/runner/cosmetics-web-backup-20260912t230509z/rollback.yml`. The RCON configuration query timed out during this follow-up, so the coexistence behavior was checked against the pinned source and checked-in configuration; rendered paid skins still need a human CS2 client check.
 
 StatTrak is a session counter, reset when the inventory is fetched again. Sticker position/rotation and charm offsets are not exposed; images show representative items, not a rendered preview of the chosen float/pattern. The catalogue currently includes 13,590 entries (including stickers and charms), not 13,590 weapon skins.
 
@@ -51,7 +59,7 @@ Every 300 XP gains a level, starting at level 1. There are no streak penalties, 
 
 These are club reward tiers, not live market valuations. `backend/cosmeticProgression.js` is the policy source: catalog rarity colors determine regular weapon/sticker tiers; music and charms are Kulüp, agents Nadir, and regular knives/gloves Seçkin. The premium reserve includes Dragon Lore, Gungnir, Wild Lotus, Howl, Pandora's Box, Vice, Superconductor, Doppler, Fade, Case Hardened, Katowice 2014 stickers, Crown (Foil) and Howling Dawn. Entire pattern-variable finish families are reserved, including every Doppler phase, because members may freely choose wear/seed. Regular tokens and high levels cannot substitute for premium currency.
 
-Admins open **Yönetici · Premium ödül ver** on `/ekipman`, select a linked member, canonical season and reason (e.g. seasonal MVP or season champion captain), then award 1–10 tokens. Awards are manual, never automatically inferred from stats or captain records. The recipient chooses their own premium items. Every award records the admin's signed-session identity, reason, season, amount and recipient. A UUID makes retries idempotent; reusing the UUID with different details fails. Admin status is checked against the `admins` table on every award and admin-list request.
+Admins open **Yönetici · Premium ödül ver** on `/ekipman`, select a linked member, canonical season and reason (e.g. seasonal MVP or season champion captain), then award 1–10 tokens. Awards are manual, never automatically inferred from stats or captain records. The recipient chooses their own premium items. Every award records the admin's signed-session identity, reason, season, amount and recipient. A UUID makes retries idempotent; reusing the UUID with different details fails. Admin status is checked against the `steam_members` table on every award and admin-list request.
 
 Rewards settle automatically when the linked member opens `/ekipman`, refreshes rewards or unlocks an item. No browser-submitted match IDs, performance values, balances or identity fields are trusted. A single SQL statement reads `players`, `matches`, `rounds` and the published `stats_refresh_state.dirty=false` flag in one snapshot. Only maps dated after economy launch, no later than now, with at least 12 recorded rounds count. During an import, rewards wait for publishing; incomplete/short warmups do not count. Match checksums and game-night keys are unique per SteamID. Reanalysis does not reissue or claw back settled rewards. Maps for unlinked members remain eligible after they link, provided the maps occurred after launch.
 
@@ -62,9 +70,9 @@ New persistent tables: `cosmetic_economy`, `cosmetic_wallets`, `cosmetic_rewards
 ## Data and security
 
 - `backend/data/cosmetics-catalog.json`: normalized, pinned [ByMykel/CSGO-API](https://github.com/ByMykel/CSGO-API) snapshot. Its `revision` records the exact source commit. MIT attribution is in `backend/data/COSMETICS-LICENSE.txt`; Valve owns the game item artwork.
-- `cosmetic_accounts`: signed-session email, unique verified SteamID64, three-set JSON state, optimistic revision and last game fetch timestamp.
-- `cosmetic_link_codes`: SHA-256 of a random 64-bit code, owner email and expiry. One current code per email. Consume/link is atomic and rolls back on uniqueness conflict. Existing account links cannot be silently reassigned; administrator intervention is required for account recovery.
-- Every cosmetics route requires the existing server bearer credential. Member reads/writes also require the signed HMAC session. Browser writes cannot supply the target email or Steam ID. The server linking endpoint accepts identity only from the trusted plugin.
+- `cosmetic_loadouts`: verified SteamID64, three-set JSON state, optimistic revision and last game fetch timestamp. Existing `cosmetic_accounts` entries are copied once and retained for recovery.
+- `cosmetic_link_codes` is retired and retained for recovery only. Steam OpenID now verifies ownership. The game linking endpoint returns HTTP 410.
+- Every cosmetics route requires the existing server bearer credential. Member reads/writes also require the signed HMAC session. Browser writes cannot supply the target email or Steam ID. Member identity comes from the Steam-authenticated session; the browser cannot select a different target SteamID.
 - The game adapter reads the existing private `cfg/csbatagi-web-token`, permits only HTTPS requests to `csbatagi.com/backend/cosmetics/`, disables redirects and never exposes the credential through a convar. `invsim_apikey` stays empty. No Steam Web API key or extra service credential is needed.
 - Catalogue definitions, paint indices, teams and item types come from the server allowlist. User payloads cannot inject arbitrary entity definitions or model paths. Revision checks prevent stale tabs overwriting a more recent save.
 - Per-member rate limiting avoids the backend's shared-proxy IP limit. Game requests have a separate bounded budget. Catalog responses contain at most 48 entries, and images load lazily. Retained catalogue heap measured approximately 8.8 MiB locally after GC. No Docker memory limits or pool sizes were increased.
@@ -74,13 +82,12 @@ New persistent tables: `cosmetic_economy`, `cosmetic_wallets`, `cosmetic_rewards
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /cosmetics/catalog?kind=weapon&q=...&weapon=...&offset=0` | Member catalogue search |
-| `GET /cosmetics/me` | Member link, saved sets, revision and last fetch |
-| `POST /cosmetics/link-code` | Issue a one-time link code |
+| `GET /cosmetics/me` | Signed-in Steam member, wallet, saved sets, revision and last fetch |
 | `POST /cosmetics/save` | Save `{ state, revision }` for the authenticated member |
 | `POST /cosmetics/unlock` | Spend the member's server-priced currency on `{ itemId }`, once |
 | `GET /cosmetics/awards` | Admin-only linked-member picker, canonical seasons and last 30 awards |
 | `POST /cosmetics/award` | Admin-only `{ requestId, steamId, amount, reason, seasonStart }` premium award |
-| `POST /cosmetics/server/link` | Game-authenticated `{ code, steamId }` verification |
+| `POST /cosmetics/server/link` | Retired; HTTP 410 directs members to Steam sign-in |
 | `GET /cosmetics/api/equipped/v5/<SteamID64>.json` | Authenticated plugin equipment read |
 
 Next proxies the member endpoints at `/api/cosmetics/`. Caddy's existing `/backend/*` route exposes the game endpoints with their bearer authentication. These tables are independent of match statistics and are not included in stats generation or publishing triggers.
@@ -105,7 +112,7 @@ For website rollback, run `docker compose -f /home/runner/docker-compose.yml -f 
 
 For game rollback, first verify the server is empty with no match or recording. Stop `cs2`, restore each previously existing path from the backup's `manifest.json`, and move any newly installed plugin/gamedata/config out of the active directories. Restore `core.json` and `server.cfg`, then start `cs2`. Do not touch the match plugin, demos or private credentials.
 
-## Verification
+## Verification before the Steam login migration
 
 Progression source validation (local, not a live deployment): 42 targeted tests passed, including 8 against a disposable PostgreSQL 17 instance. These cover concurrent wallet settlement, repeated imports, the Istanbul night boundary, launch/dirty/warmup eligibility, overspending, premium and level gates, admin revocation and award retries, and saved/game attachment enforcement. TypeScript also passes.
 

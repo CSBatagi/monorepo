@@ -3,6 +3,7 @@
 ## Scope
 
 Steam integration provides player avatars and profile links, mainly on the Oyuncular page.
+It also supplies website identity through Steam OpenID. See [Steam login and migration](steam-login.md) for roster restrictions, sessions and existing-account migration.
 
 ## Main Components
 

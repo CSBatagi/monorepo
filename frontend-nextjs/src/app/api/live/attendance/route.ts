@@ -5,9 +5,11 @@ const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
 export async function GET(req: NextRequest) {
   const v = req.nextUrl.searchParams.get('v') || '0';
   try {
-    const res = await fetch(`${BACKEND}/live/attendance?v=${v}`, { cache: 'no-store' });
+    const res = await fetch(`${BACKEND}/live/attendance?v=${v}`, {
+      cache: 'no-store', signal: AbortSignal.any([req.signal, AbortSignal.timeout(12000)]),
+    });
     if (res.status === 304) {
-      return new Response(null, { status: 304 });
+      return new Response(null, { status: 304, headers: { 'Cache-Control': 'no-store' } });
     }
     const data = await res.json();
     return NextResponse.json(data, {

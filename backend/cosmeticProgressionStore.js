@@ -30,14 +30,14 @@ async function unlocksFor(client, steamId) {
 // linked email changes, tab races or season rollover. Only published, substantive
 // maps count; bots/spectators without a players row cannot claim a reward.
 const REWARD_SQL = `WITH eligible AS (
-  SELECT m.checksum, m.date, ((m.date AT TIME ZONE 'Europe/Istanbul') - INTERVAL '6 hours')::date AS night,
+  SELECT m.checksum, d.date, ((d.date AT TIME ZONE 'Europe/Istanbul') - INTERVAL '6 hours')::date AS night,
     BOOL_OR(m.winner_name = p.team_name) AS won,
     BOOL_OR(p.hltv_rating_2 >= 1.2 OR p.assist_count >= 5) AS performance
-  FROM players p JOIN matches m ON m.checksum=p.match_checksum
-  WHERE p.steam_id=$1 AND m.date >= (SELECT starts_at FROM cosmetic_economy WHERE id=1)
-    AND m.date <= NOW() AND EXISTS (SELECT 1 FROM stats_refresh_state WHERE id=1 AND dirty=false)
+  FROM players p JOIN matches m ON m.checksum=p.match_checksum JOIN demos d ON d.checksum=m.checksum
+  WHERE p.steam_id=$1 AND d.date >= (SELECT starts_at FROM cosmetic_economy WHERE id=1)
+    AND d.date <= NOW() AND EXISTS (SELECT 1 FROM stats_refresh_state WHERE id=1 AND dirty=false)
     AND (SELECT COUNT(*) FROM rounds r WHERE r.match_checksum=m.checksum) >= 12
-  GROUP BY m.checksum, m.date
+  GROUP BY m.checksum, d.date
 ), events AS (
   SELECT 'match:' || checksum AS event_key, 'match' AS kind,
     10 + CASE WHEN won THEN 2 ELSE 0 END + CASE WHEN performance THEN 2 ELSE 0 END AS tokens,

@@ -1,5 +1,46 @@
 # Production live attendance investigation — 2026-09-08
 
+## Loading recovery changes — deployed 2026-09-13
+
+First navigation after inactivity is the priority. Equipment previously fetched
+the account once: a temporary failure required manual reload, and a stalled
+request could wait for the proxy's 60-second deadline. Attendance already retried,
+but a suspended in-flight read could delay recovery when the browser resumed.
+
+- Equipment account, catalog and attachment reads now use `useRecoveringRead`:
+  15-second browser deadline, automatic retries after 1/2/4/8/16 seconds and then
+  every 30 seconds during transient failures. Authorization and other permanent
+  4xx errors do not run a timed retry loop. No POST is automatically replayed.
+- Successful equipment reads are revalidated on visibility/pageshow/focus/online
+  return; they do not create a new periodic account/reward poll. Hidden/offline
+  tabs cancel pending requests and retry timers. Existing equipment remains
+  visible during background refresh. Account refresh pauses during edits or
+  mutations and ignores superseded responses, preserving unsaved sets.
+- Attendance retries a failed first read after one second, backs off during
+  outages, and resumes its normal three-second polling after success. An initial
+  304 without a browser snapshot is treated as a failure. Hidden/offline requests
+  are cancelled; resume replaces suspended requests whose deadline has elapsed.
+- Cosmetics GET proxies and the local attendance GET proxy have a 12-second
+  upstream deadline and forward browser cancellation. Production attendance GET
+  continues to bypass Next.js through Caddy. Cancellation bounds the HTTP wait;
+  it does not cancel PostgreSQL work that the backend has already started.
+
+Validation: 23 controlled hook tests passed, including failed/hanging first reads,
+one-day suspension, offline recovery, search races and pausing during equipment
+editing. The combined Steam login and session-renewal release passed all 118
+backend tests, 19 frontend auth checks, pull-to-refresh checks, the production
+build and a separate TypeScript check. All pending recovery changes were included
+in frontend image `csbatagi-cosmetics-frontend-nextjs:20260912t232155z`; all 433
+packaged backend/frontend artifact files were verified inside the running containers.
+The combined release passed 35 live API checks, including equipment/balance reads
+and attendance 200/304 behavior. See [Steam rollout](../features/steam-login.md#remembered-sessions-and-combined-refresh-rollout--2026-09-13)
+for images and rollback. No VM sizes, database memory limits, persistence or stats
+publishing changed.
+
+Recovery from a real day-long production idle period remains unmeasured. The
+controlled failure/resume tests are not evidence that the VM's underlying
+memory/disk stalls have been eliminated.
+
 ## Outcome
 
 Inspected the signed-in production landing page, connected to `backend-1` over
