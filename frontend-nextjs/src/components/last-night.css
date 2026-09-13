@@ -1,0 +1,38 @@
+.last-night-card { --night-line:#535b4766; --night-muted:#bac1ad; --night-text:#ecede4; color:var(--night-text); background:#1b2018e8; border:1px solid var(--night-line); padding:22px; min-width:0; display:flex; flex-direction:column; }
+.last-night-card header { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.last-night-card header h2 { font-size:17px; font-weight:650; line-height:1.4; margin:0; }
+.cinema-shell .last-night-card > header h2 { font-size:17px; font-weight:650; line-height:1.4; letter-spacing:-.2px; margin:0; }
+.last-night-card time,.last-night-meta { font-size:11px; color:var(--night-muted); }
+.last-night-meta { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; margin:16px 0; }
+.last-night-meta>span:first-child { font-size:9px; letter-spacing:1px; }
+.last-night-rankings { display:grid; gap:18px; }
+.last-night-group h3 { display:flex; gap:8px; align-items:center; font-size:13px; font-weight:650; margin:0 0 8px; }
+.last-night-group h3 svg,.last-night-player svg { color:#e6b65d; flex-shrink:0; }
+.golden-poop { display:inline-block; filter:sepia(1) saturate(4); font-size:17px; line-height:1.2; flex-shrink:0; }
+.last-night-card table { width:100%; table-layout:fixed; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; }
+.last-night-card th,.last-night-card td { text-align:right; padding:9px 3px; border-bottom:1px solid var(--night-line); }
+.last-night-card thead th { color:var(--night-muted); font-size:9px; font-weight:500; white-space:nowrap; }
+.last-night-card th:first-child { text-align:left; width:43%; }
+.last-night-player { display:flex; gap:7px; align-items:center; font-weight:550; }
+.last-night-player>span:not(.golden-poop) { overflow-wrap:anywhere; min-width:0; }
+.last-night-player small { color:var(--night-muted); font-size:10px; }
+.last-night-group.leaders td strong { color:#b9d9a0; }
+.last-night-group.bottom td strong { color:#efb19b; }
+.last-night-method { font-size:11px; color:var(--night-muted); margin-top:14px; }
+.last-night-method summary { cursor:pointer; padding:6px 0; }
+.last-night-method p { line-height:1.6; margin:8px 0; }
+.last-night-maps { margin:12px 0; }
+.last-night-maps>div { display:grid; grid-template-columns:65px minmax(0,1fr) 55px minmax(0,1fr); align-items:center; gap:8px; padding:6px 0; font-size:10px; }
+.last-night-maps>div>span { overflow-wrap:anywhere; }
+.last-night-maps>div>span:first-child { text-transform:uppercase; color:var(--night-muted); font-size:9px; }
+.last-night-maps>div>span:nth-child(2) { text-align:right; }
+.last-night-maps strong { text-align:center; }
+.last-night-empty { font-size:12px; line-height:1.6; color:var(--night-muted); padding:12px 0; }
+.last-night-card footer { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; padding-top:14px; border-top:1px solid var(--night-line); margin-top:auto; }
+.last-night-card footer a { display:flex; align-items:center; gap:8px; font-size:11px; }
+.last-night-card :is(a,summary):focus-visible { outline:2px solid #e6b65d; outline-offset:4px; }
+html[data-design="modern"] .last-night-card { --night-line:var(--club-line); --night-muted:var(--club-muted); --night-text:var(--club-text); background:var(--club-surface); border-radius:14px; margin:0 0 32px; }
+html[data-design="modern"] .last-night-rankings { grid-template-columns:1fr 1fr; gap:30px; }
+html[data-design="modern"]:not(.dark) .last-night-group.leaders td strong { color:#236839; }
+html[data-design="modern"]:not(.dark) .last-night-group.bottom td strong { color:#a13f24; }
+@media(max-width:700px) { .last-night-card { padding:16px; } html[data-design="modern"] .last-night-rankings { grid-template-columns:1fr; gap:18px; } }

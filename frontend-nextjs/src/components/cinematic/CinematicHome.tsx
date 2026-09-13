@@ -38,6 +38,7 @@ export default function CinematicHome() {
         { href: '/sonmac', number: '01', title: 'Son maç', desc: 'Kim vurmuş, kim sadece info vermiş?' },
         { href: '/mac-sonuclari', number: '02', title: 'Maç arşivi', desc: 'Unutmak istediğin skor da burada.' },
         { href: '/mac-videolari', number: '03', title: 'Tekrar izle', desc: 'Lag mıydı, aim miydi? Kayıtlara bakalım.' },
+        { href: '/gece-ortalama', number: '04', title: 'Gece Ortalaması', desc: 'Hangi gece kimin eli tutmuş?' },
       ].map(link => <Link prefetch={false} href={link.href} key={link.href}><span className="cinema-row-number">{link.number}</span><div><h3>{link.title}</h3><p>{link.desc}</p></div><ArrowUpRight size={28} strokeWidth={1} /></Link>)}</div>
       <span className="cinema-watermark" aria-hidden="true">GG.</span>
     </section>

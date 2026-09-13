@@ -4,10 +4,10 @@ The default interface is the modern club dashboard. The classic header, home scr
 
 ## Switching
 
-- Modern pages have a **Tasarım 5/5** button below the top bar. It cycles through **Orijinal** (pre-image, `622ca54`), **Görsel paneller** (`f56691c`), **Sıcak gri** (`73dc390`), **Grafit** (original layout with `#776350` hero border, `#3c424b` card borders, `#21242b` card backgrounds, and `#e2e2e2` analysis/footer dividers), and **Sıcak grafit** (the Sıcak gri layout carrying the Grafit colours), then returns to the original. A first visit opens Sıcak grafit; the browser remembers later choices in `cs-batagi-club-version`, independently of classic/modern and light/dark preferences. Blocked storage still permits cycling for the current session.
+- The club interface keeps only **Sıcak grafit (design 5)**. The version switch and other variants have been removed. Saved historical version choices migrate to Sıcak grafit on the first render.
 - Modern sidebar: **Klasik arayüze geç**.
 - Classic interface: fixed **Yeni arayüze geç** button at the bottom left.
-- Both interfaces also offer **Sinematik deneyim**. This is an independent layout, accessible directly with `?ui=cinematic`. Its **Arayüz** menu (or the full navigation menu on mobile) returns to the five club variations or the classic interface without changing their saved palettes or version.
+- Both interfaces also offer **Sinematik deneyim**. This is an independent layout, accessible directly with `?ui=cinematic`. Its **Arayüz** menu (or the full navigation menu on mobile) returns to the club interface or the classic interface without changing their saved palettes or version.
 - Login has the same switch.
 - Direct links: add `?ui=classic` or `?ui=modern` to any page (use `&ui=...` when other query parameters are present). A logged-out protected-page link retains its query in the existing login redirect.
 - Choice persists in this browser as `cs-batagi-design`. Light/dark choices are independent: the classic interface retains the existing `cs-batagi-theme` value; modern uses `cs-batagi-modern-theme` and defaults to dark.
@@ -19,7 +19,8 @@ The default interface is the modern club dashboard. The classic header, home scr
 - `src/components/ClubHome.tsx`: match-night actions, actual attendance summary, competition links, match links, and analysis tools. Counts use the existing version-validated `useLivePolling` hook; unavailable data is shown as a dash, never invented counts.
 - `src/components/ClassicHome.tsx`: original home component, preserved verbatim apart from the component name.
 - `src/styles/club-design.css`: modern palette, typography, responsive layouts, status colors, tables, controls, login, and motion. Shared-page overrides are scoped under `html[data-design="modern"]`. Do not place new shared-page rules outside this scope.
-- `src/styles/club-versions.css`: historical differences for the image-based designs, scoped by `data-club-version`. The base stylesheet preserves the original design; `ClubHome` switches only the corresponding artwork markup, sharing the same data and links across all versions. Sıcak grafit reuses the Sıcak gri layout through a `[data-club-version^="warm"]` prefix and overrides colour only, so the two never drift apart. Because its cards stay graphite on a light page, they set `color` as well as the palette variables, so descendants that inherit their colour stay legible.
+- `src/styles/club-versions.css`: the retained design 5 artwork layout and graphite colours, scoped to the modern interface. Light mode keeps the original graphite artwork cards with light text.
+
 - `src/contexts/ThemeContext.tsx`: interface and light/dark preferences. An early root script applies saved palette preferences before hydration.
 
 The modern design uses charcoal, orange, and neutral surfaces. Attendance retains meaningful green/amber/red states; team and statistical heatmap colors are not globally recolored. The data pages use their existing components and operations in both interfaces. Domination's embedded external Figma content remains controlled by that external document.
@@ -47,3 +48,17 @@ The hero reuses the club design's rotating voice-chat quotes (`src/lib/clubQuote
 The footer motion button pauses camera motion, particles, smoke, reveals, and smooth scrolling. Its preference is stored in `cs-batagi-cinema-motion`. System reduced-motion preferences disable motion on initial load and when changed. Cinematic mode uses a fixed dark palette and its own theme storage key so entering it cannot overwrite classic or club light/dark choices. Styling is isolated in `src/styles/cinematic.css`; existing table data and semantic status colors are retained.
 
 Validation includes the interface preference script, TypeScript, the production build, and browser checks for chapter navigation, camera changes, mobile overflow, the menu, route arrival, and motion controls. No production deployment or authentication change is part of this redesign.
+
+## Night recap and navigation
+
+`LastNightCard.tsx` is shared by the club and cinematic homes. It requests only `night_avg_periods` and `sonmac_by_date_periods`, uses the latest recorded date, and never combines different nights. Gece Ortalaması is in Maç Merkezi in both menus and home link bundles.
+
+The recap shows up to three positive and three negative performances using the existing monthly awards formula (`performanceScore.ts`): `HLTV2 DIFF * 70 + ADR DIFF`. Those precomputed differences compare a player to their historical matches across the preceding ten recorded game dates. Rows with missing differences or no historical baseline are excluded; zero scores appear in neither group. The card shows signed differences and score, a crown for the top performer and a golden poop emoji for the lowest score. It does not rank by raw ADR/HLTV or invent negative signs.
+
+## Production rollout — 2026-09-13
+
+The retained club design, shared night recap, personal equipment dashboard, and roster-member server controls were deployed together with `ops/cs2/deploy-cosmetics-web.py`. The locally built Next.js artifact was layered over the existing production image; no build ran on the 1 GB VM. Backend and frontend image tags are `csbatagi-cosmetics-backend:20260913t165500z` and `csbatagi-cosmetics-frontend-nextjs:20260913t165500z`. Active pins are in `/home/runner/docker-compose.cosmetics.yml`; rollback configuration is `/home/runner/cosmetics-web-backup-20260913t165500z/rollback.yml`.
+
+Verification matched SHA-256 hashes for all 439 deployed service files. Both services remained within their unchanged 256 MiB limits, with no OOM or restart events. Backend cache hydration took approximately 164 seconds before requests recovered; the final 18 live checks passed. Stats remained clean and idle at version 54. Checks exercised authenticated pages, roster-member status authorization, and rejection of unauthorized power requests without starting or stopping the game server or changing personal equipment.
+
+Local validation passed the production build, separate TypeScript check, design/cinematic/auth/pull-to-refresh checks, and backend tests (116 passed; 13 database-dependent tests skipped). Browser review covered desktop and 390 px mobile layouts, light/dark and cinematic interfaces, equipment filters and item details, and mocked start/stop flows. Live browser review confirmed the real equipment dashboard and night recap. The source commit uses `[skip ci]` to preserve the verified direct deployment and avoid the existing asynchronous build/deploy workflow race.

@@ -74,3 +74,9 @@ npm test -- --runTestsByPath test/steamAuth.test.js test/cosmetics.test.js test/
 $env:COSMETICS_TEST_DATABASE_URL='postgres://postgres@127.0.0.1:55441/postgres'
 npm test -- --runTestsByPath test/steamAuthDb.test.js test/cosmeticProgressionDb.test.js
 ```
+
+## Member game-server controls
+
+Current roster members can read `/game-status` and use `/start-vm` and `/stop-vm`. These routes require the internal bearer credential, a valid Steam HMAC session, current roster eligibility and a matching persisted SteamID/UID pair. Removal from the roster takes effect immediately for these operations. Missing roster or database access fails closed. Match creation and plugin administration remain admin-only. Shutdown still refuses active matches, recordings, pending uploads and stale/unavailable upload verification.
+
+Takım Seçme groups power, status, joining and connection help in the Sunucu & bağlantı panel above team selection. The stop confirmation uses a native dialog with keyboard focus trapping and Escape dismissal. Match creation stays next to the selected maps; its link returns to the server panel.

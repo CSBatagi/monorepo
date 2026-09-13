@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export type GameStatus = {
   warmup: boolean; live: boolean; preparing: boolean; recording: boolean; demoFailed: boolean; paused?: boolean;
   map: string; humans: number; bytes: number;
-  uploads?: { pending: number; demos: { name: string; state: string }[] };
+  uploads?: { pending: number; updatedAt?: number; demos: { name: string; state: string }[] };
 };
 
 /** offline covers both a stopped VM and one that is still booting: the game

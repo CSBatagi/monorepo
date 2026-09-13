@@ -96,4 +96,4 @@ function registerSteamAuthRoutes(app, { pool, lookupRoster = rosterMember }) {
   });
 }
 
-module.exports = { STEAM_AUTH_MIGRATIONS, sessionUser, isSteamAdmin, registerSteamAuthRoutes };
+module.exports = { STEAM_AUTH_MIGRATIONS, sessionUser, isSteamAdmin, rosterMember, registerSteamAuthRoutes };

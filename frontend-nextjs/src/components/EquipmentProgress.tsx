@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Award, Check, Coins, Trophy } from 'lucide-react';
+import { Award, Check, Coins, LockKeyhole, Trophy } from 'lucide-react';
 import { CosmeticAccount } from '@/lib/cosmetics';
 import { useSession } from '@/contexts/SessionContext';
 import SteamAvatar from './SteamAvatar';
@@ -68,24 +68,43 @@ function PremiumAwards() {
   </details>;
 }
 
-export default function EquipmentProgress({ account, refresh, busy }: { account: CosmeticAccount; refresh: () => void; busy: boolean }) {
+export default function EquipmentProgress({ account, refresh, busy, selectTier }: { account: CosmeticAccount; refresh: () => void; busy: boolean; selectTier: (tier: string) => void }) {
   const p = account.progress;
   const { user } = useSession();
+  const nextTier = p && account.tiers.find(tier => tier.currency === 'tokens' && tier.level > p.level);
   return <>
-    <section className="equipment-progression" aria-label="Ekipman ilerlemesi">
-      {account.steamId && <div className="equipment-player">
-        <div><span className="equipment-eyebrow">SENİN EKİPMANIN</span><SteamAvatar key={account.steamId} steamId={account.steamId} playerName={user?.name || 'Oyuncu'} size="medium" showName /></div>
-        <span className="equipment-linked"><Check size={16} /> Steam hesabın bağlı</span>
-      </div>}
-      <div className="equipment-progress-top"><div><span className="equipment-eyebrow"><Trophy size={15} /> OYNA · KAZAN · TARZINI AÇ</span><h2>{p ? `Seviye ${p.level} · ${p.level >= 10 ? 'Batak efsanesi' : p.level >= 5 ? 'Gece ustası' : p.level >= 3 ? 'Müdavim' : 'Yeni yüz'}` : 'İlk ekipmanın bizden.'}</h2><p>{p ? `${p.matches} maç · ${p.nights} oyun gecesi · ${p.unlocks.length} kalıcı açılan eşya` : 'Steam hesabını bağla, 30 hoş geldin jetonuyla ilk seçimini yap.'}</p></div>
-        <div className="equipment-wallet"><div><Coins size={19} /><strong>{p?.tokens ?? '30'}</strong><span>{p ? 'Jeton' : 'Hoş geldin'}</span></div><div className="premium"><Award size={19} /><strong>{p?.premiumTokens ?? 0}</strong><span>Premium</span></div></div></div>
-      {p && <div className="equipment-xp"><div><span>{p.levelXp} / {p.nextLevelXp} XP</span><span>Seviye {p.level + 1}</span></div><progress aria-label="Sonraki seviyeye ilerleme" max={p.nextLevelXp} value={p.levelXp} /><button disabled={busy} onClick={refresh}>Maç ödüllerini yenile</button></div>}
-      {account.steamId && <details className="equipment-rules"><summary>Steam hesabı ve sunucu durumu</summary><p>Steam ID: {account.steamId}<br />{account.lastFetchedAt ? `Sunucu son okuma: ${new Date(account.lastFetchedAt).toLocaleString('tr-TR')}` : 'Sunucu henüz ekipmanı okumadı.'}<br />Kaydettiğin ekipmanı sunucuda !ws yazarak yenileyebilirsin; sonraki doğuşta uygulanır.</p></details>}
-      <div className="equipment-rewards"><span><b>Her maç</b> +10 jeton · +100 XP</span><span><b>Gecenin ilk maçı</b> +5 jeton · +50 XP</span><span><b>Galibiyet</b> +2 jeton · +20 XP</span><span><b>1,20 rating veya 5 asist</b> +2 jeton · +20 XP</span></div>
-      <div className="equipment-tier-road">{account.tiers.map(tier => <div key={tier.tier} className={tier.tier === 'premium' ? 'premium' : ''}><strong>{tier.label}</strong><span>{tier.cost === 0 ? 'Ücretsiz' : tier.currency === 'premiumTokens' ? '1 premium · yönetici ödülü' : `${tier.cost} jeton · Sv. ${tier.level}`}</span></div>)}</div>
-      <details className="equipment-rules"><summary>Ödüller nasıl işler?</summary><p>Bir açılış, eşyayı her sette ve desteklenen iki takımda kalıcı kullanıma açar. Seviye, jeton ve koleksiyon sezon sonunda sıfırlanmaz. Premium jetonlar yalnızca yönetici ödüllerinden gelir.</p><p>Ödüller sistemin açıldığı {new Date(account.startsAt).toLocaleDateString('tr-TR')} tarihinden sonraki, istatistikleri yayımlanmış ve en az 12 raund oynanmış kayıtlı haritalar içindir. Eski maçlar geriye dönük sayılmaz. İstatistikler işlenirken biraz bekleyip yenileyebilirsin. Oyun gecesi Türkiye saatiyle 06.00’da değişir; gece yarısından sonra da aynı gecede kalırsın. Performans bonusu maç başına bir kez verilir; kaçırılan geceler için ceza yok.</p></details>
-      {account.removedLockedItems && <p className="equipment-migration-note">Yeni koleksiyon sistemiyle, henüz açmadığın eski seçimler ekipmandan çıkarıldı. İstediğin eşyayı açıp yeniden ekleyebilirsin.</p>}
+    <section className="equipment-progression" aria-label="Senin ekipmanın ve seviyen">
+      <div className="equipment-personal-heading">
+        <div className="equipment-identity">{account.steamId && <SteamAvatar key={account.steamId} steamId={account.steamId} playerName={user?.name || 'Oyuncu'} size="medium" showLink={false} />}<div><span className="equipment-eyebrow">SENİN OYUNUN · SENİN TARZIN</span><h1>{user?.name || 'Oyuncu'}, ekipmanın hazır mı?</h1><p>{p ? `${p.unlocks.length} açılan eşya · ${p.matches} maç · ${p.nights} oyun gecesi` : 'İlerlemen yüklenemedi. Yenilemeyi dene.'}</p></div></div>
+        <a className="equipment-browse-link" href="#equipment-catalog">Koleksiyonu keşfet ↗</a>
+      </div>
+      <div className="equipment-dashboard">
+        <div className="equipment-level-card"><span className="equipment-eyebrow"><Trophy size={16} /> SENİN SEVİYEN</span><div className="equipment-level-number">{p?.level ?? '—'}<span>{p ? p.level >= 10 ? 'Batak efsanesi' : p.level >= 5 ? 'Gece ustası' : p.level >= 3 ? 'Müdavim' : 'Yeni yüz' : 'Seviye bekleniyor'}</span></div>
+          {p && <div className="equipment-xp"><div><span>{p.levelXp} / {p.nextLevelXp} XP</span><span>Seviye {p.level + 1} için {p.nextLevelXp - p.levelXp} XP</span></div><progress aria-label={`Seviye ${p.level + 1} ilerlemesi`} max={p.nextLevelXp} value={p.levelXp} /></div>}
+          <p>XP, oynadıkça biriken deneyim puanın. Her 300 XP bir seviye.</p>
+        </div>
+        <div className="equipment-balance-card"><span className="equipment-eyebrow"><Coins size={16} /> JETONLARIN</span><strong>{p?.tokens ?? '—'}</strong><p>Maçlardan kazanırsın. Bir eşyayı kalıcı açmak için harcarsın.</p><span className="equipment-premium-balance"><Award size={16} /> {p?.premiumTokens ?? '—'} premium jeton <small>Özel yönetici ödülü</small></span></div>
+        <div className="equipment-next-card"><span className="equipment-eyebrow"><LockKeyhole size={16} /> {nextTier ? 'SIRADAKİ HEDEFİN' : 'KOLEKSİYONUNU BÜYÜT'}</span><h2>{nextTier ? nextTier.label : p ? 'Tüm normal kademeler açık' : 'İlerlemeni yenile'}</h2><p>{nextTier ? `Seviye ${nextTier.level} olduğunda bu kademeden eşya açabilirsin. Her eşya ${nextTier.cost} jeton.` : 'Premium eşyalar için ayrıca premium jeton gerekir.'}</p><button onClick={refresh} disabled={busy}>{busy ? 'Kontrol ediliyor…' : 'Maç ödüllerimi yenile'}</button></div>
+      </div>
+      <div className="equipment-unlock-heading"><div><h2>Neleri açabilirsin?</h2><p>Seviye senindir; silahlar seviye atlamaz. Eşyanın kademesi, gereken seviyeyi ve jeton bedelini belirler.</p></div><a href="#equipment-help">Nasıl kazanırım?</a></div>
+      <div className="equipment-tier-road">{account.tiers.map(tier => {
+        const levelReady = !!p && p.level >= tier.level;
+        const affordable = !!p && p[tier.currency] >= tier.cost;
+        return <button key={tier.tier} className={`${tier.tier === 'premium' ? 'premium' : ''} ${levelReady ? 'is-open' : 'is-locked'}`} onClick={() => selectTier(tier.tier)}>
+          <span className="equipment-tier-state">{levelReady ? <Check size={13} /> : <LockKeyhole size={13} />}{levelReady ? tier.cost === 0 ? 'Hemen kullan' : affordable ? 'Eşya açabilirsin' : 'Jeton biriktir' : `Seviye ${tier.level} gerekli`}</span><strong>{tier.label}</strong><span>{tier.cost === 0 ? 'Ücretsiz' : `${tier.cost} ${tier.currency === 'premiumTokens' ? 'premium jeton' : 'jeton'} / eşya`}</span><small>Eşyalara bak ↗</small>
+        </button>;
+      })}</div>
+      {account.removedLockedItems && <p className="equipment-migration-note">Henüz açmadığın eski seçimler ekipmandan çıkarıldı. Eşyayı açıp yeniden ekleyebilirsin.</p>}
     </section>
-    {account.isAdmin && <PremiumAwards />}
   </>;
+}
+
+export function EquipmentHelp({ account }: { account: CosmeticAccount }) {
+  return <section className="equipment-help" id="equipment-help" aria-label="Ekipman rehberi">
+    <h2>Ekipman rehberi</h2>
+    <details className="equipment-rules"><summary>XP ve jeton nasıl kazanılır?</summary><div className="equipment-rewards"><span><b>Her kayıtlı harita</b>+10 jeton · +100 XP</span><span><b>Gecenin ilk haritası</b>+5 jeton · +50 XP</span><span><b>Galibiyet</b>+2 jeton · +20 XP</span><span><b>1,20 rating veya 5 asist</b>+2 jeton · +20 XP</span></div><p>Her 300 XP ile bir seviye yükselirsin. Seviye atlamak jeton harcamaz; eşya açmak XP azaltmaz. İlk girişte 30 hoş geldin jetonu verilir. Seviye, jeton ve açtığın eşyalar sezon sonunda sıfırlanmaz. Ekipman jetonları Token Wars puanlarından ayrıdır.</p><p>Ödüller {new Date(account.startsAt).toLocaleDateString('tr-TR')} sonrasında oynanan, en az 12 raundluk ve istatistikleri yayımlanmış haritalar içindir. Eski maçlar geriye dönük sayılmaz. İstatistikler işleniyorsa daha sonra yenile. Oyun gecesi Türkiye saatiyle 06.00’da değişir.</p></details>
+    <details className="equipment-rules"><summary>Eşya açmak, kuşanmak ve set kaydetmek</summary><ol><li>Gereken seviyeye ulaş ve jetonla eşyayı bir kez kalıcı aç.</li><li>Eşyayı seç, T veya CT için setine ekle. En fazla üç set hazırlayabilirsin.</li><li>Kullanacağın seti aktif yap ve değişiklikleri kaydet.</li><li>Sunucuda <code>!ws</code> yaz. Ekipmanın sonraki doğuşta uygulanır.</li></ol><p>Açtığın eşya tüm setlerinde ve desteklediği takımlarda tekrar ücret ödemeden kullanılır. Müzik T ve CT için ortaktır. Premium jetonlar yalnızca yönetici ödüllerinden gelir; bir premium jeton bir premium eşyayı açar.</p></details>
+    <details className="equipment-rules"><summary>Steam skinlerim ve sunucuda kullanma</summary><p>Kendi skinlerini CS2’nin ekipman ekranında kuşan. Burada seçim yapmadığın yuvalarda Steam ekipmanın kullanılır; kendi skinlerin için jeton gerekmez. Kulüp eşyaları yalnızca CS Batağı sunucusunda görünür, Steam envanterine eklenmez.</p><p>Bir yuvayı geri almak için setteki “Steam” düğmesini kullan. “Steam ekipmanımı kullan” seçili setin iki takımdaki kulüp seçimlerini kaldırır; açtığın eşyalar koleksiyonunda kalır. Değişiklikleri kaydet ve <code>!ws</code> yaz; 30 saniyelik yenileme aralığından sonra sonraki doğuşta uygulanır.</p><p>Steam ID: {account.steamId}<br />{account.lastFetchedAt ? `Sunucu son okuma: ${new Date(account.lastFetchedAt).toLocaleString('tr-TR')}` : 'Sunucu ekipmanını henüz okumadı.'}</p></details>
+    {account.isAdmin && <PremiumAwards />}
+  </section>;
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AwardsListClient from "./AwardsListClient";
+import { performanceScore } from '@/lib/performanceScore';
 import { buildSeasonWindowOptions, filterDataBySeason } from "@/lib/seasonRanges";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useStatsRefresh } from "@/lib/useStatsRefresh";
@@ -99,7 +100,7 @@ function calculateAwardsByMonth(allData: Record<string, any[]>, monthKey: string
         totalHltvDiff,
         totalAdrDiff,
         gameCount: games.length,
-        performanceScore: avgHltvDiff * 70 + avgAdrDiff,
+        performanceScore: performanceScore(avgHltvDiff, avgAdrDiff),
         avgHltvDiff,
         avgAdrDiff,
       };

@@ -43,29 +43,17 @@ h = app({}, '', true); h.render().setDesign('classic'); assert.equal(h.render().
 h.render().toggleTheme(); assert.equal(h.render().theme, 'dark');
 console.log('Interface checks passed: default, saved choice, independent themes, URL override, URL switching, blocked storage.');
 
-// A first visit opens the fifth design; the button then wraps through all five snapshots.
-h = app();
-assert.equal(h.render().clubVersion, 'warm-graphite');
-assert.equal(h.document.documentElement.dataset.clubVersion, 'warm-graphite');
-for (const version of ['original', 'panels', 'warm', 'graphite', 'warm-graphite']) {
-  h.render().cycleClubVersion();
-  assert.equal(h.render().clubVersion, version);
-  assert.equal(h.document.documentElement.dataset.clubVersion, version);
-  assert.equal(h.storage.get('cs-batagi-club-version'), version);
+// All saved historical variants now converge on the retained fifth design.
+for (const version of ['original', 'panels', 'warm', 'graphite', 'warm-graphite', 'unknown']) {
+  h = app({ 'cs-batagi-club-version': version }); h.render();
+  assert.equal(h.document.documentElement.dataset.clubVersion, 'warm-graphite');
+  assert.equal(h.storage.get('cs-batagi-club-version'), 'warm-graphite');
+  h.render().setDesign('classic'); h.render().setDesign('modern'); h.render();
+  assert.equal(h.document.documentElement.dataset.clubVersion, 'warm-graphite');
 }
-h = app({ 'cs-batagi-club-version': 'graphite' });
-assert.equal(h.render().clubVersion, 'graphite');
-h.render().setDesign('classic'); h.render().setDesign('modern');
-assert.equal(h.render().clubVersion, 'graphite');
-h = app({ 'cs-batagi-club-version': 'original' });
-assert.equal(h.render().clubVersion, 'original');
-h = app({ 'cs-batagi-club-version': 'unknown' });
-assert.equal(h.render().clubVersion, 'warm-graphite');
-h = app({}, '', true);
-assert.equal(h.render().clubVersion, 'warm-graphite');
-h.render().cycleClubVersion();
-assert.equal(h.render().clubVersion, 'original');
-console.log('Version checks passed: default, cycle, wraparound, persistence, classic switch, invalid value, blocked storage.');
+h = app({}, '', true); h.render();
+assert.equal(h.document.documentElement.dataset.clubVersion, 'warm-graphite');
+console.log('Club checks passed: retained design, old preference migration, classic switch, blocked storage.');
 
 // Cinematic is a separate mode, so visiting it must not overwrite earlier palettes.
 h = app({ 'cs-batagi-modern-theme': 'light', 'cs-batagi-theme': 'dark', 'cs-batagi-club-version': 'graphite' }, '?ui=cinematic');
@@ -75,7 +63,7 @@ assert.equal(h.document.documentElement.dataset.design, 'cinematic');
 assert.equal(h.storage.get('cs-batagi-modern-theme'), 'light');
 h.render().setDesign('modern');
 assert.equal(h.render().theme, 'light');
-assert.equal(h.render().clubVersion, 'graphite');
+h.render(); assert.equal(h.document.documentElement.dataset.clubVersion, 'warm-graphite');
 h.render().setDesign('cinematic'); h.render().setDesign('classic');
 assert.equal(h.render().theme, 'dark');
 h = app({ 'cs-batagi-design': 'cinematic' }); assert.equal(h.render().design, 'cinematic');

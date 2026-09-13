@@ -4,21 +4,16 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 type Theme = "light" | "dark";
 type Design = "modern" | "classic" | "cinematic";
-type ClubVersion = "original" | "panels" | "warm" | "graphite" | "warm-graphite";
-const clubVersions: ClubVersion[] = ["original", "panels", "warm", "graphite", "warm-graphite"];
-const defaultClubVersion: ClubVersion = "warm-graphite";
+const clubVersion = "warm-graphite";
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
   isDark: boolean;
   design: Design;
   setDesign: (design: Design) => void;
-  clubVersion: ClubVersion;
-  cycleClubVersion: () => void;
 }
 const ThemeContext = createContext<ThemeContextType>({
   theme: "dark", toggleTheme: () => {}, isDark: true, design: "modern", setDesign: () => {},
-  clubVersion: defaultClubVersion, cycleClubVersion: () => {},
 });
 export function useTheme() { return useContext(ThemeContext); }
 const themeKey = (design: Design) => design === "classic" ? "cs-batagi-theme" : design === "cinematic" ? "cs-batagi-cinematic-theme" : "cs-batagi-modern-theme";
@@ -34,7 +29,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
   const [design, updateDesign] = useState<Design>("modern");
   const [mounted, setMounted] = useState(false);
-  const [clubVersion, setClubVersion] = useState<ClubVersion>(defaultClubVersion);
   useEffect(() => {
     let chosen: Design = "modern";
     try {
@@ -45,10 +39,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       chosen = value === "classic" || value === "cinematic" ? value : "modern";
     } catch {}
     updateDesign(chosen);
-    try {
-      const saved = localStorage.getItem("cs-batagi-club-version");
-      if (clubVersions.includes(saved as ClubVersion)) setClubVersion(saved as ClubVersion);
-    } catch {}
     setTheme(readTheme(chosen));
     setMounted(true);
   }, []);
@@ -75,6 +65,5 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
   const toggleTheme = useCallback(() => setTheme(prev => prev === "dark" ? "light" : "dark"), []);
-  const cycleClubVersion = useCallback(() => setClubVersion(prev => clubVersions[(clubVersions.indexOf(prev) + 1) % clubVersions.length]), []);
-  return <ThemeContext.Provider value={{ theme, toggleTheme, isDark: theme === "dark", design, setDesign, clubVersion, cycleClubVersion }}>{children}</ThemeContext.Provider>;
+  return <ThemeContext.Provider value={{ theme, toggleTheme, isDark: theme === "dark", design, setDesign }}>{children}</ThemeContext.Provider>;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useTheme } from "@/contexts/ThemeContext";
+import LastNightCard from "./LastNightCard";
 import ClubQuotes from "./ClubQuotes";
 import { ArrowRight, ArrowUpRight, BarChart3, Check, ClipboardList, Coins, Crosshair, Crown, Film, Flag, ListOrdered, Moon, Shield, Star, Swords, Target, TrendingUp, Trophy, Users } from "lucide-react";
 import { useSession } from "@/contexts/SessionContext";
@@ -15,7 +15,6 @@ const competitions = [
 const analysis = [
   { href: '/season-avg', label: 'Sezon Ortalaması', sub: 'Bir maçla övünmek yok', icon: BarChart3 },
   { href: '/last10', label: 'Son 10 Maç', sub: 'Form mu, iki maçlık gaz mı?', icon: ListOrdered },
-  { href: '/gece-ortalama', label: 'Gece Ortalaması', sub: 'Hangi gece kimin eli tutmuş?', icon: Moon },
   { href: '/duello', label: 'Düello', sub: 'Çok konuşanı rakamla sustur', icon: Target },
   { href: '/performance', label: 'Performans Grafikleri', sub: 'Aim gelmiş mi, hâlâ yolda mı?', icon: TrendingUp },
   { href: '/performans-odulleri', label: 'Performans Ödülleri', sub: 'Sonunda eli alışanlar', icon: Trophy },
@@ -23,9 +22,6 @@ const analysis = [
 
 export default function ClubHome() {
   const { user } = useSession();
-  const { clubVersion } = useTheme();
-  // The image-based versions replace the icon header with artwork; the others keep the original layout.
-  const artwork = clubVersion !== "original" && clubVersion !== "graphite";
   const { data, loading, error } = useLivePolling<{ attendance: Record<string, { status: string }> }>({
     url: '/api/live/attendance', enabled: !!user, initialData: { attendance: {} },
   });
@@ -38,7 +34,7 @@ export default function ClubHome() {
     <div className="club-page-heading"><ClubQuotes /><Link prefetch={false} className="club-text-link" href="/sonmac">Son maça bak <ArrowUpRight size={17} /></Link></div>
     <section className="club-night-grid" aria-label="Maç gecesi hazırlığı">
       <div className="club-night-card">
-        {artwork && <div className="club-night-art" aria-hidden="true" />}
+        <div className="club-night-art" aria-hidden="true" />
         <div className="club-card-top"><span className="club-eyebrow">MAÇ GECESİ</span><span className="club-label"><Swords size={14} /> Özel maç</span></div>
         <h2>Beyler, akşama <br />kimler geliyor?</h2>
         <p>Gelen gelsin.<br />Kimin kimi taşıdığını sonra tartışırız.</p>
@@ -55,10 +51,11 @@ export default function ClubHome() {
       </div>
     </section>
     <section className="club-match-strip" aria-label="Maç merkezi">
-      {[{ href: '/sonmac', label: 'Son maçın detayları', icon: Crosshair }, { href: '/mac-sonuclari', label: 'Maç sonuçları', icon: Flag }, { href: '/mac-videolari', label: 'Maç tekrarları', icon: Film }].map(({ href, label, icon: Icon }) => <Link prefetch={false} href={href} key={href}><Icon size={20} /><span>{label}</span><ArrowUpRight size={16} /></Link>)}
+      {[{ href: '/sonmac', label: 'Son maçın detayları', icon: Crosshair }, { href: '/mac-sonuclari', label: 'Maç sonuçları', icon: Flag }, { href: '/mac-videolari', label: 'Maç tekrarları', icon: Film }, { href: '/gece-ortalama', label: 'Gece Ortalaması', icon: Moon }].map(({ href, label, icon: Icon }) => <Link prefetch={false} href={href} key={href}><Icon size={20} /><span>{label}</span><ArrowUpRight size={16} /></Link>)}
     </section>
-    <section className={artwork ? "club-competitions-section" : undefined} aria-labelledby="club-competitions-title"><div className="club-section-heading"><h2 id="club-competitions-title">Hesaplaşma vakti</h2><Link prefetch={false} href="/batak-domination">Domination haritası <ArrowUpRight size={15} /></Link></div>
-      <div className="club-competition-grid">{competitions.map(({ href, name, tag, description, icon: Icon, className }) => <Link prefetch={false} href={href} className={`club-competition-card ${className}`} key={href}>{artwork ? <div className="club-competition-art" aria-hidden="true"><span className="club-emblem-orbit" /><span className="club-emblem"><Icon size={72} strokeWidth={1.2} /></span>{clubVersion === "panels" && <><span className="club-art-caption">CS BATAĞI / {tag}</span><ArrowUpRight size={20} /></>}</div> : <div className="club-card-top"><span className="club-competition-icon"><Icon size={27} strokeWidth={1.5} /></span><ArrowUpRight size={20} /></div>}<p className="club-eyebrow">{tag}</p><h3>{name}</h3><p>{description}</p><span className="club-competition-cta">Tabloyu görüntüle <ArrowRight size={16} /></span></Link>)}</div>
+    <LastNightCard />
+    <section className="club-competitions-section" aria-labelledby="club-competitions-title"><div className="club-section-heading"><h2 id="club-competitions-title">Hesaplaşma vakti</h2><Link prefetch={false} href="/batak-domination">Domination haritası <ArrowUpRight size={15} /></Link></div>
+      <div className="club-competition-grid">{competitions.map(({ href, name, tag, description, icon: Icon, className }) => <Link prefetch={false} href={href} className={`club-competition-card ${className}`} key={href}><div className="club-competition-art" aria-hidden="true"><span className="club-emblem-orbit" /><span className="club-emblem"><Icon size={72} strokeWidth={1.2} /></span></div><p className="club-eyebrow">{tag}</p><h3>{name}</h3><p>{description}</p><span className="club-competition-cta">Tabloyu görüntüle <ArrowRight size={16} /></span></Link>)}</div>
     </section>
     <section className="club-analysis-section" aria-labelledby="club-analysis-title"><div><p className="club-eyebrow">SKOR TABELASI YALAN SÖYLEMEZ</p><h2 id="club-analysis-title">Kim taşımış,<br />kim yatmış?</h2><p>“Ben kötü oynamadım” diyenleri alalım.<br />Rakamlar burada, bahaneler WhatsApp’ta.</p><Link prefetch={false} href="/oyuncular" className="club-secondary-button"><Users size={18} /> Tayfaya bak <ArrowUpRight size={16} /></Link><Link prefetch={false} href="/gecenin-mvpsi" className="club-mvp-link"><Crown size={18} /> Gecenin MVP’sini seç <ArrowRight size={15} /></Link></div>
       <div className="club-analysis-links">{analysis.map(({ href, label, sub, icon: Icon }) => <Link prefetch={false} href={href} key={href}><span className="club-analysis-icon"><Icon size={20} /></span><span><strong>{label}</strong><small>{sub}</small></span><ArrowUpRight size={16} /></Link>)}</div>

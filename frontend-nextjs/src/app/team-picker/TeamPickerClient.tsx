@@ -16,7 +16,8 @@ import {
 } from '@/lib/liveApi';
 import TeamAveragesTable from '@/components/TeamAveragesTable';
 import TeamComparisonRadar from '@/components/TeamComparisonRadar';
-import GameServerStatus from '@/components/GameServerStatus';
+import GameServerPanel from '@/components/GameServerPanel';
+import { useRecoveringRead } from '@/lib/useRecoveringRead';
 
 interface FirebaseAttendanceData {
   [steamId: string]: { name?: string; status: string; };
@@ -217,6 +218,8 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
 }) => {
   const { user, ready } = useSession();
   const authLoading = !ready;
+  const [isAdmin, setIsAdmin] = useState(false);
+  useRecoveringRead<{ isAdmin: boolean }>({ url: '/api/admin/check', enabled: !!user, onData: data => setIsAdmin(data.isAdmin === true) });
 
   // --- Live polling replaces Firebase RTDB listeners (data from local PostgreSQL, sub-ms) ---
   const { data: attendanceData, loading: loadingAttendancePoll, refetch: refetchAttendance } = useLivePolling<{ attendance?: FirebaseAttendanceData }>({
@@ -280,11 +283,9 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
   const [matchMessage, setMatchMessage] = useState<string | null>(null);
   const [pluginsMessage, setPluginsMessage] = useState<string | null>(null);
 
-  const [serverModalOpen, setServerModalOpen] = useState(false);
   const [serverMessage, setServerMessage] = useState<string | null>(null);
   const [creatingServer, setCreatingServer] = useState(false);
 
-  const [stopServerModalOpen, setStopServerModalOpen] = useState(false);
   const [stoppingServer, setStoppingServer] = useState(false);
 
   // The game server drives what these buttons are allowed to do, so poll it once
@@ -303,7 +304,8 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
   }, [pendingVmAction, gamePhase]);
 
   const matchBlockedReason =
-    gamePhase === 'unauthorized' ? 'Yönetici hesabıyla giriş yapın'
+    !isAdmin ? 'Maçı oluşturmak için bir yönetici gerekli' :
+    gamePhase === 'unauthorized' ? 'Kulüp üyesi Steam hesabınla giriş yap'
     : pendingVmAction ? 'Sunucu durumu değişiyor, bekleyin'
     : gamePhase === 'loading' ? 'Sunucu durumu alınıyor'
     : gamePhase !== 'online' ? 'Önce sunucuyu açın'
@@ -311,25 +313,24 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
     : null;
 
   const startBlockedReason =
-    gamePhase === 'unauthorized' ? 'Yönetici hesabıyla giriş yapın'
-    : pendingVmAction === 'stopping' ? 'Sunucu kapatılıyor'
+    gamePhase === 'unauthorized' ? 'Kulüp üyesi Steam hesabınla giriş yap'
+    : pendingVmAction ? 'Sunucu durumu değişiyor, bekleyin'
     : gamePhase === 'loading' ? 'Sunucu durumu alınıyor'
     : gamePhase === 'online' ? 'Sunucu zaten açık'
     : null;
 
   const stopBlockedReason =
-    gamePhase === 'unauthorized' ? 'Yönetici hesabıyla giriş yapın'
-    : pendingVmAction === 'starting' ? 'Sunucu başlatılıyor'
+    gamePhase === 'unauthorized' ? 'Kulüp üyesi Steam hesabınla giriş yap'
+    : pendingVmAction ? 'Sunucu durumu değişiyor, bekleyin'
     : gamePhase === 'loading' ? 'Sunucu durumu alınıyor'
-    : gamePhase !== 'online' ? 'Sunucu zaten kapalı'
+    : gamePhase !== 'online' ? 'Sunucuya şu anda ulaşılamıyor'
     : gameStatus?.live || gameStatus?.preparing ? 'Maç sürerken kapatılamaz'
     : gameStatus?.recording ? 'Demo kaydı sürerken kapatılamaz'
     : gameStatus?.uploads && gameStatus.uploads.pending > 0 ? 'Demolar arşivlenene kadar bekleyin'
+    : !gameStatus?.uploads || Date.now() / 1000 - (gameStatus.uploads.updatedAt || 0) > 120 ? 'Demo arşivinin doğrulanması bekleniyor'
     : null;
 
-  // "Sign in" and "still loading" already show once in the status panel; repeating
-  // them under all three buttons is noise. Per-button notes are for real blockers.
-  const showBlockNotes = gamePhase !== 'unauthorized' && gamePhase !== 'loading';
+
 
   // Same refresh path as /last10 and /season-avg. The picker used to run its own
   // one-shot fetch without a lastKnownVersion, so /api/stats/check compared against
@@ -647,14 +648,14 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
         headers: { 'Content-Type': 'application/json' },
       });
       if (!resp.ok) {
-        const err = await resp.text();
-        setServerMessage(`Hata: ${resp.status} - ${err}`);
+        const data = await resp.json().catch(() => ({}));
+        setServerMessage(data.error || 'Sunucu başlatılamadı. Durumu kontrol edip yeniden dene.');
         return;
       }
       // The VM accepts the start immediately but CS2 needs time to answer RCON,
       // so hold the buttons until the status poll sees the server come up.
       setPendingVmAction('starting');
-      setServerMessage('Server başlatılıyor, hazır olunca durum güncellenecek.');
+      setServerMessage('Sunucu başlatılıyor. Hazır olunca durum otomatik güncellenecek.');
       void refreshGameStatus();
     } catch (e: any) {
       setServerMessage('Bir hata oluştu: ' + (e?.message || e));
@@ -695,12 +696,12 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
         headers: { 'Content-Type': 'application/json' },
       });
       if (!resp.ok) {
-        const err = await resp.text();
-        setServerMessage(`Hata: ${resp.status} - ${err}`);
+        const data = await resp.json().catch(() => ({}));
+        setServerMessage(data.error || 'Sunucu kapatılamadı. Durumu kontrol edip yeniden dene.');
         return;
       }
       setPendingVmAction('stopping');
-      setServerMessage('Server kapatılıyor...');
+      setServerMessage('Sunucu kapatılıyor…');
       void refreshGameStatus();
     } catch (e: any) {
       setServerMessage('Bir hata oluştu: ' + (e?.message || e));
@@ -1043,6 +1044,7 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
         </div>
       )}
       <h1 className="text-2xl font-semibold text-blue-600 mb-3">Takım Seçme</h1>
+      <GameServerPanel status={gameStatus} phase={gamePhase} pending={pendingVmAction} starting={creatingServer} stopping={stoppingServer} startReason={startBlockedReason} stopReason={stopBlockedReason} message={serverMessage} onStart={() => void handleStartServer()} onStop={() => void handleStopServer()} adminTools={isAdmin ? <><button onClick={() => void handleLoadPlugins()}>Maç yöneticisini kontrol et</button>{pluginsMessage && <p role="status">{pluginsMessage}</p>}</> : undefined} />
       <div className="flex flex-col lg:flex-row gap-3 w-full min-w-0">
         {/* Available Players Section */}
         <div className="lg:w-2/5 bg-white p-3 rounded-lg shadow border min-w-0">
@@ -1077,102 +1079,14 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
           </div>
           {/* Map selection after the graph comparison */}
           <MapSelection teamAName={teamAName || 'A'} teamBName={teamBName || 'B'} mapsState={mapsState} onMapsChange={() => { void refetchTeamPicker(); }} />
-          <div className="flex flex-col items-center mt-4 gap-2">
-            <GameServerStatus status={gameStatus} phase={gamePhase} pending={pendingVmAction} />
-            <div className="flex flex-row items-start gap-2">
-              <div className="flex flex-col items-center">
-                <button
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={handleCreateMatch}
-                  disabled={creatingMatch || matchBlockedReason !== null}
-                  title={matchBlockedReason ?? undefined}
-                >
-                  {creatingMatch ? 'Oluşturuluyor...' : 'Maç Yarat'}
-                </button>
-                {showBlockNotes && matchBlockedReason && (
-                  <span className="mt-1 max-w-[9rem] text-center text-xs text-gray-500">{matchBlockedReason}</span>
-                )}
-              </div>
-              <div className="flex flex-col items-center">
-                <button
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => setServerModalOpen(true)}
-                  disabled={creatingServer || startBlockedReason !== null}
-                  title={startBlockedReason ?? undefined}
-                >
-                  {creatingServer || pendingVmAction === 'starting' ? 'Açılıyor...' : gamePhase === 'online' ? 'Server Açık' : 'Server Aç'}
-                </button>
-                {showBlockNotes && startBlockedReason && pendingVmAction !== 'starting' && (
-                  <span className="mt-1 max-w-[9rem] text-center text-xs text-gray-500">{startBlockedReason}</span>
-                )}
-              </div>
-              <div className="flex flex-col items-center">
-                <button
-                  className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => setStopServerModalOpen(true)}
-                  disabled={stoppingServer || stopBlockedReason !== null}
-                  title={stopBlockedReason ?? undefined}
-                >
-                  {stoppingServer || pendingVmAction === 'stopping' ? 'Kapatılıyor...' : 'Server Kapat'}
-                </button>
-                {showBlockNotes && stopBlockedReason && pendingVmAction !== 'stopping' && (
-                  <span className="mt-1 max-w-[9rem] text-center text-xs text-gray-500">{stopBlockedReason}</span>
-                )}
-              </div>
-            </div>
-            {matchMessage && (
-              <div className={`mt-2 text-sm ${matchMessage.startsWith('Maç') ? 'text-green-600' : 'text-red-600'}`}>{matchMessage}</div>
-            )}
-            {serverMessage && (
-              <div className={`mt-2 text-sm ${serverMessage.startsWith('Server') ? 'text-green-600' : 'text-red-600'}`}>{serverMessage}</div>
-            )}
+          <div className="game-match-action">
+            <button onClick={handleCreateMatch} disabled={creatingMatch || matchBlockedReason !== null} aria-describedby="create-match-note">{creatingMatch ? 'Oluşturuluyor…' : 'Seçilen takımlarla maç oluştur'}</button>
+            <p id="create-match-note">{matchBlockedReason || 'Takımları ve haritaları kontrol et. Maçı yönetici oluşturur.'}</p>
+            <a href="#game-server">Sunucu & bağlantıya git ↑</a>
+            {matchMessage && <p role="status">{matchMessage}</p>}
           </div>
         </div>
       </div>
-      {/* Server Aç Modal */}
-      {serverModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-xs">
-            <h2 className="text-lg font-bold mb-4 text-gray-800">Oyun sunucusu başlatılsın mı?</h2>
-            <p className="mb-4 text-sm text-gray-600">Bu işlem yönetici hesabınızla gerçekleştirilir.</p>
-            <div className="flex gap-2">
-              <button
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
-                onClick={async () => {
-                  setServerModalOpen(false);
-                  await handleStartServer();
-                }}
-              >Onayla</button>
-              <button
-                className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded"
-                onClick={() => { setServerModalOpen(false); }}
-              >İptal</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Server Kapat Modal */}
-      {stopServerModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-xs">
-            <h2 className="text-lg font-bold mb-4 text-gray-800">Oyun sunucusu kapatılsın mı?</h2>
-            <p className="mb-4 text-sm text-gray-600">Bu işlem yönetici hesabınızla gerçekleştirilir.</p>
-            <div className="flex gap-2">
-              <button
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded"
-                onClick={async () => {
-                  setStopServerModalOpen(false);
-                  await handleStopServer();
-                }}
-              >Onayla</button>
-              <button
-                className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded"
-                onClick={() => { setStopServerModalOpen(false); }}
-              >İptal</button>
-            </div>
-          </div>
-        </div>
-      )}
       {editingPlayer && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
@@ -1227,18 +1141,7 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
           </div>
         </div>
       )}
-      {/* Tiny hidden plugins trigger */}
-      <button
-        aria-label="Load plugins"
-        title="Load plugins"
-        onClick={handleLoadPlugins}
-        className="fixed bottom-1 right-1 w-6 h-6 text-[10px] opacity-40 hover:opacity-80 bg-gray-200 text-gray-700 rounded-full shadow-sm flex items-center justify-center"
-      >PL</button>
-      {pluginsMessage && (
-        <div className="fixed bottom-8 right-2 text-[11px] bg-white border rounded px-2 py-1 shadow text-gray-700">
-          {pluginsMessage}
-        </div>
-      )}
+
     </div>
   );
 };

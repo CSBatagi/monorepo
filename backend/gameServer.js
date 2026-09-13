@@ -1,4 +1,4 @@
-const { sessionUser, isSteamAdmin } = require('./steamAuth');
+const { sessionUser, isSteamAdmin, rosterMember } = require('./steamAuth');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -32,7 +32,7 @@ function validateMatch(input) {
     clinch_series: true, spectators: { players: {} }, cvars: {} };
 }
 
-function registerGameServer(app, { pool, rcon, gcp }) {
+function registerGameServer(app, { pool, rcon, gcp, lookupRoster = rosterMember }) {
   const directory = process.env.CS2_MATCH_DIR || path.join(__dirname, 'cs2-control');
   fs.mkdirSync(directory, { recursive: true });
   let loading = false;
@@ -47,6 +47,16 @@ function registerGameServer(app, { pool, rcon, gcp }) {
   const bearer = (req, res, next) => {
     if (!process.env.AUTH_TOKEN || req.get('authorization') !== `Bearer ${process.env.AUTH_TOKEN}`) return res.sendStatus(403);
     next();
+  };
+  const member = async (req, res, next) => {
+    const user = sessionUser(req.get('x-game-session'), process.env.MATCHMAKING_TOKEN || process.env.AUTH_TOKEN);
+    if (!user) return res.status(401).json({ error: 'Sunucuyu yönetmek için Steam ile giriş yap.' });
+    try {
+      if (!lookupRoster(user.steamId)) return res.status(403).json({ error: 'Sunucu yalnızca kulüp üyelerine açıktır.' });
+      const found = await pool.query('SELECT 1 FROM steam_members WHERE steam_id=$1 AND uid=$2', [user.steamId, user.uid]);
+      if (!found.rows.length) return res.status(403).json({ error: 'Üyelik doğrulanamadı. Yeniden giriş yap.' });
+      next();
+    } catch { res.status(503).json({ error: 'Üyelik şu anda kontrol edilemiyor.' }); }
   };
   app.get('/get-match/:id', bearer, (req, res) => {
     if (!/^[1-9]\d{0,9}$/.test(req.params.id) || Number(req.params.id) > 2147483647) return res.sendStatus(400);
@@ -70,22 +80,24 @@ function registerGameServer(app, { pool, rcon, gcp }) {
     } catch (error) { res.status(502).json({ error: error.message, matchid: match.matchid }); }
     finally { loading = false; }
   });
-  app.get('/game-status', bearer, admin, async (_req, res) => {
+  app.get('/game-status', bearer, member, async (_req, res) => {
     try { res.json(await rcon.status()); } catch (error) { res.status(503).json({ error: error.message }); }
   });
   app.post('/load-plugins', admin, async (_req, res) => {
     try { res.json({ message: 'Match manager is loaded', status: await rcon.status() }); }
     catch (error) { res.status(503).json({ error: error.message }); }
   });
-  app.post('/start-vm', admin, async (_req, res) => {
-    const result = await gcp.startVm();
-    res.status(result.success ? 200 : 502).json(result);
+  app.post('/start-vm', bearer, member, async (_req, res) => {
+    try {
+      const result = await gcp.startVm();
+      res.status(result.success ? 200 : 502).json(result);
+    } catch { res.status(503).json({ error: 'Sunucu başlatılamadı. Durumu kontrol edip yeniden dene.' }); }
   });
-  app.post('/stop-vm', admin, async (_req, res) => {
+  app.post('/stop-vm', bearer, member, async (_req, res) => {
     try {
       const status = await rcon.status();
       if (status.live || status.preparing || status.recording || status.uploads?.pending !== 0 || Date.now() / 1000 - (status.uploads?.updatedAt || 0) > 120)
-        return res.status(409).json({ error: 'Finish the match and wait for verified demo uploads before stopping the VM' });
+        return res.status(409).json({ error: 'Maçın bitmesini ve demo yüklemelerinin doğrulanmasını bekle.' });
       await rcon.executeCommand('quit').catch(() => {});
       const result = await gcp.stopVm();
       res.status(result.success ? 200 : 502).json(result);

@@ -134,3 +134,62 @@ test('allows replacing a loaded warmup with a different map and roster', async (
     expect(saved.maplist).toEqual(['de_inferno']);
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 });
+
+describe('roster member server power controls', () => {
+  let app, rcon, gcp, pool, lookupRoster, directory;
+  beforeEach(() => {
+    process.env.AUTH_TOKEN = secret; process.env.MATCHMAKING_TOKEN = secret;
+    directory = fs.mkdtempSync(path.join(os.tmpdir(), 'csbatagi-member-control-'));
+    process.env.CS2_MATCH_DIR = directory;
+    app = express(); app.use(express.json());
+    lookupRoster = jest.fn().mockReturnValue({ steamId: '76561198000000001' });
+    pool = { query: jest.fn().mockImplementation(sql => Promise.resolve({ rows: sql.includes('is_admin') ? [] : [{}] })) };
+    rcon = { status: jest.fn().mockResolvedValue({ live: false, preparing: false, recording: false, uploads: { pending: 0, updatedAt: Date.now() / 1000 } }), executeCommand: jest.fn().mockResolvedValue('ok') };
+    gcp = { startVm: jest.fn().mockResolvedValue({ success: true }), stopVm: jest.fn().mockResolvedValue({ success: true }) };
+    registerGameServer(app, { pool, rcon, gcp, lookupRoster });
+  });
+  afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const headers = () => ({ Authorization: `Bearer ${secret}`, 'x-game-session': session() });
+  test('non-admin member can read status and start/stop, but cannot start matches or manage plugins', async () => {
+    await request(app).get('/game-status').set(headers()).expect(200);
+    await request(app).post('/start-vm').set(headers()).expect(200);
+    await request(app).post('/stop-vm').set(headers()).expect(200);
+    await request(app).post('/start-match').set(headers()).send(match(5)).expect(403);
+    await request(app).post('/load-plugins').set(headers()).expect(403);
+    expect(gcp.startVm).toHaveBeenCalledTimes(1); expect(gcp.stopVm).toHaveBeenCalledTimes(1);
+  });
+  test.each(['/start-vm', '/stop-vm'])('rejects missing, expired, tampered and non-roster identities on %s', async endpoint => {
+    await request(app).post(endpoint).set('Authorization', `Bearer ${secret}`).expect(401);
+    await request(app).post(endpoint).set({ ...headers(), 'x-game-session': session(1) }).expect(401);
+    await request(app).post(endpoint).set({ ...headers(), 'x-game-session': session() + 'x' }).expect(401);
+    await request(app).post(endpoint).set('x-game-session', session()).expect(403);
+    lookupRoster.mockReturnValue(null);
+    await request(app).post(endpoint).set(headers()).expect(403);
+    expect(gcp.startVm).not.toHaveBeenCalled(); expect(gcp.stopVm).not.toHaveBeenCalled();
+  });
+  test('checks current membership and fails closed for roster/database problems', async () => {
+    pool.query.mockResolvedValue({ rows: [] });
+    await request(app).post('/start-vm').set(headers()).expect(403);
+    pool.query.mockRejectedValue(new Error('db unavailable'));
+    await request(app).post('/start-vm').set(headers()).expect(503);
+    lookupRoster.mockImplementation(() => { throw new Error('roster unavailable'); });
+    await request(app).get('/game-status').set(headers()).expect(503);
+    expect(gcp.startVm).not.toHaveBeenCalled();
+  });
+  test.each([
+    { live: true }, { preparing: true }, { recording: true },
+    { uploads: { pending: 1, updatedAt: Date.now() / 1000 } },
+    { uploads: { pending: 0, updatedAt: 1 } }, { uploads: undefined },
+  ])('retains shutdown safeguard for %p', async unsafe => {
+    rcon.status.mockResolvedValue({ live: false, uploads: { pending: 0, updatedAt: Date.now() / 1000 }, ...unsafe });
+    await request(app).post('/stop-vm').set(headers()).expect(409);
+    expect(rcon.executeCommand).not.toHaveBeenCalled(); expect(gcp.stopVm).not.toHaveBeenCalled();
+  });
+  test('handles cloud or status outages without an unhandled rejection or unsafe stop', async () => {
+    gcp.startVm.mockRejectedValue(new Error('cloud unavailable'));
+    await request(app).post('/start-vm').set(headers()).expect(503);
+    rcon.status.mockRejectedValue(new Error('rcon unavailable'));
+    await request(app).post('/stop-vm').set(headers()).expect(503);
+    expect(gcp.stopVm).not.toHaveBeenCalled();
+  });
+});

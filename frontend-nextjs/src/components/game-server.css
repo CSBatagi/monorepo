@@ -1,0 +1,42 @@
+.game-server-panel { --server-bg:var(--club-surface,#f8fafc); --server-text:var(--club-text,#17202d); --server-muted:var(--club-muted,#566477); --server-line:var(--club-line,#cbd5e1); color:var(--server-text); background:var(--server-bg); border:1px solid var(--server-line); border-radius:14px; padding:24px; margin:20px 0 28px; scroll-margin-top:110px; }
+html.dark .game-server-panel { --server-bg:var(--club-surface,#1c242b); --server-text:var(--club-text,#edf1f5); --server-muted:var(--club-muted,#b5c0cb); --server-line:var(--club-line,#44515b); }
+html[data-design="cinematic"] .game-server-panel { --server-bg:#1b2018; --server-text:#ecede4; --server-muted:#bac1ad; --server-line:#535b47; }
+.game-server-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:18px; }
+.game-server-eyebrow { display:flex; align-items:center; gap:8px; font-size:10px; letter-spacing:1.5px; color:var(--server-muted); }
+.game-server-heading h2 { font-size:25px; font-weight:650; margin:8px 0; }
+.game-server-panel p { font-size:12px; line-height:1.6; color:var(--server-muted); }
+.game-server-status { display:flex; flex-direction:column; gap:7px; font-size:12px; }
+.game-server-status strong { display:flex; align-items:center; gap:8px; }
+.game-server-status i { width:7px; height:7px; border-radius:50%; background:#ca9a52; }
+.game-server-status[data-phase="online"] i { background:#6ca67b; }
+.game-server-status>span { color:var(--server-muted); }
+.game-server-main { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:24px; margin:22px 0; }
+.game-server-power { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.game-server-panel button,.game-server-connect button,.game-server-join,.game-match-action>button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:10px 16px; border:1px solid var(--server-line,#66706c); border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+.game-server-power button { width:100%; }
+.game-server-power p { margin-top:8px; }
+.game-server-panel .game-server-start,.game-match-action>button { background:#e8bb79; border-color:#e8bb79; color:#261b0b; }
+.game-server-panel button:disabled,.game-match-action>button:disabled { opacity:.45; cursor:not-allowed; }
+.game-server-panel :is(button,a,summary):focus-visible,.game-server-connect :is(button,a,summary):focus-visible { outline:2px solid #d7a451; outline-offset:4px; }
+.game-server-connect { min-width:0; font-size:12px; }
+.game-server-join { background:#283e31; color:#e4f3e5 !important; border-color:#6f9278; text-decoration:none; }
+.game-server-address { display:block; font-size:11px; color:inherit; opacity:.75; margin:9px 0; font-variant-numeric:tabular-nums; }
+.game-server-connect summary,.game-server-help summary { cursor:pointer; font-size:12px; padding:9px 0; }
+.game-server-connect p { font-size:12px; line-height:1.6; margin:8px 0; }
+.game-server-copy { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.game-server-copy code { user-select:all; overflow-wrap:anywhere; font-size:11px; }
+.game-server-help { border-top:1px solid var(--server-line); padding:6px 0; }
+.game-server-help>a { display:inline-block; font-size:12px; margin:10px 0; text-decoration:underline; }
+.game-server-guide { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin:14px 0; }
+.game-server-guide h3 { font-size:14px; font-weight:600; margin-bottom:7px; }
+.game-server-commands { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:20px 0; font-size:12px; }
+.game-server-commands dt { margin-bottom:6px; }.game-server-commands dd { color:var(--server-muted); }
+.game-server-feedback { border-left:3px solid #d7a451; padding:10px 14px; margin-bottom:14px; }
+.game-server-confirm { color:var(--server-text); background:var(--server-bg); border:1px solid var(--server-line); border-radius:14px; max-width:420px; width:calc(100% - 32px); padding:24px; }
+.game-server-confirm::backdrop { background:#0009; }
+.game-server-confirm h2 { font-size:21px; margin-bottom:12px; }
+.game-server-confirm>div { display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+.game-server-stop { color:#ffe4da; background:#823e31; }
+.game-match-action { padding:24px 0; display:flex; flex-wrap:wrap; align-items:center; gap:12px; font-size:12px; }
+.game-match-action p { flex-basis:100%; }.game-match-action a { text-decoration:underline; }
+@media(max-width:760px) { .game-server-panel { padding:18px; } .game-server-main { grid-template-columns:1fr; gap:14px; } .game-server-guide { grid-template-columns:1fr; gap:12px; } .game-server-commands { grid-template-columns:1fr 1fr; } }

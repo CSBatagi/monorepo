@@ -90,7 +90,7 @@ export default function CinematicShell({ children }: { children: ReactNode }) {
       <Link prefetch={false} href="/" className="cinema-brand" aria-label="CS Batağı ana sayfa"><Image src="/images/BatakLogo192.png" alt="" width={36} height={36} /><span>CS BATAĞI<small>AYNI TAYFA. AYNI BAHANELER.</small></span></Link>
       <nav className="cinema-topnav" aria-label="Bölümler">{chapters.map((chapter, i) => <Link prefetch={false} href={`/#${chapter.id}`} key={chapter.id} aria-current={active === i ? 'location' : undefined}><span>0{i + 1}</span>{chapter.label}</Link>)}</nav>
       <div className="cinema-header-actions">
-        <details className="cinema-design-picker"><summary>Arayüz <ChevronDown size={12} /></summary><div><span>SİNEMATİK DENEYİM</span><button onClick={() => setDesign('modern')}>Kulüp tasarımları <ArrowUpRight size={14} /></button><button onClick={() => setDesign('classic')}>Klasik arayüz <ArrowUpRight size={14} /></button></div></details>
+        <details className="cinema-design-picker"><summary>Arayüz <ChevronDown size={12} /></summary><div><span>SİNEMATİK DENEYİM</span><button onClick={() => setDesign('modern')}>Kulüp tasarımı <ArrowUpRight size={14} /></button><button onClick={() => setDesign('classic')}>Klasik arayüz <ArrowUpRight size={14} /></button></div></details>
         {user ? <><NotificationBell /><details className="cinema-account"><summary>{(user.name || user.email || 'B').slice(0, 1).toLocaleUpperCase('tr')}</summary><div><Link prefetch={false} href="/notifications">Bildirim ayarları</Link><button onClick={() => void logout()}>Çıkış yap</button></div></details></> : ready && <Link prefetch={false} href="/login" className="cinema-login">Giriş yap <ArrowUpRight size={14} /></Link>}
         <button className="cinema-menu-button" onClick={() => menu.current?.showModal()} aria-label="Tüm sayfaları aç"><Menu size={22} /></button>
       </div>
@@ -99,7 +99,7 @@ export default function CinematicShell({ children }: { children: ReactNode }) {
     <dialog ref={menu} className="cinema-menu">
       <div className="cinema-menu-heading"><span>CS BATAĞI / TÜM SAYFALAR</span><button autoFocus onClick={() => menu.current?.close()} aria-label="Menüyü kapat"><X size={26} /></button></div>
       <nav aria-label="Tüm sayfalar">{navigation.map((group, i) => <div key={group.label}><p>0{i + 1} / {group.label}</p>{group.links.map(link => <Link prefetch={false} href={link.href} key={link.href} onClick={() => menu.current?.close()} aria-current={pathname === link.href ? 'page' : undefined}>{link.label}<ArrowUpRight size={16} /></Link>)}</div>)}</nav>
-      <div className="cinema-menu-designs"><button onClick={() => setDesign('modern')}>Kulüp tasarımları ↗</button><button onClick={() => setDesign('classic')}>Klasik arayüz ↗</button></div>
+      <div className="cinema-menu-designs"><button onClick={() => setDesign('modern')}>Kulüp tasarımı ↗</button><button onClick={() => setDesign('classic')}>Klasik arayüz ↗</button></div>
     </dialog>
 
     <aside className="cinema-rail" aria-label="Sahne seçimi"><span className="cinema-rail-caption">AYNI TAYFA. AYNI BAHANELER.</span><nav>{chapters.map((chapter, i) => <Link prefetch={false} href={`/#${chapter.id}`} key={chapter.id} className={active === i ? 'is-active' : ''} aria-label={`${i + 1}. ${chapter.label}`} aria-current={active === i ? 'location' : undefined}><span>0{i + 1}</span><i /></Link>)}</nav><span className="cinema-rail-end">CS / 2</span></aside>
