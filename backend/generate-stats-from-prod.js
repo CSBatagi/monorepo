@@ -69,6 +69,7 @@ async function generateStatsFromProduction() {
       'players_stats.json': incremental.players_stats,
       'players_stats_periods.json': incremental.players_stats_periods,
       'map_stats.json': incremental.map_stats,
+      'player_ratings.json': incremental.player_ratings,
     };
     
     for (const [filename, data] of Object.entries(incrementalFiles)) {
@@ -117,6 +118,7 @@ async function generateStatsFromProduction() {
     console.log(`  Performance players: ${incremental.performance_data?.length || 0}`);
     console.log(`  Players stats: ${incremental.players_stats?.length || 0}`);
     console.log(`  Map stats: ${incremental.map_stats?.length || 0}`);
+    console.log(`  Player ratings: ${incremental.player_ratings?.length || 0}`);
     console.log(`\nFiles written to: ${runtimeDir}`);
     console.log('\nYou can now use these files with your local backend/frontend!');
     

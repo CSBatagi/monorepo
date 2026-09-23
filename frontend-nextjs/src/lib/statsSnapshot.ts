@@ -17,6 +17,7 @@ export const STAT_FILES = [
   'players_stats.json',
   'players_stats_periods.json',
   'map_stats.json',
+  'player_ratings.json',
 ];
 
 export interface StatsSnapshotWriteResult {

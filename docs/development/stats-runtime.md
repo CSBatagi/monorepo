@@ -45,6 +45,7 @@ Primary JSON outputs:
 - `duello_son_mac.json`
 - `duello_sezon.json`
 - `map_stats.json`
+- `player_ratings.json` (all seasons, each player's last 150 maps summed per map; team balancer input, see [`../features/team-balancer.md`](../features/team-balancer.md))
 
 Current usage pattern:
 
@@ -63,6 +64,7 @@ Current usage pattern:
 - `gecenin-mvpsi`: `night_avg_periods`
 - `batak-allstars`, `token-wars`: `night_avg_periods`, `sonmac_by_date_periods`
 - `oyuncular`: `players_stats_periods`
+- `team-picker`: `last10`, `season_avg`, `player_ratings`
 
 ## Adding Stats Pages
 
