@@ -52,6 +52,7 @@ function normalizedName(steamId, fallbackName) {
 
 function q(s){return s}
 const ALL_TIME_START = '1970-01-01';
+const PLAYER_RATING_WINDOW = 150;
 
 // CS Demo Manager stores date and map_name on the demos table, not matches.
 // Rewrite SQL so every reference to matches.date / m.date / matches.map_name / m.map_name
@@ -427,6 +428,9 @@ function buildQueries(seasonStart, seasonEnd = null){
     playerUtilities: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), flashes AS ( SELECT pb.flasher_steam_id AS steam_id, COUNT(*) FILTER (WHERE pb.flasher_side <> pb.flashed_side) AS enemy_flashes, AVG(CASE WHEN pb.flasher_side <> pb.flashed_side THEN pb.duration END) AS avg_blind_time FROM player_blinds pb INNER JOIN season_matches ON pb.match_checksum = season_matches.checksum GROUP BY pb.flasher_steam_id ), smokes AS ( SELECT ss.thrower_steam_id AS steam_id, COUNT(*) AS smokes_thrown FROM smokes_start ss INNER JOIN season_matches ON ss.match_checksum = season_matches.checksum GROUP BY ss.thrower_steam_id ), he_damage AS ( SELECT d.attacker_steam_id AS steam_id, SUM(d.health_damage + d.armor_damage) AS he_damage FROM damages d INNER JOIN season_matches ON d.match_checksum = season_matches.checksum WHERE d.attacker_steam_id IS NOT NULL AND ( LOWER(d.weapon_name) IN ('hegrenade','he_grenade','he grenade','he grenade projectile','hegrenade_projectile') OR LOWER(d.weapon_name) LIKE 'he%' ) GROUP BY d.attacker_steam_id ) SELECT COALESCE(f.steam_id, s.steam_id, h.steam_id) AS steam_id, COALESCE(f.enemy_flashes, 0) AS enemy_flashes, COALESCE(f.avg_blind_time, 0) AS avg_blind_time, COALESCE(s.smokes_thrown, 0) AS smokes_thrown, COALESCE(h.he_damage, 0) AS he_damage FROM flashes f FULL OUTER JOIN smokes s ON f.steam_id = s.steam_id FULL OUTER JOIN he_damage h ON COALESCE(f.steam_id, s.steam_id) = h.steam_id`),
     playerInspectionDeaths: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ) SELECT k.victim_steam_id AS steam_id, COUNT(*) AS deaths_while_inspecting FROM kills k INNER JOIN season_matches ON k.match_checksum = season_matches.checksum WHERE k.is_victim_inspecting_weapon = true GROUP BY k.victim_steam_id`),
     playerWallbangCollateral: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ), wallbangs AS ( SELECT k.killer_steam_id AS steam_id, COUNT(*) AS wallbang_kills FROM kills k INNER JOIN season_matches ON k.match_checksum = season_matches.checksum WHERE k.killer_steam_id IS NOT NULL AND k.penetrated_objects > 0 GROUP BY k.killer_steam_id ), collaterals AS ( SELECT k.killer_steam_id AS steam_id, SUM(k.kill_count - 1) AS collateral_kills FROM ( SELECT killer_steam_id, match_checksum, round_number, tick, COUNT(*) AS kill_count FROM kills k INNER JOIN season_matches ON k.match_checksum = season_matches.checksum WHERE k.killer_steam_id IS NOT NULL GROUP BY killer_steam_id, match_checksum, round_number, tick HAVING COUNT(*) > 1 ) k GROUP BY k.killer_steam_id ) SELECT COALESCE(w.steam_id, c.steam_id) AS steam_id, COALESCE(w.wallbang_kills, 0) AS wallbang_kills, COALESCE(c.collateral_kills, 0) AS collateral_kills FROM wallbangs w FULL OUTER JOIN collaterals c ON w.steam_id = c.steam_id`),
+    // Team balancer input: every player's last PLAYER_RATING_WINDOW maps across all seasons, summed per map.
+    // Season-independent on purpose — long-run form predicts results better than last10 or season averages.
+    playerRatings: q(`WITH ranked AS ( SELECT p.steam_id, p.name, matches.map_name, p.hltv_rating_2 AS hltv_2, ROW_NUMBER() OVER (PARTITION BY p.steam_id ORDER BY matches.date DESC, matches.checksum DESC) AS rn FROM players p INNER JOIN matches ON p.match_checksum = matches.checksum WHERE p.hltv_rating_2 IS NOT NULL ) SELECT steam_id, MAX(name) AS name, map_name, COUNT(*) AS maps, SUM(hltv_2) AS hltv_2_sum FROM ranked WHERE rn <= ${PLAYER_RATING_WINDOW} GROUP BY steam_id, map_name`),
     playerClutches: q(`WITH match_date_info AS ( SELECT MAX(matches.date::date) AS latest_match_date FROM matches ), season_start_info AS ( SELECT '${seasonStart}'::date AS seasonstart ), season_matches AS ( SELECT matches.checksum FROM matches WHERE matches.date::date BETWEEN (SELECT seasonstart FROM season_start_info) AND (SELECT latest_match_date FROM match_date_info) ) SELECT c.clutcher_steam_id AS steam_id, c.opponent_count, COUNT(*) AS total, COUNT(*) FILTER (WHERE c.won) AS won, COUNT(*) FILTER (WHERE NOT c.won) AS lost, AVG(c.clutcher_kill_count) AS avg_kills, COUNT(*) FILTER (WHERE c.has_clutcher_survived AND NOT c.won) AS saved FROM clutches c INNER JOIN season_matches ON c.match_checksum = season_matches.checksum GROUP BY c.clutcher_steam_id, c.opponent_count`)
   };
   // Rewrite all queries to use demos.date/demos.map_name instead of matches.date/matches.map_name
@@ -787,10 +791,11 @@ async function generateAll(pool, opts={}){
     safeQG(qset.duello_son_mac, 'duello_son_mac'),
   ]);
   // Batch 3: remaining datasets
-  const [dSeasonRows, perfRows, mapStatsRows] = await Promise.all([
+  const [dSeasonRows, perfRows, mapStatsRows, playerRatingRows] = await Promise.all([
     safeQG(qset.duello_sezon, 'duello_sezon'),
     safeQG(qset.performanceGraphs, 'performance_graphs'),
     safeQG(qset.mapStats, 'map_stats'),
+    safeQG(qset.playerRatings, 'player_ratings'),
   ]);
   results.night_avg     = mapNightAvgRows(nightRows);
   results.last10 = last10Rows.map(r=>({ steam_id:r.steam_id, name:r.name, hltv_2:num(r.hltv_2), adr:num(r.adr), kd:num(r.kd), mvp:num(r.mvp), kills:num(r.kills), deaths:num(r.deaths), assists:num(r.assists), hs:num(r.headshot_kills), hs_ratio:num(r.headshot_killratio), first_kill:num(r.first_kill_count), first_death:num(r.first_death_count), bomb_planted:num(r.bomb_planted), bomb_defused:num(r.bomb_defused), hltv:num(r.hltv), kast:num(r.kast), utl_dmg:num(r.utl_dmg), two_kills:num(r.two_kills), three_kills:num(r.three_kills), four_kills:num(r.four_kills), five_kills:num(r.five_kills), matches:num(r.matches_in_interval), win_rate:num(r.win_rate_percentage), avg_clutches: safeAvg(num(r.total_clutches), num(r.matches_in_interval)), avg_clutches_won: safeAvg(num(r.total_clutches_won), num(r.matches_in_interval)), clutch_success: pct(num(r.total_clutches_won), num(r.total_clutches)) }));
@@ -839,6 +844,7 @@ async function generateAll(pool, opts={}){
     stats.t_win_pct = pct(stats.t_round_wins, totalRounds);
   }
   results.map_stats = Object.values(mapStatsByName).sort((a,b)=>a.map_name.localeCompare(b.map_name));
+  results.player_ratings = buildPlayerRatings(playerRatingRows);
   results.players_stats = await buildPlayersStats(pool, qset, errors);
   const playersStatsPeriods = {
     current_period: seasonAvgPeriods.current_period,
@@ -876,6 +882,28 @@ async function generateAll(pool, opts={}){
   results.players_stats_periods = playersStatsPeriods;
   if(errors.length) results.__errors = errors;
   return results;
+}
+
+// One entry per player: HLTV 2.0 totals over their last PLAYER_RATING_WINDOW maps plus the
+// same totals split by map. The team picker turns these into shrunk ratings (lib/teamBalance.ts).
+function buildPlayerRatings(rows){
+  const bySteamId = {};
+  for (const r of rows) {
+    if (!r.steam_id) continue;
+    if (!bySteamId[r.steam_id]) {
+      bySteamId[r.steam_id] = { steam_id: r.steam_id, name: normalizedName(r.steam_id, r.name), maps: 0, hltv_2_sum: 0, by_map: {} };
+    }
+    const entry = bySteamId[r.steam_id];
+    const maps = num(r.maps);
+    const sum = num(r.hltv_2_sum);
+    entry.maps += maps;
+    entry.hltv_2_sum += sum;
+    if (r.map_name) {
+      const prev = entry.by_map[r.map_name] || { maps: 0, hltv_2_sum: 0 };
+      entry.by_map[r.map_name] = { maps: prev.maps + maps, hltv_2_sum: prev.hltv_2_sum + sum };
+    }
+  }
+  return Object.values(bySteamId).sort((a, b) => a.steam_id.localeCompare(b.steam_id));
 }
 
 function buildDuello(rows){

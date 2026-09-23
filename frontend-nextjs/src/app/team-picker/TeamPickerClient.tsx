@@ -17,6 +17,15 @@ import {
 import TeamAveragesTable from '@/components/TeamAveragesTable';
 import TeamComparisonRadar from '@/components/TeamComparisonRadar';
 import GameServerPanel from '@/components/GameServerPanel';
+import TeamBalancePanel, { type BalancePlayerRow } from '@/components/TeamBalancePanel';
+import {
+  analyzeBalance,
+  indexPlayerRatings,
+  normalizeMapKey,
+  playerBalanceRating,
+  type BalanceSuggestion,
+  type PlayerRatingEntry,
+} from '@/lib/teamBalance';
 import { useRecoveringRead } from '@/lib/useRecoveringRead';
 
 interface FirebaseAttendanceData {
@@ -210,11 +219,13 @@ const SERVERACPASS = process.env.NEXT_PUBLIC_SERVERACPASS;
 interface TeamPickerClientProps {
   initialLast10Stats: any[];
   initialSeasonStats: any[];
+  initialPlayerRatings: PlayerRatingEntry[];
 }
 
 const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
   initialLast10Stats,
   initialSeasonStats,
+  initialPlayerRatings,
 }) => {
   const { user, ready } = useSession();
   const authLoading = !ready;
@@ -248,6 +259,7 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
 
   const [last10Stats, setLast10Stats] = useState<any[]>(initialLast10Stats);
   const [seasonStats, setSeasonStats] = useState<any[]>(initialSeasonStats);
+  const [playerRatings, setPlayerRatings] = useState<PlayerRatingEntry[]>(initialPlayerRatings);
   const [loadingStats, setLoadingStats] = useState<boolean>(
     initialLast10Stats.length === 0 && initialSeasonStats.length === 0
   );
@@ -338,10 +350,11 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
   // page kept its server-rendered numbers for as long as it stayed open — which is
   // how the picker ended up showing different values than the stats pages.
   useStatsRefresh({
-    keys: ['last10', 'season_avg'],
+    keys: ['last10', 'season_avg', 'player_ratings'],
     onData: (payload) => {
       if (Array.isArray(payload.last10)) setLast10Stats(payload.last10);
       if (Array.isArray(payload.season_avg)) setSeasonStats(payload.season_avg);
+      if (Array.isArray(payload.player_ratings)) setPlayerRatings(payload.player_ratings);
     },
     onSettled: () => setLoadingStats(false),
   });
@@ -461,6 +474,56 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
 
   const teamAPlayerList = useMemo(() => withLiveStats(teamAPlayers), [withLiveStats, teamAPlayers]);
   const teamBPlayerList = useMemo(() => withLiveStats(teamBPlayers), [withLiveStats, teamBPlayers]);
+
+  // --- Balance suggestions (lib/teamBalance.ts) — advisory only, never changes the teams by itself ---
+  const ratingIndex = useMemo(() => indexPlayerRatings(playerRatings), [playerRatings]);
+  const pickerMaps = teamPickerData.maps;
+  const selectedMapIds: string[] = useMemo(
+    () => [1, 2, 3].map((i) => pickerMaps?.[`map${i}`]?.mapName).filter((id): id is string => typeof id === 'string' && id !== ''),
+    [pickerMaps]
+  );
+  // Workshop maps are numeric ids in the picker; match their history by display name instead.
+  const selectedMapKeys = useMemo(
+    () => selectedMapIds.map((id) => normalizeMapKey(/^\d+$/.test(id) ? (mapNameLookup[id] || id) : id)),
+    [selectedMapIds, mapNameLookup]
+  );
+  const toBalanceRows = useCallback((players: Player[]): BalancePlayerRow[] => players.map((p) => {
+    // A manual HLTV override stands in for the newcomer prior; it only matters for players with little history.
+    const override = playerStatsOverrides[p.steamId];
+    const prior = override?.L10_HLTV2 ?? override?.S_HLTV2 ?? undefined;
+    const r = playerBalanceRating(ratingIndex, p.steamId, selectedMapKeys, prior);
+    return { steamId: p.steamId, name: p.name, rating: r.rating, maps: r.maps, mapMaps: r.mapMaps };
+  }), [playerStatsOverrides, ratingIndex, selectedMapKeys]);
+  const teamABalanceRows = useMemo(() => toBalanceRows(teamAPlayerList), [toBalanceRows, teamAPlayerList]);
+  const teamBBalanceRows = useMemo(() => toBalanceRows(teamBPlayerList), [toBalanceRows, teamBPlayerList]);
+  const balanceReport = useMemo(() => analyzeBalance(teamABalanceRows, teamBBalanceRows), [teamABalanceRows, teamBBalanceRows]);
+  const [applyingSuggestion, setApplyingSuggestion] = useState<number | null>(null);
+  const [balanceMessage, setBalanceMessage] = useState<string | null>(null);
+
+  const handleApplySuggestion = useCallback(async (suggestion: BalanceSuggestion, index: number) => {
+    const moves: { steamId: string; name: string; to: 'A' | 'B' }[] = [
+      ...suggestion.toB.map((p) => ({ steamId: p.steamId, name: p.name, to: 'B' as const })),
+      ...suggestion.toA.map((p) => ({ steamId: p.steamId, name: p.name, to: 'A' as const })),
+    ];
+    const summary = moves.map((m) => `${m.name} → ${m.to === 'A' ? teamAName : teamBName}`).join('\n');
+    if (!window.confirm(`Bu değişiklik uygulansın mı?\n\n${summary}`)) return;
+    setApplyingSuggestion(index);
+    setBalanceMessage(null);
+    try {
+      for (const move of moves) {
+        const stored = teamAPlayers[move.steamId] || teamBPlayers[move.steamId];
+        if (!stored) throw new Error(`${move.name} artık takımda değil`);
+        // assign moves the player out of the other team in the same request.
+        await apiAssignPlayer(move.steamId, move.to, stored);
+      }
+      setBalanceMessage('Öneri uygulandı.');
+    } catch (e) {
+      setBalanceMessage(`Öneri uygulanamadı: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setApplyingSuggestion(null);
+      void refetchTeamPicker();
+    }
+  }, [teamAName, teamBName, teamAPlayers, teamBPlayers, refetchTeamPicker]);
 
   const openEditStatsModal = useCallback((steamId: string, name: string) => {
     const stats = getStatsBySteamId(steamId);
@@ -1077,6 +1140,18 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
               <TeamComparisonRadar teamA={teamAAvgs} teamB={teamBAvgs} statLabels={STAT_LABELS} statOrder={STAT_ORDER} fixedRanges={FIXED_RANGES} />
             </div>
           </div>
+          <TeamBalancePanel
+            report={balanceReport}
+            teamAName={teamAName}
+            teamBName={teamBName}
+            teamARows={teamABalanceRows}
+            teamBRows={teamBBalanceRows}
+            mapLabels={selectedMapIds.map((id) => mapNameLookup[id] || id)}
+            ratingsAvailable={playerRatings.length > 0}
+            applyingIndex={applyingSuggestion}
+            message={balanceMessage}
+            onApply={(s, i) => void handleApplySuggestion(s, i)}
+          />
           {/* Map selection after the graph comparison */}
           <MapSelection teamAName={teamAName || 'A'} teamBName={teamBName || 'B'} mapsState={mapsState} onMapsChange={() => { void refetchTeamPicker(); }} />
           <div className="game-match-action">

@@ -683,6 +683,7 @@ app.get('/stats/diagnostics', async (req, res) => {
         players_stats: Array.isArray(lastGeneratedData.players_stats)? lastGeneratedData.players_stats.length : 0,
         players_stats_periods: lastGeneratedData.players_stats_periods ? Object.keys(lastGeneratedData.players_stats_periods.data || {}).length : 0,
         map_stats: Array.isArray(lastGeneratedData.map_stats)? lastGeneratedData.map_stats.length : 0,
+        player_ratings: Array.isArray(lastGeneratedData.player_ratings)? lastGeneratedData.player_ratings.length : 0,
         errors: lastGeneratedData.__errors || []
       };
     }

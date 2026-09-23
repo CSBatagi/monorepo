@@ -2,12 +2,13 @@ import TeamPickerClient from './TeamPickerClient';
 import { fetchStats } from '@/lib/statsServer';
 
 export default async function TeamPickerPage() {
-  const stats = await fetchStats('last10', 'season_avg');
+  const stats = await fetchStats('last10', 'season_avg', 'player_ratings');
 
   return (
     <TeamPickerClient
       initialLast10Stats={Array.isArray(stats.last10) ? stats.last10 : []}
       initialSeasonStats={Array.isArray(stats.season_avg) ? stats.season_avg : []}
+      initialPlayerRatings={Array.isArray(stats.player_ratings) ? stats.player_ratings : []}
     />
   );
 }

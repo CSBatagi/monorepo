@@ -24,6 +24,7 @@ Use this folder as the canonical context source.
 - Steam avatar integration: [`features/steam-integration.md`](features/steam-integration.md)
 - Steam website login and migration: [`features/steam-login.md`](features/steam-login.md)
 - Community server skins and equipment: [`features/server-cosmetics.md`](features/server-cosmetics.md)
+- Team picker balance suggestions and the formula behind them: [`features/team-balancer.md`](features/team-balancer.md)
 - Mobile app and notifications plan: [`features/mobile-app-notifications.md`](features/mobile-app-notifications.md)
 - Performance and memory budget: [`../PERFORMANCE_REPORT.md`](../PERFORMANCE_REPORT.md)
 - Production live attendance measurements and rollback: [`operations/live-loading.md`](operations/live-loading.md)

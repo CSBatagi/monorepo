@@ -20,6 +20,7 @@ const DATASET_PAGE_MAP: Record<string, string[]> = {
   performance_data: ['/performance'],
   players_stats: ['/oyuncular'],
   players_stats_periods: ['/oyuncular'],
+  player_ratings: ['/team-picker'],
 };
 
 function collectRevalidationPaths(data: Record<string, unknown>): string[] {
