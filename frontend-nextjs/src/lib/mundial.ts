@@ -25,19 +25,27 @@ export type MundialConfig = {
   tentative?: string[];
   /** Düştüğü grubu "ölüm grubu" yapan oyuncular. */
   wildcards?: string[];
+  /** Yöneticilere ek olarak kura toplarını açabilen oyuncular (Steam ID). */
+  drawOperators?: string[];
   notes?: Record<string, string>;
 };
 
 export const MUNDIAL_QUALIFIERS_PER_GROUP = 2;
 
 // ── Kura (backend ile aynı şekil: backend/mundialDraw.js) ─────────────────────
+// Kura tıklamayla ilerler: her tıklama tek top açar — önce oyuncu, sonra o
+// oyuncunun grubu. Adımın groupId'si yoksa grup topu henüz açılmamıştır.
 
 export type MundialDrawStep = {
   potIndex: number;
   potId: number;
   steamId: string;
   name: string;
-  groupId: string;
+  groupId?: string;
+  playerAt?: number;
+  playerBy?: string;
+  groupAt?: number;
+  groupBy?: string;
 };
 
 export type MundialDraw = {
@@ -46,9 +54,7 @@ export type MundialDraw = {
   groups: Array<{ id: string; players: string[] }>;
   steps: MundialDrawStep[];
   createdAt: number;
-  revealStartsAt: number;
-  stepMs: number;
-  potIntroMs: number;
+  completedAt?: number;
   setByUid?: string;
   setByName?: string;
 };
@@ -74,103 +80,86 @@ export type MundialLiveData = {
   knockout: Partial<Record<MundialKnockoutSlot, MundialKnockoutResult>>;
 };
 
-// ── Tören zaman çizelgesi ─────────────────────────────────────────────────────
-// Kura sunucuda tek seferde çekilir; tören herkeste aynı anda, revealStartsAt
-// anından itibaren aynı zaman çizelgesiyle oynatılır.
+// ── Top sayacı (cursor) ──────────────────────────────────────────────────────
+// Canlı kura, prova ve tekrar izleme aynı modeli kullanır: kuradaki toplar
+// sırayla açılır (adım i → top 2i oyuncu, top 2i+1 grup). cursor, açılmış top
+// sayısıdır; ekran o ana kadarki durumu gösterir.
 
-/** Adım içinde oyuncunun gruba yerleştiği an (0..1). */
-export const PLACE_AT = 0.72;
-/** Adım içinde isim topunun açıldığı an (0..1). */
-export const NAME_AT = 0.38;
-
-type PotSegment = { potIndex: number; start: number; introEnd: number; end: number; stepIndices: number[] };
-
-export function drawTimeline(draw: Pick<MundialDraw, 'steps' | 'stepMs' | 'potIntroMs'>): { segments: PotSegment[]; totalMs: number } {
-  const byPot = new Map<number, number[]>();
-  draw.steps.forEach((step, i) => {
-    if (!byPot.has(step.potIndex)) byPot.set(step.potIndex, []);
-    byPot.get(step.potIndex)!.push(i);
-  });
-  const segments: PotSegment[] = [];
-  let t = 0;
-  for (const potIndex of [...byPot.keys()].sort((a, b) => a - b)) {
-    const stepIndices = byPot.get(potIndex)!;
-    const start = t;
-    const introEnd = start + draw.potIntroMs;
-    const end = introEnd + stepIndices.length * draw.stepMs;
-    segments.push({ potIndex, start, introEnd, end, stepIndices });
-    t = end;
-  }
-  return { segments, totalMs: t };
+export function drawTotalReveals(draw: Pick<MundialDraw, 'pots'>): number {
+  return draw.pots.reduce((n, pot) => n + pot.players.length, 0) * 2;
 }
 
-export type RevealFrame =
-  | { phase: 'countdown'; msToStart: number; placedCount: 0 }
-  | { phase: 'pot-intro'; potIndex: number; placedCount: number }
-  | { phase: 'step'; potIndex: number; stepIndex: number; stepProgress: number; placedCount: number }
-  | { phase: 'done'; placedCount: number };
+export function drawRevealCount(draw: Pick<MundialDraw, 'steps'>): number {
+  const last = draw.steps[draw.steps.length - 1];
+  return draw.steps.length * 2 - (last && !last.groupId ? 1 : 0);
+}
 
-/** elapsedMs: revealStartsAt anından bu yana geçen süre (negatifse geri sayım). */
-export function revealFrameAt(draw: Pick<MundialDraw, 'steps' | 'stepMs' | 'potIntroMs'>, elapsedMs: number): RevealFrame {
-  if (elapsedMs < 0) return { phase: 'countdown', msToStart: -elapsedMs, placedCount: 0 };
-  const { segments, totalMs } = drawTimeline(draw);
-  if (elapsedMs >= totalMs) return { phase: 'done', placedCount: draw.steps.length };
-  for (const seg of segments) {
-    if (elapsedMs >= seg.end) continue;
-    const placedBefore = seg.stepIndices[0];
-    if (elapsedMs < seg.introEnd) return { phase: 'pot-intro', potIndex: seg.potIndex, placedCount: placedBefore };
-    const within = elapsedMs - seg.introEnd;
-    const local = Math.min(seg.stepIndices.length - 1, Math.floor(within / draw.stepMs));
-    const stepIndex = seg.stepIndices[local];
-    const stepProgress = (within - local * draw.stepMs) / draw.stepMs;
-    return {
-      phase: 'step',
-      potIndex: seg.potIndex,
-      stepIndex,
-      stepProgress,
-      placedCount: stepIndex + (stepProgress >= PLACE_AT ? 1 : 0),
-    };
+export function isDrawComplete(draw: MundialDraw | null): boolean {
+  return !!draw && draw.steps.length > 0 && drawRevealCount(draw) >= drawTotalReveals(draw);
+}
+
+/** cursor kadar top açıldığında görünen adımlar (son adımın grubu gizli olabilir). */
+export function stepsAtCursor(draw: Pick<MundialDraw, 'steps'>, cursor: number): MundialDrawStep[] {
+  const count = Math.max(0, Math.min(cursor, drawRevealCount(draw)));
+  const visible = draw.steps.slice(0, Math.ceil(count / 2));
+  if (count % 2 === 1 && visible.length) {
+    const last = visible[visible.length - 1];
+    visible[visible.length - 1] = { ...last, groupId: undefined };
   }
-  return { phase: 'done', placedCount: draw.steps.length };
+  return visible;
+}
+
+export type NextBall =
+  | { kind: 'player'; potIndex: number }
+  | { kind: 'group'; step: MundialDrawStep }
+  | null;
+
+/** Açılacak sıradaki top (verilen adımlara göre); kura bittiyse null. */
+export function nextBall(draw: Pick<MundialDraw, 'pots'>, steps: MundialDrawStep[]): NextBall {
+  const last = steps[steps.length - 1];
+  if (last && !last.groupId) return { kind: 'group', step: last };
+  const drawn = new Set(steps.map((s) => s.steamId));
+  const potIndex = draw.pots.findIndex((pot) => pot.players.some((p) => !drawn.has(p.steamId)));
+  return potIndex === -1 ? null : { kind: 'player', potIndex };
 }
 
 /**
- * Prova kurası: backend/mundialDraw.js ile aynı algoritma, tarayıcıda çalışır
- * ve hiçbir yere kaydedilmez. Gerçek kura her zaman sunucuda çekilir.
+ * Prova kurası için tarayıcıda bir top açar (backend/mundialDraw.js advanceDraw
+ * ile aynı kural). Prova hiçbir yere kaydedilmez.
  */
-export function buildRehearsalDraw(
-  pots: MundialDraw['pots'],
-  groupCount: number,
-  timing: { startsInMs: number; stepMs: number; potIntroMs: number },
-): MundialDraw {
+export function advanceRehearsalDraw(draw: MundialDraw): MundialDraw {
   const randomInt = (max: number) => {
     const buf = new Uint32Array(1);
     crypto.getRandomValues(buf);
     return buf[0] % max;
   };
-  const groupIds = 'ABCDEFGH'.slice(0, groupCount).split('');
-  const groups = groupIds.map((id) => ({ id, players: [] as string[] }));
-  const steps: MundialDrawStep[] = [];
-  pots.forEach((pot, potIndex) => {
-    const remaining = [...pot.players];
-    const openGroups = [...groupIds];
-    while (remaining.length && openGroups.length) {
-      const player = remaining.splice(randomInt(remaining.length), 1)[0];
-      const groupId = openGroups.splice(randomInt(openGroups.length), 1)[0];
-      groups.find((g) => g.id === groupId)!.players.push(player.steamId);
-      steps.push({ potIndex, potId: pot.id, steamId: player.steamId, name: player.name, groupId });
-    }
-  });
-  const now = Date.now();
+  const ball = nextBall(draw, draw.steps);
+  if (!ball) return draw;
+  const steps = [...draw.steps];
+  const groups = draw.groups.map((g) => ({ ...g, players: [...g.players] }));
+  if (ball.kind === 'group') {
+    const taken = new Set(steps.filter((s) => s.potIndex === ball.step.potIndex && s.groupId).map((s) => s.groupId));
+    const open = groups.map((g) => g.id).filter((id) => !taken.has(id));
+    const groupId = open[randomInt(open.length)];
+    steps[steps.length - 1] = { ...ball.step, groupId };
+    groups.find((g) => g.id === groupId)!.players.push(ball.step.steamId);
+  } else {
+    const drawn = new Set(steps.map((s) => s.steamId));
+    const pot = draw.pots[ball.potIndex];
+    const remaining = pot.players.filter((p) => !drawn.has(p.steamId));
+    const player = remaining[randomInt(remaining.length)];
+    steps.push({ potIndex: ball.potIndex, potId: pot.id, steamId: player.steamId, name: player.name });
+  }
+  return { ...draw, steps, groups };
+}
+
+export function emptyDraw(pots: MundialDraw['pots'], groupCount: number): MundialDraw {
   return {
     groupCount,
     pots,
-    groups,
-    steps,
-    createdAt: now,
-    revealStartsAt: now + timing.startsInMs,
-    stepMs: timing.stepMs,
-    potIntroMs: timing.potIntroMs,
+    groups: 'ABCDEFGH'.slice(0, groupCount).split('').map((id) => ({ id, players: [] })),
+    steps: [],
+    createdAt: Date.now(),
   };
 }
 

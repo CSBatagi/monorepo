@@ -2,7 +2,7 @@
 // All data is in PostgreSQL on the same VM (sub-millisecond queries)
 
 const express = require('express');
-const { buildMundialDraw, KNOCKOUT_SLOTS, KNOCKOUT_DEPENDENTS } = require('./mundialDraw');
+const { createDrawState, advanceDraw, revealCount, isDrawComplete, KNOCKOUT_SLOTS, KNOCKOUT_DEPENDENTS } = require('./mundialDraw');
 const router = express.Router();
 
 // Live state is always validated against PostgreSQL, never an HTTP cache.
@@ -889,19 +889,9 @@ router.post('/superliga-manual-nights/delete', async (req, res) => {
 
 // ─── Batak Mundial (kura + eleme tablosu) ────────────────────────────────────
 // Kura sonucu ve eleme maçları tek bir key/value tablosunda tutulur:
-//   'draw'      → kura sonucu (gruplar + çekiliş sırası + tören zamanlaması)
+//   'draw'      → kura durumu (torbalar, gruplar, şimdiye kadar açılan toplar)
 //   'ko:<slot>' → eleme maçı sonucu (qf1..qf4, sf1, sf2, final)
 // Gece puanlaması (kaptan, eksik maç, manuel gece) Superliga tablolarını kullanır.
-
-const MUNDIAL_DEFAULT_COUNTDOWN_MS = 15000;
-const MUNDIAL_DEFAULT_STEP_MS = 4500;
-const MUNDIAL_POT_INTRO_MS = 3000;
-
-function clampInt(value, min, max, fallback) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, Math.round(n)));
-}
 
 router.get('/mundial', async (req, res) => {
   try {
@@ -926,43 +916,77 @@ router.get('/mundial', async (req, res) => {
   }
 });
 
-router.post('/mundial/draw', async (req, res) => {
+// Kurayı açar: torbalar ve gruplar hazır, henüz top çekilmedi. Toplar
+// /mundial/draw-next ile tek tek, tıklandığı anda sunucuda çekilir.
+router.post('/mundial/draw-start', async (req, res) => {
   try {
-    const { pots, groupCount, countdownMs, stepMs, setByUid, setByName } = req.body || {};
-    let built;
+    const { pots, groupCount, setByUid, setByName } = req.body || {};
+    let state;
     try {
-      built = buildMundialDraw(pots, Number(groupCount));
+      state = createDrawState(pots, Number(groupCount));
     } catch (validationError) {
       return res.status(400).json({ error: validationError.message });
     }
-
-    const now = Date.now();
     const draw = {
-      ...built,
-      createdAt: now,
-      revealStartsAt: now + clampInt(countdownMs, 0, 120000, MUNDIAL_DEFAULT_COUNTDOWN_MS),
-      stepMs: clampInt(stepMs, 1500, 10000, MUNDIAL_DEFAULT_STEP_MS),
-      potIntroMs: MUNDIAL_POT_INTRO_MS,
+      ...state,
+      createdAt: Date.now(),
       setByUid: setByUid ? String(setByUid) : undefined,
       setByName: setByName ? String(setByName).slice(0, 80) : undefined,
     };
 
-    // Tek kura: aynı anda iki çekiliş yapılırsa yalnızca ilki kaydedilir.
+    // Tek kura: aynı anda iki başlatma olursa yalnızca ilki kaydedilir.
     const inserted = await pool.query(
       `INSERT INTO mundial_state (key, value, updated_at) VALUES ('draw', $1, NOW())
        ON CONFLICT (key) DO NOTHING RETURNING key`,
       [JSON.stringify(draw)]
     );
     if (!inserted.rows.length) {
-      return res.status(409).json({ error: 'Kura zaten çekildi. Yeniden çekmek için önce sıfırlayın.' });
+      return res.status(409).json({ error: 'Kura zaten başladı. Yeniden başlatmak için önce sıfırlayın.' });
     }
 
     await bumpVersion('mundial');
     const version = await getVersion('mundial');
-    res.json({ ok: true, version, serverTime: Date.now(), draw });
+    res.json({ ok: true, version, draw });
   } catch (e) {
-    console.error('[live/mundial/draw POST]', e.message);
+    console.error('[live/mundial/draw-start POST]', e.message);
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Bir sonraki topu açar. `cursor` istemcinin gördüğü açılmış top sayısıdır;
+// iki kişi aynı anda tıklarsa ikincisi 409 alır ve kura iki kez ilerlemez.
+router.post('/mundial/draw-next', async (req, res) => {
+  const { cursor, byName } = req.body || {};
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const row = await client.query(`SELECT value FROM mundial_state WHERE key = 'draw' FOR UPDATE`);
+    const current = row.rows[0]?.value;
+    if (!current) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Kura başlatılmadı.' });
+    }
+    if (!Array.isArray(current.steps) || isDrawComplete(current)) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Kura tamamlandı.' });
+    }
+    if (!Number.isInteger(cursor) || cursor !== revealCount(current)) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Bu top az önce çekildi; ekran güncelleniyor.', stale: true });
+    }
+
+    const { state, reveal } = advanceDraw(current, undefined, { by: byName ? String(byName).slice(0, 80) : undefined });
+    await client.query(`UPDATE mundial_state SET value = $1, updated_at = NOW() WHERE key = 'draw'`, [JSON.stringify(state)]);
+    await bumpVersion('mundial', client);
+    await client.query('COMMIT');
+    const version = await getVersion('mundial');
+    res.json({ ok: true, version, reveal, cursor: revealCount(state) });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('[live/mundial/draw-next POST]', e.message);
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
   }
 });
 

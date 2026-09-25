@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { mundialDrawOperator } from '@/lib/mundialServer';
 
 const BACKEND = process.env.BACKEND_INTERNAL_URL || 'http://backend:3000';
 const AUTH_TOKEN = () => process.env.AUTH_TOKEN || '';
+
+export const runtime = 'nodejs';
+
+// Draw actions are restricted to admins and the configured draw operators.
+const DRAW_ACTIONS = ['draw-start', 'draw-next', 'draw-reset'];
+const KNOCKOUT_ACTIONS = ['knockout-set', 'knockout-delete'];
 
 export async function GET(req: NextRequest) {
   const v = req.nextUrl.searchParams.get('v') || '0';
@@ -30,8 +37,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const action = body.action;
     if (!action) return NextResponse.json({ error: 'action required' }, { status: 400 });
-    const validActions = ['draw', 'draw-reset', 'knockout-set', 'knockout-delete'];
-    if (!validActions.includes(action)) return NextResponse.json({ error: 'invalid action' }, { status: 400 });
+    if (DRAW_ACTIONS.includes(action)) {
+      const operator = await mundialDrawOperator(req);
+      if (!operator) return NextResponse.json({ error: 'Kurayı yalnızca yöneticiler çekebilir.' }, { status: 403 });
+      // Record who acted from the verified session, not from the request body.
+      const who = { setByUid: operator.uid, setByName: operator.name || operator.steamId, byName: operator.name || operator.steamId };
+      const { data, status } = await proxyPost(action, { ...body, ...who });
+      return NextResponse.json(data, { status });
+    }
+    if (!KNOCKOUT_ACTIONS.includes(action)) return NextResponse.json({ error: 'invalid action' }, { status: 400 });
     const { data, status } = await proxyPost(action, body);
     return NextResponse.json(data, { status });
   } catch (e: unknown) {

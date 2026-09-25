@@ -364,6 +364,8 @@
 .stage {
   position: relative;
   overflow: hidden;
+  /* clip (not just hidden): the wide light sweep must never make the stage scrollable. */
+  overflow: clip;
   border-radius: 16px;
   padding: 20px;
   color: #f4f1e6;
@@ -405,22 +407,6 @@
   font-weight: 700;
   letter-spacing: 0.16em;
   color: #f2bd4b;
-}
-
-.stageSkip {
-  letter-spacing: 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: #d9dccf;
-  padding: 5px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.stageSkip:hover {
-  border-color: #f2bd4b;
-  color: #fff;
 }
 
 .countdown {
@@ -567,9 +553,56 @@
   animation: rise 450ms cubic-bezier(0.2, 0.9, 0.2, 1.2) both;
 }
 
+.revealNameStatic {
+  font-size: clamp(30px, 5vw, 52px);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: #fff;
+  text-shadow: 0 0 30px rgba(242, 189, 75, 0.35);
+}
+
+.revealGroupStatic {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: clamp(18px, 3vw, 26px);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #1b1405;
+  background: linear-gradient(180deg, #f7cf6a, #e0a52f);
+}
+
 .revealPending {
   margin-top: 12px;
-  height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.stageCounter {
+  letter-spacing: 0.1em;
+  color: #d9dccf;
+}
+
+.stageControls {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.stageHint {
+  font-size: 12px;
+  color: #b9bcb0;
 }
 
 .potIntro {
@@ -614,9 +647,10 @@
 
 .groupHead {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 4px 6px;
   padding: 9px 12px;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -625,7 +659,12 @@
   background: linear-gradient(90deg, #f7cf6a, #e0a52f);
 }
 
+.groupHead > span:first-child {
+  white-space: nowrap;
+}
+
 .deathBadge {
+  white-space: nowrap;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -1145,6 +1184,13 @@
   .groupSlot {
     font-size: 12px;
     padding: 4px 6px;
+  }
+  .groupHead {
+    padding: 8px 10px;
+  }
+  .deathBadge {
+    font-size: 9px;
+    padding: 2px 5px;
   }
   .bracket {
     grid-template-columns: 1fr;

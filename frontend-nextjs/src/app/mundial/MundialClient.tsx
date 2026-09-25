@@ -21,7 +21,7 @@ import {
   MUNDIAL_QUALIFIERS_PER_GROUP,
   buildBracket,
   drawParticipants,
-  drawTimeline,
+  isDrawComplete,
   potIndexBySteamId,
   splitStandingsIntoGroups,
   type MundialConfig,
@@ -243,10 +243,13 @@ export default function MundialClient({
   // ── Live data ──
   const { data: mundialData, loading: mundialLoading, refetch: refetchMundial } = useLivePolling<MundialLiveData>({
     url: '/api/live/mundial',
-    intervalMs: 3000,
+    intervalMs: 2000,
     initialData: { draw: null, knockout: {} },
   });
-  const draw = mundialData.draw || null;
+  // The ceremony uses the draw as it unfolds; groups and the bracket only use a finished draw.
+  const liveDraw = mundialData.draw || null;
+  const ceremonyLive = !!liveDraw && !isDrawComplete(liveDraw);
+  const draw = liveDraw && !ceremonyLive ? liveDraw : null;
   const knockoutResults = useMemo(() => mundialData.knockout || {}, [mundialData.knockout]);
 
   const { data: captainsData, refetch: refetchCaptains } = useLivePolling<{ captainsByDate: CaptainsByDateSnapshot }>({
@@ -262,28 +265,24 @@ export default function MundialClient({
   });
   const manualNights = manualNightsData.manualNightsByDate || null;
 
-  // Sunucu saatine hizalama: tören herkeste aynı anda oynasın.
-  const [clockOffset, setClockOffset] = useState(0);
+  // Admins and configured draw operators open the balls (verified server-side too).
+  const [canOperate, setCanOperate] = useState(false);
   useEffect(() => {
-    if (typeof mundialData.serverTime === 'number') setClockOffset(mundialData.serverTime - Date.now());
-  }, [mundialData.serverTime]);
-
-  const revealEndsAt = draw ? draw.revealStartsAt + drawTimeline(draw).totalMs : 0;
-  const ceremonyLive = !!draw && Date.now() + clockOffset < revealEndsAt;
-  // Re-render once the ceremony ends so the live status clears.
-  const [, setCeremonyTick] = useState(0);
-  useEffect(() => {
-    if (!ceremonyLive) return;
-    const id = window.setTimeout(() => setCeremonyTick((t) => t + 1), Math.max(0, revealEndsAt - (Date.now() + clockOffset)) + 50);
-    return () => window.clearTimeout(id);
-  }, [ceremonyLive, revealEndsAt, clockOffset]);
+    if (!user) { setCanOperate(false); return; }
+    let cancelled = false;
+    fetch('/api/mundial/operator', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setCanOperate(d?.canOperate === true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user]);
 
   // ── Tabs ──
   const [tab, setTab] = useState<TabKey | null>(null);
   const seenDrawRef = useRef<number | null | undefined>(undefined);
   useEffect(() => {
     if (mundialLoading) return;
-    const drawKey = draw?.createdAt ?? null;
+    const drawKey = liveDraw?.createdAt ?? null;
     if (seenDrawRef.current === undefined) {
       // İlk yükleme: URL'deki sekme, yoksa kuranın durumuna göre.
       seenDrawRef.current = drawKey;
@@ -291,7 +290,7 @@ export default function MundialClient({
       try { requested = new URLSearchParams(window.location.search).get(TAB_PARAM); } catch {}
       if (ceremonyLive) setTab('kura');
       else if (requested && TAB_KEYS.has(requested)) setTab(requested as TabKey);
-      else setTab(draw ? 'gruplar' : 'kura');
+      else setTab(liveDraw ? 'gruplar' : 'kura');
       return;
     }
     if (drawKey !== seenDrawRef.current) {
@@ -299,7 +298,7 @@ export default function MundialClient({
       // Kura canlı başladıysa herkesi törene al.
       if (ceremonyLive) setTab('kura');
     }
-  }, [mundialLoading, draw, ceremonyLive]);
+  }, [mundialLoading, liveDraw, ceremonyLive]);
 
   const selectTab = (next: TabKey) => {
     setTab(next);
@@ -375,17 +374,17 @@ export default function MundialClient({
   }, [sonmacByDate, manualNights, inSeason]);
 
   // ── Status ──
-  const status = !draw
-    ? { live: false, text: 'Kura bekleniyor' }
-    : ceremonyLive
-      ? { live: true, text: 'CANLI · Kura çekiliyor' }
+  const status = ceremonyLive
+    ? { live: true, text: 'CANLI · Kura çekiliyor' }
+    : !draw
+      ? { live: false, text: 'Kura bekleniyor' }
       : bracket.championSteamId
         ? { live: false, text: `Şampiyon: ${nameOf(bracket.championSteamId)}` }
         : groupStageComplete
           ? { live: false, text: 'Eleme turu' }
           : { live: false, text: `Grup aşaması · ${playedNights}/${groupStageLength} gece` };
 
-  const participantCount = draw ? participants.length : config.pots.reduce((n, p) => n + p.players.length, 0) - (config.tentative?.length || 0);
+  const participantCount = liveDraw ? liveDraw.pots.reduce((n, p) => n + p.players.length, 0) : config.pots.reduce((n, p) => n + p.players.length, 0) - (config.tentative?.length || 0);
 
   return (
     <div className={styles.root}>
@@ -400,7 +399,7 @@ export default function MundialClient({
           <span className={`${styles.heroFact} ${status.live ? styles.statusLive : ''}`}>
             {status.live && <span className={styles.liveDot} />}{status.text}
           </span>
-          <span className={styles.heroFact}>{participantCount}{draw ? '' : '+'} oyuncu</span>
+          <span className={styles.heroFact}>{participantCount}{liveDraw ? '' : '+'} oyuncu</span>
           <span className={styles.heroFact}>{config.pots.length} torba · {config.groupCount || 4} grup</span>
           <span className={styles.heroFact}>İlk 2 → çeyrek final</span>
           {seasonStart && <span className={styles.heroFact}>Başlangıç: {seasonStart}</span>}
@@ -439,10 +438,10 @@ export default function MundialClient({
       {tab === 'kura' && (
         <MundialDraw
           config={config}
-          draw={draw}
-          clockOffset={clockOffset}
+          draw={liveDraw}
           nameOf={nameOf}
           user={user}
+          canOperate={canOperate}
           onChanged={refetchMundial}
         />
       )}
@@ -450,8 +449,8 @@ export default function MundialClient({
       {tab === 'gruplar' && (
         !draw ? (
           <div className={styles.panel}>
-            <div className={styles.panelTitle}>Kura henüz çekilmedi</div>
-            <p className={styles.muted}>Gruplar kura töreninden sonra burada görünecek.</p>
+            <div className={styles.panelTitle}>{ceremonyLive ? 'Kura çekiliyor' : 'Kura henüz çekilmedi'}</div>
+            <p className={styles.muted}>{ceremonyLive ? 'Tören sürüyor; gruplar son top açılınca burada görünecek.' : 'Gruplar kura töreninden sonra burada görünecek.'}</p>
             <button type="button" className={`${styles.ghostButton} mt-3`} onClick={() => selectTab('kura')}><Dices className="h-4 w-4" />Kura sekmesine git</button>
           </div>
         ) : (
@@ -498,7 +497,7 @@ export default function MundialClient({
         !draw ? (
           <div className={styles.panel}>
             <div className={styles.panelTitle}>Eleme tablosu</div>
-            <p className={styles.muted}>Kura çekilip grup aşaması başlayınca eşleşmeler burada görünecek.</p>
+            <p className={styles.muted}>{ceremonyLive ? 'Kura çekiliyor; ' : ''}Kura tamamlanıp grup aşaması başlayınca eşleşmeler burada görünecek.</p>
           </div>
         ) : (
           <MundialBracket

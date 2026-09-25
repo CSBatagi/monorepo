@@ -162,14 +162,17 @@ export function deleteSuperligaManualNight(fields: {
 
 // --- Batak Mundial (kura + eleme) ---
 
-export function drawMundialGroups(fields: {
+/** Opens the draw ceremony (no balls drawn yet). Admins / draw operators only. */
+export function startMundialDraw(fields: {
   pots: Array<{ id: number; players: Array<{ steamId: string; name: string }> }>;
   groupCount: number;
-  countdownMs?: number;
-  setByUid?: string;
-  setByName?: string;
 }) {
-  return livePost('mundial', { action: 'draw', ...fields });
+  return livePost('mundial', { action: 'draw-start', ...fields });
+}
+
+/** Opens the next ball. `cursor` is the number of balls this client has seen. */
+export function advanceMundialDraw(cursor: number) {
+  return livePost('mundial', { action: 'draw-next', cursor });
 }
 
 export function resetMundialDraw() {
