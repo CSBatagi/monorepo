@@ -1,21 +1,22 @@
-import SuperligaClient from './SuperligaClient';
-import ArchivedFormatBanner from '@/components/ArchivedFormatBanner';
+import MundialClient from './MundialClient';
 import { readJson } from '@/lib/dataReader';
 import { fetchStats } from '@/lib/statsServer';
 import { getDateKeyedPeriodData, isDateKeyedPeriodPayload } from '@/lib/statsPeriods';
 import { readDateKeyedRangeFromStaticHistory } from '@/lib/statsHistoryServer';
 import type { SonmacNight } from '@/lib/batakAllStars';
+import type { MundialConfig } from '@/lib/mundial';
 
 export const revalidate = 60;
 
-export default async function SuperligaPage() {
+export default async function MundialPage() {
   const players = (await readJson('players.json')) || [];
-  const config = (await readJson('superliga_config.json')) || null;
+  const rawConfig = await readJson('mundial_config.json');
+  const config: MundialConfig | null = rawConfig && Array.isArray(rawConfig.pots) ? rawConfig : null;
   const seasonStart = typeof config?.seasonStart === 'string' ? config.seasonStart.split('T')[0] : null;
-  const seasonEnd = typeof config?.seasonEnd === 'string' ? config.seasonEnd.split('T')[0] : null;
 
-  // Superliga is archived: read its own date range (current period plus any
-  // older static period shards) so it survives global season changes.
+  // Nights are scored from the Mundial season start; read that range from the
+  // current period plus any older static shards so a global season change
+  // does not drop Mundial nights.
   const stats = await fetchStats('sonmac_by_date_periods', 'sonmac_by_date');
   const sonmacPeriods = isDateKeyedPeriodPayload<SonmacNight>(stats.sonmac_by_date_periods) ? stats.sonmac_by_date_periods : null;
   const currentSonmacByDate = sonmacPeriods?.current_period
@@ -26,20 +27,13 @@ export default async function SuperligaPage() {
     payload: sonmacPeriods,
     currentData: currentSonmacByDate,
     rangeStart: seasonStart,
-    rangeEnd: seasonEnd,
+    rangeEnd: null,
   });
 
   return (
-    <div id="page-superliga" className="page-content page-content-container">
-      <ArchivedFormatBanner />
-      <h2 className="text-2xl font-semibold text-purple-600 mb-4">Superliga</h2>
-      <SuperligaClient
-        sonmacByDate={sonmacByDate}
-        seasonStart={seasonStart}
-        seasonEnd={seasonEnd}
-        players={players}
-        config={config}
-      />
+    <div id="page-mundial" className="page-content page-content-container">
+      <h2 className="text-2xl font-semibold text-blue-600 mb-4">{config?.name || 'Batak Mundial'}</h2>
+      <MundialClient sonmacByDate={sonmacByDate} players={players} config={config} />
     </div>
   );
 }

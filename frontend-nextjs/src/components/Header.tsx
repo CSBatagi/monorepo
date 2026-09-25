@@ -9,13 +9,13 @@ import NotificationBell from '@/components/NotificationBell';
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
+import { ARCHIVE_HREF, findArchivedFormat } from '@/lib/archivedFormats';
 
 const navLinks = [
   { href: "/", label: "Anasayfa" },
   { href: "/attendance", label: "Katılım" },
   { href: "/team-picker", label: "Takım Seçme" },
-  { href: "/token-wars", label: "Batak Token Wars" },
-  { href: "/superliga", label: "Superliga" },
+  { href: "/mundial", label: "Batak Mundial" },
   { href: "/sonmac", label: "Son Maç" },
   { href: "/performans-odulleri", label: "Performans Ödülleri" },
   { href: "/gece-ortalama", label: "Gece Ortalaması" },
@@ -30,10 +30,9 @@ const navLinks = [
 ];
 
 const moreLinks = [
-  { href: "/batak-domination", label: "Batak Domination" },
-  { href: "/batak-allstars", label: "Batak All-Stars" },
   { href: "/gecenin-mvpsi", label: "Gecenin MVP'si" },
   { href: "/performance", label: "Performans Grafikleri" },
+  { href: ARCHIVE_HREF, label: "Arşiv" },
 ];
 
 const desktopNavRows = [
@@ -48,7 +47,9 @@ export default function Header() {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const isMoreActive = moreLinks.some(link => pathname === link.href);
+  // Archived format pages are reached through the Arşiv link.
+  const activePath = findArchivedFormat(pathname) ? ARCHIVE_HREF : pathname;
+  const isMoreActive = moreLinks.some(link => activePath === link.href);
 
   const handleSignInClick = () => {
     router.push('/login');
@@ -69,7 +70,7 @@ export default function Header() {
   }, [pathname, user]);
 
   const linkClassName = (href: string) => `px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-    pathname === href
+    activePath === href
       ? isDark
         ? 'bg-dark-border !text-blue-300 border border-blue-500/30'
         : 'bg-gray-700 !text-white'
@@ -79,7 +80,7 @@ export default function Header() {
   }`;
 
   const mobileLinkClassName = (href: string) => `block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-    pathname === href
+    activePath === href
       ? isDark
         ? 'bg-dark-border !text-blue-300 border-l-2 border-blue-500'
         : 'bg-gray-700 !text-white'
@@ -155,7 +156,7 @@ export default function Header() {
                               href={link.href}
                               role="menuitem"
                               className={`block px-3 py-2 text-sm font-medium transition-colors ${
-                                pathname === link.href
+                                activePath === link.href
                                   ? isDark
                                     ? 'bg-dark-border !text-blue-300'
                                     : 'bg-gray-700 !text-white'

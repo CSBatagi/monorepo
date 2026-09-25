@@ -3,14 +3,15 @@
 import Link from "next/link";
 import LastNightCard from "./LastNightCard";
 import ClubQuotes from "./ClubQuotes";
-import { ArrowRight, ArrowUpRight, BarChart3, Check, ClipboardList, Coins, Crosshair, Crown, Film, Flag, ListOrdered, Moon, Shield, Star, Swords, Target, TrendingUp, Trophy, Users } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BarChart3, Check, ClipboardList, Crosshair, Crown, Dices, Film, Flag, Globe2, ListOrdered, Moon, Network, Swords, Target, TrendingUp, Trophy, Users } from "lucide-react";
 import { useSession } from "@/contexts/SessionContext";
 import { useLivePolling } from "@/lib/useLivePolling";
 
+// Only the active season is featured; older formats live under /arsiv.
 const competitions = [
-  { href: '/superliga', name: 'Superliga', tag: 'LİG TABLOSU', description: 'Kim tepede, kim yine takıma suç atıyor?', icon: Shield, className: 'league' },
-  { href: '/token-wars', name: 'Token Wars', tag: 'TOKEN MÜCADELESİ', description: 'Token hesabı burada. Dostluk başka masada.', icon: Coins, className: 'tokens' },
-  { href: '/batak-allstars', name: 'Batak All-Stars', tag: 'ALL-STARS', description: 'Yıldız çok. Kupa bir tane.', icon: Star, className: 'allstars' },
+  { href: '/mundial?sekme=gruplar', name: 'Batak Mundial', tag: 'GRUPLAR', description: 'Beşer kişilik gruplar. İlk iki çeyrek finale.', cta: 'Tabloyu görüntüle', icon: Globe2, className: 'league' },
+  { href: '/mundial?sekme=kura', name: 'Kura Çekimi', tag: 'TÖREN', description: 'Torbalar hazır. Ölüm grubu kimin?', cta: 'Kuraya git', icon: Dices, className: 'tokens' },
+  { href: '/mundial?sekme=eleme', name: 'Eleme Tablosu', tag: 'KUPA YOLU', description: 'Çeyrek, yarı, final. Kupa bir tane.', cta: 'Eşleşmeleri gör', icon: Network, className: 'allstars' },
 ];
 const analysis = [
   { href: '/season-avg', label: 'Sezon Ortalaması', sub: 'Bir maçla övünmek yok', icon: BarChart3 },
@@ -54,8 +55,8 @@ export default function ClubHome() {
       {[{ href: '/sonmac', label: 'Son maçın detayları', icon: Crosshair }, { href: '/mac-sonuclari', label: 'Maç sonuçları', icon: Flag }, { href: '/mac-videolari', label: 'Maç tekrarları', icon: Film }, { href: '/gece-ortalama', label: 'Gece Ortalaması', icon: Moon }].map(({ href, label, icon: Icon }) => <Link prefetch={false} href={href} key={href}><Icon size={20} /><span>{label}</span><ArrowUpRight size={16} /></Link>)}
     </section>
     <LastNightCard />
-    <section className="club-competitions-section" aria-labelledby="club-competitions-title"><div className="club-section-heading"><h2 id="club-competitions-title">Hesaplaşma vakti</h2><Link prefetch={false} href="/batak-domination">Domination haritası <ArrowUpRight size={15} /></Link></div>
-      <div className="club-competition-grid">{competitions.map(({ href, name, tag, description, icon: Icon, className }) => <Link prefetch={false} href={href} className={`club-competition-card ${className}`} key={href}><div className="club-competition-art" aria-hidden="true"><span className="club-emblem-orbit" /><span className="club-emblem"><Icon size={72} strokeWidth={1.2} /></span></div><p className="club-eyebrow">{tag}</p><h3>{name}</h3><p>{description}</p><span className="club-competition-cta">Tabloyu görüntüle <ArrowRight size={16} /></span></Link>)}</div>
+    <section className="club-competitions-section" aria-labelledby="club-competitions-title"><div className="club-section-heading"><h2 id="club-competitions-title">Hesaplaşma vakti</h2><Link prefetch={false} href="/gecenin-mvpsi">Gecenin MVP’si <ArrowUpRight size={15} /></Link></div>
+      <div className="club-competition-grid">{competitions.map(({ href, name, tag, description, cta, icon: Icon, className }) => <Link prefetch={false} href={href} className={`club-competition-card ${className}`} key={href}><div className="club-competition-art" aria-hidden="true"><span className="club-emblem-orbit" /><span className="club-emblem"><Icon size={72} strokeWidth={1.2} /></span></div><p className="club-eyebrow">{tag}</p><h3>{name}</h3><p>{description}</p><span className="club-competition-cta">{cta} <ArrowRight size={16} /></span></Link>)}</div>
     </section>
     <section className="club-analysis-section" aria-labelledby="club-analysis-title"><div><p className="club-eyebrow">SKOR TABELASI YALAN SÖYLEMEZ</p><h2 id="club-analysis-title">Kim taşımış,<br />kim yatmış?</h2><p>“Ben kötü oynamadım” diyenleri alalım.<br />Rakamlar burada, bahaneler WhatsApp’ta.</p><Link prefetch={false} href="/oyuncular" className="club-secondary-button"><Users size={18} /> Tayfaya bak <ArrowUpRight size={16} /></Link><Link prefetch={false} href="/gecenin-mvpsi" className="club-mvp-link"><Crown size={18} /> Gecenin MVP’sini seç <ArrowRight size={15} /></Link></div>
       <div className="club-analysis-links">{analysis.map(({ href, label, sub, icon: Icon }) => <Link prefetch={false} href={href} key={href}><span className="club-analysis-icon"><Icon size={20} /></span><span><strong>{label}</strong><small>{sub}</small></span><ArrowUpRight size={16} /></Link>)}</div>

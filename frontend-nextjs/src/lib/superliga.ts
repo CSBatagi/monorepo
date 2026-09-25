@@ -38,6 +38,8 @@ export { buildPlayersIndex, displayNameForSteamId, deriveTeamsForDate, deriveMai
 export type SuperligaConfig = {
   version: number;
   seasonStart?: string;
+  /** Son dahil gece (YYYY-MM-DD). Arşivlenen sezonlarda sonraki geceler sayılmaz. */
+  seasonEnd?: string;
   seasonLength?: number;
   scoring: {
     winPoints: number;
@@ -231,6 +233,7 @@ export function computeSuperligaStandings(params: {
   mapOverrides?: SuperligaMapOverridesByDate | null;
   manualNights?: SuperligaManualNightsByDate | null;
   seasonStart: string | null;
+  seasonEnd?: string | null;
   playersIndex: PlayersIndex;
   upToNight?: number;
 }): {
@@ -243,25 +246,27 @@ export function computeSuperligaStandings(params: {
   const leagueMeta = config.leagues?.[0] || { id: 'superliga', name: 'Superliga', players: [] };
 
   const start = seasonStart || config.seasonStart || null;
+  const end = params.seasonEnd || config.seasonEnd || null;
+  const outOfSeason = (d: string) => (!!start && d < start) || (!!end && d > end);
 
   // Bir geceyi dahil etmek için: sezon başlangıcından sonra ve ana lig haritası olan
   // her sonmac gecesi. Ayrıca elle eklenen (override) maç sonucu olan, takım
   // kadrosu çıkarılabilen geceler de dahil edilir.
   const dateSet = new Set<string>();
   for (const d of Object.keys(sonmacByDate || {})) {
-    if (start && d < start) continue;
+    if (outOfSeason(d)) continue;
     const mapNames = getMainLeagueMapsForDate(sonmacByDate, d);
     if (mapNames && mapNames.length > 0) dateSet.add(d);
   }
   for (const d of Object.keys(mapOverrides || {})) {
-    if (start && d < start) continue;
+    if (outOfSeason(d)) continue;
     if (!(mapOverrides?.[d] || []).length) continue;
     if (deriveMainLeagueTeamsForDate(sonmacByDate, d)) dateSet.add(d);
   }
   // Tamamen manuel geceler: demo verisi olmayan, en az bir harita sonucu elle
   // girilmiş her gece dahil edilir.
   for (const d of Object.keys(manualNights || {})) {
-    if (start && d < start) continue;
+    if (outOfSeason(d)) continue;
     if (!(manualNights?.[d]?.maps || []).length) continue;
     dateSet.add(d);
   }
@@ -449,7 +454,7 @@ export function computeSuperligaStandings(params: {
 
   const warnings: string[] = [];
   if (!datesIncluded.length) {
-    warnings.push('Henüz Superliga gecesi yok (sezon başlangıcından sonra maç sonucu girilip kaptanlar atanınca burada görünür).');
+    warnings.push(`Henüz ${leagueMeta.name} gecesi yok (sezon başlangıcından sonra maç sonucu girilip kaptanlar atanınca burada görünür).`);
   }
   if (skippedNoCaptain.length) {
     warnings.push(

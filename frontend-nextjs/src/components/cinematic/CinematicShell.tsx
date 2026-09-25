@@ -9,6 +9,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useSession } from '@/contexts/SessionContext';
 import NotificationBell from '../NotificationBell';
 import { navigation } from '../ClubShell';
+import { ARCHIVE_HREF, findArchivedFormat } from '@/lib/archivedFormats';
 import CinematicScene from './CinematicScene';
 import { chapters } from './chapters';
 
@@ -23,9 +24,12 @@ export default function CinematicShell({ children }: { children: ReactNode }) {
   const content = useRef<HTMLDivElement>(null);
   const previousPath = useRef(pathname);
   const home = pathname === '/';
-  const groupIndex = navigation.findIndex(group => group.links.some(link => link.href === pathname));
+  // Archived format pages belong to Rekabet, under the Arşiv link.
+  const archived = findArchivedFormat(pathname);
+  const activePath = archived ? ARCHIVE_HREF : pathname;
+  const groupIndex = navigation.findIndex(group => group.links.some(link => link.href === activePath));
   const group = navigation[Math.max(0, groupIndex)];
-  const currentLabel = group.links.find(link => link.href === pathname)?.label || (pathname === '/login' ? 'Giriş yap' : 'Hesabım');
+  const currentLabel = archived?.label || group.links.find(link => link.href === pathname)?.label || (pathname === '/login' ? 'Giriş yap' : 'Hesabım');
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -105,7 +109,7 @@ export default function CinematicShell({ children }: { children: ReactNode }) {
     <aside className="cinema-rail" aria-label="Sahne seçimi"><span className="cinema-rail-caption">AYNI TAYFA. AYNI BAHANELER.</span><nav>{chapters.map((chapter, i) => <Link prefetch={false} href={`/#${chapter.id}`} key={chapter.id} className={active === i ? 'is-active' : ''} aria-label={`${i + 1}. ${chapter.label}`} aria-current={active === i ? 'location' : undefined}><span>0{i + 1}</span><i /></Link>)}</nav><span className="cinema-rail-end">CS / 2</span></aside>
 
     <div id="cinema-content" className="cinema-route" key={pathname} ref={content} tabIndex={-1}>
-      {!home && <div className="cinema-page-intro"><Link prefetch={false} href={`/#${chapters[Math.max(0, groupIndex)].id}`}><ArrowLeft size={15} /> Deneyime dön</Link><p className="cinema-kicker">0{Math.max(0, groupIndex) + 1} / {chapters[Math.max(0, groupIndex)].code}</p><h1>{currentLabel}</h1><nav aria-label="İlgili sayfalar">{group.links.filter(link => link.href !== '/').map(link => <Link prefetch={false} key={link.href} href={link.href} aria-current={pathname === link.href ? 'page' : undefined}>{link.label}</Link>)}</nav></div>}
+      {!home && <div className="cinema-page-intro"><Link prefetch={false} href={`/#${chapters[Math.max(0, groupIndex)].id}`}><ArrowLeft size={15} /> Deneyime dön</Link><p className="cinema-kicker">0{Math.max(0, groupIndex) + 1} / {chapters[Math.max(0, groupIndex)].code}</p><h1>{currentLabel}</h1><nav aria-label="İlgili sayfalar">{group.links.filter(link => link.href !== '/').map(link => <Link prefetch={false} key={link.href} href={link.href} aria-current={activePath === link.href ? 'page' : undefined}>{link.label}</Link>)}</nav></div>}
       {children}
     </div>
 

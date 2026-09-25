@@ -1,12 +1,14 @@
 'use client';
 
 import { useTheme } from '@/contexts/ThemeContext';
+import ArchivedFormatBanner from '@/components/ArchivedFormatBanner';
 
 export default function BatakDominationPage() {
   const { isDark } = useTheme();
 
   return (
     <div id="page-batak_domination" className={`page-content page-content-container ${isDark ? 'bg-dark-surface border-dark-border' : ''}`}>
+      <ArchivedFormatBanner />
       <h2 className={`text-2xl font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Batak Domination</h2>
       <div className="mt-6 w-full">
         <iframe 

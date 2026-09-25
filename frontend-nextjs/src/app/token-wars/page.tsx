@@ -1,4 +1,5 @@
 import TokenWarsClient from './TokenWarsClient';
+import ArchivedFormatBanner from '@/components/ArchivedFormatBanner';
 import { readJson } from '@/lib/dataReader';
 import { fetchStats } from '@/lib/statsServer';
 import { getDateKeyedPeriodData, isDateKeyedPeriodPayload } from '@/lib/statsPeriods';
@@ -23,6 +24,7 @@ export default async function TokenWarsPage() {
     : stats.sonmac_by_date || {};
   return (
     <div id="page-token_wars" className="page-content page-content-container">
+      <ArchivedFormatBanner />
       <h2 className="text-2xl font-semibold text-purple-600 mb-4">Batak Token Wars</h2>
       <TokenWarsClient
         nightAvg={nightAvg}

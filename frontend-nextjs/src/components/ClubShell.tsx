@@ -4,7 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, BarChart3, ChevronRight, ClipboardList, Coins, Crosshair, Crown, Download, Film, Flag, Home, LayoutTemplate, ListOrdered, LogOut, Map, Menu, Moon, Settings, Shield, Star, Swords, Target, TrendingUp, Trophy, Users, X } from "lucide-react";
+import { Archive, ArrowUpRight, BarChart3, ChevronRight, ClipboardList, Crosshair, Crown, Download, Film, Flag, Globe2, Home, LayoutTemplate, ListOrdered, LogOut, Menu, Moon, Settings, Swords, Target, TrendingUp, Trophy, Users, X } from "lucide-react";
+import { ARCHIVE_HREF, findArchivedFormat } from "@/lib/archivedFormats";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSession } from "@/contexts/SessionContext";
 import ThemeToggle from "./ThemeToggle";
@@ -18,11 +19,9 @@ export const navigation = [
     { href: "/ekipman", label: "Ekipman", icon: Crosshair },
   ] },
   { label: "REKABET", links: [
-    { href: "/superliga", label: "Superliga", icon: Shield },
-    { href: "/token-wars", label: "Token Wars", icon: Coins },
-    { href: "/batak-allstars", label: "Batak All-Stars", icon: Star },
-    { href: "/batak-domination", label: "Domination", icon: Map },
+    { href: "/mundial", label: "Batak Mundial", icon: Globe2 },
     { href: "/gecenin-mvpsi", label: "Gecenin MVP’si", icon: Crown },
+    { href: ARCHIVE_HREF, label: "Arşiv", icon: Archive },
   ] },
   { label: "MAÇ MERKEZİ", links: [
     { href: "/gece-ortalama", label: "Gece Ortalaması", icon: Moon },
@@ -47,8 +46,11 @@ export default function ClubShell({ children }: { children: ReactNode }) {
   const { user, ready, logout } = useSession();
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
-  const group = navigation.find(group => group.links.some(link => link.href === pathname));
-  const current = group?.links.find(link => link.href === pathname)?.label || (pathname.startsWith('/notifications') ? 'Bildirimler' : 'Kulüp');
+  // Archived format pages live under Arşiv in the navigation.
+  const archived = findArchivedFormat(pathname);
+  const activePath = archived ? ARCHIVE_HREF : pathname;
+  const group = navigation.find(group => group.links.some(link => link.href === activePath));
+  const current = archived?.label || group?.links.find(link => link.href === pathname)?.label || (pathname.startsWith('/notifications') ? 'Bildirimler' : 'Kulüp');
   useEffect(() => { setOpen(false); }, [pathname]);
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
@@ -70,8 +72,8 @@ export default function ClubShell({ children }: { children: ReactNode }) {
           {navigation.map(group => <div className="club-nav-group" key={group.label}>
             <p>{group.label}</p>
             {group.links.map(({ href, label, icon: Icon }) => <Link prefetch={false} key={href} href={href}
-              className={`club-nav-link ${pathname === href ? 'is-active' : ''}`} aria-current={pathname === href ? 'page' : undefined}>
-              <Icon size={17} strokeWidth={1.7} /><span>{label}</span>{pathname === href && <span className="club-active-mark" />}
+              className={`club-nav-link ${activePath === href ? 'is-active' : ''}`} aria-current={pathname === href ? 'page' : undefined}>
+              <Icon size={17} strokeWidth={1.7} /><span>{label}</span>{activePath === href && <span className="club-active-mark" />}
             </Link>)}
           </div>)}
         </nav>

@@ -2,6 +2,7 @@
 // All data is in PostgreSQL on the same VM (sub-millisecond queries)
 
 const express = require('express');
+const { buildMundialDraw, KNOCKOUT_SLOTS, KNOCKOUT_DEPENDENTS } = require('./mundialDraw');
 const router = express.Router();
 
 // Live state is always validated against PostgreSQL, never an HTTP cache.
@@ -882,6 +883,161 @@ router.post('/superliga-manual-nights/delete', async (req, res) => {
     res.json({ ok: true, version });
   } catch (e) {
     console.error('[live/superliga-manual-nights/delete POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Batak Mundial (kura + eleme tablosu) ────────────────────────────────────
+// Kura sonucu ve eleme maçları tek bir key/value tablosunda tutulur:
+//   'draw'      → kura sonucu (gruplar + çekiliş sırası + tören zamanlaması)
+//   'ko:<slot>' → eleme maçı sonucu (qf1..qf4, sf1, sf2, final)
+// Gece puanlaması (kaptan, eksik maç, manuel gece) Superliga tablolarını kullanır.
+
+const MUNDIAL_DEFAULT_COUNTDOWN_MS = 15000;
+const MUNDIAL_DEFAULT_STEP_MS = 4500;
+const MUNDIAL_POT_INTRO_MS = 3000;
+
+function clampInt(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+router.get('/mundial', async (req, res) => {
+  try {
+    const clientVersion = parseInt(req.query.v) || 0;
+    const serverVersion = await getVersion('mundial');
+    if (clientVersion && clientVersion === serverVersion) {
+      return res.status(304).end();
+    }
+
+    const rows = await pool.query(`SELECT key, value FROM mundial_state`);
+    let draw = null;
+    const knockout = {};
+    for (const r of rows.rows) {
+      if (r.key === 'draw') draw = r.value;
+      else if (r.key.startsWith('ko:')) knockout[r.key.slice(3)] = r.value;
+    }
+
+    res.json({ version: serverVersion, serverTime: Date.now(), draw, knockout });
+  } catch (e) {
+    console.error('[live/mundial GET]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/mundial/draw', async (req, res) => {
+  try {
+    const { pots, groupCount, countdownMs, stepMs, setByUid, setByName } = req.body || {};
+    let built;
+    try {
+      built = buildMundialDraw(pots, Number(groupCount));
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const now = Date.now();
+    const draw = {
+      ...built,
+      createdAt: now,
+      revealStartsAt: now + clampInt(countdownMs, 0, 120000, MUNDIAL_DEFAULT_COUNTDOWN_MS),
+      stepMs: clampInt(stepMs, 1500, 10000, MUNDIAL_DEFAULT_STEP_MS),
+      potIntroMs: MUNDIAL_POT_INTRO_MS,
+      setByUid: setByUid ? String(setByUid) : undefined,
+      setByName: setByName ? String(setByName).slice(0, 80) : undefined,
+    };
+
+    // Tek kura: aynı anda iki çekiliş yapılırsa yalnızca ilki kaydedilir.
+    const inserted = await pool.query(
+      `INSERT INTO mundial_state (key, value, updated_at) VALUES ('draw', $1, NOW())
+       ON CONFLICT (key) DO NOTHING RETURNING key`,
+      [JSON.stringify(draw)]
+    );
+    if (!inserted.rows.length) {
+      return res.status(409).json({ error: 'Kura zaten çekildi. Yeniden çekmek için önce sıfırlayın.' });
+    }
+
+    await bumpVersion('mundial');
+    const version = await getVersion('mundial');
+    res.json({ ok: true, version, serverTime: Date.now(), draw });
+  } catch (e) {
+    console.error('[live/mundial/draw POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Kurayı ve ona bağlı tüm eleme sonuçlarını siler.
+router.post('/mundial/draw-reset', async (req, res) => {
+  try {
+    await pool.query(`DELETE FROM mundial_state`);
+    await bumpVersion('mundial');
+    const version = await getVersion('mundial');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/mundial/draw-reset POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/mundial/knockout-set', async (req, res) => {
+  try {
+    const { slot, player1SteamId, player2SteamId, winnerSteamId, score, date, setByUid, setByName, setAt } = req.body || {};
+    if (!KNOCKOUT_SLOTS.includes(slot)) {
+      return res.status(400).json({ error: 'invalid slot' });
+    }
+    const p1 = String(player1SteamId || '').trim();
+    const p2 = String(player2SteamId || '').trim();
+    const winner = String(winnerSteamId || '').trim();
+    if (!p1 || !p2 || p1 === p2) {
+      return res.status(400).json({ error: 'two different players required' });
+    }
+    if (winner !== p1 && winner !== p2) {
+      return res.status(400).json({ error: 'winner must be one of the players' });
+    }
+    if (date != null && date !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+      return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    }
+
+    const value = {
+      player1SteamId: p1,
+      player2SteamId: p2,
+      winnerSteamId: winner,
+      score: score ? String(score).trim().slice(0, 20) : undefined,
+      date: date ? String(date) : undefined,
+      setByUid: setByUid ? String(setByUid) : undefined,
+      setByName: setByName ? String(setByName).slice(0, 80) : undefined,
+      setAt: Number.isFinite(Number(setAt)) ? Number(setAt) : Date.now(),
+    };
+
+    await pool.query(
+      `INSERT INTO mundial_state (key, value, updated_at) VALUES ($1, $2, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+      [`ko:${slot}`, JSON.stringify(value)]
+    );
+
+    await bumpVersion('mundial');
+    const version = await getVersion('mundial');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/mundial/knockout-set POST]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/mundial/knockout-delete', async (req, res) => {
+  try {
+    const { slot } = req.body || {};
+    if (!KNOCKOUT_SLOTS.includes(slot)) {
+      return res.status(400).json({ error: 'invalid slot' });
+    }
+    const keys = [slot, ...KNOCKOUT_DEPENDENTS[slot]].map((s) => `ko:${s}`);
+    await pool.query(`DELETE FROM mundial_state WHERE key = ANY($1)`, [keys]);
+
+    await bumpVersion('mundial');
+    const version = await getVersion('mundial');
+    res.json({ ok: true, version });
+  } catch (e) {
+    console.error('[live/mundial/knockout-delete POST]', e.message);
     res.status(500).json({ error: e.message });
   }
 });

@@ -1,4 +1,5 @@
 import BatakAllStarsClient from './BatakAllStarsClient';
+import ArchivedFormatBanner from '@/components/ArchivedFormatBanner';
 import { readJson } from '@/lib/dataReader';
 import { fetchStats } from '@/lib/statsServer';
 import {
@@ -42,6 +43,7 @@ export default async function BatakAllStarsPage() {
   });
   return (
     <div id="page-batak_allstars" className="page-content page-content-container">
+      <ArchivedFormatBanner />
       <h2 className="text-2xl font-semibold text-blue-600 mb-4">Batak All-Stars Ligi</h2>
       <BatakAllStarsClient
         nightAvg={nightAvg}

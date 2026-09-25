@@ -160,6 +160,40 @@ export function deleteSuperligaManualNight(fields: {
   return livePost('superliga-manual-nights', { action: 'delete', ...fields });
 }
 
+// --- Batak Mundial (kura + eleme) ---
+
+export function drawMundialGroups(fields: {
+  pots: Array<{ id: number; players: Array<{ steamId: string; name: string }> }>;
+  groupCount: number;
+  countdownMs?: number;
+  setByUid?: string;
+  setByName?: string;
+}) {
+  return livePost('mundial', { action: 'draw', ...fields });
+}
+
+export function resetMundialDraw() {
+  return livePost('mundial', { action: 'draw-reset' });
+}
+
+export function setMundialKnockoutResult(fields: {
+  slot: string;
+  player1SteamId: string;
+  player2SteamId: string;
+  winnerSteamId: string;
+  score?: string;
+  date?: string;
+  setByUid?: string;
+  setByName?: string;
+  setAt?: number;
+}) {
+  return livePost('mundial', { action: 'knockout-set', ...fields });
+}
+
+export function deleteMundialKnockoutResult(fields: { slot: string }) {
+  return livePost('mundial', { action: 'knockout-delete', ...fields });
+}
+
 // --- Super Kupa ---
 
 export function setSuperKupaMatch(fields: {

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowDown, ArrowUpRight, Crosshair, MoveUpRight, Shield, Swords, Trophy } from 'lucide-react';
+import { ArrowDown, ArrowUpRight, Dices, Globe2, MoveUpRight, Swords, Trophy } from 'lucide-react';
 import { navigation } from '../ClubShell';
 import CinematicBriefing from './CinematicBriefing';
 import CinematicQuote from './CinematicQuote';
@@ -25,11 +25,11 @@ export default function CinematicHome() {
     <section className="cinema-chapter cinema-rivalry" id="rekabet" data-cinema-chapter="1" aria-labelledby="rivalry-title">
       <div className="cinema-section-copy"><p className="cinema-kicker">02 / HESAPLAŞMA VAKTİ</p><h2 id="rivalry-title">Dostluk maç<br /><span>başlayana kadar.</span></h2><p className="cinema-lede">Kim tepede, kim yine takıma suç atıyor?<br />Tablo burada. İtirazlar maçtan sonra.</p></div>
       <div className="cinema-competitions">
-        <Link prefetch={false} href="/superliga" className="cinema-competition"><div className="cinema-card-top"><span>01 / LİG</span><ArrowUpRight size={22} /></div><Shield className="cinema-emblem" strokeWidth={.6} /><div><h3>Superliga</h3><p>Zirve güzel. Orada kalmak biraz mesele.</p></div><span className="cinema-card-cta">TABLOYA BAK <MoveUpRight size={15} /></span></Link>
-        <Link prefetch={false} href="/token-wars" className="cinema-competition"><div className="cinema-card-top"><span>02 / MÜCADELE</span><ArrowUpRight size={22} /></div><Crosshair className="cinema-emblem" strokeWidth={.6} /><div><h3>Token Wars</h3><p>Token hesabı burada. Dostluk başka masada.</p></div><span className="cinema-card-cta">HESABI GÖR <MoveUpRight size={15} /></span></Link>
-        <Link prefetch={false} href="/batak-allstars" className="cinema-competition"><div className="cinema-card-top"><span>03 / ZİRVE</span><ArrowUpRight size={22} /></div><Trophy className="cinema-emblem" strokeWidth={.6} /><div><h3>All-Stars</h3><p>Yıldız çok. Kupa bir tane.</p></div><span className="cinema-card-cta">YILDIZLARI GÖR <MoveUpRight size={15} /></span></Link>
+        <Link prefetch={false} href="/mundial?sekme=gruplar" className="cinema-competition"><div className="cinema-card-top"><span>01 / GRUPLAR</span><ArrowUpRight size={22} /></div><Globe2 className="cinema-emblem" strokeWidth={.6} /><div><h3>Batak Mundial</h3><p>Beşer kişilik gruplar. İlk iki çeyrek finale.</p></div><span className="cinema-card-cta">TABLOYA BAK <MoveUpRight size={15} /></span></Link>
+        <Link prefetch={false} href="/mundial?sekme=kura" className="cinema-competition"><div className="cinema-card-top"><span>02 / KURA</span><ArrowUpRight size={22} /></div><Dices className="cinema-emblem" strokeWidth={.6} /><div><h3>Kura Çekimi</h3><p>Torbalar hazır. Ölüm grubu kimin?</p></div><span className="cinema-card-cta">KURAYA GİT <MoveUpRight size={15} /></span></Link>
+        <Link prefetch={false} href="/mundial?sekme=eleme" className="cinema-competition"><div className="cinema-card-top"><span>03 / KUPA</span><ArrowUpRight size={22} /></div><Trophy className="cinema-emblem" strokeWidth={.6} /><div><h3>Eleme Tablosu</h3><p>Çeyrek, yarı, final. Kupa bir tane.</p></div><span className="cinema-card-cta">EŞLEŞMELERİ GÖR <MoveUpRight size={15} /></span></Link>
       </div>
-      <div className="cinema-inline-links"><Link prefetch={false} href="/batak-domination">Batak Domination <ArrowUpRight size={15} /></Link><Link prefetch={false} href="/gecenin-mvpsi">Gecenin MVP’si <ArrowUpRight size={15} /></Link></div>
+      <div className="cinema-inline-links"><Link prefetch={false} href="/gecenin-mvpsi">Gecenin MVP’si <ArrowUpRight size={15} /></Link></div>
     </section>
 
     <section className="cinema-chapter cinema-aftermath" id="mac-merkezi" data-cinema-chapter="2" aria-labelledby="aftermath-title">
