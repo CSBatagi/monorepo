@@ -33,7 +33,7 @@ jobs:
           echo "frontend-nextjs=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "docker-compose=$(git diff --name-only HEAD~1 HEAD | grep -q 'docker-compose.yml\|Caddyfile' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "config_data=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/public/data/players.json$\|^frontend-nextjs/public/data/season_start.json$' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          echo "migrations=$(git diff --name-only HEAD~1 HEAD | grep -q '^backend/migrations/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "migrations=$(git diff --name-only HEAD~1 HEAD | grep -qE '^(backend/migrations/|ops/backend/run-migrations.sh)' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
 
       - name: Authenticate to GCP
         id: auth
@@ -187,20 +187,23 @@ jobs:
       - name: Run database migrations if changed
         if: steps.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
         run: |
-          # Copy migration files to VM
+          # Copy migration files and their runner to VM
           gcloud compute scp \
             --zone=${{ secrets.GCP_ZONE }} \
             --recurse \
             ./backend/migrations \
+            ./ops/backend/run-migrations.sh \
             ${{ secrets.GCP_VM_NAME }}:~/ \
             --ssh-key-expire-after=1m
-          
-          # Run all SQL migrations
+
+          # Run all SQL migrations as the database superuser; a failing migration fails this step
+          status=0
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="ANALYZER_PW=\$(grep '^CSDM_ANALYZER_PASSWORD=' ~/.pg_secrets | cut -d= -f2- | tr -d '\\r'); for f in ~/migrations/*.sql; do echo \"Running migration: \$f\"; sudo docker compose -f ~/docker-compose.yml exec -T postgres psql -U \$(sudo docker compose -f ~/docker-compose.yml exec -T postgres printenv POSTGRES_USER | tr -d '\\r') -d csdm -v csdm_analyzer_password=\"\$ANALYZER_PW\" -f - < \"\$f\" 2>&1 || true; done" \
-            --ssh-key-expire-after=2m
-          
+            --command="bash ~/run-migrations.sh" \
+            --ssh-key-expire-after=2m || status=$?
+
           # Cleanup migration files
           gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="rm -rf ~/migrations" \
+            --command="rm -rf ~/migrations ~/run-migrations.sh" \
             --ssh-key-expire-after=1m
+          exit $status
