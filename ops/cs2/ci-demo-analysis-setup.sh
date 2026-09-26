@@ -18,7 +18,7 @@ HELPER="$HERE/analyzer-maintenance.sh"
 ACCOUNT="$(gcloud config get-value account 2>/dev/null)"
 EXPRESSION="resource.name.startsWith(\"projects/_/buckets/${BUCKET}/objects/uploads/\")"
 CONDITION="title=website-demo-uploads,description=Member demo uploads only,expression=${EXPRESSION}"
-SSH_EXTRA=()
+SSH_EXTRA=(--tunnel-through-iap)
 
 warn() { echo "::warning::$*"; }
 
@@ -67,17 +67,42 @@ storage_access() {
 # ---------------------------------------------------------------- analyzer worker on the game VM
 
 vm_status() { gcloud compute instances describe "$GAME_VM" --zone "$GAME_ZONE" --format='value(status)'; }
-ssh_vm() { gcloud compute ssh "$GAME_VM" --zone "$GAME_ZONE" --quiet --strict-host-key-checking=no --ssh-key-expire-after=30m "${SSH_EXTRA[@]}" "$@"; }
-scp_vm() { gcloud compute scp --zone "$GAME_ZONE" --quiet --strict-host-key-checking=no --ssh-key-expire-after=30m "${SSH_EXTRA[@]}" "$@"; }
+# The game VM's firewall allows SSH only through Identity-Aware Proxy, so that is the way in; direct
+# SSH is only a fallback. Every call has a hard time limit: port 22 drops direct connections, and
+# the first run on main (26 September 2026) spent its whole 45 minutes on hung direct attempts.
+# ssh_vm SECONDS ARGS...
+ssh_vm() {
+  local limit="$1"; shift
+  timeout "$limit" gcloud compute ssh "$GAME_VM" --zone "$GAME_ZONE" --quiet --strict-host-key-checking=no \
+    --ssh-key-expire-after=30m --ssh-flag=-oConnectTimeout=20 --ssh-flag=-oServerAliveInterval=15 "${SSH_EXTRA[@]}" "$@"
+}
+scp_vm() {
+  timeout 300 gcloud compute scp --zone "$GAME_ZONE" --quiet --strict-host-key-checking=no \
+    --ssh-key-expire-after=30m --scp-flag=-oConnectTimeout=20 "${SSH_EXTRA[@]}" "$@"
+}
 
+# sshd needs a minute or two after a boot: IAP for up to about fifteen minutes, then direct SSH twice.
 wait_for_ssh() {
-  for _ in $(seq 1 16); do
-    if ssh_vm --command true >/dev/null 2>&1; then return 0; fi
-    sleep 15
-  done
-  # Port 22 may be closed to the internet; Identity-Aware Proxy is the other way in.
+  local error=''
+  echo "Waiting for SSH through IAP..."
   SSH_EXTRA=(--tunnel-through-iap)
-  ssh_vm --command true >/dev/null 2>&1
+  for _ in $(seq 1 10); do
+    error="$(ssh_vm 90 --command true 2>&1 >/dev/null)" && return 0
+    [ -n "$error" ] || error="no answer within 90 seconds"
+    sleep 10
+  done
+  SSH_EXTRA=()
+  for _ in 1 2; do
+    ssh_vm 60 --command true >/dev/null 2>&1 && return 0
+    sleep 5
+  done
+  SSH_EXTRA=(--tunnel-through-iap)
+  echo "Last IAP SSH error:"
+  printf '%s\n' "$error" | tail -n 5
+  case "$error" in
+    *4033*) warn "The deploy account may not open IAP tunnels. Grant it once in Cloud Shell: gcloud projects add-iam-policy-binding $(gcloud config get-value project 2>/dev/null) --member=serviceAccount:${ACCOUNT} --role=roles/iap.tunnelResourceAccessor" ;;
+  esac
+  return 1
 }
 
 # Stop the VM again only if this run started it, once no analysis, match or player is on it.
@@ -85,14 +110,14 @@ stop_if_started() {
   [ "$1" = true ] || return 0
   local state=unknown
   for _ in $(seq 1 40); do
-    state="$(ssh_vm --command "bash /tmp/analyzer-maintenance.sh state" 2>/dev/null || echo unknown)"
+    state="$(ssh_vm 90 --command "bash /tmp/analyzer-maintenance.sh state" 2>/dev/null || echo unknown)"
     case "$state" in idle|no-status) break ;; esac
     echo "Game VM is ${state}; waiting before stopping it."
     sleep 30
   done
   case "$state" in
     idle|no-status)
-      ssh_vm --command "rm -f /tmp/analyzer-maintenance.sh /tmp/demo-analyzer.py" >/dev/null 2>&1 || true
+      ssh_vm 60 --command "rm -f /tmp/analyzer-maintenance.sh /tmp/demo-analyzer.py" >/dev/null 2>&1 || true
       gcloud compute instances stop "$GAME_VM" --zone "$GAME_ZONE" --quiet
       echo "Game VM stopped again."
       ;;
@@ -112,8 +137,8 @@ game_worker() {
       echo "Dry run: would start the VM, install the worker and stop the VM again."
     elif wait_for_ssh; then
       scp_vm "$HELPER" "${GAME_VM}:/tmp/analyzer-maintenance.sh" >/dev/null
-      echo "Installed now: $(ssh_vm --command 'bash /tmp/analyzer-maintenance.sh installed' | tr '\n' ' ')"
-      ssh_vm --command "rm -f /tmp/analyzer-maintenance.sh" >/dev/null 2>&1 || true
+      echo "Installed now: $(ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh installed' | tr '\n' ' ')"
+      ssh_vm 60 --command "rm -f /tmp/analyzer-maintenance.sh" >/dev/null 2>&1 || true
     else
       warn "SSH to the game VM failed; the real run could not install the worker."
     fi
@@ -136,24 +161,36 @@ game_worker() {
     return 0
   fi
 
+  # A worker that silently stays old breaks analysis (the old one cannot fetch uploaded demos), so
+  # failing to install it fails the run instead of ending green with a warning.
   if ! wait_for_ssh; then
-    warn "Could not reach the game VM over SSH (direct or IAP); worker not updated."
+    warn "Could not reach the game VM over SSH (IAP or direct); worker not updated."
     [ "$started" = true ] && gcloud compute instances stop "$GAME_VM" --zone "$GAME_ZONE" --quiet
     echo "::endgroup::"
-    return 0
+    return 1
   fi
-  scp_vm "$HELPER" "$WORKER" "${GAME_VM}:/tmp/"
-  # First line only, without a pipe: under pipefail an early-closing `head` can kill the command.
-  installed="$(ssh_vm --command 'bash /tmp/analyzer-maintenance.sh installed' || true)"
-  installed="${installed%%$'\n'*}"
-  if [ "$installed" = "$wanted" ]; then
-    echo "Worker already up to date."
+  local ok=true
+  if ! scp_vm "$HELPER" "$WORKER" "${GAME_VM}:/tmp/"; then
+    warn "Copying the worker to the game VM failed; worker not updated."
+    ok=false
   else
-    echo "Installing worker ${wanted} (was ${installed:-none})."
-    ssh_vm --command 'bash /tmp/analyzer-maintenance.sh install /tmp/demo-analyzer.py'
+    # First line only, without a pipe: under pipefail an early-closing `head` can kill the command.
+    installed="$(ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh installed' || true)"
+    installed="${installed%%$'\n'*}"
+    if [ "$installed" = "$wanted" ]; then
+      echo "Worker already up to date."
+    else
+      echo "Installing worker ${wanted} (was ${installed:-none})."
+      # Waits up to 15 minutes for a running analysis before it restarts the service.
+      if ! ssh_vm 1200 --command 'bash /tmp/analyzer-maintenance.sh install /tmp/demo-analyzer.py'; then
+        warn "Installing the worker failed; see the output above."
+        ok=false
+      fi
+    fi
   fi
   stop_if_started "$started"
   echo "::endgroup::"
+  [ "$ok" = true ]
 }
 
 storage_access
