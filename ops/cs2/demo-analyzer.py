@@ -193,10 +193,12 @@ def analyze(job):
     result = subprocess.run(command, capture_output=True, text=True, timeout=ANALYZE_TIMEOUT,
                             env={**os.environ, 'HOME': os.environ.get('HOME', '/home/steam')})
     output = (result.stdout + '\n' + result.stderr).strip()
+    print(output[-4000:], flush=True)  # the whole story for journalctl
     if result.returncode != 0:
-        print(output[-4000:], flush=True)  # the whole story for journalctl
         raise RuntimeError(f'csdm exited {result.returncode}: {error_summary(output)}')
-    return output[-500:]
+    # The CLI also exits 0 when it skipped a demo or rolled a failed insertion back; the backend
+    # shows this output when the demo is not in the database.
+    return error_summary(output)
 
 
 def error_summary(output, limit=700):

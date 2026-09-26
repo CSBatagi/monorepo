@@ -170,3 +170,23 @@ test('a reported success without a database row is recorded as a failure', async
   expect(report.body.analysis_state).toBe('failed');
   expect(updates.some(([sql, params]) => /analysis_state = 'failed'/.test(sql) && /not in the database/.test(params[1]))).toBe(true);
 });
+
+test('a success report without a database row keeps what the CLI said', async () => {
+  const errors = [];
+  const query = jest.fn(async (sql, params) => {
+    if (/SELECT checksum FROM demos WHERE name/.test(sql)) return { rows: [] };
+    if (/UPDATE demo_files SET analysis_state = 'failed'/.test(sql)) errors.push(params[1]);
+    return { rows: [] };
+  });
+  const app = buildApp({ query });
+  const send = log => request(app).post('/demo-analysis/result').set('Authorization', `Bearer ${secret}`).send({ name: 'y.dem', state: 'analyzed', log }).expect(200);
+
+  await send('1 demos to process\nAnalyzing demo /x/y.dem...\nInserting match into database /x/y.dem...\npermission denied for table rounds');
+  expect(errors[0]).toMatch(/not in the database\. CS Demo Manager said: .*permission denied for table rounds$/s);
+
+  await send('1 demos to process\nDemo /x/y.dem already in database, skipping this demo.');
+  expect(errors[1]).toMatch(/skipped it: a demo with the same checksum is already in the database/);
+
+  await send('x'.repeat(5000));
+  expect(errors[2].length).toBeLessThan(800);
+});

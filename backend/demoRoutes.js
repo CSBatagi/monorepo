@@ -117,6 +117,15 @@ function autoQueueCandidates(demos, matchDir, since = AUTO_ANALYZE_SINCE) {
     .map(demo => demo.name);
 }
 
+// The CLI exits 0 even when it skipped a demo or rolled its insertion back; its output says why.
+function notInDatabaseReason(log) {
+  const output = typeof log === 'string' ? log.trim().slice(-700) : '';
+  if (/already in database, skipping/i.test(output)) {
+    return 'CS Demo Manager skipped it: a demo with the same checksum is already in the database under another name (analyzed from the desktop app?), so its statistics are already there';
+  }
+  return output ? `Analysis finished but the demo is not in the database. CS Demo Manager said: ${output}` : 'Analysis finished but the demo is not in the database';
+}
+
 function registerDemoRoutes(app, { pool, listObjects = null, account = null, storage = null, analysisServer = null, now = () => new Date() }) {
   const matchDir = process.env.CS2_MATCH_DIR || path.join(__dirname, 'cs2-control');
   const credentials = () => account || (account = loadServiceAccount());
@@ -297,7 +306,7 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, sto
         if (found.rows.length) {
           await pool.query(`UPDATE demo_files SET analysis_state = 'analyzed', analysis_force = false, checksum = $2, analysis_finished_at = NOW(), analysis_error = NULL, updated_at = NOW() WHERE name = $1`, [name, found.rows[0].checksum]);
         } else {
-          await pool.query(`UPDATE demo_files SET analysis_state = 'failed', analysis_finished_at = NOW(), analysis_error = $2, updated_at = NOW() WHERE name = $1`, [name, 'Analysis finished but the demo is not in the database']);
+          await pool.query(`UPDATE demo_files SET analysis_state = 'failed', analysis_finished_at = NOW(), analysis_error = $2, updated_at = NOW() WHERE name = $1`, [name, notInDatabaseReason(req.body?.log)]);
         }
       }
       const row = await pool.query(`${rowSql} WHERE f.name = $1`, [name]);
