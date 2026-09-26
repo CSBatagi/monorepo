@@ -1,0 +1,13 @@
+{
+  "notes": "Versions the render machines use. CS2 itself always follows Steam. HLAE follows its latest stable release because it must catch up with CS2 patches within a day; replace the hlae block with {\"version\", \"url\", \"sha256\"} to freeze a release that turns out bad. CS Demo Manager is pinned to the version the club desktop and the game VM analyzer use; bump it here by pull request. See docs/operations/demo-video-pipeline-plan.md.",
+  "hlae": {
+    "track": "latest",
+    "repo": "advancedfx/advancedfx",
+    "assetPattern": "^hlae_[0-9_]+\\.zip$"
+  },
+  "csdm": {
+    "version": "3.20.1",
+    "url": "https://github.com/akiver/cs-demo-manager/releases/download/v3.20.1/CS-Demo-Manager-Setup-3.20.1.exe",
+    "sha256": "eedda43b67bb079be4ffdf3e5fc3b114d07163bf2aa13eeed3d25d1c3563de3a"
+  }
+}

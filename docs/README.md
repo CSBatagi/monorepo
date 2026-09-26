@@ -20,6 +20,7 @@ Use this folder as the canonical context source.
 - Production stats publishing runbook: [`operations/stats-publishing.md`](operations/stats-publishing.md)
 - CS2 game server deployment and tests: [`operations/cs2-resurrection-deployment.md`](operations/cs2-resurrection-deployment.md)
 - Demo analysis worker, member downloads and uploads from other servers: [`operations/demo-analysis-and-downloads.md`](operations/demo-analysis-and-downloads.md)
+- Scripted CS Demo Manager recording and the demo-to-YouTube render plan: [`operations/demo-video-pipeline-plan.md`](operations/demo-video-pipeline-plan.md)
 - Security and secrets handling: [`operations/security-secrets.md`](operations/security-secrets.md)
 - Steam avatar integration: [`features/steam-integration.md`](features/steam-integration.md)
 - Steam website login and migration: [`features/steam-login.md`](features/steam-login.md)
