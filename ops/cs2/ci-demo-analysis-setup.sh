@@ -126,6 +126,24 @@ stop_if_started() {
   esac
 }
 
+# The CLI's database settings on the game VM: the backend VM's internal IP, where the backend's
+# Postgres listens, and the csdm_analyzer role the deploy creates with the same secret
+# (backend/migrations/csdm_analyzer_role.sql). They were typed by hand at install time before.
+analyzer_database() {
+  local ip
+  if [ -z "${CSDM_ANALYZER_PASSWORD:-}" ] || [ -z "${BACKEND_VM:-}" ] || [ -z "${BACKEND_ZONE:-}" ]; then
+    warn "CSDM_ANALYZER_PASSWORD, BACKEND_VM or BACKEND_ZONE is not set; database settings on the game VM left as they are."
+    ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh db show'
+    return
+  fi
+  ip="$(gcloud compute instances describe "$BACKEND_VM" --zone "$BACKEND_ZONE" --format='value(networkInterfaces[0].networkIP)')"
+  if ! [[ "$ip" =~ ^[0-9]+(\.[0-9]+){3}$ ]]; then
+    warn "Could not read the backend VM's internal IP (got '${ip}'); database settings on the game VM left as they are."
+    return 1
+  fi
+  printf '%s\n' "$CSDM_ANALYZER_PASSWORD" | ssh_vm 90 --command "bash /tmp/analyzer-maintenance.sh db set ${ip} 5432 csdm_analyzer csdm"
+}
+
 game_worker() {
   echo "::group::Analyzer worker on the game VM"
   local status started=false wanted installed
@@ -139,6 +157,7 @@ game_worker() {
     elif wait_for_ssh; then
       scp_vm "$HELPER" "${GAME_VM}:/tmp/analyzer-maintenance.sh" >/dev/null
       echo "Installed now: $(ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh installed' | tr '\n' ' ')"
+      ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh db show' || warn "The analyzer cannot log in to the database with its current settings."
       ssh_vm 60 --command "rm -f /tmp/analyzer-maintenance.sh" >/dev/null 2>&1 || true
     else
       warn "SSH to the game VM failed; the real run could not install the worker."
@@ -187,6 +206,10 @@ game_worker() {
         warn "Installing the worker failed; see the output above."
         ok=false
       fi
+    fi
+    if [ "$ok" = true ] && ! analyzer_database; then
+      warn "The analyzer cannot log in to the database; analyses will fail until this is fixed."
+      ok=false
     fi
   fi
   stop_if_started "$started"

@@ -47,4 +47,9 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Storage access and game VM worker
+        env:
+          # The analyzer's database login on the game VM (see analyzer_database in the script).
+          CSDM_ANALYZER_PASSWORD: ${{ secrets.CSDM_ANALYZER_PASSWORD }}
+          BACKEND_VM: ${{ secrets.GCP_VM_NAME }}
+          BACKEND_ZONE: ${{ secrets.GCP_ZONE }}
         run: bash ops/cs2/ci-demo-analysis-setup.sh
