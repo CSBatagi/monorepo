@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSession } from '@/contexts/SessionContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { analysisLabel, formatRecordedAt, formatSize, recordingLabel, type DemoListing, type DemoRecord } from '@/lib/demos';
+import { ANALYSIS_SOURCES, analysisLabel, formatRecordedAt, formatSize, platformLabel, recordingLabel, type DemoListing, type DemoRecord } from '@/lib/demos';
+import AnalysisServerPanel from './AnalysisServerPanel';
+import DemoUploadPanel from './DemoUploadPanel';
 
 const POLL_MS = 30000;
 
@@ -40,6 +42,7 @@ export default function DemolarClient() {
   const [onlyComplete, setOnlyComplete] = useState(true);
   const [busyName, setBusyName] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [sources, setSources] = useState<Record<string, string>>({});
   const disposed = useRef(false);
 
   const load = useCallback(async (refresh = false) => {
@@ -66,12 +69,18 @@ export default function DemolarClient() {
     return () => { disposed.current = true; };
   }, [ready, user, load]);
 
-  const active = useMemo(() => (listing?.demos || []).some(d => d.analysis_state === 'queued' || d.analysis_state === 'analyzing'), [listing]);
+  const queuedCount = useMemo(() => (listing?.demos || []).filter(d => d.analysis_state === 'queued').length, [listing]);
+  const analyzingCount = useMemo(() => (listing?.demos || []).filter(d => d.analysis_state === 'analyzing').length, [listing]);
+  const server = listing?.analysisServer || null;
+  // Keep refreshing while work is pending or the game VM is changing state or counting down to close.
+  const active = queuedCount + analyzingCount > 0 || Boolean(server && (server.vm === 'starting' || server.vm === 'stopping' || (server.vm === 'running' && server.autoStop)));
   useEffect(() => {
     if (!active) return;
     const timer = setInterval(() => void load(), POLL_MS);
     return () => clearInterval(timer);
   }, [active, load]);
+
+  const sourceOf = (demo: DemoRecord) => sources[demo.name] || demo.analysis_source || 'matchzy';
 
   const requestAnalysis = async (demo: DemoRecord) => {
     const again = demo.analysis_state === 'analyzed';
@@ -79,9 +88,34 @@ export default function DemolarClient() {
     setBusyName(demo.name);
     setNotice(null);
     try {
-      const response = await fetch(`/api/demos/${encodeURIComponent(demo.name)}/analyze`, { method: 'POST' });
+      // Uploaded demos are analyzed with the chosen source; server recordings keep MatchZy.
+      const response = await fetch(`/api/demos/${encodeURIComponent(demo.name)}/analyze`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(demo.origin === 'upload' ? { source: sourceOf(demo) } : {}),
+      });
       const data = await response.json().catch(() => ({}));
-      setNotice(response.ok ? `${demo.name} analiz sırasına alındı. Sunucu boşken işlenir.` : `Hata: ${data.error || response.status}`);
+      const label = demo.original_name || demo.name;
+      if (!response.ok) setNotice(`Hata: ${data.error || response.status}`);
+      else if (data.server?.started) setNotice(`${label} sıraya alındı. Oyun sunucusu açılıyor; birkaç dakika içinde analiz edilir.`);
+      else if (data.server?.pending) setNotice(`${label} sıraya alındı. Oyun sunucusu kapanıyor; kapanınca yeniden açılıp analiz edilecek.`);
+      else setNotice(`${label} analiz sırasına alındı. Sunucu boşken işlenir.`);
+      await load();
+    } catch {
+      setNotice('İstek gönderilemedi.');
+    } finally {
+      setBusyName(null);
+    }
+  };
+
+  const deleteUpload = async (demo: DemoRecord) => {
+    const note = demo.analysis_state === 'analyzed' ? ' İstatistiklere işlenmiş sonuçlar silinmez; gerekirse CS Demo Manager üzerinden ayrıca silin.' : '';
+    if (!confirm(`${demo.original_name || demo.name} arşivden silinsin mi?${note}`)) return;
+    setBusyName(demo.name);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/demos/${encodeURIComponent(demo.name)}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      setNotice(response.ok ? `${demo.original_name || demo.name} silindi.` : `Hata: ${data.error || response.status}`);
       await load();
     } catch {
       setNotice('İstek gönderilemedi.');
@@ -92,7 +126,7 @@ export default function DemolarClient() {
 
   const demos = useMemo(() => {
     const all = listing?.demos || [];
-    return onlyComplete ? all.filter(d => d.recording_state === 'map-ended' || d.recording_state === 'unknown' || d.recording_state === null) : all;
+    return onlyComplete ? all.filter(d => ['map-ended', 'uploaded', 'unknown', null].includes(d.recording_state)) : all;
   }, [listing, onlyComplete]);
 
   const surface = isDark ? 'border-dark-border bg-dark-surface' : 'border-gray-200 bg-white';
@@ -111,8 +145,15 @@ export default function DemolarClient() {
           Arşivi yenile
         </button>
         <span className="text-xs text-gray-500">{demos.length} demo{listing?.bucket.error ? ' · arşiv listesi alınamadı' : ''}</span>
-        {active && <span className="text-xs text-amber-700 dark:text-amber-300">Analiz sürüyor, liste otomatik yenilenir.</span>}
+        {queuedCount + analyzingCount > 0 && <span className="text-xs text-amber-700 dark:text-amber-300">Analiz sürüyor, liste otomatik yenilenir.</span>}
       </div>
+      {isAdmin && server && (
+        <AnalysisServerPanel state={server} queued={queuedCount} analyzing={analyzingCount} isDark={isDark}
+          onChanged={message => { setNotice(message); void load(); }} />
+      )}
+      {listing?.uploads?.enabled && (
+        <DemoUploadPanel settings={listing.uploads} isDark={isDark} onUploaded={message => { setNotice(message); void load(); }} />
+      )}
       {notice && <p className="text-sm text-blue-700 dark:text-blue-300">{notice}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className={`overflow-x-auto rounded-lg border ${surface}`}>
@@ -138,12 +179,20 @@ export default function DemolarClient() {
               const analysis = analysisLabel(demo);
               const downloadable = Boolean(demo.object_name);
               const queued = demo.analysis_state === 'queued' || demo.analysis_state === 'analyzing';
+              const uploaded = demo.origin === 'upload';
+              const teams = demo.team1 && demo.team2 ? `${demo.team1} vs ${demo.team2}`
+                : demo.teams && demo.teams.length >= 2 ? `${demo.teams[0].name} vs ${demo.teams[1].name}`
+                  : demo.original_name || demo.name;
               return (
                 <tr key={demo.name} className={`border-t ${isDark ? 'border-dark-border' : 'border-gray-100'}`}>
                   <td className="whitespace-nowrap px-3 py-2">{formatRecordedAt(demo.recorded_at)}</td>
                   <td className="whitespace-nowrap px-3 py-2">{demo.map_name ? demo.map_name.replace(/^de_/, '') : '—'}</td>
                   <td className="px-3 py-2">
-                    <span title={demo.name}>{demo.team1 && demo.team2 ? `${demo.team1} vs ${demo.team2}` : demo.name}</span>
+                    {uploaded && (
+                      <span className="mr-2"><Badge text={platformLabel(demo.source_platform)} tone="muted"
+                        title={[demo.uploader_name && `Yükleyen: ${demo.uploader_name}`, demo.server_name && `Sunucu: ${demo.server_name}`].filter(Boolean).join(' · ')} /></span>
+                    )}
+                    <span title={demo.name}>{teams}</span>
                     <Score demo={demo} />
                   </td>
                   <td className="whitespace-nowrap px-3 py-2">{formatSize(demo.size)}</td>
@@ -165,14 +214,38 @@ export default function DemolarClient() {
                   </td>
                   {isAdmin && (
                     <td className="whitespace-nowrap px-3 py-2">
-                      <button
-                        type="button"
-                        disabled={queued || busyName === demo.name || (!demo.on_game_server && !demo.object_name)}
-                        onClick={() => void requestAnalysis(demo)}
-                        className="rounded border border-purple-600 px-2 py-1 text-xs font-medium text-purple-700 hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-purple-300 dark:hover:bg-purple-900/30"
-                      >
-                        {demo.analysis_state === 'analyzed' ? 'Yeniden analiz et' : 'Analiz et'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {uploaded && (
+                          <select
+                            aria-label="Analiz türü"
+                            title="csdm analyze --source"
+                            value={sourceOf(demo)}
+                            disabled={queued || busyName === demo.name}
+                            onChange={e => setSources(current => ({ ...current, [demo.name]: e.target.value }))}
+                            className={`max-w-[9rem] rounded border px-1 py-1 text-xs ${isDark ? 'border-dark-border bg-dark-surface' : 'border-gray-300 bg-white'}`}
+                          >
+                            {ANALYSIS_SOURCES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </select>
+                        )}
+                        <button
+                          type="button"
+                          disabled={queued || busyName === demo.name || (!demo.on_game_server && !demo.object_name)}
+                          onClick={() => void requestAnalysis(demo)}
+                          className="rounded border border-purple-600 px-2 py-1 text-xs font-medium text-purple-700 hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-purple-300 dark:hover:bg-purple-900/30"
+                        >
+                          {demo.analysis_state === 'analyzed' ? 'Yeniden analiz et' : 'Analiz et'}
+                        </button>
+                        {uploaded && (
+                          <button
+                            type="button"
+                            disabled={queued || busyName === demo.name}
+                            onClick={() => void deleteUpload(demo)}
+                            className="rounded border border-red-600 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-300 dark:hover:bg-red-900/30"
+                          >
+                            Sil
+                          </button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>

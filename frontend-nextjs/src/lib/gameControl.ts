@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SESSION_COOKIE_NAME, verifySessionToken } from './authSession';
 
-export async function gameControl(req: NextRequest, endpoint: string, method = 'POST') {
+type ForwardOptions = { body?: string | ArrayBuffer; contentType?: string };
+
+export async function gameControl(req: NextRequest, endpoint: string, method = 'POST', options: ForwardOptions = {}) {
   const session = req.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (!session || !verifySessionToken(session)) return NextResponse.json({ error: 'Sign in first' }, { status: 401 });
   const origin = req.headers.get('origin');
@@ -13,14 +15,14 @@ export async function gameControl(req: NextRequest, endpoint: string, method = '
   }
   const token = process.env.MATCHMAKING_TOKEN || process.env.AUTH_TOKEN;
   if (!token) return NextResponse.json({ error: 'Server authentication is not configured' }, { status: 503 });
-  let body;
+  let body = options.body;
   if (endpoint === 'start-match' || ['cosmetics/save', 'cosmetics/unlock', 'cosmetics/award'].includes(endpoint)) {
     try { body = JSON.stringify(await req.json()); }
     catch { return NextResponse.json({ error: 'Invalid match JSON' }, { status: 400 }); }
   }
   try {
     const response = await fetch(`${process.env.BACKEND_INTERNAL_URL || 'http://backend:3000'}/${endpoint}`, {
-      method, headers: { Authorization: `Bearer ${token}`, 'X-Game-Session': session, 'Content-Type': 'application/json' },
+      method, headers: { Authorization: `Bearer ${token}`, 'X-Game-Session': session, 'Content-Type': options.contentType || 'application/json' },
       body, cache: 'no-store', signal: method === 'GET' && endpoint.startsWith('cosmetics/')
         ? AbortSignal.any([req.signal, AbortSignal.timeout(12000)])
         : AbortSignal.timeout(60000),

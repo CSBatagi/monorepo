@@ -5,10 +5,17 @@ Runs on the game VM as the steam user. The backend decides which demos to analyz
 (finished recordings of website matches, or admin requests); this worker reports what
 exists locally, runs the CLI only while no match is live, and reports the outcome.
 It never deletes demo files.
+
+Demos members uploaded from other servers (xplay.gg, FACEIT...) exist only in the bucket. Their
+jobs carry a signed download link, the match time (CS Demo Manager dates a match by the file's
+mtime) and the `--source` to analyze with; xplay.gg demos usually need "matchzy".
 """
+import datetime
 import json
 import os
 import pathlib
+import re
+import shutil
 import sqlite3
 import subprocess
 import time
@@ -26,6 +33,14 @@ CSDM = os.environ.get('CSDM_CLI', '/usr/local/bin/csdm')
 BUCKET = os.environ.get('DEMO_BUCKET', 'csbatagi-demos')
 INTERVAL = int(os.environ.get('ANALYZER_INTERVAL', '60'))
 ANALYZE_TIMEOUT = int(os.environ.get('ANALYZER_TIMEOUT', '3600'))
+# `csdm analyze --source` values of CS Demo Manager 3.20.1; "auto" lets the CLI detect the source.
+SOURCES = {
+    'matchzy', 'valve', 'faceit', 'esea', 'esl', 'ebot', 'esplay', 'esportal', 'esportligaen', 'fastcup',
+    '5eplay', 'gamersclub', 'challengermode', 'perfectworld', 'popflash', 'pracc', 'renown',
+}
+SAFE_NAME = re.compile(r'^[\w.-]{1,200}\.dem$')
+DEMO_STAMP = b'PBDEMS2\x00'
+SIGNED_HOST = 'https://storage.googleapis.com/'
 
 
 def api(route, payload):
@@ -36,16 +51,28 @@ def api(route, payload):
         return json.load(response)
 
 
-def server_busy():
-    """True while a match is being prepared, played or recorded. A stale status file means CS2 is down."""
+def game_report():
+    """The plugin's status.json, rewritten every few seconds. A stale file means CS2 is not running.
+
+    The backend uses this to tell whether anyone is on the server before it closes an idle VM.
+    """
     status_file = STATE / 'status.json'
     try:
         if time.time() - status_file.stat().st_mtime > 120:
-            return False
+            return {'running': False}
         status = json.loads(status_file.read_text())
     except (OSError, ValueError):
-        return False
-    return bool(status.get('live') or status.get('preparing') or status.get('recording'))
+        return {'running': False}
+    return {
+        'running': True, 'humans': int(status.get('humans') or 0), 'live': bool(status.get('live')),
+        'preparing': bool(status.get('preparing')), 'recording': bool(status.get('recording')),
+    }
+
+
+def server_busy(report=None):
+    """True while a match is being prepared, played or recorded."""
+    report = report or game_report()
+    return bool(report.get('live') or report.get('preparing') or report.get('recording'))
 
 
 def upload_states():
@@ -85,15 +112,54 @@ def inventory():
     return demos
 
 
+def demo_name(job):
+    name = str(job.get('name', ''))
+    if not SAFE_NAME.match(name) or '..' in name:
+        raise RuntimeError('unsafe demo name')
+    return name
+
+
+def fetch_signed(job, target):
+    """Download an uploaded demo through its signed link, then check size and CS2 stamp before use."""
+    url = job['downloadUrl']
+    if not url.startswith(SIGNED_HOST):
+        raise RuntimeError('unexpected download host')
+    partial = target.with_name(target.name + '.part')
+    try:
+        with urllib.request.urlopen(url, timeout=60) as response, partial.open('wb') as output:
+            shutil.copyfileobj(response, output, 8 * 1024 * 1024)
+        size = partial.stat().st_size
+        if job.get('size') and size != job['size']:
+            raise RuntimeError(f"downloaded {size} of {job['size']} bytes")
+        with partial.open('rb') as demo:
+            if demo.read(len(DEMO_STAMP)) != DEMO_STAMP:
+                raise RuntimeError('downloaded file is not a CS2 demo')
+        partial.replace(target)
+    finally:
+        partial.unlink(missing_ok=True)
+
+
+def stamp_match_time(path, job):
+    """CS Demo Manager takes the match date from the file's mtime; uploads carry the real match time."""
+    recorded = job.get('recordedAt')
+    if not recorded:
+        return
+    moment = datetime.datetime.fromisoformat(recorded.replace('Z', '+00:00')).timestamp()
+    os.utime(path, (moment, moment))
+
+
 def locate(job):
-    local = DEMOS / job['name']
+    name = demo_name(job)
+    local = DEMOS / name
     if local.exists():
         return local
-    if not job.get('objectName'):
+    if not job.get('objectName') and not job.get('downloadUrl'):
         return None
     RESTORED.mkdir(exist_ok=True)
-    target = RESTORED / job['name']
-    if not target.exists():
+    target = RESTORED / name
+    if not target.exists() and job.get('downloadUrl'):
+        fetch_signed(job, target)
+    elif not target.exists():
         result = subprocess.run(
             ['/snap/bin/gcloud', 'storage', 'cp', f"gs://{BUCKET}/{job['objectName']}", str(target), '--quiet'],
             stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=1200,
@@ -105,10 +171,16 @@ def locate(job):
 
 
 def analyze(job):
+    source = job.get('source') or 'matchzy'
+    if source != 'auto' and source not in SOURCES:
+        raise RuntimeError(f'unsupported analysis source {source!r}')
     path = locate(job)
     if path is None:
         raise RuntimeError('demo is neither on the game server nor in the archive')
-    command = ['nice', '-n', '15', 'ionice', '-c', '3', CSDM, 'analyze', str(path), '--source', 'matchzy']
+    stamp_match_time(path, job)
+    command = ['nice', '-n', '15', 'ionice', '-c', '3', CSDM, 'analyze', str(path)]
+    if source != 'auto':
+        command += ['--source', source]
     if job.get('force'):
         command.append('--force')
     result = subprocess.run(command, capture_output=True, text=True, timeout=ANALYZE_TIMEOUT,
@@ -120,8 +192,9 @@ def analyze(job):
 
 
 def run_once():
-    busy = server_busy()
-    response = api('/demo-analysis/sync', {'busy': busy, 'demos': inventory()})
+    game = game_report()
+    busy = server_busy(game)
+    response = api('/demo-analysis/sync', {'busy': busy, 'demos': inventory(), 'game': game})
     for job in [] if busy else response.get('jobs', []):
         if server_busy():
             return

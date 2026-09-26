@@ -1,0 +1,50 @@
+name: Demo analysis setup
+
+# Keeps the parts of demo analysis that live outside the website images in step with the code
+# (ops/cs2/ci-demo-analysis-setup.sh): the backend account's write access to
+# gs://csbatagi-demos/uploads/ for member uploads, and the analyzer worker on the game VM.
+# On main it applies them; on any other branch it is a dry run that only checks permissions and
+# reachability. Run it again from the GitHub app with Actions > Demo analysis setup > Run workflow.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ops/cs2/demo-analyzer.py'
+      - 'ops/cs2/analyzer-maintenance.sh'
+      - 'ops/cs2/ci-demo-analysis-setup.sh'
+      - '.github/workflows/demo-analysis-setup.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-analysis-setup
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      APPLY: ${{ github.ref == 'refs/heads/main' }}
+      BUCKET: csbatagi-demos
+      GAME_VM: cs2-server
+      GAME_ZONE: europe-west3-c
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the scripts
+        run: |
+          python3 -m py_compile ops/cs2/demo-analyzer.py
+          bash -n ops/cs2/analyzer-maintenance.sh ops/cs2/ci-demo-analysis-setup.sh
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Storage access and game VM worker
+        run: bash ops/cs2/ci-demo-analysis-setup.sh

@@ -32,7 +32,7 @@ function validateMatch(input) {
     clinch_series: true, spectators: { players: {} }, cvars: {} };
 }
 
-function registerGameServer(app, { pool, rcon, gcp, lookupRoster = rosterMember }) {
+function registerGameServer(app, { pool, rcon, gcp, analysisServer = null, lookupRoster = rosterMember }) {
   const directory = process.env.CS2_MATCH_DIR || path.join(__dirname, 'cs2-control');
   fs.mkdirSync(directory, { recursive: true });
   let loading = false;
@@ -90,6 +90,8 @@ function registerGameServer(app, { pool, rcon, gcp, lookupRoster = rosterMember 
   app.post('/start-vm', bearer, member, async (_req, res) => {
     try {
       const result = await gcp.startVm();
+      // Opened for a match: an analysis session running on it no longer closes it when idle.
+      if (result.success) await analysisServer?.noteManualStart().catch(() => {});
       res.status(result.success ? 200 : 502).json(result);
     } catch { res.status(503).json({ error: 'Sunucu başlatılamadı. Durumu kontrol edip yeniden dene.' }); }
   });
@@ -98,8 +100,10 @@ function registerGameServer(app, { pool, rcon, gcp, lookupRoster = rosterMember 
       const status = await rcon.status();
       if (status.live || status.preparing || status.recording || status.uploads?.pending !== 0 || Date.now() / 1000 - (status.uploads?.updatedAt || 0) > 120)
         return res.status(409).json({ error: 'Maçın bitmesini ve demo yüklemelerinin doğrulanmasını bekle.' });
+      if (await analysisServer?.analysisRunning()) return res.status(409).json({ error: 'Demo analizi sürüyor; bitmesini bekle.' });
       await rcon.executeCommand('quit').catch(() => {});
       const result = await gcp.stopVm();
+      if (result.success) await analysisServer?.noteManualStop().catch(() => {});
       res.status(result.success ? 200 : 502).json(result);
     } catch (error) { res.status(503).json({ error: error.message }); }
   });

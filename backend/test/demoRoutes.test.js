@@ -121,7 +121,7 @@ test('admins queue analysis once; the worker sync hands the job out and the resu
   expect(query.mock.calls.some(([sql]) => /analysis_requested_by = 'auto'/.test(sql))).toBe(false);
   const listing = await auth(request(app).get('/demos')).expect(200);
   expect(listing.body.autoAnalyze).toBe(false);
-  expect(sync.body.jobs).toEqual([{ name: 'x.dem', objectName: null, force: false, onGameServer: true }]);
+  expect(sync.body.jobs).toEqual([{ name: 'x.dem', objectName: null, force: false, onGameServer: true, source: 'matchzy' }]);
   const busy = await request(app).post('/demo-analysis/sync').set('Authorization', `Bearer ${secret}`).send({ busy: true, demos: [] }).expect(200);
   expect(busy.body.jobs).toEqual([]);
   await request(app).post('/demo-analysis/sync').set('Authorization', `Bearer ${secret}`).send({ demos: [{ name: '../x.dem' }] }).expect(200);
