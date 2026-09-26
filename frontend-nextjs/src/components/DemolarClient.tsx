@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSession } from '@/contexts/SessionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ANALYSIS_SOURCES, analysisLabel, formatRecordedAt, formatSize, platformLabel, recordingLabel, type DemoListing, type DemoRecord } from '@/lib/demos';
+import AnalysisServerPanel from './AnalysisServerPanel';
 import DemoUploadPanel from './DemoUploadPanel';
 
 const POLL_MS = 30000;
@@ -68,7 +69,11 @@ export default function DemolarClient() {
     return () => { disposed.current = true; };
   }, [ready, user, load]);
 
-  const active = useMemo(() => (listing?.demos || []).some(d => d.analysis_state === 'queued' || d.analysis_state === 'analyzing'), [listing]);
+  const queuedCount = useMemo(() => (listing?.demos || []).filter(d => d.analysis_state === 'queued').length, [listing]);
+  const analyzingCount = useMemo(() => (listing?.demos || []).filter(d => d.analysis_state === 'analyzing').length, [listing]);
+  const server = listing?.analysisServer || null;
+  // Keep refreshing while work is pending or the game VM is changing state or counting down to close.
+  const active = queuedCount + analyzingCount > 0 || Boolean(server && (server.vm === 'starting' || server.vm === 'stopping' || (server.vm === 'running' && server.autoStop)));
   useEffect(() => {
     if (!active) return;
     const timer = setInterval(() => void load(), POLL_MS);
@@ -89,7 +94,11 @@ export default function DemolarClient() {
         body: JSON.stringify(demo.origin === 'upload' ? { source: sourceOf(demo) } : {}),
       });
       const data = await response.json().catch(() => ({}));
-      setNotice(response.ok ? `${demo.name} analiz sırasına alındı. Sunucu boşken işlenir.` : `Hata: ${data.error || response.status}`);
+      const label = demo.original_name || demo.name;
+      if (!response.ok) setNotice(`Hata: ${data.error || response.status}`);
+      else if (data.server?.started) setNotice(`${label} sıraya alındı. Oyun sunucusu açılıyor; birkaç dakika içinde analiz edilir.`);
+      else if (data.server?.pending) setNotice(`${label} sıraya alındı. Oyun sunucusu kapanıyor; kapanınca yeniden açılıp analiz edilecek.`);
+      else setNotice(`${label} analiz sırasına alındı. Sunucu boşken işlenir.`);
       await load();
     } catch {
       setNotice('İstek gönderilemedi.');
@@ -136,8 +145,12 @@ export default function DemolarClient() {
           Arşivi yenile
         </button>
         <span className="text-xs text-gray-500">{demos.length} demo{listing?.bucket.error ? ' · arşiv listesi alınamadı' : ''}</span>
-        {active && <span className="text-xs text-amber-700 dark:text-amber-300">Analiz sürüyor, liste otomatik yenilenir.</span>}
+        {queuedCount + analyzingCount > 0 && <span className="text-xs text-amber-700 dark:text-amber-300">Analiz sürüyor, liste otomatik yenilenir.</span>}
       </div>
+      {isAdmin && server && (
+        <AnalysisServerPanel state={server} queued={queuedCount} analyzing={analyzingCount} isDark={isDark}
+          onChanged={message => { setNotice(message); void load(); }} />
+      )}
       {listing?.uploads?.enabled && (
         <DemoUploadPanel settings={listing.uploads} isDark={isDark} onUploaded={message => { setNotice(message); void load(); }} />
       )}

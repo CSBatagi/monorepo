@@ -32,17 +32,29 @@ module.exports = class GcpManager {
 
     // Initialize the Compute client
     const projectId = JSON.parse(fs.readFileSync(credentialsPath, 'utf8')).project_id;
+    this.projectId = projectId;
     this.compute = new computeEngine.InstancesClient({
       projectId: projectId,
       keyFilename: credentialsPath
     });
   }
 
+  assertGameServer() {
+    if (this.vmName !== 'cs2-server' || this.zone !== 'europe-west3-c') {
+      throw new Error('Refusing to operate on a VM other than the configured CS2 game server');
+    }
+  }
+
+  /** Compute Engine status of the game VM: RUNNING, TERMINATED, STAGING, STOPPING, ... */
+  async getStatus() {
+    this.assertGameServer();
+    const [instance] = await this.compute.get({ project: this.projectId, zone: this.zone, instance: this.vmName });
+    return instance.status;
+  }
+
   async performVmOperation(operationType) {
     try {
-      if (this.vmName !== 'cs2-server' || this.zone !== 'europe-west3-c') {
-        throw new Error('Refusing to operate on a VM other than the configured CS2 game server');
-      }
+      this.assertGameServer();
       if (!['start', 'stop'].includes(operationType)) throw new Error('Invalid VM operation');
       const action = operationType === 'start' ? 'Starting' : 'Stopping';
       console.log(`${action} VM: ${this.vmName} in zone: ${this.zone}`);

@@ -743,11 +743,14 @@ if (pool) {
 
 }
 
+// The game VM doubles as the demo analysis machine: started for "Analiz et", closed again when idle.
+const analysisServer = pool ? require('./analysisServer').createAnalysisServer({ pool, gcp: gcpManager, rcon: rconConnection }) : null;
+if (analysisServer && !TEST_MODE) analysisServer.start();
 // Game controls use persistent match IDs and verified admin sessions.
-require('./gameServer').registerGameServer(app, { pool, rcon: rconConnection, gcp: gcpManager });
+require('./gameServer').registerGameServer(app, { pool, rcon: rconConnection, gcp: gcpManager, analysisServer });
 // Demo archive listing, signed downloads and the analysis queue fed by the game VM worker.
 const { registerDemoRoutes, DEMO_FILES_MIGRATIONS } = require('./demoRoutes');
-if (pool) registerDemoRoutes(app, { pool });
+if (pool) registerDemoRoutes(app, { pool, analysisServer });
 
 // Start the server
 if (!TEST_MODE) {

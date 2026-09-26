@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { sessionUser, isSteamAdmin } = require('./steamAuth');
 const { ANALYSIS_SOURCES, DEFAULT_ANALYSIS_SOURCE, DEMO_UPLOAD_MIGRATIONS, UPLOAD_PREFIX, defaultStorage, uploadSettings } = require('./demoUploads');
+const { ANALYSIS_SERVER_MIGRATIONS, ServerBusy } = require('./analysisServer');
 
 const BUCKET = process.env.DEMO_BUCKET || 'csbatagi-demos';
 const BUCKET_REFRESH_MS = Number(process.env.DEMO_BUCKET_REFRESH_MS || 5 * 60 * 1000);
@@ -116,7 +117,7 @@ function autoQueueCandidates(demos, matchDir, since = AUTO_ANALYZE_SINCE) {
     .map(demo => demo.name);
 }
 
-function registerDemoRoutes(app, { pool, listObjects = null, account = null, storage = null, now = () => new Date() }) {
+function registerDemoRoutes(app, { pool, listObjects = null, account = null, storage = null, analysisServer = null, now = () => new Date() }) {
   const matchDir = process.env.CS2_MATCH_DIR || path.join(__dirname, 'cs2-control');
   const credentials = () => account || (account = loadServiceAccount());
   const bucket = { refreshedAt: 0, error: null, count: 0, refreshing: null };
@@ -231,6 +232,7 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, sto
   app.post('/demo-analysis/sync', bearer, async (req, res) => {
     const demos = Array.isArray(req.body?.demos) ? req.body.demos.filter(d => isDemoName(d?.name)) : null;
     if (!demos) return res.status(400).json({ error: 'Inventory must be a list of demos' });
+    analysisServer?.noteWorker(req.body);
     try {
       await upsertGameServerInventory(demos.map(d => ({
         name: d.name, size: Number(d.size) || 0, matchId: Number.isInteger(d.matchId) ? d.matchId : null,
@@ -318,10 +320,12 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, sto
         console.warn('[demos] listing without match details:', error.message);
         rows = (await pool.query(`${rowSql} ORDER BY f.recorded_at DESC NULLS LAST, f.name DESC LIMIT 500`)).rows;
       }
+      const server = analysisServer ? await analysisServer.snapshot().catch(() => null) : null;
       res.set('Cache-Control', 'no-store').json({
         demos: rows,
         autoAnalyze: autoAnalyzeEnabled(),
         uploads: (({ enabled, chunkBytes, minBytes, maxBytes, dailyLimit }) => ({ enabled, chunkBytes, minBytes, maxBytes, dailyLimit }))(uploadSettings()),
+        analysisServer: server,
         bucket: { refreshedAt: bucket.refreshedAt ? new Date(bucket.refreshedAt).toISOString() : null, error: bucket.error, count: bucket.count },
       });
     } catch (error) {
@@ -361,10 +365,30 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, sto
         `UPDATE demo_files SET analysis_state = 'queued', analysis_force = $2, analysis_requested_by = $3, analysis_requested_at = NOW(), analysis_error = NULL,
            analysis_source = COALESCE($4, analysis_source), updated_at = NOW()
          WHERE name = $1 RETURNING name, analysis_state, analysis_force, analysis_requested_by, analysis_requested_at, analysis_source`, [name, force, req.memberSteamId, source]);
-      res.json({ message: force ? 'Re-analysis queued' : 'Analysis queued', demo: updated.rows[0] });
+      // The analyzer runs on the game VM: start it if it is off (it closes itself once idle).
+      let server = null;
+      if (analysisServer) {
+        try { server = await analysisServer.ensureRunning(req.memberSteamId); }
+        catch (error) { console.warn('[demos] could not start the game VM:', error.message); server = { vm: 'unknown', error: 'Game server state unavailable' }; }
+      }
+      res.json({ message: force ? 'Re-analysis queued' : 'Analysis queued', demo: updated.rows[0], server });
     } catch (error) {
       console.error('[demos] analyze request failed:', error.message);
       res.status(500).json({ error: 'Could not queue the analysis' });
+    }
+  });
+
+  // Admin controls for the game VM as the analysis machine (see analysisServer.js).
+  app.post('/analysis-server/:action', bearer, admin, async (req, res) => {
+    if (!analysisServer) return res.status(503).json({ error: 'Analysis server control is not configured' });
+    try {
+      if (req.params.action === 'start') return res.json(await analysisServer.ensureRunning(req.memberSteamId));
+      if (req.params.action === 'stop') return res.json(await analysisServer.stopNow(req.memberSteamId));
+      res.status(404).json({ error: 'Unknown action' });
+    } catch (error) {
+      if (error instanceof ServerBusy) return res.status(409).json({ error: error.message, reason: error.reason });
+      console.error('[demos] analysis server control failed:', error.message);
+      res.status(502).json({ error: 'Oyun sunucusuna ulaşılamadı; biraz sonra tekrar deneyin.' });
     }
   });
 
@@ -432,6 +456,7 @@ const DEMO_FILES_MIGRATIONS = [
   `ALTER TABLE demo_files ADD COLUMN IF NOT EXISTS server_name TEXT`,
   `CREATE INDEX IF NOT EXISTS demo_files_fingerprint_idx ON demo_files (fingerprint) WHERE fingerprint IS NOT NULL`,
   ...DEMO_UPLOAD_MIGRATIONS,
+  ...ANALYSIS_SERVER_MIGRATIONS,
 ];
 
 module.exports = { registerDemoRoutes, parseDemoName, isDemoName, signedDownloadUrl, autoQueueCandidates, encodeRfc3986, DEMO_FILES_MIGRATIONS };

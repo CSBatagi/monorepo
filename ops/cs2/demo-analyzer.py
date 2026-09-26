@@ -51,16 +51,28 @@ def api(route, payload):
         return json.load(response)
 
 
-def server_busy():
-    """True while a match is being prepared, played or recorded. A stale status file means CS2 is down."""
+def game_report():
+    """The plugin's status.json, rewritten every few seconds. A stale file means CS2 is not running.
+
+    The backend uses this to tell whether anyone is on the server before it closes an idle VM.
+    """
     status_file = STATE / 'status.json'
     try:
         if time.time() - status_file.stat().st_mtime > 120:
-            return False
+            return {'running': False}
         status = json.loads(status_file.read_text())
     except (OSError, ValueError):
-        return False
-    return bool(status.get('live') or status.get('preparing') or status.get('recording'))
+        return {'running': False}
+    return {
+        'running': True, 'humans': int(status.get('humans') or 0), 'live': bool(status.get('live')),
+        'preparing': bool(status.get('preparing')), 'recording': bool(status.get('recording')),
+    }
+
+
+def server_busy(report=None):
+    """True while a match is being prepared, played or recorded."""
+    report = report or game_report()
+    return bool(report.get('live') or report.get('preparing') or report.get('recording'))
 
 
 def upload_states():
@@ -180,8 +192,9 @@ def analyze(job):
 
 
 def run_once():
-    busy = server_busy()
-    response = api('/demo-analysis/sync', {'busy': busy, 'demos': inventory()})
+    game = game_report()
+    busy = server_busy(game)
+    response = api('/demo-analysis/sync', {'busy': busy, 'demos': inventory(), 'game': game})
     for job in [] if busy else response.get('jobs', []):
         if server_busy():
             return

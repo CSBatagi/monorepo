@@ -37,11 +37,27 @@ export type DemoRecord = {
 
 export type UploadSettings = { enabled: boolean; chunkBytes: number; minBytes: number; maxBytes: number; dailyLimit: number };
 
+/** The game VM in its role as the analysis machine (backend/analysisServer.js). */
+export type AnalysisServerState = {
+  vm: 'running' | 'starting' | 'stopping' | 'stopped' | 'unknown';
+  autoStart: boolean;
+  autoStop: boolean;
+  startPending: boolean;
+  idleMinutes: number;
+  idleSince: string | null;
+  stopAt: string | null;
+  busy: { reason: string; text: string | null } | null;
+  lastEvent: string | null;
+  stoppedAt: string | null;
+  stoppedAutomatically: boolean;
+};
+
 export type DemoListing = {
   demos: DemoRecord[];
   autoAnalyze?: boolean;
   bucket: { refreshedAt: string | null; error: string | null; count: number };
   uploads?: UploadSettings;
+  analysisServer?: AnalysisServerState | null;
 };
 
 /** Where an uploaded demo was played; shown next to the teams. */
@@ -128,6 +144,12 @@ export function formatSize(bytes: number | string): string {
   if (value >= 1024 * 1024 * 1024) return `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(0)} MB`;
   return `${(value / 1024).toFixed(0)} KB`;
+}
+
+export function formatClock(value: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString('tr-TR', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit' });
 }
 
 export function formatRecordedAt(value: string | null): string {
