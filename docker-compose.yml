@@ -55,6 +55,9 @@ services:
       # Demo analysis production write switch. Keep "false" until the analyzer has been proven on a
       # manually queued demo; then set "true" so finished website matches are analyzed unattended.
       DEMO_AUTO_ANALYZE: "false"
+      # Member uploads of demos from other servers (docs/operations/demo-analysis-and-downloads.md).
+      # "false" hides the form and refuses new uploads; analysis of uploads always needs an admin.
+      DEMO_UPLOADS_ENABLED: "true"
       SEASON_START_FILE: /app/config/season_start.json
       PLAYERS_FILE: /app/players.json
       NODE_OPTIONS: "--max-old-space-size=128"

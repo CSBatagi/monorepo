@@ -278,6 +278,10 @@ const { registerCosmeticsRoutes, COSMETICS_MIGRATIONS } = require('./cosmeticsRo
 const { registerSteamAuthRoutes, STEAM_AUTH_MIGRATIONS } = require('./steamAuth');
 if (pool) registerSteamAuthRoutes(app, { pool });
 if (pool) registerCosmeticsRoutes(app, { pool });
+// Demo uploads arrive as dozens of 4 MiB chunks through the website's single IP; the routes check the
+// bearer token and member session themselves and apply per-member quotas and a parallel-chunk cap.
+const { registerDemoUploadRoutes } = require('./demoUploads');
+if (pool) registerDemoUploadRoutes(app, { pool });
 app.use(rateLimiter);
 
 // --- Auth middleware for non-GET requests ---

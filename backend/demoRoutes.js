@@ -9,11 +9,14 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { sessionUser, isSteamAdmin } = require('./steamAuth');
+const { ANALYSIS_SOURCES, DEFAULT_ANALYSIS_SOURCE, DEMO_UPLOAD_MIGRATIONS, UPLOAD_PREFIX, defaultStorage, uploadSettings } = require('./demoUploads');
 
 const BUCKET = process.env.DEMO_BUCKET || 'csbatagi-demos';
 const BUCKET_REFRESH_MS = Number(process.env.DEMO_BUCKET_REFRESH_MS || 5 * 60 * 1000);
 const DOWNLOAD_TTL_SECONDS = 15 * 60;
 const STUCK_ANALYSIS_MS = 2 * 60 * 60 * 1000;
+// Uploaded demos live only in the bucket; the worker fetches them with a signed link of this lifetime.
+const WORKER_DOWNLOAD_TTL_SECONDS = 2 * 60 * 60;
 const STORAGE_HOST = 'storage.googleapis.com';
 
 // MatchZy names demos {TIME}_{MATCH_ID}_{MAP}_{TEAM1}_vs_{TEAM2}; the resurrection build appends 8 hex characters.
@@ -113,7 +116,7 @@ function autoQueueCandidates(demos, matchDir, since = AUTO_ANALYZE_SINCE) {
     .map(demo => demo.name);
 }
 
-function registerDemoRoutes(app, { pool, listObjects = null, account = null, now = () => new Date() }) {
+function registerDemoRoutes(app, { pool, listObjects = null, account = null, storage = null, now = () => new Date() }) {
   const matchDir = process.env.CS2_MATCH_DIR || path.join(__dirname, 'cs2-control');
   const credentials = () => account || (account = loadServiceAccount());
   const bucket = { refreshedAt: 0, error: null, count: 0, refreshing: null };
@@ -162,8 +165,8 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, now
     for (const object of objects) {
       const parsed = parseDemoName(object.name);
       await pool.query(
-        `INSERT INTO demo_files (name, object_name, size, match_id, map_name, team1, team2, recorded_at, recording_state, archive_state)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'unknown', 'archived')
+        `INSERT INTO demo_files (name, object_name, size, match_id, map_name, team1, team2, recorded_at, recording_state, archive_state, origin)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'unknown', 'archived', CASE WHEN $2 LIKE '${UPLOAD_PREFIX}%' THEN 'upload' ELSE 'server' END)
          ON CONFLICT (name) DO UPDATE SET
            object_name = EXCLUDED.object_name,
            size = GREATEST(demo_files.size, EXCLUDED.size),
@@ -210,7 +213,8 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, now
 
   const rowColumns = `f.name, f.object_name, f.size, f.match_id, f.map_name, f.team1, f.team2, f.recorded_at, f.recording_state, f.archive_state,
            f.on_game_server, f.analysis_state, f.analysis_force, f.analysis_requested_by, f.analysis_requested_at, f.analysis_started_at,
-           f.analysis_finished_at, f.analysis_error, f.checksum`;
+           f.analysis_finished_at, f.analysis_error, f.checksum, f.origin, f.uploaded_by, f.uploader_name, f.source_platform,
+           COALESCE(f.analysis_source, '${DEFAULT_ANALYSIS_SOURCE}') AS analysis_source, f.original_name, f.server_name`;
   const rowSql = `SELECT ${rowColumns} FROM demo_files f`;
   const listingSql = `
     SELECT ${rowColumns}, m.winner_name, m.analyze_date, d.duration, team.teams
@@ -246,14 +250,35 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, now
         `UPDATE demo_files SET analysis_state = 'queued', analysis_error = 'Previous attempt did not finish', updated_at = NOW()
          WHERE analysis_state = 'analyzing' AND analysis_started_at < NOW() - ($1 || ' milliseconds')::interval`, [String(STUCK_ANALYSIS_MS)]);
       const jobs = req.body.busy ? { rows: [] } : await pool.query(
-        `SELECT name, object_name AS "objectName", analysis_force AS force, on_game_server AS "onGameServer"
+        `SELECT name, object_name AS "objectName", analysis_force AS force, on_game_server AS "onGameServer",
+                analysis_source AS source, origin, recorded_at AS "recordedAt", size
          FROM demo_files WHERE analysis_state = 'queued' ORDER BY analysis_requested_at ASC NULLS LAST, name ASC LIMIT 5`);
-      res.json({ jobs: jobs.rows });
+      res.json({ jobs: jobs.rows.map(workerJob) });
     } catch (error) {
       console.error('[demos] sync failed:', error.message);
       res.status(500).json({ error: 'Inventory sync failed' });
     }
   });
+
+  // Uploaded demos carry a signed link (the game VM's own account reads only its recordings) and the
+  // match time, which the worker writes as the file's mtime: CS Demo Manager dates a match by mtime.
+  function workerJob(row) {
+    const job = {
+      name: row.name, objectName: row.objectName, force: row.force, onGameServer: row.onGameServer,
+      source: ANALYSIS_SOURCES.includes(row.source) ? row.source : DEFAULT_ANALYSIS_SOURCE,
+    };
+    if (row.origin !== 'upload') return job;
+    if (row.recordedAt) job.recordedAt = new Date(row.recordedAt).toISOString();
+    if (row.size) job.size = Number(row.size);
+    if (row.objectName) {
+      try {
+        job.downloadUrl = signedDownloadUrl(row.objectName, { account: credentials(), now: now(), expiresSeconds: WORKER_DOWNLOAD_TTL_SECONDS }).url;
+      } catch (error) {
+        console.warn('[demos] worker link failed:', error.message);
+      }
+    }
+    return job;
+  }
 
   app.post('/demo-analysis/result', bearer, async (req, res) => {
     const { name, state } = req.body || {};
@@ -296,6 +321,7 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, now
       res.set('Cache-Control', 'no-store').json({
         demos: rows,
         autoAnalyze: autoAnalyzeEnabled(),
+        uploads: (({ enabled, chunkBytes, minBytes, maxBytes, dailyLimit }) => ({ enabled, chunkBytes, minBytes, maxBytes, dailyLimit }))(uploadSettings()),
         bucket: { refreshedAt: bucket.refreshedAt ? new Date(bucket.refreshedAt).toISOString() : null, error: bucket.error, count: bucket.count },
       });
     } catch (error) {
@@ -321,6 +347,9 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, now
   app.post('/demos/:name/analyze', bearer, admin, async (req, res) => {
     const { name } = req.params;
     if (!isDemoName(name)) return res.status(400).json({ error: 'Invalid demo name' });
+    // Optional `csdm analyze --source` override, e.g. "matchzy" for xplay.gg demos without a known source.
+    const source = req.body?.source ?? null;
+    if (source !== null && !ANALYSIS_SOURCES.includes(source)) return res.status(400).json({ error: 'Unknown analysis source' });
     try {
       const current = await pool.query('SELECT analysis_state, checksum, on_game_server, object_name FROM demo_files WHERE name = $1', [name]);
       const row = current.rows[0];
@@ -329,12 +358,39 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, now
       if (!row.on_game_server && !row.object_name) return res.status(409).json({ error: 'This demo is neither on the game server nor in the archive' });
       const force = Boolean(row.checksum) || row.analysis_state === 'analyzed';
       const updated = await pool.query(
-        `UPDATE demo_files SET analysis_state = 'queued', analysis_force = $2, analysis_requested_by = $3, analysis_requested_at = NOW(), analysis_error = NULL, updated_at = NOW()
-         WHERE name = $1 RETURNING name, analysis_state, analysis_force, analysis_requested_by, analysis_requested_at`, [name, force, req.memberSteamId]);
+        `UPDATE demo_files SET analysis_state = 'queued', analysis_force = $2, analysis_requested_by = $3, analysis_requested_at = NOW(), analysis_error = NULL,
+           analysis_source = COALESCE($4, analysis_source), updated_at = NOW()
+         WHERE name = $1 RETURNING name, analysis_state, analysis_force, analysis_requested_by, analysis_requested_at, analysis_source`, [name, force, req.memberSteamId, source]);
       res.json({ message: force ? 'Re-analysis queued' : 'Analysis queued', demo: updated.rows[0] });
     } catch (error) {
       console.error('[demos] analyze request failed:', error.message);
       res.status(500).json({ error: 'Could not queue the analysis' });
+    }
+  });
+
+  // Only member uploads can be removed; the server's own recordings are never deleted from here.
+  // Statistics already written by an analysis stay in the database until removed in CS Demo Manager.
+  app.delete('/demos/:name', bearer, admin, async (req, res) => {
+    const { name } = req.params;
+    if (!isDemoName(name)) return res.status(400).json({ error: 'Invalid demo name' });
+    try {
+      const row = (await pool.query('SELECT origin, object_name, analysis_state FROM demo_files WHERE name = $1', [name])).rows[0];
+      if (!row) return res.status(404).json({ error: 'Unknown demo' });
+      if (row.origin !== 'upload' || !row.object_name?.startsWith(UPLOAD_PREFIX)) return res.status(403).json({ error: 'Only uploaded demos can be deleted' });
+      if (['queued', 'analyzing'].includes(row.analysis_state)) return res.status(409).json({ error: 'This demo is waiting for analysis' });
+      try {
+        await (storage || defaultStorage()).deleteObject(row.object_name);
+      } catch (error) {
+        console.error('[demos] upload delete failed:', error.message);
+        return res.status(503).json({ error: error.status === 403 ? 'The backend is not allowed to delete uploads' : 'Could not delete the file from storage' });
+      }
+      await pool.query('DELETE FROM demo_files WHERE name = $1', [name]);
+      await pool.query(`UPDATE demo_uploads SET state = 'deleted', updated_at = NOW() WHERE demo_name = $1`, [name]);
+      console.log(`[demos] ${name} deleted by ${req.memberSteamId}`);
+      res.json({ deleted: name });
+    } catch (error) {
+      console.error('[demos] delete failed:', error.message);
+      res.status(500).json({ error: 'Could not delete the demo' });
     }
   });
 }
@@ -365,6 +421,17 @@ const DEMO_FILES_MIGRATIONS = [
      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
    )`,
   `CREATE INDEX IF NOT EXISTS demo_files_analysis_state_idx ON demo_files (analysis_state)`,
+  // Member uploads from other servers (see demoUploads.js).
+  `ALTER TABLE demo_files ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'server'`,
+  `ALTER TABLE demo_files ADD COLUMN IF NOT EXISTS uploaded_by TEXT`,
+  `ALTER TABLE demo_files ADD COLUMN IF NOT EXISTS uploader_name TEXT`,
+  `ALTER TABLE demo_files ADD COLUMN IF NOT EXISTS source_platform TEXT`,
+  `ALTER TABLE demo_files ADD COLUMN IF NOT EXISTS analysis_source TEXT`,
+  `ALTER TABLE demo_files ADD COLUMN IF NOT EXISTS fingerprint TEXT`,
+  `ALTER TABLE demo_files ADD COLUMN IF NOT EXISTS original_name TEXT`,
+  `ALTER TABLE demo_files ADD COLUMN IF NOT EXISTS server_name TEXT`,
+  `CREATE INDEX IF NOT EXISTS demo_files_fingerprint_idx ON demo_files (fingerprint) WHERE fingerprint IS NOT NULL`,
+  ...DEMO_UPLOAD_MIGRATIONS,
 ];
 
 module.exports = { registerDemoRoutes, parseDemoName, isDemoName, signedDownloadUrl, autoQueueCandidates, encodeRfc3986, DEMO_FILES_MIGRATIONS };
