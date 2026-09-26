@@ -105,7 +105,7 @@ test('admins queue analysis once; the worker sync hands the job out and the resu
     if (/SELECT analysis_state, checksum/.test(sql)) return { rows: [{ ...state }] };
     if (/SET analysis_state = 'queued', analysis_force = \$2/.test(sql)) { state.analysis_state = 'queued'; return { rows: [{ name: params[0], analysis_state: 'queued', analysis_force: params[1], analysis_requested_by: params[2] }] }; }
     if (/WHERE analysis_state = 'queued' ORDER BY/.test(sql)) return { rows: state.analysis_state === 'queued' ? [{ name: 'x.dem', objectName: null, force: false, onGameServer: true }] : [] };
-    if (/SELECT checksum FROM demos WHERE name/.test(sql)) return { rows: params[0] === 'x' ? [{ checksum: 'abc123' }] : [] };
+    if (/FROM matches WHERE right\(demo_path/.test(sql)) return { rows: params[0] === 'x.dem' ? [{ checksum: 'abc123' }] : [] };
     if (/SET analysis_state = 'analyzed'/.test(sql)) { state.analysis_state = 'analyzed'; state.checksum = params[1]; return { rows: [] }; }
     if (/WHERE f.name = \$1/.test(sql)) return { rows: [{ name: params[0], analysis_state: state.analysis_state, checksum: state.checksum }] };
     return { rows: [] };
@@ -160,7 +160,7 @@ test('automatic queueing happens only with DEMO_AUTO_ANALYZE=true, for website m
 test('a reported success without a database row is recorded as a failure', async () => {
   const updates = [];
   const query = jest.fn(async (sql, params) => {
-    if (/SELECT checksum FROM demos WHERE name/.test(sql)) return { rows: [] };
+    if (/FROM matches WHERE right\(demo_path/.test(sql)) return { rows: [] };
     if (/UPDATE demo_files SET/.test(sql)) { updates.push([sql, params]); return { rows: [] }; }
     if (/WHERE f.name = \$1/.test(sql)) return { rows: [{ name: params[0], analysis_state: 'failed' }] };
     return { rows: [] };
@@ -174,7 +174,7 @@ test('a reported success without a database row is recorded as a failure', async
 test('a success report without a database row keeps what the CLI said', async () => {
   const errors = [];
   const query = jest.fn(async (sql, params) => {
-    if (/SELECT checksum FROM demos WHERE name/.test(sql)) return { rows: [] };
+    if (/FROM matches WHERE right\(demo_path/.test(sql)) return { rows: [] };
     if (/UPDATE demo_files SET analysis_state = 'failed'/.test(sql)) errors.push(params[1]);
     return { rows: [] };
   });

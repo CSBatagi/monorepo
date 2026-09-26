@@ -117,6 +117,18 @@ function autoQueueCandidates(demos, matchDir, since = AUTO_ANALYZE_SINCE) {
     .map(demo => demo.name);
 }
 
+// CS Demo Manager keeps the first name it saw for a checksum, and the desktop app records every demo it
+// lists, analyzed or not, so a demo analyzed here can sit in the database under a club member's file
+// name. The match row keeps the path of the file that was analyzed, and our file names are unique:
+// that is the reliable link, the demo name only the fallback. $1 is the file name with ".dem".
+const PATH_MATCHES_NAME = (column, name) => `right(${column}, length(${name}) + 1) IN ('/' || ${name}, chr(92) || ${name})`;
+const ANALYZED_CHECKSUM_SQL = `
+  SELECT checksum FROM (
+    SELECT checksum, 0 AS rank FROM matches WHERE ${PATH_MATCHES_NAME('demo_path', '$1')}
+    UNION ALL
+    SELECT checksum, 1 AS rank FROM demos WHERE name = left($1, length($1) - 4)
+  ) found ORDER BY rank LIMIT 1`;
+
 // The CLI exits 0 even when it skipped a demo or rolled its insertion back; its output says why.
 function notInDatabaseReason(log) {
   const output = typeof log === 'string' ? log.trim().slice(-700) : '';
@@ -195,6 +207,13 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, sto
            analysis_finished_at = COALESCE(f.analysis_finished_at, m.analyze_date, NOW()), updated_at = NOW()
          FROM demos d LEFT JOIN matches m ON m.checksum = d.checksum
          WHERE f.checksum IS NULL AND f.analysis_state IN ('none', 'failed') AND d.name = left(f.name, length(f.name) - 4)`
+      );
+      // Analyzed here but listed under another demo name (see ANALYZED_CHECKSUM_SQL).
+      await pool.query(
+        `UPDATE demo_files f SET checksum = m.checksum, analysis_state = 'analyzed', analysis_error = NULL,
+           analysis_finished_at = COALESCE(f.analysis_finished_at, m.analyze_date, NOW()), updated_at = NOW()
+         FROM matches m
+         WHERE f.checksum IS NULL AND f.analysis_state IN ('none', 'failed') AND ${PATH_MATCHES_NAME('m.demo_path', 'f.name')}`
       );
     } catch (error) {
       console.warn('[demos] reconcile skipped:', error.message);
@@ -302,7 +321,7 @@ function registerDemoRoutes(app, { pool, listObjects = null, account = null, sto
         await pool.query(`UPDATE demo_files SET analysis_state = 'failed', analysis_finished_at = NOW(), analysis_error = $2, updated_at = NOW() WHERE name = $1`, [name, detail || 'Analysis failed']);
       } else {
         // The worker's exit code is not proof; the demo must actually be in the CS Demo Manager tables.
-        const found = await pool.query('SELECT checksum FROM demos WHERE name = $1', [name.slice(0, -4)]);
+        const found = await pool.query(ANALYZED_CHECKSUM_SQL, [name]);
         if (found.rows.length) {
           await pool.query(`UPDATE demo_files SET analysis_state = 'analyzed', analysis_force = false, checksum = $2, analysis_finished_at = NOW(), analysis_error = NULL, updated_at = NOW() WHERE name = $1`, [name, found.rows[0].checksum]);
         } else {
