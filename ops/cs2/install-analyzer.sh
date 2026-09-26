@@ -56,10 +56,12 @@ python3 - <<'SETTINGS'
 import json, os, pathlib
 target = pathlib.Path('/home/steam/.config/csdm/settings.json')
 settings = json.loads(target.read_text()) if target.exists() else {}
+# Values pasted from Windows end in "\r", which the CLI then treats as part of the hostname.
+env = lambda name, default=None: os.environ.get(name, default).strip()
 settings['database'] = {
-    'hostname': os.environ['CSDM_DB_HOST'], 'port': int(os.environ.get('CSDM_DB_PORT', '5432')),
-    'username': os.environ['CSDM_DB_USER'], 'password': os.environ['CSDM_DB_PASSWORD'],
-    'database': os.environ.get('CSDM_DB_NAME', 'csdm'),
+    'hostname': env('CSDM_DB_HOST'), 'port': int(env('CSDM_DB_PORT', '5432')),
+    'username': env('CSDM_DB_USER'), 'password': os.environ['CSDM_DB_PASSWORD'].rstrip('\r\n'),
+    'database': env('CSDM_DB_NAME', 'csdm'),
 }
 settings.setdefault('autoDownloadUpdates', False)
 settings.setdefault('folders', [])

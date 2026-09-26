@@ -25,8 +25,9 @@ database = settings.get("database") or {}
 def shown(d):
     return ", ".join(f"{key}={d.get(key)!r}" for key in ("hostname", "port", "username", "database"))
 if sys.argv[1] == "set":
-    host, port, user, name = sys.argv[2:6]
-    password = sys.stdin.read().rstrip("\n")
+    # Stray whitespace breaks everything silently: the 11 September install had "10.142.0.9\r" etc.
+    host, port, user, name = (value.strip() for value in sys.argv[2:6])
+    password = sys.stdin.read().rstrip("\r\n")
     if not password:
         sys.exit("db set: no password on stdin")
     wanted = {**database, "hostname": host, "port": int(port), "username": user, "password": password, "database": name}
