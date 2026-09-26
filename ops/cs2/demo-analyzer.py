@@ -42,6 +42,8 @@ SAFE_NAME = re.compile(r'^[\w.-]{1,200}\.dem$')
 DEMO_STAMP = b'PBDEMS2\x00'
 SIGNED_HOST = 'https://storage.googleapis.com/'
 UPLOAD_PREFIX = 'uploads/'
+STACK_FRAME = re.compile(r'^\s+at\s')
+UNDEFINED_FIELD = re.compile(r'^\s+\w+: undefined,?$')
 
 
 def api(route, payload):
@@ -192,8 +194,16 @@ def analyze(job):
                             env={**os.environ, 'HOME': os.environ.get('HOME', '/home/steam')})
     output = (result.stdout + '\n' + result.stderr).strip()
     if result.returncode != 0:
-        raise RuntimeError(f'csdm exited {result.returncode}: {output[-500:]}')
+        print(output[-4000:], flush=True)  # the whole story for journalctl
+        raise RuntimeError(f'csdm exited {result.returncode}: {error_summary(output)}')
     return output[-500:]
+
+
+def error_summary(output, limit=700):
+    """The CLI prints errors with long stack traces; the website should get the messages, not the frames."""
+    lines = [line.strip() for line in output.splitlines()
+             if line.strip() and not STACK_FRAME.match(line) and not UNDEFINED_FIELD.match(line)]
+    return '\n'.join(lines)[-limit:]
 
 
 def run_once():
