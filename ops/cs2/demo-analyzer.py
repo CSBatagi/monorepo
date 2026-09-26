@@ -41,6 +41,9 @@ SOURCES = {
 SAFE_NAME = re.compile(r'^[\w.-]{1,200}\.dem$')
 DEMO_STAMP = b'PBDEMS2\x00'
 SIGNED_HOST = 'https://storage.googleapis.com/'
+UPLOAD_PREFIX = 'uploads/'
+STACK_FRAME = re.compile(r'^\s+at\s')
+UNDEFINED_FIELD = re.compile(r'^\s+\w+: undefined,?$')
 
 
 def api(route, payload):
@@ -159,6 +162,10 @@ def locate(job):
     target = RESTORED / name
     if not target.exists() and job.get('downloadUrl'):
         fetch_signed(job, target)
+    elif not target.exists() and str(job.get('objectName', '')).startswith(UPLOAD_PREFIX):
+        # This VM's account cannot read uploads/, so gcloud would only fail with a permission error.
+        raise RuntimeError('the backend sent no signed download link for this uploaded demo '
+                           '(see "[demos] worker link failed" in the backend log)')
     elif not target.exists():
         result = subprocess.run(
             ['/snap/bin/gcloud', 'storage', 'cp', f"gs://{BUCKET}/{job['objectName']}", str(target), '--quiet'],
@@ -186,9 +193,19 @@ def analyze(job):
     result = subprocess.run(command, capture_output=True, text=True, timeout=ANALYZE_TIMEOUT,
                             env={**os.environ, 'HOME': os.environ.get('HOME', '/home/steam')})
     output = (result.stdout + '\n' + result.stderr).strip()
+    print(output[-4000:], flush=True)  # the whole story for journalctl
     if result.returncode != 0:
-        raise RuntimeError(f'csdm exited {result.returncode}: {output[-500:]}')
-    return output[-500:]
+        raise RuntimeError(f'csdm exited {result.returncode}: {error_summary(output)}')
+    # The CLI also exits 0 when it skipped a demo or rolled a failed insertion back; the backend
+    # shows this output when the demo is not in the database.
+    return error_summary(output)
+
+
+def error_summary(output, limit=700):
+    """The CLI prints errors with long stack traces; the website should get the messages, not the frames."""
+    lines = [line.strip() for line in output.splitlines()
+             if line.strip() and not STACK_FRAME.match(line) and not UNDEFINED_FIELD.match(line)]
+    return '\n'.join(lines)[-limit:]
 
 
 def run_once():

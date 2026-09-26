@@ -44,6 +44,8 @@ credentials.json
 # Database dumps
 production_dump_*.sql
 *.sql
+# ...but schema migrations are source: the deploy workflow runs every file in backend/migrations/.
+!backend/migrations/*.sql
 
 # Bake-only generated sources for static stats history
 frontend-nextjs/runtime-data/history-source/

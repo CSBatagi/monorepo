@@ -105,7 +105,7 @@ test('admins queue analysis once; the worker sync hands the job out and the resu
     if (/SELECT analysis_state, checksum/.test(sql)) return { rows: [{ ...state }] };
     if (/SET analysis_state = 'queued', analysis_force = \$2/.test(sql)) { state.analysis_state = 'queued'; return { rows: [{ name: params[0], analysis_state: 'queued', analysis_force: params[1], analysis_requested_by: params[2] }] }; }
     if (/WHERE analysis_state = 'queued' ORDER BY/.test(sql)) return { rows: state.analysis_state === 'queued' ? [{ name: 'x.dem', objectName: null, force: false, onGameServer: true }] : [] };
-    if (/SELECT checksum FROM demos WHERE name/.test(sql)) return { rows: params[0] === 'x' ? [{ checksum: 'abc123' }] : [] };
+    if (/FROM matches WHERE right\(demo_path/.test(sql)) return { rows: params[0] === 'x.dem' ? [{ checksum: 'abc123' }] : [] };
     if (/SET analysis_state = 'analyzed'/.test(sql)) { state.analysis_state = 'analyzed'; state.checksum = params[1]; return { rows: [] }; }
     if (/WHERE f.name = \$1/.test(sql)) return { rows: [{ name: params[0], analysis_state: state.analysis_state, checksum: state.checksum }] };
     return { rows: [] };
@@ -160,7 +160,7 @@ test('automatic queueing happens only with DEMO_AUTO_ANALYZE=true, for website m
 test('a reported success without a database row is recorded as a failure', async () => {
   const updates = [];
   const query = jest.fn(async (sql, params) => {
-    if (/SELECT checksum FROM demos WHERE name/.test(sql)) return { rows: [] };
+    if (/FROM matches WHERE right\(demo_path/.test(sql)) return { rows: [] };
     if (/UPDATE demo_files SET/.test(sql)) { updates.push([sql, params]); return { rows: [] }; }
     if (/WHERE f.name = \$1/.test(sql)) return { rows: [{ name: params[0], analysis_state: 'failed' }] };
     return { rows: [] };
@@ -169,4 +169,24 @@ test('a reported success without a database row is recorded as a failure', async
   const report = await request(app).post('/demo-analysis/result').set('Authorization', `Bearer ${secret}`).send({ name: 'y.dem', state: 'analyzed' }).expect(200);
   expect(report.body.analysis_state).toBe('failed');
   expect(updates.some(([sql, params]) => /analysis_state = 'failed'/.test(sql) && /not in the database/.test(params[1]))).toBe(true);
+});
+
+test('a success report without a database row keeps what the CLI said', async () => {
+  const errors = [];
+  const query = jest.fn(async (sql, params) => {
+    if (/FROM matches WHERE right\(demo_path/.test(sql)) return { rows: [] };
+    if (/UPDATE demo_files SET analysis_state = 'failed'/.test(sql)) errors.push(params[1]);
+    return { rows: [] };
+  });
+  const app = buildApp({ query });
+  const send = log => request(app).post('/demo-analysis/result').set('Authorization', `Bearer ${secret}`).send({ name: 'y.dem', state: 'analyzed', log }).expect(200);
+
+  await send('1 demos to process\nAnalyzing demo /x/y.dem...\nInserting match into database /x/y.dem...\npermission denied for table rounds');
+  expect(errors[0]).toMatch(/not in the database\. CS Demo Manager said: .*permission denied for table rounds$/s);
+
+  await send('1 demos to process\nDemo /x/y.dem already in database, skipping this demo.');
+  expect(errors[1]).toMatch(/skipped it: a demo with the same checksum is already in the database/);
+
+  await send('x'.repeat(5000));
+  expect(errors[2].length).toBeLessThan(800);
 });
