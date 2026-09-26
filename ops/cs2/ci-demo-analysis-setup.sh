@@ -89,6 +89,7 @@ wait_for_ssh() {
   for _ in $(seq 1 10); do
     error="$(ssh_vm 90 --command true 2>&1 >/dev/null)" && return 0
     [ -n "$error" ] || error="no answer within 90 seconds"
+    case "$error" in *4033*) break ;; esac  # not authorized for IAP: waiting will not help
     sleep 10
   done
   SSH_EXTRA=()
