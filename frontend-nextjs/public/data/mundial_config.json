@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "Batak Mundial",
-  "seasonStart": "2026-09-29",
+  "seasonStart": "2026-09-25",
   "groupStageLength": 15,
   "groupCount": 4,
   "scoring": {

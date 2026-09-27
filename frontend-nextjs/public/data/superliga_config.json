@@ -1,7 +1,7 @@
 {
   "version": 1,
   "seasonStart": "2026-06-22",
-  "seasonEnd": "2026-09-28",
+  "seasonEnd": "2026-09-24",
   "seasonLength": 15,
   "scoring": {
     "winPoints": 15,
