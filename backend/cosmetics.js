@@ -41,8 +41,10 @@ function equipped(state) {
   for (const [index, selection] of (state.profiles[state.active]?.items || []).entries()) {
     const item = byId.get(selection.id);
     if (!item) continue;
+    // StatTrak music kits are separate catalog entries; the plugin counts round MVPs on them for the session.
+    const stattrak = item.kind === 'music' ? item.name.startsWith('StatTrak™ ') : selection.stattrak;
     const value = { uid: index + 1, def: item.defindex, paint: item.paint, wear: selection.wear, seed: selection.seed,
-      nametag: selection.nametag, stattrak: selection.stattrak ? 0 : null, stickers: [], keychains: [] };
+      nametag: selection.nametag, stattrak: stattrak ? 0 : null, stickers: [], keychains: [] };
     for (const [slot, id] of (selection.stickers || []).entries()) if (id) value.stickers.push({ slot, def: byId.get(id).defindex, wear: 0 });
     if (selection.charm) value.keychains.push({ slot: 0, def: byId.get(selection.charm).defindex, seed: 1 });
     if (item.kind === 'music') { value.def = 1314; value.musicId = item.defindex; }

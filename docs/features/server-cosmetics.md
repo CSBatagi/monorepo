@@ -34,7 +34,7 @@ The pinned plugin's `GetItemInLoadout` hook changes the game item only when the 
 
 The explicit Steam controls were deployed in frontend image `csbatagi-cosmetics-frontend-nextjs:20260912t230509z` after a successful production build and TypeScript check. The backend and game plugin were not changed for this UI update, and no personal loadout was saved by the verification. Rollback override: `/home/runner/cosmetics-web-backup-20260912t230509z/rollback.yml`. The RCON configuration query timed out during this follow-up, so the coexistence behavior was checked against the pinned source and checked-in configuration; rendered paid skins still need a human CS2 client check.
 
-StatTrak is a session counter, reset when the inventory is fetched again. Sticker position/rotation and charm offsets are not exposed; images show representative items, not a rendered preview of the chosen float/pattern. The catalogue currently includes 13,590 entries (including stickers and charms), not 13,590 weapon skins.
+StatTrak (weapon kills, music kit MVPs) is a session counter, reset when the inventory is fetched again. Sticker position/rotation and charm offsets are not exposed; images show representative items, not a rendered preview of the chosen float/pattern. The catalogue currently includes 13,590 entries (including stickers and charms), not 13,590 weapon skins.
 
 ## Progression and premium awards
 
@@ -57,7 +57,18 @@ Every 300 XP gains a level, starting at level 1. There are no streak penalties, 
 | Seçkin | 5 | 120 regular tokens |
 | Premium | 1 | 1 admin-awarded premium token |
 
-These are club reward tiers, not live market valuations. `backend/cosmeticProgression.js` is the policy source: catalog rarity colors determine regular weapon/sticker tiers; music and charms are Kulüp, agents Nadir, and regular knives/gloves Seçkin. The premium reserve includes Dragon Lore, Gungnir, Wild Lotus, Howl, Pandora's Box, Vice, Superconductor, Doppler, Fade, Case Hardened, Katowice 2014 stickers, Crown (Foil) and Howling Dawn. Entire pattern-variable finish families are reserved, including every Doppler phase, because members may freely choose wear/seed. Regular tokens and high levels cannot substitute for premium currency.
+These are club reward tiers, not live market valuations. `backend/cosmeticProgression.js` is the policy source, and every equipment category has an entry and an advanced tier:
+
+| Category | Başlangıç | Kulüp | Nadir | Seçkin | Premium |
+| --- | --- | --- | --- | --- | --- |
+| Weapons, stickers, charms | Mil-Spec and below | Restricted | Classified | Covert / contraband | Named reserve |
+| Agents | Distinguished | Exceptional | Superior | Master | Romanov, Miami Darryl, Vypa Sista (T); Ava, Wet Sox, Dead Cold (CT) |
+| Music | Default and promotional kits (Valve, Halo, Alyx, Hades) | Regular kits | StatTrak kits | Signature kits (for example Noisia, Feed Me, Darude) | EZ4ENCE, Flashbang Dance, Hotline Miami, Heading for the Source, The 8-Bit Kit |
+| Knives, gloves | — | — | Camouflage/utility finishes (Safari Mesh, DDPAT, Leather…) | Other finishes, vanilla knives | Named reserve |
+
+Premium reserves are exact per-category catalog names, so cheap namesakes (Amber Fade, Acid Fade, autograph stickers such as "vice") follow rarity instead. Weapons: Dragon Lore, Gungnir, Medusa, The Prince, Desert Hydra, AWP/Glock/M4A1-S Fade, Glock Gamma Doppler, Wild Lotus, Fire Serpent, Gold Arabesque, AK-47 Case Hardened, Howl, Poseidon, Welcome to the Jungle, Knight and Desert Eagle Blaze. Knives: every Fade, Doppler, Gamma Doppler, Marble Fade and Case Hardened. Gloves: Pandora's Box, Vice, Superconductor, Hedge Maze, Specialist Fade/Marble Fade/Crimson Kimono/Emerald Web, Hydra Case Hardened, Spearmint and King Snake. Also Katowice 2014 stickers, Crown (Foil), Howling Dawn and the Hot Howl/Baby Karat charms. Entire pattern-variable finish families are reserved, including every Doppler phase, because members may freely choose wear/seed. A reserved music kit includes its StatTrak copy (same song). Regular tokens and high levels cannot substitute for premium currency. `test/cosmeticProgression.test.js` fails if a reserved name no longer exists in the catalog.
+
+Tier changes never revoke an unlock: owned items stay owned when their tier rises, and nobody is refunded when it falls. The September 2026 recategorisation moved no free item to a paid tier. StatTrak music kits send `stattrak: 0`, so the plugin counts round MVPs for the session, just like weapon StatTrak.
 
 Admins open **Yönetici · Premium ödül ver** on `/ekipman`, select a linked member, canonical season and reason (e.g. seasonal MVP or season champion captain), then award 1–10 tokens. Awards are manual, never automatically inferred from stats or captain records. The recipient chooses their own premium items. Every award records the admin's signed-session identity, reason, season, amount and recipient. A UUID makes retries idempotent; reusing the UUID with different details fails. Admin status is checked against the `steam_members` table on every award and admin-list request.
 

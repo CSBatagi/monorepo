@@ -36,7 +36,9 @@ test('validates full loadout and serializes the upstream v5 contract with distin
   expect(weapon.keychains[0]).toEqual({ slot: 0, def: find('charm').defindex, seed: 1 });
   expect(data.knives[items[1].team].def).toBe(find('knife').defindex);
   expect(data.agents[items[3].team].def).toBe(find('agent').defindex);
-  expect(data.musicKit).toMatchObject({ def: 1314, musicId: find('music').defindex });
+  expect(data.musicKit).toMatchObject({ def: 1314, musicId: find('music').defindex, stattrak: null });
+  const statTrakMusic = catalog.items.find(i => i.kind === 'music' && i.name.startsWith('StatTrak™ '));
+  expect(equipped(validateState(state([{ id: statTrakMusic.id, team: 2 }]))).musicKit).toMatchObject({ musicId: statTrakMusic.defindex, stattrak: 0 });
   expect(weapon.hash).toMatch(/^[a-f0-9]{64}$/);
   expect(equipped(emptyState())).toEqual({ agents: {}, ctWeapons: {}, gloves: {}, knives: {}, tWeapons: {} });
 });
