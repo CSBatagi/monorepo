@@ -13,6 +13,16 @@ def replace(file, old, new):
         raise RuntimeError(f'{file}: expected one integration point: {old[:60]}')
     path.write_text(text.replace(old, new), encoding='utf-8', newline='\n')
 
+def replace_variant(file, variants, new):
+    """Accept explicitly reviewed upstream variants; never silently skip a patch."""
+    text = (root / file).read_text(encoding='utf-8-sig')
+    if new in text:
+        return
+    matches = [old for old in variants if text.count(old) == 1]
+    if len(matches) != 1:
+        raise RuntimeError(f'{file}: expected one reviewed integration variant')
+    replace(file, matches[0], new)
+
 replace('src/MatchZy.cs', 'public override void Load(bool hotReload)\n        {',
         'public override void Load(bool hotReload)\n        {\n            InitializeBatagi();')
 replace('src/MatchManagement.cs',
@@ -26,14 +36,16 @@ replace('src/MatchManagement.cs',
                 var tokenPath = Path.Combine(Server.GameDirectory, "csgo", "cfg", "csbatagi-web-token");
                 if (File.Exists(tokenPath)) { headerName = "Authorization"; headerValue = "Bearer " + File.ReadAllText(tokenPath).Trim(); }
             }''')
-replace('src/MatchManagement.cs',
+replace_variant('src/MatchManagement.cs', [
         'Log($"[LoadMatchDataCommand] Match setup request received with URL: {url} headerName: {headerName} and headerValue: {headerValue}");',
+        'Log($"[LoadMatchDataCommand] Match setup request received with URL: {SecretRedactor.RedactText(url)} header: {SecretRedactor.FormatCustomHeader(headerName, headerValue)}");'],
         'Log($"[LoadMatchDataCommand] Match setup request received with URL: {url}; credentials redacted.");')
 replace('src/MatchManagement.cs',
         'if (isMatchSetup)\n            {\n                string currentStatus = tournamentStatus.Value ?? string.Empty;',
         'if (isMatchSetup && !BatagiCanReplaceWarmup)\n            {\n                string currentStatus = tournamentStatus.Value ?? string.Empty;')
-replace('src/MatchManagement.cs',
+replace_variant('src/MatchManagement.cs', [
         'Log($"[LoadMatchFromURL] Received following data: {jsonData}");',
+        'Log($"[LoadMatchFromURL] Received following data: {SecretRedactor.RedactText(jsonData)}");'],
         '''// Fetch and validate before discarding the previous warmup roster.
                     var replacement = JObject.Parse(jsonData);
                     if (ValidateMatchJsonStructure(replacement) != "")
@@ -63,8 +75,10 @@ replace('src/Utility.cs',
                 return;
             }''')
 replace('src/Utility.cs', 'private void StartLive()', 'private void BatagiAnnounceLive()')
-replace('src/Utility.cs', 'private void ResetMatch(bool warmupCfgRequired = true)\n        {',
-        'private void ResetMatch(bool warmupCfgRequired = true)\n        {\n            BatagiReset();')
+replace_variant('src/Utility.cs', [
+        'private void ResetMatch(bool warmupCfgRequired = true)\n        {',
+        'private void ResetMatch(bool warmupCfgRequired = true, bool loadQueuedMatch = false)\n        {'],
+        'private void ResetMatch(bool warmupCfgRequired = true, bool loadQueuedMatch = false)\n        {\n            BatagiReset();')
 replace('src/Utility.cs',
         'public void KickPlayer(CCSPlayerController player, string? reason = null)\n        {',
         'public void KickPlayer(CCSPlayerController player, string? reason = null)\n        {\n            if (player != null && player.IsValid && BatagiIsTv(player)) return;')
@@ -74,11 +88,17 @@ replace('src/DatabaseStats.cs',
 replace('src/Utility.cs',
         '            SetupLiveFlagsAndCfg();\n            CrashBreadcrumb("StartLive: after SetupLiveFlagsAndCfg");\n            StartDemoRecording();',
         '            // Live configuration and recording have passed CS Batagi preflight.')
-replace('src/DemoManagement.cs',
-        'string demoFileName = FormatCvarValue(demoNameFormat.Replace(" ", "_")) + ".dem";',
-        'string demoFileName = System.Text.RegularExpressions.Regex.Replace(FormatCvarValue(demoNameFormat), @"[^A-Za-z0-9_.-]", "_") + "_" + Guid.NewGuid().ToString("N")[..8] + ".dem";')
-replace('src/DemoManagement.cs',
+demo_text = (root / 'src/DemoManagement.cs').read_text(encoding='utf-8-sig')
+if 'string demoFileName = DemoFileName.Build(' in demo_text:
+    replace('src/DemoManagement.cs', '                team2Score) + ".dem";',
+            '                team2Score) + "_" + Guid.NewGuid().ToString("N")[..8] + ".dem";')
+else:
+    replace('src/DemoManagement.cs',
+            'string demoFileName = FormatCvarValue(demoNameFormat.Replace(" ", "_")) + ".dem";',
+            'string demoFileName = System.Text.RegularExpressions.Regex.Replace(FormatCvarValue(demoNameFormat), @"[^A-Za-z0-9_.-]", "_") + "_" + Guid.NewGuid().ToString("N")[..8] + ".dem";')
+replace_variant('src/DemoManagement.cs', [
         'Log($"[StartDemoRecording] Demo recording started successfully.");',
+        'Log($"[StartDemoRecording] Demo recording started{(sourceTvActive ? " successfully" : " (SourceTV missing, demo likely not written)")}.");'],
         'BatagiRecordingStarted();\n                Log("[StartDemoRecording] Recording requested; awaiting file growth verification.");')
 replace('src/DemoManagement.cs',
         '            AddTimer(delay, () =>\n            {\n                if (isDemoRecording)',

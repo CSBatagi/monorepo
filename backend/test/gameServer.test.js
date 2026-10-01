@@ -135,6 +135,20 @@ test('allows replacing a loaded warmup with a different map and roster', async (
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 });
 
+test('blocks match creation while native startup verification has not passed', async () => {
+  process.env.AUTH_TOKEN = secret; process.env.MATCHMAKING_TOKEN = secret;
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'csbatagi-unready-test-'));
+  process.env.CS2_MATCH_DIR = directory;
+  const app = express(); app.use(express.json());
+  const rcon = { status: jest.fn().mockResolvedValue({ serverReady: false }), startMatch: jest.fn() };
+  registerGameServer(app, { pool: { query: jest.fn().mockResolvedValue({ rows: [{}] }) }, rcon, gcp: {} });
+  try {
+    await request(app).post('/start-match').set('x-game-session', session()).send(match(5)).expect(409);
+    expect(rcon.startMatch).not.toHaveBeenCalled();
+    expect(fs.readdirSync(directory)).toEqual([]);
+  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});
+
 describe('roster member server power controls', () => {
   let app, rcon, gcp, pool, lookupRoster, directory;
   beforeEach(() => {
@@ -150,6 +164,15 @@ describe('roster member server power controls', () => {
   });
   afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
   const headers = () => ({ Authorization: `Bearer ${secret}`, 'x-game-session': session() });
+  test('shows update progress without RCON and rejects reports without the server credential', async () => {
+    const report = { stage: 'updating_game', bootId: 'new-boot', updatedAt: Date.now() / 1000 };
+    await request(app).post('/game-update-status').send(report).expect(403);
+    await request(app).post('/game-update-status').set('Authorization', `Bearer ${secret}`).send(report).expect(204);
+    const response = await request(app).get('/game-status').set(headers()).expect(200);
+    expect(response.body.serverReady).toBe(false);
+    expect(response.body.update.stage).toBe('updating_game');
+    expect(rcon.status).not.toHaveBeenCalled();
+  });
   test('non-admin member can read status and start/stop, but cannot start matches or manage plugins', async () => {
     await request(app).get('/game-status').set(headers()).expect(200);
     await request(app).post('/start-vm').set(headers()).expect(200);

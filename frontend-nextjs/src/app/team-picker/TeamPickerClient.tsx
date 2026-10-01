@@ -309,7 +309,7 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
     if (!pendingVmAction) return;
     // Stop waiting once the server actually reaches the requested state, and give
     // up after five minutes so a failed boot cannot disable the buttons forever.
-    if (pendingVmAction === 'starting' && gamePhase === 'online') { setPendingVmAction(null); return; }
+    if (pendingVmAction === 'starting' && (gamePhase === 'online' || gamePhase === 'failed')) { setPendingVmAction(null); return; }
     if (pendingVmAction === 'stopping' && gamePhase === 'offline') { setPendingVmAction(null); return; }
     const giveUp = setTimeout(() => setPendingVmAction(null), 300000);
     return () => clearTimeout(giveUp);
@@ -329,6 +329,8 @@ const TeamPickerClient: React.FC<TeamPickerClientProps> = ({
     : pendingVmAction ? 'Sunucu durumu değişiyor, bekleyin'
     : gamePhase === 'loading' ? 'Sunucu durumu alınıyor'
     : gamePhase === 'online' ? 'Sunucu zaten açık'
+    : gamePhase === 'updating' ? 'Güncelleme ve doğrulamanın tamamlanmasını bekle'
+    : gamePhase === 'failed' ? 'Başlatma başarısız. Bir yöneticiye haber ver'
     : null;
 
   const stopBlockedReason =

@@ -2,8 +2,8 @@
 Description=CS Batagi CS2 competitive server
 After=network-online.target
 Wants=network-online.target
-StartLimitIntervalSec=300
-StartLimitBurst=3
+StartLimitIntervalSec=3600
+StartLimitBurst=2
 
 [Service]
 Type=simple
@@ -11,10 +11,15 @@ User=steam
 Group=steam
 WorkingDirectory=/home/steam/cs2
 Environment=HOME=/home/steam
+ExecStartPre=+/usr/local/lib/csbatagi/gate.sh close
+ExecStartPre=/usr/bin/python3 /usr/local/lib/csbatagi/update-stack.py prepare
 ExecStart=/usr/local/lib/csbatagi/launch.py
+ExecStartPost=+/usr/local/lib/csbatagi/verify-start.sh
 ExecStop=/usr/local/lib/csbatagi/rcon-local.py quit
+ExecStopPost=/usr/bin/python3 /usr/local/lib/csbatagi/update-stack.py rollback
 Restart=on-failure
 RestartSec=15
+TimeoutStartSec=3600
 TimeoutStopSec=45
 KillSignal=SIGINT
 LimitNOFILE=65536

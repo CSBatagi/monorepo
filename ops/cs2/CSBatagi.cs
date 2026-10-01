@@ -188,12 +188,20 @@ public partial class MatchZy
 
     private string BatagiStatus()
     {
+        bool serverReady = false;
+        try
+        {
+            using var startup = JsonDocument.Parse(File.ReadAllText("/home/steam/csbatagi-updates/status.json"));
+            serverReady = startup.RootElement.GetProperty("stage").GetString() == "ready"
+                && startup.RootElement.GetProperty("bootId").GetString() == File.ReadAllText("/proc/sys/kernel/random/boot_id").Trim();
+        }
+        catch { }
         JsonElement? uploads = null;
         try { using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(BatagiStateDir, "uploads.json"))); uploads = JsonSerializer.SerializeToElement(new { updatedAt = document.RootElement.GetProperty("updatedAt"), pending = document.RootElement.GetProperty("pending"), demos = document.RootElement.GetProperty("demos").EnumerateArray().Take(5).Select(x => x.Clone()).ToArray() }); } catch { }
         var players = Utilities.GetPlayers().Where(p => p.IsValid).ToList();
         var tv = players.FirstOrDefault(BatagiIsTv);
         return JsonSerializer.Serialize(new {
-            time = DateTime.UtcNow, map = Server.MapName, matchId = liveMatchId,
+            time = DateTime.UtcNow, map = Server.MapName, matchId = liveMatchId, serverReady,
             warmup = isWarmup, live = isMatchLive, matchLoaded = isMatchSetup,
             paused = isPaused || batagiPreparing || batagiDemoFailed,
             playerPaused = isPaused, matchStarted,

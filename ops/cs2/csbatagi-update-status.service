@@ -1,0 +1,16 @@
+[Unit]
+Description=CS Batagi game preparation status reporter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=steam
+Group=steam
+ExecStart=/usr/bin/python3 /usr/local/lib/csbatagi/update-stack.py report
+Restart=always
+RestartSec=10
+MemoryMax=64M
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

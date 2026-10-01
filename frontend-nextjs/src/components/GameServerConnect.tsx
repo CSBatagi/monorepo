@@ -9,7 +9,7 @@ const address = '34.159.222.148:27015';
 const command = `connect ${address}`;
 const launchUrl = `steam://run/730//${encodeURIComponent(`+${command}`)}/`;
 
-export default function GameServerConnect() {
+export default function GameServerConnect({ disabled = false }: { disabled?: boolean }) {
   const [copyMessage, setCopyMessage] = useState('');
   async function copyCommand() {
     try {
@@ -20,7 +20,7 @@ export default function GameServerConnect() {
     }
   }
   return <div className="game-server-connect">
-    <a className="game-server-join" href={launchUrl}><ExternalLink size={17} /> CS2 ile bağlan</a>
+    <a className="game-server-join" href={disabled ? undefined : launchUrl} aria-disabled={disabled} tabIndex={disabled ? -1 : undefined}><ExternalLink size={17} />{disabled ? 'Sunucunun hazır olmasını bekle' : 'CS2 ile bağlan'}</a>
     <span className="game-server-address">{address}</span>
     <details><summary>Bağlantı açılmadı mı?</summary><p>CS2 ayarlarında geliştirici konsolunu etkinleştir. Konsolu açıp bu komutu yapıştır; istenirse sunucu şifresini gir.</p><div className="game-server-copy"><code>{command}</code><button type="button" onClick={copyCommand}><Copy size={14} /> Kopyala</button></div><p role="status">{copyMessage}</p></details>
   </div>;

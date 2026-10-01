@@ -2,7 +2,11 @@
 
 Deployed on 10 September 2026. See the [deployment and validation record](../../docs/operations/cs2-resurrection-deployment.md). This directory contains the source for the custom integration; credentials and binary packages are deliberately excluded.
 
-## Pinned stack
+## Current managed stack
+
+As of 1 October 2026: CS2 1.41.8.8, Metamod 1473, CounterStrikeSharp 1.0.376, patched MatchZy Enhanced 1.4.35 and patched Inventory Simulator source 3.3.0. `update-stack.py` checks game and plugin updates before cold-boot startup, preserving our integrations. See the [automatic-update runbook](../../docs/operations/cs2-automatic-updates.md).
+
+## Original September installation
 
 - CS2 updated with `/usr/games/steamcmd`, app 730; running patch 14181.
 - Metamod build 1411. Build 1466 failed CounterStrikeSharp's SourceHook API requirement in this environment; do not substitute it blindly.
@@ -27,6 +31,8 @@ The Ubuntu VM runs `cs2.service` as `steam`, with `csbatagi-demos.service` maint
 - `/home/steam/resurrection_backup_20260910/`: pre-upgrade files. Contains secrets; keep private.
 
 `install.py` is an installation tool for this existing VM layout, not a generic cloud provisioner. First stage the tested packages in `/home/steam/resurrection-packages`, the complete published plugin as `/tmp/csbatagi-matchzy.tgz`, and the pinned upstream `cfg/MatchZy` tree as `/tmp/csbatagi-matchzy-cfg.tgz`. Complete SteamCMD successfully and stop CS2 before invoking it. Preserve/provision the private website token separately. It backs up the previous plugin and preserves existing admins and server credentials.
+
+Automatic updates on opening are installed through `install-updater.py`. The [runbook](../../docs/operations/cs2-automatic-updates.md) describes checked game updates, custom plugin builds, the public connection gate, readiness reporting and failure recovery. Use this managed installation for current deployments; `install.py` and the original pinned build commands above describe the September installation.
 
 ## Player flow
 

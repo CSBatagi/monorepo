@@ -2,6 +2,7 @@ const { sessionUser, isSteamAdmin, rosterMember } = require('./steamAuth');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { createGameUpdateStatus } = require('./gameUpdateStatus');
 
 function validateMatch(input) {
   const n = input?.players_per_team;
@@ -35,6 +36,7 @@ function validateMatch(input) {
 function registerGameServer(app, { pool, rcon, gcp, analysisServer = null, lookupRoster = rosterMember }) {
   const directory = process.env.CS2_MATCH_DIR || path.join(__dirname, 'cs2-control');
   fs.mkdirSync(directory, { recursive: true });
+  const updates = createGameUpdateStatus(directory);
   let loading = false;
   const admin = async (req, res, next) => {
     const user = sessionUser(req.get('x-game-session'), process.env.MATCHMAKING_TOKEN || process.env.AUTH_TOKEN);
@@ -71,7 +73,10 @@ function registerGameServer(app, { pool, rcon, gcp, analysisServer = null, looku
     try { match = validateMatch(req.body); } catch (error) { return res.status(400).json({ error: error.message }); }
     loading = true;
     try {
+      const update = updates.current();
+      if (update && update.stage !== 'ready') return res.status(409).json({ error: 'Sunucu güncelleniyor veya doğrulama başarısız. Hazır olmasını bekle.' });
       const status = await rcon.status();
+      if (status.serverReady === false) return res.status(409).json({ error: 'Sunucu henüz doğrulanmadı. Hazır olmasını bekle.' });
       if (status.live || status.preparing || status.recording || status.matchStarted)
         return res.status(409).json({ error: 'A match is already active; finish it before loading another map' });
       fs.writeFileSync(path.join(directory, match.matchid + '.json'), JSON.stringify(match), { flag: 'wx', mode: 0o640 });
@@ -81,7 +86,14 @@ function registerGameServer(app, { pool, rcon, gcp, analysisServer = null, looku
     finally { loading = false; }
   });
   app.get('/game-status', bearer, member, async (_req, res) => {
-    try { res.json(await rcon.status()); } catch (error) { res.status(503).json({ error: error.message }); }
+    const update = updates.current();
+    if (update && update.stage !== 'ready') return res.json({ warmup: false, live: false, preparing: false,
+      recording: false, demoFailed: false, map: '', humans: 0, bytes: 0, serverReady: false, update });
+    try { res.json({ ...await rcon.status(), ...(update ? { update } : {}) }); } catch (error) { res.status(503).json({ error: error.message }); }
+  });
+  app.post('/game-update-status', bearer, (req, res) => {
+    try { updates.receive(req.body); res.sendStatus(204); }
+    catch { res.status(400).json({ error: 'Invalid game preparation report' }); }
   });
   app.post('/load-plugins', admin, async (_req, res) => {
     try { res.json({ message: 'Match manager is loaded', status: await rcon.status() }); }

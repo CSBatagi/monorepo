@@ -5,13 +5,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export type GameStatus = {
   warmup: boolean; live: boolean; preparing: boolean; recording: boolean; demoFailed: boolean; paused?: boolean;
   map: string; humans: number; bytes: number;
+  serverReady?: boolean;
+  update?: { stage: 'checking' | 'updating_game' | 'updating_plugins' | 'verifying' | 'ready' | 'failed'; error?: string; warning?: string };
   uploads?: { pending: number; updatedAt?: number; demos: { name: string; state: string }[] };
 };
 
 /** offline covers both a stopped VM and one that is still booting: the game
  *  server answers RCON only once CS2 itself is up, so the two look identical
  *  from here. The caller knows which it asked for and can say so. */
-export type GamePhase = 'loading' | 'online' | 'offline' | 'unauthorized';
+export type GamePhase = 'loading' | 'online' | 'offline' | 'unauthorized' | 'updating' | 'failed';
 
 const IDLE_INTERVAL = 15000;
 const SETTLING_INTERVAL = 5000;
@@ -38,7 +40,11 @@ export function useGameServerStatus(settling = false) {
       if (disposed.current) return;
       if (response.status === 401 || response.status === 403) { setStatus(null); setPhase('unauthorized'); }
       else if (!response.ok) { setStatus(null); setPhase('offline'); }
-      else { setStatus(await response.json()); setPhase('online'); }
+      else {
+        const status: GameStatus = await response.json();
+        setStatus(status);
+        setPhase(status.update?.stage === 'failed' ? 'failed' : status.serverReady === false ? 'updating' : 'online');
+      }
     } catch {
       if (!disposed.current) { setStatus(null); setPhase('offline'); }
     }
