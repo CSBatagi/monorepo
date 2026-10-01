@@ -429,7 +429,7 @@ def verify():
                 current_game(check_remote=True)
                 pending = read_json(ROOT / 'pending.json')
                 package = pending or read_json(ROOT / 'installed.json', {})
-                combo = {'game': game_version(), 'versions': package.get('versions')}
+                combo = {'game': current_game(), 'versions': package.get('versions')}
                 if read_json(ROOT / 'verified.json', {}).get('combo') != combo:
                     probe_demo(command)
                     atomic_json(ROOT / 'verified.json', {'combo': combo, 'verifiedAt': time.time()})
