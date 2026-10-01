@@ -316,7 +316,7 @@ def install_package(package):
     atomic_json(ROOT / 'pending.json', package)
 
 
-def rollback(reject=True):
+def rollback(reject=None):
     transaction = read_json(ROOT / 'transaction.json')
     if not transaction:
         return False
@@ -330,6 +330,10 @@ def rollback(reject=True):
         elif dest.is_file():
             dest.unlink()
     atomic_json(ROOT / 'installed.json', transaction['previous'])
+    if reject is None:
+        # The website can spend minutes hydrating stats after a deployment.
+        # An unavailable inventory API does not prove a bad plugin package.
+        reject = read_json(STATE, {}).get('error') != 'inventory_health'
     if reject:
         atomic_json(ROOT / 'rejected.json', {**transaction['candidate'], 'game': game_version()})
     for name in ['pending.json', 'transaction.json']:
@@ -403,7 +407,8 @@ def rcon():
 
 def verify():
     command = rcon()
-    deadline = time.monotonic() + 150
+    deadline = time.monotonic() + 900
+    native_deadline = time.monotonic() + 150
     successes = 0
     inventory_started = 0
     inventory_after = time.time()
@@ -416,6 +421,8 @@ def verify():
             plugins = command('css_plugins list')
             if not all(re.search(r'\[#\d+:LOADED\]:\s*"' + name + '"', plugins) for name in ['MatchZy', 'InventorySimulator']):
                 raise RuntimeError('plugin_health')
+            current_game()
+            native_deadline = time.monotonic() + 150
             if time.monotonic() - inventory_started > 15:
                 command('csbatagi_inventory_check')
                 inventory_started = time.monotonic()
@@ -423,7 +430,6 @@ def verify():
             result = read_json(check, {})
             if not check.exists() or check.stat().st_mtime < inventory_after or not result.get('success'):
                 raise RuntimeError('inventory_health')
-            current_game()
             successes += 1
             if successes >= 3:
                 current_game(check_remote=True)
@@ -443,6 +449,8 @@ def verify():
             last_error = str(error) if isinstance(error, RuntimeError) else type(error).__name__
             stage('verifying', detail=last_error if re.fullmatch(r'[A-Za-z0-9_]+', last_error) else 'verification_error')
             successes = 0
+            if last_error != 'inventory_health' and time.monotonic() >= native_deadline:
+                break
         time.sleep(5)
     raise RuntimeError(last_error)
 
