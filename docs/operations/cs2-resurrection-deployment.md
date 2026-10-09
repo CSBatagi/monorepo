@@ -1,6 +1,6 @@
 # CS2 resurrection deployment — 10 September 2026
 
-This supersedes the earlier inspection and target-plan status. The restored game VM is running an updated stack and is publicly reachable at `cs2.csbatagi.com:27015` (reserved static IP `34.159.222.148`). The join password was preserved. The expired game-server login token was renewed and Steam reported a secure server.
+This records the 10 September deployment, which used a reserved static public IP and `cs2.csbatagi.com:27015`. The game VM has since switched to an ephemeral Premium-tier address; use the website's current connection command and the [dynamic address runbook](cs2-dynamic-addresses.md). The join password was preserved. The expired game-server login token was renewed and Steam reported a secure server.
 
 ## Implemented
 

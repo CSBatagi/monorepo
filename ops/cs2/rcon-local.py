@@ -13,7 +13,7 @@ def command(text):
     def packet(identifier, kind, body):
         data = struct.pack('<ii', identifier, kind) + body.encode() + b'\0\0'
         return struct.pack('<i', len(data)) + data
-    with socket.create_connection(('10.156.0.11', 27015), timeout=5) as sock:
+    with socket.create_connection(('127.0.0.1', 27015), timeout=5) as sock:
         def read_exact(size):
             data = b''
             while len(data) < size:

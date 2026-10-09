@@ -9,8 +9,8 @@ const GcpManager = require('./gcp.js');
 const { resolveSeasonConfig } = require('./seasonConfig');
 
 
-const rconConnection = new RconConnection();
 const gcpManager = new GcpManager();
+const rconConnection = new RconConnection(async () => (await gcpManager.getConnectionInfo()).privateHost);
 
 const app = express();
 

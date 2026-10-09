@@ -20,6 +20,7 @@ Use this folder as the canonical context source.
 - Production stats publishing runbook: [`operations/stats-publishing.md`](operations/stats-publishing.md)
 - CS2 game server deployment and tests: [`operations/cs2-resurrection-deployment.md`](operations/cs2-resurrection-deployment.md)
 - CS2 automatic startup updates and recovery: [`operations/cs2-automatic-updates.md`](operations/cs2-automatic-updates.md)
+- CS2 dynamic IP discovery and player connections: [`operations/cs2-dynamic-addresses.md`](operations/cs2-dynamic-addresses.md)
 - Demo analysis worker, member downloads and uploads from other servers: [`operations/demo-analysis-and-downloads.md`](operations/demo-analysis-and-downloads.md)
 - Scripted CS Demo Manager recording and the demo-to-YouTube render plan: [`operations/demo-video-pipeline-plan.md`](operations/demo-video-pipeline-plan.md)
 - Security and secrets handling: [`operations/security-secrets.md`](operations/security-secrets.md)

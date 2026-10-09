@@ -86,10 +86,14 @@ function registerGameServer(app, { pool, rcon, gcp, analysisServer = null, looku
     finally { loading = false; }
   });
   app.get('/game-status', bearer, member, async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
     const update = updates.current();
     if (update && update.stage !== 'ready') return res.json({ warmup: false, live: false, preparing: false,
       recording: false, demoFailed: false, map: '', humans: 0, bytes: 0, serverReady: false, update });
-    try { res.json({ ...await rcon.status(), ...(update ? { update } : {}) }); } catch (error) { res.status(503).json({ error: error.message }); }
+    try {
+      const [status, connection] = await Promise.all([rcon.status(), gcp.getConnectionInfo()]);
+      res.json({ ...status, connection: { address: connection.address }, ...(update ? { update } : {}) });
+    } catch { res.status(503).json({ error: 'Game server status or address is unavailable' }); }
   });
   app.post('/game-update-status', bearer, (req, res) => {
     try { updates.receive(req.body); res.sendStatus(204); }

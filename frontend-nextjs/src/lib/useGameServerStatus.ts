@@ -6,6 +6,7 @@ export type GameStatus = {
   warmup: boolean; live: boolean; preparing: boolean; recording: boolean; demoFailed: boolean; paused?: boolean;
   map: string; humans: number; bytes: number;
   serverReady?: boolean;
+  connection?: { address: string | null };
   update?: { stage: 'checking' | 'updating_game' | 'updating_plugins' | 'verifying' | 'ready' | 'failed'; error?: string; warning?: string };
   uploads?: { pending: number; updatedAt?: number; demos: { name: string; state: string }[] };
 };
@@ -20,7 +21,7 @@ const SETTLING_INTERVAL = 5000;
 
 /** Polls the game server status. Pass settling=true while a start/stop is in
  *  flight to check more often until the server reaches its new state. */
-export function useGameServerStatus(settling = false) {
+export function useGameServerStatus(settling = false, enabled = true) {
   const [status, setStatus] = useState<GameStatus | null>(null);
   const [phase, setPhase] = useState<GamePhase>('loading');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -36,17 +37,18 @@ export function useGameServerStatus(settling = false) {
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
     try {
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-      const response = await fetch(`${basePath}/api/game-status`, { cache: 'no-store', signal: AbortSignal.timeout(12000) });
-      if (disposed.current) return;
+      const response = await fetch(`${basePath}/api/game-status`, { cache: 'no-store', signal: AbortSignal.timeout(15000) });
+      if (disposed.current || generation.current !== mine) return;
       if (response.status === 401 || response.status === 403) { setStatus(null); setPhase('unauthorized'); }
       else if (!response.ok) { setStatus(null); setPhase('offline'); }
       else {
         const status: GameStatus = await response.json();
+        if (disposed.current || generation.current !== mine) return;
         setStatus(status);
         setPhase(status.update?.stage === 'failed' ? 'failed' : status.serverReady === false ? 'updating' : 'online');
       }
     } catch {
-      if (!disposed.current) { setStatus(null); setPhase('offline'); }
+      if (!disposed.current && generation.current === mine) { setStatus(null); setPhase('offline'); }
     }
     if (!disposed.current && generation.current === mine) {
       timer.current = setTimeout(refresh, settlingRef.current ? SETTLING_INTERVAL : IDLE_INTERVAL);
@@ -54,17 +56,29 @@ export function useGameServerStatus(settling = false) {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     disposed.current = false;
     void refresh();
-    return () => { disposed.current = true; if (timer.current) clearTimeout(timer.current); };
-  }, [refresh]);
+    const resume = () => { if (document.visibilityState === 'visible') void refresh(); };
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('pageshow', resume);
+    window.addEventListener('online', resume);
+    return () => {
+      disposed.current = true;
+      generation.current++;
+      if (timer.current) clearTimeout(timer.current);
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('pageshow', resume);
+      window.removeEventListener('online', resume);
+    };
+  }, [refresh, enabled]);
 
   // Entering the settling state should not wait out the idle interval.
   const wasSettling = useRef(settling);
   useEffect(() => {
-    if (settling && !wasSettling.current) void refresh();
+    if (enabled && settling && !wasSettling.current) void refresh();
     wasSettling.current = settling;
-  }, [settling, refresh]);
+  }, [settling, refresh, enabled]);
 
   return { status, phase, refresh };
 }

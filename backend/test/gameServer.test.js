@@ -159,11 +159,30 @@ describe('roster member server power controls', () => {
     lookupRoster = jest.fn().mockReturnValue({ steamId: '76561198000000001' });
     pool = { query: jest.fn().mockImplementation(sql => Promise.resolve({ rows: sql.includes('is_admin') ? [] : [{}] })) };
     rcon = { status: jest.fn().mockResolvedValue({ live: false, preparing: false, recording: false, uploads: { pending: 0, updatedAt: Date.now() / 1000 } }), executeCommand: jest.fn().mockResolvedValue('ok') };
-    gcp = { startVm: jest.fn().mockResolvedValue({ success: true }), stopVm: jest.fn().mockResolvedValue({ success: true }) };
+    gcp = { startVm: jest.fn().mockResolvedValue({ success: true }), stopVm: jest.fn().mockResolvedValue({ success: true }),
+      getConnectionInfo: jest.fn().mockResolvedValue({ status: 'RUNNING', privateHost: '10.0.0.8', address: '203.0.113.8:27015' }) };
     registerGameServer(app, { pool, rcon, gcp, lookupRoster });
   });
   afterEach(() => fs.rmSync(directory, { recursive: true, force: true }));
   const headers = () => ({ Authorization: `Bearer ${secret}`, 'x-game-session': session() });
+  test('discovers the current join address without exposing the private RCON host', async () => {
+    const first = await request(app).get('/game-status').set(headers()).expect(200);
+    expect(first.headers['cache-control']).toBe('no-store');
+    expect(first.body.connection).toEqual({ address: '203.0.113.8:27015' });
+    gcp.getConnectionInfo.mockResolvedValue({ status: 'RUNNING', privateHost: '10.0.0.9', address: '203.0.113.9:27015' });
+    const next = await request(app).get('/game-status').set(headers()).expect(200);
+    expect(next.body.connection).toEqual({ address: '203.0.113.9:27015' });
+    gcp.getConnectionInfo.mockRejectedValue(new Error('cloud credentials detail'));
+    const failed = await request(app).get('/game-status').set(headers()).expect(503);
+    expect(failed.body.connection).toBeUndefined();
+    expect(failed.body.error).not.toContain('credentials');
+  });
+  test('refuses connection discovery for unsigned or non-roster requests', async () => {
+    await request(app).get('/game-status').set('Authorization', `Bearer ${secret}`).expect(401);
+    lookupRoster.mockReturnValue(null);
+    await request(app).get('/game-status').set(headers()).expect(403);
+    expect(gcp.getConnectionInfo).not.toHaveBeenCalled();
+  });
   test('shows update progress without RCON and rejects reports without the server credential', async () => {
     const report = { stage: 'updating_game', bootId: 'new-boot', updatedAt: Date.now() / 1000 };
     await request(app).post('/game-update-status').send(report).expect(403);

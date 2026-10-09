@@ -1,9 +1,15 @@
 const Rcon = require('rcon');
 
 module.exports = class RconConnection {
-  executeCommand(command) {
+  constructor(resolveHost) {
+    this.resolveHost = resolveHost;
+  }
+
+  async executeCommand(command) {
+    const host = process.env.CS2_RCON_HOST || await this.resolveHost?.();
+    if (!host) throw new Error('Game server private address is unavailable');
     return new Promise((resolve, reject) => {
-      const connection = new Rcon(process.env.CS2_RCON_HOST || '10.156.0.11', 27015, process.env.RCON_PASSWORD);
+      const connection = new Rcon(host, 27015, process.env.RCON_PASSWORD);
       let settled = false;
       const finish = (error, result) => {
         if (settled) return;
