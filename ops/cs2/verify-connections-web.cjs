@@ -6,6 +6,7 @@ const { rosterMember } = require('/app/steamAuth');
 const Gcp = require('/app/gcp');
 const pool = new Pool({ host: process.env.DB_HOST, database: process.env.DB_DATABASE,
   user: process.env.DB_USER, password: process.env.DB_PASSWORD, max: 1 });
+let step = 'member database';
 
 (async () => {
   const rows = (await pool.query('SELECT steam_id,uid FROM steam_members')).rows;
@@ -17,6 +18,7 @@ const pool = new Pool({ host: process.env.DB_HOST, database: process.env.DB_DATA
     exp: Math.floor(Date.now() / 1000) + 120 })).toString('base64url');
   const session = `${header}.${body}.${crypto.createHmac('sha256', key).update(`${header}.${body}`).digest('base64url')}`;
   const gcp = new Gcp();
+  step = 'cloud discovery';
   const connection = await gcp.getConnectionInfo();
   await gcp.compute.close();
   const fetchOptions = headers => ({ headers, signal: AbortSignal.timeout(20000), cache: 'no-store' });
@@ -24,6 +26,7 @@ const pool = new Pool({ host: process.env.DB_HOST, database: process.env.DB_DATA
     ['http://127.0.0.1:3000/game-status', { Authorization: `Bearer ${process.env.AUTH_TOKEN}`, 'X-Game-Session': session }],
     ['https://csbatagi.com/api/game-status', { Cookie: `csbatagi_session=${session}` }],
   ]) {
+    step = url;
     const response = await fetch(url, fetchOptions(headers));
     const status = await response.json();
     assert.equal(response.headers.get('cache-control'), 'no-store');
@@ -41,6 +44,7 @@ const pool = new Pool({ host: process.env.DB_HOST, database: process.env.DB_DATA
       transport: status.connection?.transport || null, address: status.connection?.address || null }));
   }
   for (const page of ['team-picker', 'ekipman']) {
+    step = page;
     const response = await fetch(`https://csbatagi.com/${page}`, fetchOptions({ Cookie: `csbatagi_session=${session}` }));
     assert.equal(response.status, 200);
     const html = await response.text();
@@ -54,9 +58,14 @@ const pool = new Pool({ host: process.env.DB_HOST, database: process.env.DB_DATA
     }
     console.log(JSON.stringify({ page, http: 200, assets: assets.length }));
   }
+  step = 'stats diagnostics';
   const diagnostics = await fetch('http://127.0.0.1:3000/stats/diagnostics', fetchOptions({}));
   assert.equal(diagnostics.status, 200);
   const data = await diagnostics.json();
   console.log(JSON.stringify({ statsDiagnostics: diagnostics.status, counts: data.counts }));
-})().catch(() => { console.error('Connection website validation failed; no private diagnostics printed.'); process.exitCode = 1; })
+})().catch(error => {
+  const code = /^(?:ERR_ASSERTION|ECONNREFUSED|ETIMEDOUT|ENOTFOUND)$/.test(error.code) ? error.code : 'unavailable';
+  console.error(JSON.stringify({ validationFailedAt: step, code }));
+  process.exitCode = 1;
+})
   .finally(() => pool.end());
