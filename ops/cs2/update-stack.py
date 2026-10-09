@@ -391,6 +391,10 @@ def prepare():
                 rollback()
             stage('updating_plugins', warning='plugin_candidate_' + type(error).__name__)
         ensure_gameinfo()
+        sdr_spec = importlib.util.spec_from_file_location('sdr', HERE / 'sdr.py')
+        sdr = importlib.util.module_from_spec(sdr_spec)
+        sdr_spec.loader.exec_module(sdr)
+        sdr.prepare()
         config = GAME / 'addons/counterstrikesharp/configs/core.json'
         core = read_json(config, {})
         core.update(AutoUpdateEnabled=False, PluginHotReloadEnabled=False)
@@ -493,6 +497,13 @@ def report_loop():
             elif value.get('stage') == 'ready' and subprocess.run(['pgrep', '-x', 'cs2'], stdout=subprocess.DEVNULL).returncode != 0:
                 value = {**value, 'stage': 'failed', 'error': 'game_not_running'}
             value['updatedAt'] = time.time()
+            if value.get('stage') == 'ready':
+                sdr_spec = importlib.util.spec_from_file_location('sdr', HERE / 'sdr.py')
+                sdr = importlib.util.module_from_spec(sdr_spec)
+                sdr_spec.loader.exec_module(sdr)
+                value['sdr'] = sdr.report(rcon())
+            else:
+                value['sdr'] = None
             token = (GAME / 'cfg/csbatagi-web-token').read_text().strip()
             req = urllib.request.Request('https://csbatagi.com/backend/game-update-status',
                 data=json.dumps(value).encode(), method='POST', headers={

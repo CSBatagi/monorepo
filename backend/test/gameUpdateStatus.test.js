@@ -34,3 +34,20 @@ test('callback needs bearer auth and rejects malformed reports', async () => {
   await request(app).post('/game-update-status').set('Authorization', 'Bearer test-update-secret')
     .send({ stage: 'verifying', bootId: 'boot-a', updatedAt: Date.now() / 1000 }).expect(204);
 });
+
+test('accepts only sanitized relay identities in fresh Ready reports', () => {
+  let now = 100000;
+  const store = createGameUpdateStatus(directory, () => now);
+  const report = address => ({ stage: 'ready', bootId: 'boot-a', updatedAt: now / 1000, sdr: { address, password: 'private' } });
+  store.receive(report('[G:1:12345:0]'));
+  expect(store.current().sdr).toEqual({ address: '[G:1:12345:0]' });
+  expect(JSON.stringify(store.current())).not.toContain('private');
+  for (const bad of ['[G:1:12345];quit', '[U:1:12345]', '[G:1:0]', '203.0.113.8:27015', null]) {
+    store.receive(report(bad)); expect(store.current().sdr).toBeNull();
+  }
+  store.receive({ ...report('[G:1:12345]'), stage: 'verifying' });
+  expect(store.current().sdr).toBeNull();
+  store.receive(report('[G:1:12345]'));
+  now += 45001;
+  expect(store.current()).toBeNull();
+});

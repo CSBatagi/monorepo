@@ -28,7 +28,7 @@ if subprocess.run(['pgrep', '-x', 'steamcmd'], stdout=subprocess.DEVNULL).return
 stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
 backup = pathlib.Path('/home/steam/csbatagi-backups') / ('updater-' + stamp)
 backup.mkdir(mode=0o700, parents=True)
-files = ['update-stack.py', 'gate.sh', 'verify-start.sh', 'patch-matchzy.py', 'CSBatagi.cs',
+files = ['update-stack.py', 'gate.sh', 'connection-gate.py', 'sdr.py', 'launch.py', 'rcon-local.py', 'verify-start.sh', 'patch-matchzy.py', 'CSBatagi.cs',
          'patch-inventory.py', 'CSBatagiInventory.cs']
 services = ['cs2.service', 'csbatagi-update-status.service']
 manifest = []
@@ -43,6 +43,12 @@ for name, destination in [(n, TARGET / n) for n in files] + [(n, pathlib.Path('/
 (backup / 'manifest.json').write_text(json.dumps(manifest, indent=2))
 ROOT.mkdir(mode=0o750, exist_ok=True)
 shutil.chown(ROOT, user='steam', group='steam')
+spec = importlib.util.spec_from_file_location('sdr', TARGET / 'sdr.py')
+sdr = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(sdr)
+config = pathlib.Path('/home/steam/cs2/game/csgo/cfg/server.cfg')
+shutil.copy2(config, backup / 'server.cfg')
+config.write_text(sdr.gate_config(config.read_text()))
 subprocess.run(['systemctl', 'daemon-reload'], check=True)
 subprocess.run(['systemctl', 'enable', 'cs2', 'csbatagi-update-status'], check=True)
 subprocess.run([str(TARGET / 'gate.sh'), 'close'], check=True)

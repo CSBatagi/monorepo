@@ -50,6 +50,8 @@ df -h /home/steam/cs2
 
 The status reporter posts a sanitized payload every ten seconds to authenticated backend `POST /game-update-status`. Backend stores it beside persistent match-control files, rejects stale reports and expires them after 45 seconds. Member `GET /game-status` can report progress before RCON exists. Raw console logs and credentials are never returned by the callback.
 
+The 9 October SDR extension adds a root-managed password gate to cover Steam relay admission as well as direct UDP, preserves its hook across map config reloads, reapplies the listener settings after SteamCMD, and includes a verified Steam identity in the existing callback. Its selective installer preserves the deployed custom patches. The game-VM rollout is currently blocked by cloud capacity; see [SDR installation and validation](cs2-sdr.md) before deploying these sources.
+
 Do not bypass startup by launching the binary directly or opening the gate manually. For an explicitly safe maintenance retry, first confirm no humans, loaded/live match, recording or unverified uploads, then stop CS2, reset the systemd start limit and start it again. Never delete the updater transaction/rollback files to force installation.
 
 ## Deployment and rollback

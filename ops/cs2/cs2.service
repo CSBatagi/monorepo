@@ -16,6 +16,7 @@ ExecStartPre=/usr/bin/python3 /usr/local/lib/csbatagi/update-stack.py prepare
 ExecStart=/usr/local/lib/csbatagi/launch.py
 ExecStartPost=+/usr/local/lib/csbatagi/verify-start.sh
 ExecStop=/usr/local/lib/csbatagi/rcon-local.py quit
+ExecStopPost=+/usr/local/lib/csbatagi/gate.sh close
 ExecStopPost=/usr/bin/python3 /usr/local/lib/csbatagi/update-stack.py rollback
 Restart=on-failure
 RestartSec=15

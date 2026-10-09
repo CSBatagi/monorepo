@@ -6,7 +6,7 @@ export type GameStatus = {
   warmup: boolean; live: boolean; preparing: boolean; recording: boolean; demoFailed: boolean; paused?: boolean;
   map: string; humans: number; bytes: number;
   serverReady?: boolean;
-  connection?: { address: string | null };
+  connection?: { address: string | null; transport?: 'sdr'; directAddress?: string | null };
   update?: { stage: 'checking' | 'updating_game' | 'updating_plugins' | 'verifying' | 'ready' | 'failed'; error?: string; warning?: string };
   uploads?: { pending: number; updatedAt?: number; demos: { name: string; state: string }[] };
 };

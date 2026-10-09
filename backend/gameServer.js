@@ -92,7 +92,9 @@ function registerGameServer(app, { pool, rcon, gcp, analysisServer = null, looku
       recording: false, demoFailed: false, map: '', humans: 0, bytes: 0, serverReady: false, update });
     try {
       const [status, connection] = await Promise.all([rcon.status(), gcp.getConnectionInfo()]);
-      res.json({ ...status, connection: { address: connection.address }, ...(update ? { update } : {}) });
+      const relay = status.serverReady !== false && connection.status === 'RUNNING' ? update?.sdr?.address : null;
+      res.json({ ...status, connection: { address: relay || connection.address,
+        ...(relay ? { transport: 'sdr', directAddress: connection.address } : {}) }, ...(update ? { update } : {}) });
     } catch { res.status(503).json({ error: 'Game server status or address is unavailable' }); }
   });
   app.post('/game-update-status', bearer, (req, res) => {

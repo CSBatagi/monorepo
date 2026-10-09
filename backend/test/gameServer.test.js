@@ -183,6 +183,19 @@ describe('roster member server power controls', () => {
     await request(app).get('/game-status').set(headers()).expect(403);
     expect(gcp.getConnectionInfo).not.toHaveBeenCalled();
   });
+  test('prefers a fresh verified relay address and retains the discovered direct-IP fallback', async () => {
+    const report = { stage: 'ready', bootId: 'new-boot', updatedAt: Date.now() / 1000, sdr: { address: '[G:1:12345:0]' } };
+    await request(app).post('/game-update-status').set('Authorization', `Bearer ${secret}`).send(report).expect(204);
+    const response = await request(app).get('/game-status').set(headers()).expect(200);
+    expect(response.body.connection).toEqual({ address: '[G:1:12345:0]', transport: 'sdr', directAddress: '203.0.113.8:27015' });
+    rcon.status.mockResolvedValue({ serverReady: false });
+    const unready = await request(app).get('/game-status').set(headers()).expect(200);
+    expect(unready.body.connection).toEqual({ address: '203.0.113.8:27015' });
+    rcon.status.mockResolvedValue({ serverReady: true });
+    await request(app).post('/game-update-status').set('Authorization', `Bearer ${secret}`).send({ ...report, sdr: null }).expect(204);
+    const direct = await request(app).get('/game-status').set(headers()).expect(200);
+    expect(direct.body.connection).toEqual({ address: '203.0.113.8:27015' });
+  });
   test('shows update progress without RCON and rejects reports without the server credential', async () => {
     const report = { stage: 'updating_game', bootId: 'new-boot', updatedAt: Date.now() / 1000 };
     await request(app).post('/game-update-status').send(report).expect(403);

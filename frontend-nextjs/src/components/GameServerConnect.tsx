@@ -12,12 +12,14 @@ export default function GameServerConnect({ disabled = false, status }: { disabl
   const address = current?.connection?.address;
   const unavailable = disabled || !address || current?.serverReady === false || (status === undefined && polled.phase !== 'online');
   const command = address ? `connect ${address}` : '';
+  const directCommand = current?.connection?.transport === 'sdr' && current.connection.directAddress
+    ? `connect ${current.connection.directAddress}` : '';
   const launchUrl = address ? `steam://run/730//${encodeURIComponent(`+${command}`)}/` : undefined;
   const [copyMessage, setCopyMessage] = useState('');
-  async function copyCommand() {
+  async function copyCommand(value = command) {
     if (unavailable) return;
     try {
-      await navigator.clipboard.writeText(command);
+      await navigator.clipboard.writeText(value);
       setCopyMessage('Kopyalandı. CS2 konsoluna yapıştırın.');
     } catch {
       setCopyMessage('Aşağıdaki komutu seçip kopyalayabilirsiniz.');
@@ -25,7 +27,7 @@ export default function GameServerConnect({ disabled = false, status }: { disabl
   }
   return <div className="game-server-connect">
     <a className="game-server-join" href={unavailable ? undefined : launchUrl} aria-disabled={unavailable} tabIndex={unavailable ? -1 : undefined}><ExternalLink size={17} />{unavailable ? 'Sunucunun hazır olmasını bekle' : 'CS2 ile bağlan'}</a>
-    <span className="game-server-address">{address || 'Sunucu hazır olduğunda bağlantı adresi burada görünür.'}</span>
-    <details><summary>Bağlantı açılmadı mı?</summary><p>CS2 ayarlarında geliştirici konsolunu etkinleştir. Konsolu açıp bu komutu yapıştır; istenirse sunucu şifresini gir.</p>{command && <div className="game-server-copy"><code>{command}</code><button type="button" disabled={unavailable} onClick={copyCommand}><Copy size={14} /> Kopyala</button></div>}<p role="status">{copyMessage}</p></details>
+    <span className="game-server-address">{current?.connection?.transport === 'sdr' ? `Steam Relay · ${address}` : address || 'Sunucu hazır olduğunda bağlantı adresi burada görünür.'}</span>
+    <details><summary>Bağlantı açılmadı mı?</summary><p>CS2 ayarlarında geliştirici konsolunu etkinleştir. Konsolu açıp bu komutu yapıştır; istenirse sunucu şifresini gir.</p>{command && <div className="game-server-copy"><code>{command}</code><button type="button" disabled={unavailable} onClick={() => void copyCommand()}><Copy size={14} /> Kopyala</button></div>}{directCommand && <><p>Steam Relay ile bağlanamıyorsan doğrudan bağlantıyı dene:</p><div className="game-server-copy"><code>{directCommand}</code><button type="button" disabled={unavailable} onClick={() => void copyCommand(directCommand)}><Copy size={14} /> Kopyala</button></div></>}<p role="status">{copyMessage}</p></details>
   </div>;
 }
