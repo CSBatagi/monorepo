@@ -224,6 +224,74 @@ export function computeMapPoints(
   return { won, averaj, overtimes, points: series * scoring.overtimeConsolationPerSeries };
 }
 
+export type SuperligaMatchResult = {
+  mapName: string;
+  source: 'demo' | 'override' | 'manual';
+  team1Name: string;
+  team2Name: string;
+  team1Ids: string[];
+  team2Ids: string[];
+  team1Score: number;
+  team2Score: number;
+  excludedReason: string | null;
+};
+
+/** The same effective map results are used for scoring and the public match audit. */
+export function getSuperligaMatchResults(
+  sonmacByDate: SonmacByDate,
+  mapOverrides: SuperligaMapOverridesByDate | null | undefined,
+  manualNights: SuperligaManualNightsByDate | null | undefined,
+  date: string,
+): { eligibleNight: boolean; maps: SuperligaMatchResult[] } {
+  const demoMaps = sonmacByDate?.[date]?.maps || {};
+  const mainNames = new Set(getMainLeagueMapsForDate(sonmacByDate, date) || []);
+  const teams = deriveMainLeagueTeamsForDate(sonmacByDate, date);
+  const overrides = mapOverrides?.[date] || [];
+  const manual = manualNights?.[date];
+  const maps: SuperligaMatchResult[] = [];
+  const add = (map: SuperligaMatchResult) => {
+    if (!map.excludedReason && (!Number.isFinite(map.team1Score) || !Number.isFinite(map.team2Score) || map.team1Score === map.team2Score)) {
+      map.excludedReason = 'Geçerli sonuç yok';
+    }
+    maps.push(map);
+  };
+  for (const [mapName, map] of Object.entries(demoMaps)) {
+    if (!map) continue;
+    add({
+      mapName, source: 'demo',
+      team1Name: map.team1?.name || 'Takım 1', team2Name: map.team2?.name || 'Takım 2',
+      team1Ids: (map.team1?.players || []).map((p) => String(p?.steam_id || '').trim()),
+      team2Ids: (map.team2?.players || []).map((p) => String(p?.steam_id || '').trim()),
+      team1Score: Number(map.team1?.score), team2Score: Number(map.team2?.score),
+      excludedReason: mainNames.has(mapName) ? null : 'Ana lig dışı harita',
+    });
+  }
+  for (const override of overrides) {
+    const reversed = !!teams && override.team1Name === teams.team2Name && override.team2Name === teams.team1Name;
+    add({
+      mapName: override.mapName, source: 'override',
+      team1Name: teams?.team1Name || override.team1Name || 'Takım 1',
+      team2Name: teams?.team2Name || override.team2Name || 'Takım 2',
+      team1Ids: teams?.team1Players.map((p) => p.steamId) || [],
+      team2Ids: teams?.team2Players.map((p) => p.steamId) || [],
+      team1Score: Number(reversed ? override.team2Score : override.team1Score),
+      team2Score: Number(reversed ? override.team1Score : override.team2Score),
+      excludedReason: !teams ? 'Takım kadrosu bulunamadı' : mainNames.has(override.mapName) && demoMaps[override.mapName] ? 'Demo sonucu zaten var' : null,
+    });
+  }
+  for (const map of manual?.maps || []) {
+    add({
+      mapName: map.mapName, source: 'manual',
+      team1Name: manual?.team1Name || 'Takım 1', team2Name: manual?.team2Name || 'Takım 2',
+      team1Ids: (manual?.team1Players || []).map((p) => String(p.steamId || '').trim()),
+      team2Ids: (manual?.team2Players || []).map((p) => String(p.steamId || '').trim()),
+      team1Score: Number(map.team1Score), team2Score: Number(map.team2Score),
+      excludedReason: mainNames.size ? 'Demo verisi kullanılıyor' : null,
+    });
+  }
+  return { eligibleNight: mainNames.size > 0 || (!!teams && overrides.length > 0) || !!manual?.maps?.length, maps };
+}
+
 // ── Main standings computation ──────────────────────────────────────────────────
 
 export function computeSuperligaStandings(params: {
@@ -347,54 +415,9 @@ export function computeSuperligaStandings(params: {
   }
 
   for (const date of datesIncluded) {
-    const night = sonmacByDate?.[date];
-    const allMaps = night?.maps || {};
-    const mapNames = getMainLeagueMapsForDate(sonmacByDate, date) || [];
-    const realMapNames = new Set<string>();
-
-    // Gerçek (sonmac) maçlar — her harita kendi kadro listesini kullanır (oyuncu değişiklikleri doğru olsun)
-    for (const mapName of mapNames) {
-      const m = allMaps[mapName];
-      if (!m) continue;
-      realMapNames.add(mapName);
-      const s1 = typeof m?.team1?.score === 'number' ? m.team1.score : Number(m?.team1?.score);
-      const s2 = typeof m?.team2?.score === 'number' ? m.team2.score : Number(m?.team2?.score);
-      const t1Ids = (m?.team1?.players || []).map((p) => String(p?.steam_id || '').trim());
-      const t2Ids = (m?.team2?.players || []).map((p) => String(p?.steam_id || '').trim());
-      awardMap(date, mapName, t1Ids, t2Ids, s1, s2, false);
-    }
-
-    // Elle eklenen (override) maçlar — gecenin ana lig kadrosunu kullanır
-    const overrides = mapOverrides?.[date] || [];
-    if (overrides.length) {
-      const teams = deriveMainLeagueTeamsForDate(sonmacByDate, date);
-      if (teams) {
-        const t1Ids = teams.team1Players.map((p) => p.steamId);
-        const t2Ids = teams.team2Players.map((p) => p.steamId);
-        for (const ov of overrides) {
-          // Aynı isimli gerçek harita zaten sayıldıysa çift saymayı önle
-          if (realMapNames.has(ov.mapName)) continue;
-          // Skorları gecenin team1/team2 yönüne hizala (takım adına göre)
-          let s1 = Number(ov.team1Score);
-          let s2 = Number(ov.team2Score);
-          if (ov.team1Name && ov.team2Name && ov.team1Name === teams.team2Name && ov.team2Name === teams.team1Name) {
-            s1 = Number(ov.team2Score);
-            s2 = Number(ov.team1Score);
-          }
-          awardMap(date, ov.mapName, t1Ids, t2Ids, s1, s2, true);
-        }
-      }
-    }
-
-    // Tamamen manuel gece — demo verisi yoksa, elle girilen kadro ve skorları kullanır.
-    // (Demo verisi olan bir gecede manuel gece yok sayılır ki çift sayım olmasın.)
-    const manualNight = manualNights?.[date];
-    if (manualNight && mapNames.length === 0) {
-      const t1Ids = (manualNight.team1Players || []).map((p) => String(p?.steamId || '').trim());
-      const t2Ids = (manualNight.team2Players || []).map((p) => String(p?.steamId || '').trim());
-      for (const m of manualNight.maps || []) {
-        awardMap(date, m.mapName, t1Ids, t2Ids, Number(m.team1Score), Number(m.team2Score), true);
-      }
+    for (const map of getSuperligaMatchResults(sonmacByDate, mapOverrides, manualNights, date).maps) {
+      if (map.excludedReason) continue;
+      awardMap(date, map.mapName, map.team1Ids, map.team2Ids, map.team1Score, map.team2Score, map.source !== 'demo');
     }
   }
 

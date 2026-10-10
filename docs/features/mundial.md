@@ -7,9 +7,27 @@ knockout bracket. There is no promotion or relegation. Night scoring is
 identical to Superliga (`src/lib/superliga.ts`).
 
 Page: `/mundial` (`frontend-nextjs/src/app/mundial/`). Tabs: **Kura**, **Gruplar**,
-**Eleme Tablosu**, **Format**, plus the admin tabs shared with Superliga
+**Maçlar ve Sonuçlar**, **Eleme Tablosu**, **Format**, plus the admin tabs shared with Superliga
 (**Kaptan Atama**, **Eksik Maç Ekle**, **Manuel Gece**). A tab can be linked
-directly with `?sekme=kura|gruplar|eleme|format`.
+directly with `?sekme=kura|gruplar|maclar|eleme|format`.
+
+## Public match results
+
+**Maçlar ve Sonuçlar** (`/mundial?sekme=maclar`) lists season nights newest
+first, including dates known only through captain assignments or manual entries.
+Everyone viewing Mundial can see both captains, map scores, source (demo,
+added map or manual night), expandable rosters and per-player map points.
+Filters show all nights, counted nights or excluded nights.
+
+Night inclusion follows the group standings' exact `datesIncluded` list,
+independently of the historical-night slider on **Gruplar**. Missing captains,
+missing results/rosters and nights after the group-stage limit are labelled.
+The shared `getSuperligaMatchResults()` helper supplies both scoring and the
+audit, including exclusion reasons for casual third maps, duplicate overrides,
+manual nights superseded by demos and invalid scores. Loading/read failures
+are shown explicitly so missing live data is not presented as an exclusion.
+Maps absent from every source cannot be inferred; the tab asks players to
+report a played map if it is missing from the list.
 
 ## Configuration
 

@@ -247,6 +247,41 @@
   color: var(--m-danger);
 }
 
+/* Public match results and scoring audit */
+.matchList, .matchMaps { display: flex; flex-direction: column; gap: 12px; }
+.matchToolbar, .matchHeading, .matchCaptains, .matchMapTitle {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
+}
+.matchToolbar { justify-content: space-between; margin-top: 16px; font-size: 13px; }
+.matchHeading { justify-content: space-between; margin-bottom: 8px; }
+.matchFilter { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.matchFilter select {
+  max-width: 100%; border: 1px solid var(--m-line); border-radius: 8px;
+  background: var(--m-raised); color: var(--m-text); padding: 8px;
+}
+.matchStatus {
+  border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: 700;
+  color: var(--m-muted); background: var(--m-raised);
+}
+.matchStatus[data-included='true'] { color: var(--m-qualify); background: var(--m-qualify-soft); }
+.matchCaptains { font-size: 13px; margin-bottom: 12px; }
+.matchMaps { margin-top: 12px; }
+.matchMap { padding: 14px; border: 1px solid var(--m-line); border-radius: 10px; }
+.matchMapTitle { justify-content: space-between; font-size: 14px; }
+.matchScore {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px; align-items: center; margin: 10px 0; font-size: 14px;
+}
+.matchScore > span { overflow-wrap: anywhere; }
+.matchScore > span:last-child { text-align: right; }
+.matchScore > b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.resultWinner, .matchCounted { color: var(--m-qualify); }
+.resultWinner { font-weight: 700; }
+.matchCounted, .matchRosters { font-size: 12px; line-height: 1.6; }
+.matchRosters { margin-top: 8px; color: var(--m-muted); overflow-wrap: anywhere; }
+.matchRosters summary { cursor: pointer; color: var(--m-text); }
+.matchRosters p { margin-top: 4px; }
+
 /* ── Pots (pre-draw) ─────────────────────────────────────────────────── */
 
 .potGrid {

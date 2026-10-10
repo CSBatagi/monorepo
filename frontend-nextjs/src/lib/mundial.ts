@@ -8,7 +8,34 @@
  * - Grupların ilk iki oyuncusu çeyrek finale kalır; çeyrek final → yarı final → final.
  */
 
-import type { SuperligaConfig, SuperligaPlayerStanding } from './superliga';
+import type { CaptainsByDateSnapshot, SonmacByDate } from './batakAllStars';
+import { getSuperligaMatchResults, type SuperligaConfig, type SuperligaPlayerStanding, type SuperligaManualNightsByDate, type SuperligaMapOverridesByDate } from './superliga';
+
+export function buildMundialMatchNights(params: {
+  sonmacByDate: SonmacByDate;
+  captainsByDate: CaptainsByDateSnapshot | null;
+  mapOverrides: SuperligaMapOverridesByDate | null;
+  manualNights: SuperligaManualNightsByDate | null;
+  seasonStart: string | null;
+  datesIncluded: string[];
+}) {
+  const { sonmacByDate, captainsByDate, mapOverrides, manualNights, seasonStart, datesIncluded } = params;
+  const dates = new Set([
+    ...Object.keys(sonmacByDate), ...Object.keys(captainsByDate || {}),
+    ...Object.keys(mapOverrides || {}), ...Object.keys(manualNights || {}),
+  ]);
+  const nightNumbers = new Map(datesIncluded.map((date, i) => [date, i + 1]));
+  return [...dates].filter((date) => !seasonStart || date >= seasonStart).sort().reverse().map((date) => {
+    const results = getSuperligaMatchResults(sonmacByDate, mapOverrides, manualNights, date);
+    const captains = captainsByDate?.[date];
+    const missingCaptains = !captains?.team1?.steamId || !captains?.team2?.steamId;
+    const nightNumber = nightNumbers.get(date);
+    const status: 'included' | 'missing-results' | 'missing-captains' | 'after-groups' = nightNumber ? 'included' : !results.eligibleNight ? 'missing-results' : missingCaptains ? 'missing-captains' : 'after-groups';
+    return { date, ...results, captains, nightNumber, status };
+  });
+}
+
+export type MundialMatchNight = ReturnType<typeof buildMundialMatchNights>[number];
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 

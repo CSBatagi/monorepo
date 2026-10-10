@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dices, Info, ListOrdered, Network, Trophy } from 'lucide-react';
+import { ClipboardList, Dices, Info, ListOrdered, Network, Trophy } from 'lucide-react';
 import { useSession } from '@/contexts/SessionContext';
 import { useLivePolling } from '@/lib/useLivePolling';
 import { useStatsRefresh } from '@/lib/useStatsRefresh';
@@ -20,6 +20,7 @@ import {
 import {
   MUNDIAL_QUALIFIERS_PER_GROUP,
   buildBracket,
+  buildMundialMatchNights,
   drawParticipants,
   isDrawComplete,
   potIndexBySteamId,
@@ -39,11 +40,13 @@ import {
 } from '@/components/superliga/SuperligaPanels';
 import MundialDraw from './MundialDraw';
 import MundialBracket from './MundialBracket';
+import MundialMatches from './MundialMatches';
 import styles from './mundial.module.css';
 
 const TABS = [
   { key: 'kura', label: 'Kura', icon: Dices },
   { key: 'gruplar', label: 'Gruplar', icon: ListOrdered },
+  { key: 'maclar', label: 'Maçlar ve Sonuçlar', icon: ClipboardList },
   { key: 'eleme', label: 'Eleme Tablosu', icon: Network },
   { key: 'format', label: 'Format', icon: Info },
 ] as const;
@@ -252,15 +255,15 @@ export default function MundialClient({
   const draw = liveDraw && !ceremonyLive ? liveDraw : null;
   const knockoutResults = useMemo(() => mundialData.knockout || {}, [mundialData.knockout]);
 
-  const { data: captainsData, refetch: refetchCaptains } = useLivePolling<{ captainsByDate: CaptainsByDateSnapshot }>({
+  const { data: captainsData, loading: captainsLoading, error: captainsError, refetch: refetchCaptains } = useLivePolling<{ captainsByDate: CaptainsByDateSnapshot }>({
     url: '/api/live/superliga-captains', intervalMs: 5000, initialData: { captainsByDate: {} },
   });
   const captainsByDate = captainsData.captainsByDate || null;
-  const { data: overridesData, refetch: refetchOverrides } = useLivePolling<{ overridesByDate: SuperligaMapOverridesByDate }>({
+  const { data: overridesData, loading: overridesLoading, error: overridesError, refetch: refetchOverrides } = useLivePolling<{ overridesByDate: SuperligaMapOverridesByDate }>({
     url: '/api/live/superliga-map-overrides', intervalMs: 5000, initialData: { overridesByDate: {} },
   });
   const mapOverrides = overridesData.overridesByDate || null;
-  const { data: manualNightsData, refetch: refetchManualNights } = useLivePolling<{ manualNightsByDate: SuperligaManualNightsByDate }>({
+  const { data: manualNightsData, loading: manualNightsLoading, error: manualNightsError, refetch: refetchManualNights } = useLivePolling<{ manualNightsByDate: SuperligaManualNightsByDate }>({
     url: '/api/live/superliga-manual-nights', intervalMs: 5000, initialData: { manualNightsByDate: {} },
   });
   const manualNights = manualNightsData.manualNightsByDate || null;
@@ -334,6 +337,10 @@ export default function MundialClient({
   // Grup aşaması groupStageLength gece ile sınırlıdır; sonraki geceler (eleme) sayılmaz.
   const groupStage = useMemo(() => standingsFor(groupStageLength), [standingsFor, groupStageLength]);
   const playedNights = groupStage.datesIncluded.length;
+  const matchNights = useMemo(() => buildMundialMatchNights({
+    sonmacByDate, captainsByDate, mapOverrides, manualNights, seasonStart,
+    datesIncluded: groupStage.datesIncluded,
+  }), [sonmacByDate, captainsByDate, mapOverrides, manualNights, seasonStart, groupStage.datesIncluded]);
   const groupStageComplete = playedNights >= groupStageLength;
 
   const [selectedNight, setSelectedNight] = useState<number | null>(null);
@@ -513,6 +520,18 @@ export default function MundialClient({
       )}
 
       {tab === 'format' && <FormatPanel config={config} nameOf={nameOf} />}
+
+      {tab === 'maclar' && (
+        <MundialMatches
+          nights={matchNights}
+          scoring={scoring}
+          groupStageLength={groupStageLength}
+          nameOf={nameOf}
+          loading={captainsLoading || overridesLoading || manualNightsLoading}
+          error={!!(captainsError || overridesError || manualNightsError)}
+          onRetry={() => { void refetchCaptains(); void refetchOverrides(); void refetchManualNights(); }}
+        />
+      )}
 
       {tab === 'kaptanlik' && (
         <CaptainAssignmentPanel
