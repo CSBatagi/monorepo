@@ -101,6 +101,7 @@ def main():
     parser.add_argument('--revision', required=True)
     parser.add_argument('--backend-image', required=True)
     parser.add_argument('--frontend-image', required=True)
+    parser.add_argument('--website-only', action='store_true')
     args = parser.parse_args()
     if not re.fullmatch(r'[a-f0-9]{40}', args.revision):
         raise RuntimeError('Invalid revision')
@@ -129,6 +130,24 @@ def main():
     overlay = root / 'docker-compose.teamspeak-test.yml'
     private_write(overlay, 'services:\n  backend:\n    image: ' + args.backend_image + '\n    pull_policy: never\n  frontend-nextjs:\n    image: ' + args.frontend_image + '\n    pull_policy: never\n  teamspeak:\n    image: ' + previous['teamspeak']['Image'] + '\n    pull_policy: never\n')
     compose_args = ['docker', 'compose', '-f', str(compose), '-f', str(overlay)]
+    if args.website_only:
+        if not (root / '.teamspeak_secrets').exists():
+            raise RuntimeError('Website-only update requires existing private configuration')
+        private_write(compose, patched)
+        run(*compose_args, 'up', '-d', '--no-deps', 'backend', 'frontend-nextjs')
+        current = containers()
+        if service(current, 'postgres')['Id'] != postgres_id or service(current, 'teamspeak')['Id'] != previous['teamspeak']['Id']:
+            raise RuntimeError('Website-only update restarted an unrelated service')
+        info = json.loads(run('docker', 'info', '--format', '{{json .}}'))
+        if info.get('MemoryLimit') is not True and info.get('MemTotal', 0) < 4 * 1024 ** 3:
+            raise RuntimeError('Unsupported host memory budget')
+        for name in ['backend', 'frontend-nextjs']:
+            value = service(current, name)
+            if not value['State']['Running'] or value['State']['OOMKilled'] or (info.get('MemoryLimit') is True and value['HostConfig']['Memory'] != 256 * 1024 * 1024):
+                raise RuntimeError('Website service validation failed')
+        report({'phase': 'website update deployed', 'revision': args.revision, 'teamspeak_unchanged': True, 'postgres_unchanged': True,
+                'credential_rotated': False, 'memory_limits_enforced': info.get('MemoryLimit') is True, 'rollback': str(rollback)})
+        return
     # TeamSpeak's SQLite files are copied while stopped. The original image and
     # all data are retained in a private backup; no unrelated DB is restarted.
     run('docker', 'stop', previous['teamspeak']['Id'])

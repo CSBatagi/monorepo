@@ -33,7 +33,13 @@ async function main() {
     }
     report({ administrative_denial_checks_passed: 3 });
     phase = 'native metadata write/readback';
-    const native = (await query.command('clientlist', {}, '-uid -groups')).find(row => row.client_type === '0');
+    let native = (await query.command('clientlist', {}, '-uid -groups')).find(row => row.client_type === '0');
+    if (!native) {
+      // Offline native identities can also exercise the exact persistence path.
+      // IDs/custom fields stay on the host; only a unique inert field is touched.
+      const saved = (await admin.command('clientdblist', { start: 0, limit: 100 })).find(row => /^[A-Za-z0-9+/]{27}=$/.test(row.client_unique_identifier || ''));
+      if (saved) native = { client_database_id: saved.cldbid };
+    }
     if (native) {
       const ident = 'csbatagi_probe_' + crypto.randomUUID().replaceAll('-', '');
       const value = crypto.randomUUID();
@@ -44,6 +50,7 @@ async function main() {
         report({ native_identity_write_readback_passed: true, member_group_assigned: false });
       } finally {
         await admin.command('customdelete', { cldbid: native.client_database_id, ident });
+        assert.ok(!(await admin.command('custominfo', { cldbid: native.client_database_id })).some(row => row.ident === ident));
         report({ temporary_probe_removed: true });
       }
     } else report({ native_identity_write_readback_passed: null, reason: 'no connected native client' });

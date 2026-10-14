@@ -37,6 +37,8 @@ export default function TeamSpeakConnect() {
   const [launched, setLaunched] = useState(false);
   const [code, setCode] = useState('');
   const request = useRef<AbortController | null>(null);
+  const current = useRef({ connection, launched });
+  useEffect(() => { current.current = { connection, launched }; }, [connection, launched]);
   const send = useCallback(async (action: string, body: Record<string, unknown>, signal?: AbortSignal) => {
     if (!steamId) throw new Error('Steam ile giriş yap.');
     const response = await fetch('/api/teamspeak/' + action, { method: 'POST', cache: 'no-store',
@@ -50,10 +52,19 @@ export default function TeamSpeakConnect() {
     if (!steamId) return;
     request.current?.abort();
     const controller = new AbortController(); request.current = controller;
-    setLoading(true); setError(null); setConnection(null); setCode(''); setLaunched(false);
+    const previous = current.current;
+    const keepOpen = reset && previous.connection?.state !== 'verified' &&
+      (previous.launched || previous.connection?.state === 'code_sent');
+    setLoading(true); setError(null); setConnection(null); setCode(''); setLaunched(keepOpen);
     try {
       const data = await send('join', { reset }, controller.signal);
-      if (!controller.signal.aborted) setConnection(data);
+      if (!controller.signal.aborted) {
+        setConnection(data);
+        if (keepOpen && new URL(data.url).searchParams.get('nickname') !== new URL(previous.connection!.url).searchParams.get('nickname')) {
+          setLaunched(false);
+          setError('Önce TeamSpeak içindeki mevcut CS Batağı bağlantısını kes. Sonra buradan bir kez aç.');
+        }
+      }
     } catch (failure) {
       if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : 'Bağlantı hazırlanamadı.');
     } finally { if (!controller.signal.aborted) setLoading(false); }
@@ -94,7 +105,7 @@ export default function TeamSpeakConnect() {
     event.preventDefault();
     if (!connection?.requestId || !/^[0-9A-F]{10}$/i.test(code) || verifying) return;
     setVerifying(true); setError(null);
-    try { setConnection(await send('verify', { requestId: connection.requestId, code: code.toUpperCase() })); setCode(''); }
+    try { setConnection(await send('verify', { requestId: connection.requestId, code: code.toUpperCase() })); setCode(''); setLaunched(true); }
     catch (failure) { setError(failure instanceof Error ? failure.message : 'Kod doğrulanamadı.'); }
     finally { setVerifying(false); }
   };
@@ -107,6 +118,8 @@ export default function TeamSpeakConnect() {
     <div className="teamspeak-actions">
       {!ready || loading ? <button disabled aria-busy="true"><Headphones size={17} /> Bağlantı hazırlanıyor…</button>
         : !user ? <Link prefetch={false} href="/login?next=%2Fteamspeak">Steam ile giriş yap</Link>
+        : connection && (launched || connection.state === 'code_sent') ? <button disabled><Headphones size={17} />
+          {connection.state === 'verified' ? 'TeamSpeak bağlantın açık' : 'TeamSpeak açık · kodu doğrula'}</button>
         : connection ? <a className="teamspeak-join" href={connection.url} onClick={event => {
           if (connection.expiresAt && connection.expiresAt <= Date.now()) { event.preventDefault(); void prepare(true); return; }
           setLaunched(true);
@@ -125,7 +138,7 @@ export default function TeamSpeakConnect() {
     {launched && connection?.state === 'waiting' && !error && <p className="teamspeak-feedback" role="status">Tarayıcının “TeamSpeak’i aç” isteğini onayla. Doğrulama lobisinde bekle; özel mesaj gelince kod alanı burada açılır.</p>}
     {connection?.state === 'verified' && <p className="teamspeak-feedback" role="status"><ShieldCheck size={16} /> Steam kimliğin bağlı. Sesli odaya katılabilirsin.</p>}
     {connection && <button className="teamspeak-reset" onClick={() => { void prepare(true); }}>
-      {connection.state === 'verified' ? 'Yeni TeamSpeak kimliği mi? Yeniden doğrula' : 'Bağlantı açılmadı mı? Doğrulamayı yeniden başlat'}
+      {connection.state === 'verified' ? 'Yeni TeamSpeak kimliği mi? Yeniden doğrula' : launched || connection.state === 'code_sent' ? 'Aynı bağlantıda yeni kod iste' : 'Bağlantı açılmadı mı? Doğrulamayı yeniden başlat'}
     </button>}
   </section>;
 }

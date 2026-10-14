@@ -133,7 +133,10 @@ function createTeamSpeak({ lookupRoster = rosterMember, config = configFromEnv()
       const id = crypto.randomUUID();
       const claim = { id, steamId, deviceId, startedAt: now(), expiresAt: now() + PROOF_MS,
         state: 'waiting', proof: null, attempts: 0, lastPoll: null,
-        nickname: nickname(player.name || 'Üye', '-CSB' + id.replace(/-/g, '').slice(0, 8)) };
+        // Reissue proof for an already-open lobby connection. Changing its
+        // marker would make the member open a duplicate native connection.
+        nickname: previous?.nickname || nickname(player.name || 'Üye', '-CSB' + id.replace(/-/g, '').slice(0, 8)) };
+      if (previous) previous.proof = null;
       claims.set(key, claim);
       return result(claim);
     }),
@@ -160,9 +163,9 @@ function createTeamSpeak({ lookupRoster = rosterMember, config = configFromEnv()
     verify: (steamId, deviceId, requestId, code) => run(async query => {
       const claim = current(steamId, deviceId, requestId);
       if (claim.state !== 'code_sent' || !claim.proof || claim.attempts >= 5) throw new Error('Verification unavailable');
-      claim.attempts++;
       const supplied = digest(code);
       if (!crypto.timingSafeEqual(claim.proof, supplied)) {
+        claim.attempts++;
         if (claim.attempts >= 5) { claim.proof = null; claims.delete(keyFor(steamId, deviceId)); }
         throw new Error('Incorrect code');
       }
@@ -242,6 +245,9 @@ function registerTeamSpeak(app, { pool, lookupRoster = rosterMember, service = c
         : await service.verify(user.steamId, deviceId, requestId, code.toUpperCase());
       res.json(value);
     } catch (error) {
+      if (/^\d+$/.test(error.code || '')) console.error('[teamspeak]', JSON.stringify({ action,
+        queryCode: error.code, failedPermission: error.failedPermission || null,
+        command: /^[a-z]+$/.test(error.commandName || '') ? error.commandName : null }));
       const messages = { 'Incorrect code': 'Kod eşleşmedi. TeamSpeak özel mesajındaki kodu kontrol et.',
         'Verification expired': 'Doğrulama süresi doldu. Bağlantıyı yenile.',
         'Identity already linked': 'Bu TeamSpeak kimliği başka bir Steam hesabına bağlı. TeamSpeak içinde yeni bir kimlik oluştur.',

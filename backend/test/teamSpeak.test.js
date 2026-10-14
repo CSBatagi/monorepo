@@ -147,6 +147,26 @@ test('ownership-write failure cannot create an untracked member', async () => {
   await expect(f.service.verify(steamId, deviceId, connection.requestId, code)).rejects.toThrow();
   expect(f.query.command.mock.calls.some(([name]) => name === 'servergroupaddclient')).toBe(false);
 });
+
+test('correct-code storage failures do not consume the five incorrect-code guesses', async () => {
+  const f = fixture(); const connection = await sentCode(f);
+  f.replies.customset = () => { throw new Error('storage temporarily unavailable'); };
+  for (let n = 0; n < 6; n++) await expect(f.service.verify(steamId, deviceId, connection.requestId, code)).rejects.toThrow('storage');
+  f.replies.customset = [];
+  expect((await f.service.verify(steamId, deviceId, connection.requestId, code)).state).toBe('verified');
+});
+
+test('reset reissues proof to the same lobby client without requiring another native connection', async () => {
+  const f = fixture(); const first = await sentCode(f);
+  f.advance(11000);
+  const reset = await f.service.prepare(steamId, deviceId, true);
+  expect(reset.requestId).not.toBe(first.requestId);
+  expect(new URL(reset.url).searchParams.get('nickname')).toBe(new URL(first.url).searchParams.get('nickname'));
+  await expect(f.service.verify(steamId, deviceId, first.requestId, code)).rejects.toThrow('expired');
+  expect((await f.service.status(steamId, deviceId, reset.requestId)).state).toBe('code_sent');
+  expect(f.query.command.mock.calls.filter(([name]) => name === 'sendtextmessage')).toHaveLength(2);
+  expect((await f.service.verify(steamId, deviceId, reset.requestId, code)).state).toBe('verified');
+});
 test('roster removal revokes the member group and kicks all active linked clients', async () => {
   const f = fixture({ customsearch: [{ cldbid: '34', value: '76561198000000002' }],
     servergroupsbyclientid: [{ sgid: '12' }], clientlist: [{ ...clientFor({ url: 'ts3server://x?nickname=x' }), client_servergroups: '12' }] });

@@ -6,7 +6,7 @@ on:
       operation:
         description: Read-only audit, reviewed production deployment, or live validation
         type: choice
-        options: [audit, deploy, verify, repair]
+        options: [audit, deploy, update, verify, repair]
         default: audit
         required: true
 
@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   build:
-    if: inputs.operation == 'deploy'
+    if: inputs.operation == 'deploy' || inputs.operation == 'update'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     permissions:
@@ -51,7 +51,7 @@ jobs:
 
   operate:
     needs: [build]
-    if: always() && (inputs.operation != 'deploy' || needs.build.result == 'success')
+    if: always() && ((inputs.operation != 'deploy' && inputs.operation != 'update') || needs.build.result == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -86,21 +86,25 @@ jobs:
         if: inputs.operation == 'audit'
         run: ssh teamspeak-target 'timeout 60s python3 ~/.csbatagi-teamspeak-ops/inspect-production.py'
       - name: Pull access for this repository's deployment images
-        if: inputs.operation == 'deploy'
+        if: inputs.operation == 'deploy' || inputs.operation == 'update'
         env:
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: printf '%s' "$REGISTRY_TOKEN" | ssh teamspeak-target 'docker login ghcr.io -u ${{ github.actor }} --password-stdin'
-      - name: Repair identity persistence permission without restarting TeamSpeak
-        if: inputs.operation == 'repair'
-        run: |
-          scp ops/teamspeak/repair-production.cjs teamspeak-target:~/.csbatagi-teamspeak-ops/repair-production.cjs
-          ssh teamspeak-target 'timeout 90s python3 ~/.csbatagi-teamspeak-ops/repair-production.py'
       - name: Deploy immutable images and private TeamSpeak configuration
         if: inputs.operation == 'deploy'
         run: |
           ssh teamspeak-target 'python3 ~/.csbatagi-teamspeak-ops/deploy-production.py --revision ${{ github.sha }} --backend-image ghcr.io/csbatagi/monorepo/backend:teamspeak-${{ github.sha }} --frontend-image ghcr.io/csbatagi/monorepo/frontend-nextjs:teamspeak-${{ github.sha }}'
+      - name: Update website images while preserving native connections and credentials
+        if: inputs.operation == 'update'
+        run: |
+          ssh teamspeak-target 'python3 ~/.csbatagi-teamspeak-ops/deploy-production.py --website-only --revision ${{ github.sha }} --backend-image ghcr.io/csbatagi/monorepo/backend:teamspeak-${{ github.sha }} --frontend-image ghcr.io/csbatagi/monorepo/frontend-nextjs:teamspeak-${{ github.sha }}'
+      - name: Repair and exercise identity persistence without restarting TeamSpeak
+        if: inputs.operation == 'repair' || inputs.operation == 'update'
+        run: |
+          scp ops/teamspeak/repair-production.cjs teamspeak-target:~/.csbatagi-teamspeak-ops/repair-production.cjs
+          ssh teamspeak-target 'timeout 90s python3 ~/.csbatagi-teamspeak-ops/repair-production.py'
       - name: Validate production authentication and credential boundaries
-        if: inputs.operation == 'verify' || inputs.operation == 'deploy' || inputs.operation == 'repair'
+        if: inputs.operation == 'verify' || inputs.operation == 'deploy' || inputs.operation == 'repair' || inputs.operation == 'update'
         run: |
           scp ops/teamspeak/verify-live.cjs teamspeak-target:~/.csbatagi-teamspeak-ops/verify-live.cjs
           ssh teamspeak-target 'python3 ~/.csbatagi-teamspeak-ops/verify-production.py'

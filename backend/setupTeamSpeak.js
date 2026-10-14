@@ -14,6 +14,7 @@ async function setup(config, apply = false, openQuery = connectQuery) {
     if (!apply) return { apply: false, memberGroupExists: !!existing, changes: ['restricted silent verification lobby', 'Steam member voice group', 'private limited query account'] };
     const permissions = await query.command('permissionlist');
     const supported = new Set(permissions.map(p => p.permname));
+    if (!supported.has('b_client_modify_dbproperties')) throw new Error('Required native identity-write permission unavailable');
     const permissionIds = new Map(permissions.map(p => [p.permname, p.permid]));
     const addPermission = async (sgid, permsid, value, negated = 0, skip = 0) => {
       if (!supported.has(permsid)) throw new Error('Required permission unavailable');
