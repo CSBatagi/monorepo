@@ -14,9 +14,11 @@ spec = importlib.util.spec_from_file_location('teamspeak_inspect', pathlib.Path(
 helpers = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helpers)
 query_escape, query_rows = helpers.query_escape, helpers.query_rows
+phase = 'private configuration'
 
 
 def main():
+    global phase
     root = pathlib.Path.home()
     def env_file(name):
         return dict(line.split('=', 1) for line in (root / name).read_text().splitlines() if '=' in line)
@@ -49,10 +51,14 @@ def main():
         def login(user, password):
             command('login', client_login_name=user, client_login_password=password)
             command('use', sid=1)
+        phase = 'bootstrap login'
         login('serveradmin', admin)
+        phase = 'query group lookup'
         groups = command('servergrouplist')
         group = next(row for row in groups if row['name'] == 'CS Batagi Website Query' and row['type'] == '2')
+        phase = 'identity write permission lookup'
         permission = next(row for row in command('permissionlist') if row['permname'] == 'b_client_modify_dbproperties')
+        phase = 'identity write permission update'
         command('servergroupaddperm', sgid=group['sgid'], permid=permission['permid'], permvalue=1, permnegated=0, permskip=0)
         print(json.dumps({'identity_write_permission_repaired': True, 'credential_rotated': False}), flush=True)
         login(private['TEAMSPEAK_QUERY_USER'], private['TEAMSPEAK_QUERY_PASSWORD'])
@@ -89,5 +95,5 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as error:
-        print(json.dumps({'repair_failed': True, 'query_code': getattr(error, 'code', None), 'permission_id': getattr(error, 'permission', None), 'command': getattr(error, 'command', None), 'credentials_logged': False}))
+        print(json.dumps({'repair_failed': True, 'phase': phase, 'error_type': type(error).__name__, 'query_code': getattr(error, 'code', None), 'permission_id': getattr(error, 'permission', None), 'command': getattr(error, 'command', None), 'credentials_logged': False}))
         raise SystemExit(1)
