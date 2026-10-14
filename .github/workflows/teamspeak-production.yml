@@ -102,7 +102,7 @@ jobs:
         if: inputs.operation == 'repair' || inputs.operation == 'update'
         run: |
           scp ops/teamspeak/repair-production.cjs teamspeak-target:~/.csbatagi-teamspeak-ops/repair-production.cjs
-          ssh teamspeak-target 'timeout 90s python3 ~/.csbatagi-teamspeak-ops/repair-production.py'
+          ssh teamspeak-target 'timeout 420s python3 ~/.csbatagi-teamspeak-ops/repair-production.py'
       - name: Validate production authentication and credential boundaries
         if: inputs.operation == 'verify' || inputs.operation == 'deploy' || inputs.operation == 'repair' || inputs.operation == 'update'
         run: |

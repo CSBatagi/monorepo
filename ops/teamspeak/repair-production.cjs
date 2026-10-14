@@ -24,6 +24,7 @@ async function main() {
     await admin.command('servergroupaddperm', { sgid: group.sgid, permid: permission.permid, permvalue: 1, permnegated: 0, permskip: 0 });
     report({ identity_write_permission_repaired: true, credential_rotated: false });
     query = await connectQuery(config);
+    phase = 'private policy checks';
     await verifyConfiguration(query, config);
     phase = 'administrative denial checks';
     const server = (await query.command('serverinfo'))[0];
