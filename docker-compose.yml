@@ -14,7 +14,7 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      - DOMAINS=csbatagi.com,db2.csbatagi.com # Comma-separated list of domains to update
+      - DOMAINS=csbatagi.com,db2.csbatagi.com,voice.csbatagi.com # Comma-separated list of domains to update
       - PROXIED=false # Tell Cloudflare to cache webpages and hide your IP (optional)
     env_file:
       - path: .dns_secrets
@@ -165,6 +165,25 @@ services:
     environment:
       - CADDY_INGRESS_NETWORKS=db2
     
+  teamspeak:
+    image: teamspeak:latest
+    platform: linux/amd64  # No native arm64 image; runs via QEMU emulation
+    container_name: teamspeak-server
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    ports:
+      - "9987:9987/udp"   # Voice (required)
+      - "10011:10011"     # ServerQuery (optional, admin)
+      - "30033:30033"     # File transfer (optional)
+    environment:
+      - TS3SERVER_LICENSE=accept
+    volumes:
+      - /home/clawd/teamspeak/data:/var/ts3server
+
 volumes:
   pgdata:
   caddy_data:  # Only this volume is essential for SSL certificate persistence
