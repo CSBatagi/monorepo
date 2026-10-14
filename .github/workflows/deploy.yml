@@ -129,7 +129,7 @@ jobs:
             # Only update specific services
             ssh deploy-target "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && docker compose -f ~/docker-compose.yml pull $SERVICES_TO_UPDATE && docker compose -f ~/docker-compose.yml up -d $SERVICES_TO_UPDATE"
           else
-            echo "No services need to be updated"
+            ssh deploy-target "docker compose -f ~/docker-compose.yml up -d"
           fi
 
       - name: Invalidate stats timestamp if config data changed
@@ -141,7 +141,7 @@ jobs:
         run: |
           ssh deploy-target "bash -s" <<'EOF'
           for i in $(seq 1 48); do
-            if docker compose -f ~/docker-compose.yml exec -T backend node -e 'fetch("http://127.0.0.1:3000/stats/diagnostics", { cache: "no-store" }).then(r => r.json()).then(d => { const sonmac = Number(d?.counts?.sonmac_all_dates || 0); const night = Number(d?.counts?.night_avg_all_dates || 0); if (sonmac > 0 && night > 0) { console.log(JSON.stringify({ ready: true, sonmac_all_dates: sonmac, night_avg_all_dates: night, effectiveDataTimestamp: d.effectiveDataTimestamp, lastGeneratedServerTimestamp: d.lastGeneratedServerTimestamp })); process.exit(0); } console.error(JSON.stringify(d)); process.exit(1); }).catch(e => { console.error(e.message); process.exit(1); })'; then
+            if docker compose -f ~/docker-compose.yml exec -T backend node -e 'fetch("http://127.0.0.1:3000/stats/diagnostics", { cache: "no-store" }).then(r => r.json()).then(d => { const sonmac = Number(d?.counts?.sonmac_dates || d?.counts?.sonmac_all_dates || 0); const night = Number(d?.counts?.night_avg_dates || d?.counts?.night_avg_all_dates || 0); if (sonmac > 0 && night > 0) { console.log(JSON.stringify({ ready: true, sonmac_dates: sonmac, night_avg_dates: night, effectiveDataTimestamp: d.effectiveDataTimestamp, lastGeneratedServerTimestamp: d.lastGeneratedServerTimestamp })); process.exit(0); } console.error(JSON.stringify(d)); process.exit(1); }).catch(e => { console.error(e.message); process.exit(1); })'; then
               exit 0
             fi
             echo "Waiting for backend stats warmup ($i/48)..."
