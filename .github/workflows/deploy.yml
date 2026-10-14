@@ -1,4 +1,4 @@
-name: Deploy to GCP (Backend and Frontend)
+name: Deploy via Tailscale (Backend and Frontend)
 
 on:
   workflow_dispatch:
@@ -11,7 +11,6 @@ on:
 
 permissions:
   contents: 'read'
-  id-token: 'write'  # Required for Workload Identity
   packages: 'read'   # Required for GitHub Container Registry
 
 jobs:
@@ -35,16 +34,23 @@ jobs:
           echo "config_data=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/public/data/players.json$\|^frontend-nextjs/public/data/season_start.json$' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
           echo "migrations=$(git diff --name-only HEAD~1 HEAD | grep -qE '^(backend/migrations/|ops/backend/run-migrations.sh)' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
 
-      - name: Authenticate to GCP
-        id: auth
-        uses: google-github-actions/auth@v2
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v3
         with:
-          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          version: '>= 363.0.0'
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PI_HOST_SSH_PK }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          cat >> ~/.ssh/config << 'EOF'
+          Host deploy-target
+            HostName ${{ secrets.PI_HOST }}
+            User ${{ secrets.PI_USER || 'clawd' }}
+            IdentityFile ~/.ssh/deploy_key
+            StrictHostKeyChecking accept-new
+          EOF
 
       - name: Create all secret files
         run: |
@@ -74,16 +80,13 @@ jobs:
           
             echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
 
-      - name: Prepare VM directories and copy files
+      - name: Prepare directories and copy files
         run: |
-          # Create directory structure on VM
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="mkdir -p ~/frontend-nextjs/public/data" \
-            --ssh-key-expire-after=1m
+          # Create directory structure on host
+          ssh deploy-target "mkdir -p ~/frontend-nextjs/public/data"
           
           # Copy all config and secret files
-          gcloud compute scp \
-            --zone=${{ secrets.GCP_ZONE }} \
+          scp \
             ./Caddyfile \
             ./docker-compose.yml \
             ./.dns_secrets \
@@ -92,27 +95,20 @@ jobs:
             ./.my_sql_secrets \
             ./.pg_secrets \
             ./credentials.json \
-            ${{ secrets.GCP_VM_NAME }}:~/ \
-            --ssh-key-expire-after=1m
+            deploy-target:~/
           
           # Copy data files
-          gcloud compute scp \
-            --zone=${{ secrets.GCP_ZONE }} \
+          scp \
             ./frontend-nextjs/public/data/players.json \
             ./frontend-nextjs/public/data/season_start.json \
-            ${{ secrets.GCP_VM_NAME }}:~/ \
-            --ssh-key-expire-after=1m
+            deploy-target:~/
           
           # Move data files to correct locations
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="mv ~/players.json ~/season_start.json ~/frontend-nextjs/public/data/" \
-            --ssh-key-expire-after=1m
+          ssh deploy-target "mv ~/players.json ~/season_start.json ~/frontend-nextjs/public/data/"
 
-      - name: Set file permissions on VM
+      - name: Set file permissions on host
         run: |
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="chmod 600 ~/.dns_secrets ~/.backend_secrets ~/.frontend_secrets ~/.my_sql_secrets ~/.pg_secrets" \
-            --ssh-key-expire-after=1m
+          ssh deploy-target "chmod 600 ~/.dns_secrets ~/.backend_secrets ~/.frontend_secrets ~/.my_sql_secrets ~/.pg_secrets credentials.json"
 
       - name: Cleanup local secrets
         run: rm -f .dns_secrets .backend_secrets .frontend_secrets .my_sql_secrets .pg_secrets credentials.json
@@ -128,12 +124,10 @@ jobs:
           fi
           if [[ "${{ steps.changes.outputs.docker-compose }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             # If docker-compose changed, restart all services
-            gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-              --command="echo '${{ secrets.GITHUB_TOKEN }}' | sudo -S docker login ghcr.io -u ${{ github.actor }} --password-stdin && sudo docker compose -f ~/docker-compose.yml pull && sudo docker compose -f ~/docker-compose.yml up -d"
+            ssh deploy-target "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && docker compose -f ~/docker-compose.yml pull && docker compose -f ~/docker-compose.yml up -d"
           elif [[ -n "$SERVICES_TO_UPDATE" ]]; then
             # Only update specific services
-            gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-              --command="echo '${{ secrets.GITHUB_TOKEN }}' | sudo -S docker login ghcr.io -u ${{ github.actor }} --password-stdin && sudo docker compose -f ~/docker-compose.yml pull $SERVICES_TO_UPDATE && sudo docker compose -f ~/docker-compose.yml up -d $SERVICES_TO_UPDATE"
+            ssh deploy-target "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && docker compose -f ~/docker-compose.yml pull $SERVICES_TO_UPDATE && docker compose -f ~/docker-compose.yml up -d $SERVICES_TO_UPDATE"
           else
             echo "No services need to be updated"
           fi
@@ -141,17 +135,13 @@ jobs:
       - name: Invalidate stats timestamp if config data changed
         if: steps.changes.outputs.config_data == 'true'
         run: |
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="sudo docker compose -f ~/docker-compose.yml exec -T backend bash -c 'rm -f /app/last_timestamp.txt' && sudo docker compose -f ~/docker-compose.yml restart backend" \
-            --ssh-key-expire-after=1m
+          ssh deploy-target "docker compose -f ~/docker-compose.yml exec -T backend bash -c 'rm -f /app/last_timestamp.txt' && docker compose -f ~/docker-compose.yml restart backend"
 
       - name: Wait for backend stats warmup
         run: |
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --ssh-key-expire-after=2m \
-            --command="bash -s" <<'EOF'
+          ssh deploy-target "bash -s" <<'EOF'
           for i in $(seq 1 48); do
-            if sudo docker compose -f ~/docker-compose.yml exec -T backend node -e 'fetch("http://127.0.0.1:3000/stats/diagnostics", { cache: "no-store" }).then(r => r.json()).then(d => { const sonmac = Number(d?.counts?.sonmac_all_dates || 0); const night = Number(d?.counts?.night_avg_all_dates || 0); if (sonmac > 0 && night > 0) { console.log(JSON.stringify({ ready: true, sonmac_all_dates: sonmac, night_avg_all_dates: night, effectiveDataTimestamp: d.effectiveDataTimestamp, lastGeneratedServerTimestamp: d.lastGeneratedServerTimestamp })); process.exit(0); } console.error(JSON.stringify(d)); process.exit(1); }).catch(e => { console.error(e.message); process.exit(1); })'; then
+            if docker compose -f ~/docker-compose.yml exec -T backend node -e 'fetch("http://127.0.0.1:3000/stats/diagnostics", { cache: "no-store" }).then(r => r.json()).then(d => { const sonmac = Number(d?.counts?.sonmac_all_dates || 0); const night = Number(d?.counts?.night_avg_all_dates || 0); if (sonmac > 0 && night > 0) { console.log(JSON.stringify({ ready: true, sonmac_all_dates: sonmac, night_avg_all_dates: night, effectiveDataTimestamp: d.effectiveDataTimestamp, lastGeneratedServerTimestamp: d.lastGeneratedServerTimestamp })); process.exit(0); } console.error(JSON.stringify(d)); process.exit(1); }).catch(e => { console.error(e.message); process.exit(1); })'; then
               exit 0
             fi
             echo "Waiting for backend stats warmup ($i/48)..."
@@ -163,12 +153,10 @@ jobs:
 
       - name: Prewarm frontend stats snapshot
         run: |
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --ssh-key-expire-after=2m \
-            --command="bash -s" <<'EOF'
+          ssh deploy-target "bash -s" <<'EOF'
           for i in $(seq 1 24); do
-            if sudo docker compose -f ~/docker-compose.yml exec -T frontend-nextjs node -e 'const token = process.env.MATCHMAKING_TOKEN; if (!token) { console.error("MATCHMAKING_TOKEN missing in frontend container"); process.exit(1); } fetch("http://127.0.0.1:3000/api/internal/stats/prewarm", { method: "POST", headers: { Authorization: `Bearer ${token}` } }).then(async r => { const text = await r.text(); console.log(text); if (!r.ok) process.exit(1); }).catch(e => { console.error(e.message); process.exit(1); })' && \
-               sudo docker compose -f ~/docker-compose.yml exec -T frontend-nextjs sh -lc 'test -s /app/runtime-data/last_timestamp.txt && test -s /app/runtime-data/sonmac_by_date_all.json && test -s /app/runtime-data/night_avg_all.json'; then
+            if docker compose -f ~/docker-compose.yml exec -T frontend-nextjs node -e 'const token = process.env.MATCHMAKING_TOKEN; if (!token) { console.error("MATCHMAKING_TOKEN missing in frontend container"); process.exit(1); } fetch("http://127.0.0.1:3000/api/internal/stats/prewarm", { method: "POST", headers: { Authorization: `Bearer ${token}` } }).then(async r => { const text = await r.text(); console.log(text); if (!r.ok) process.exit(1); }).catch(e => { console.error(e.message); process.exit(1); })' && \
+               docker compose -f ~/docker-compose.yml exec -T frontend-nextjs sh -lc 'test -s /app/runtime-data/last_timestamp.txt && test -s /app/runtime-data/sonmac_by_date_all.json && test -s /app/runtime-data/night_avg_all.json'; then
               exit 0
             fi
             echo "Waiting for frontend stats snapshot prewarm ($i/24)..."
@@ -180,30 +168,21 @@ jobs:
 
       - name: Prune old Docker images
         run: |
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="sudo docker image prune -af --filter 'until=48h'" \
-            --ssh-key-expire-after=1m
+          ssh deploy-target "docker image prune -af --filter 'until=48h'"
 
       - name: Run database migrations if changed
         if: steps.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
         run: |
-          # Copy migration files and their runner to VM
-          gcloud compute scp \
-            --zone=${{ secrets.GCP_ZONE }} \
-            --recurse \
+          # Copy migration files and their runner to host
+          scp -r \
             ./backend/migrations \
             ./ops/backend/run-migrations.sh \
-            ${{ secrets.GCP_VM_NAME }}:~/ \
-            --ssh-key-expire-after=1m
+            deploy-target:~/
 
           # Run all SQL migrations as the database superuser; a failing migration fails this step
           status=0
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="bash ~/run-migrations.sh" \
-            --ssh-key-expire-after=2m || status=$?
+          ssh deploy-target "bash ~/run-migrations.sh" || status=$?
 
           # Cleanup migration files
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} --zone=${{ secrets.GCP_ZONE }} \
-            --command="rm -rf ~/migrations ~/run-migrations.sh" \
-            --ssh-key-expire-after=1m
+          ssh deploy-target "rm -rf ~/migrations ~/run-migrations.sh"
           exit $status
