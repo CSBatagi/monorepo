@@ -76,6 +76,7 @@ def main():
         report({'teamspeak_server': {key: server.get(key) for key in ['virtualserver_name', 'virtualserver_version', 'virtualserver_flag_password', 'virtualserver_default_channel', 'virtualserver_default_server_group', 'virtualserver_clientsonline', 'virtualserver_maxclients']}})
         report({'teamspeak_groups': command('servergrouplist')})
         report({'teamspeak_channels': command('channellist')})
+        report({'identity_permission_names': [row for row in command('permissionlist') if row.get('permid') == '35' or 'custom' in row.get('permname', '')]})
         for name in ['queryloginadd', 'queryloginlist', 'customset', 'servergroupcopy']:
             try:
                 command('help ' + name)
