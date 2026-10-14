@@ -74,7 +74,7 @@ def main():
                     status = query_rows(line[6:])[0]
                     if status.get('id') not in ['0', '1281']:
                         raise RuntimeError('Query command unavailable: ' + name + ', code ' + status.get('id', '?'))
-                    return query_rows('|'.join(rows))
+                    return '\n'.join(rows) if name.startswith('help ') else query_rows('|'.join(rows))
                 rows.append(line)
 
         command('login', client_login_name='serveradmin', client_login_password=password)
@@ -84,6 +84,9 @@ def main():
         report({'teamspeak_groups': command('servergrouplist')})
         report({'teamspeak_channels': command('channellist')})
         report({'identity_permission_names': [row for row in command('permissionlist') if row.get('permid') == '35' or 'custom' in row.get('permname', '') or 'permission_list' in row.get('permname', '')]})
+        report({'query_write_permissions': [row for row in command('servergrouppermlist -permsid', sgid=10) if any(word in row.get('permsid', '') for word in ['custom', 'modify', 'member', 'clone'])]})
+        report({'guest_clone_limit': [row for row in command('servergrouppermlist -permsid', sgid=server['virtualserver_default_server_group']) if 'clone' in row.get('permsid', '')]})
+        report({'customset_help': command('help customset')[:2500]})
         for name in ['queryloginadd', 'queryloginlist', 'customset', 'servergroupcopy']:
             try:
                 command('help ' + name)
