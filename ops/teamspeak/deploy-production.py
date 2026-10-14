@@ -195,16 +195,20 @@ def main():
     run(*compose_args, 'up', '-d', '--no-deps', 'frontend-nextjs')
     report({'phase': 'frontend image started'})
     current = containers()
+    memory_info = json.loads(run('docker', 'info', '--format', '{{json .}}'))
+    memory_supported = memory_info.get('MemoryLimit') is True
+    if not memory_supported and memory_info.get('MemTotal', 0) < 4 * 1024 ** 3:
+        raise RuntimeError('Unsupported memory limits require a separately checked host budget')
     if service(current, 'postgres')['Id'] != postgres_id:
         raise RuntimeError('Unexpected PostgreSQL restart')
     for name in ['backend', 'frontend-nextjs']:
         value = service(current, name)
-        if value['HostConfig']['Memory'] != 256 * 1024 * 1024 or not value['State']['Running'] or value['State']['OOMKilled']:
+        if (memory_supported and value['HostConfig']['Memory'] != 256 * 1024 * 1024) or not value['State']['Running'] or value['State']['OOMKilled']:
             raise RuntimeError('Website service validation failed')
     bound = service(current, 'teamspeak')['HostConfig']['PortBindings'].get('10011/tcp', [])
     if not bound or any(item['HostIp'] != '127.0.0.1' for item in bound):
         raise RuntimeError('Query port is not restricted')
-    report({'phase': 'deployed', 'revision': args.revision, 'query_port_private': True, 'website_memory_limits': '256 MiB each',
+    report({'phase': 'deployed', 'revision': args.revision, 'query_port_private': True, 'website_memory_limits_requested': '256 MiB each', 'memory_limits_enforced': memory_supported,
             'postgres_unchanged': True, 'private_credentials_mode': oct(secret_file.stat().st_mode & 0o777),
             'member_group': public_result['groupId'], 'lobby': public_result['lobbyId'], 'voice_channel': public_result['memberChannelId'],
             'rollback': str(rollback)})

@@ -32,7 +32,7 @@ Use the manually dispatched **TeamSpeak production operations** workflow:
 - `deploy`: builds immutable native ARM backend/frontend images on CI, verifies their architecture/revision, preserves the current TeamSpeak image, privately backs up existing images/configuration and stopped TeamSpeak data, restricts Query networking, provisions permissions/account, then checks production.
 - `verify`: runs the sanitized live permission/authentication/response checks without deploying.
 
-The current host was audited on 14 October 2026: ARM64 with approximately 8 GiB RAM, rather than the previous 1 GiB GCP web VM. The deployment explicitly enforces the repository’s 256 MiB backend/frontend limits. PostgreSQL and the runtime-data volume are retained; database containers are not restarted or built.
+The current host was audited on 14 October 2026: ARM64 with approximately 8 GiB RAM, rather than the previous 1 GiB GCP web VM. Compose requests the repository’s 256 MiB backend/frontend limits, but this host reports Docker `MemoryLimit=false` and `SwapLimit=false`: its kernel cannot enforce them. Enabling memory cgroups requires a separately planned boot configuration change/reboot. The feature introduces no dependency or pool and bounds its work; the deployment reports this limitation and refuses the same exception on hosts below 4 GiB. PostgreSQL and the runtime-data volume are retained; database containers are not restarted or built.
 
 Private host files:
 

@@ -26,6 +26,7 @@ def main():
     run('docker', 'cp', str(source), backend['Id'] + ':/tmp/verify-teamspeak-live.cjs')
     deadline = time.monotonic() + 150
     while True:
+        data = {}
         result = subprocess.run(['docker', 'exec', backend['Id'], 'node', '/tmp/verify-teamspeak-live.cjs'], capture_output=True, text=True, timeout=160)
         # Only this reviewed checker generates output; it never prints sessions,
         # query replies, credentials or member identifiers.

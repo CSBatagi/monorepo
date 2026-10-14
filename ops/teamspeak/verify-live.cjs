@@ -25,16 +25,16 @@ async function main() {
   const query = await connectQuery(config);
   try {
     await verifyConfiguration(query, config); passed('live guest/member/channel isolation');
-    const permissionId = (await query.command('permissionlist')).find(p => p.permname === 'i_client_talk_power')?.permid;
-    assert.ok(permissionId);
-    await assert.rejects(() => query.command('servergroupaddperm', { sgid: config.groupId, permid: permissionId, permvalue: 50, permnegated: 0, permskip: 0 }));
+    // Permission-list enumeration is deliberately unavailable to this account.
+    // Named permissions allow the harmless denial probe without granting it.
+    await assert.rejects(() => query.command('servergroupaddperm', { sgid: config.groupId, permsid: 'i_client_talk_power', permvalue: 50, permnegated: 0, permskip: 0 }), error => error.code === '2568');
     passed('website query cannot modify permissions');
     // A server edit with an unchanged name is harmless even if a policy mistake
     // exists, and must be denied to this limited query account.
     const server = (await query.command('serverinfo'))[0];
-    await assert.rejects(() => query.command('serveredit', { virtualserver_name: server.virtualserver_name }));
+    await assert.rejects(() => query.command('serveredit', { virtualserver_name: server.virtualserver_name }), error => error.code === '2568');
     passed('website query cannot edit the server');
-    await assert.rejects(() => query.command('tokenlist'));
+    await assert.rejects(() => query.command('tokenlist'), error => error.code === '2568');
     passed('website query cannot read privilege keys');
   } finally { query.close(); }
   const pool = new Pool({ host: process.env.DB_HOST, port: process.env.DB_PORT || 5432, database: process.env.DB_DATABASE,

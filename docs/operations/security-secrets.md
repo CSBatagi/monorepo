@@ -15,6 +15,13 @@ Use templates and keep real values local:
 - `frontend-nextjs/.env.example` -> `frontend-nextjs/.env.local`
 - Optional: `.pg_secrets.local`
 
+TeamSpeak production provisioning stores `.teamspeak_server_secrets` (bootstrap
+admin) and `.teamspeak_secrets` (limited website Query account) on the deployment
+host with mode 0600. They are separate from normal deployment's regenerated
+`.backend_secrets`; never copy them into CI artifacts, frontend configuration or
+Docker build contexts. See [TeamSpeak](../features/teamspeak.md) for the key-free
+Steam verification flow and private backup/rollback procedure.
+
 ## Safe vs Unsafe
 
 Safe to commit:
@@ -54,6 +61,8 @@ If `MATCHMAKING_TOKEN` is rotated, all existing user sessions will be invalidate
 | `CLOUDFLARE_API_TOKEN` | DDNS | Cloudflare DNS update token |
 | `GCP_VM_NAME` | CI/CD | Target VM name |
 | `GCP_ZONE` | CI/CD | GCP zone |
+| `PI_HOST`, `PI_USER`, `PI_HOST_SSH_PK` | Current ARM CI/CD | Private deployment host and SSH access |
+| `TAILSCALE_AUTHKEY` | Current ARM CI/CD | Join the private deployment network |
 
 Generate VAPID keys with: `npx web-push generate-vapid-keys`
 
