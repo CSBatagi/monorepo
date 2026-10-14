@@ -38,6 +38,8 @@ def main():
                 pass
         if result.returncode == 0:
             print(json.dumps({'query_port_localhost_only': True, 'private_file_modes': '0600'})); return
+        if data.get('completed_checks'):
+            raise RuntimeError('Validation failed after startup; do not retry deterministic policy checks')
         if time.monotonic() >= deadline:
             raise RuntimeError('Live validation failed')
         time.sleep(10)

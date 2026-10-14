@@ -76,4 +76,4 @@ async function main() {
     console.log(JSON.stringify({ live_checks_passed: checks.length, checks, real_desktop_join: 'requires account-owner test' }));
   } finally { await pool.end(); }
 }
-main().catch(() => { console.error(JSON.stringify({ live_validation_failed: true, completed_checks: checks, credentials_logged: false })); process.exitCode = 1; });
+main().catch(error => { console.error(JSON.stringify({ live_validation_failed: true, completed_checks: checks, query_code: /^\d+$/.test(error.code || '') ? error.code : null, failed_permission: error.failedPermission || null, command: /^[a-z]+$/.test(error.commandName || '') ? error.commandName : null, credentials_logged: false })); process.exitCode = 1; });
