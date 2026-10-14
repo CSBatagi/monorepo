@@ -137,6 +137,12 @@ jobs:
         run: |
           ssh deploy-target "docker compose -f ~/docker-compose.yml exec -T backend bash -c 'rm -f /app/last_timestamp.txt' && docker compose -f ~/docker-compose.yml restart backend"
 
+      - name: Refresh TeamSpeak Query flood exception for the current private backend IP
+        run: |
+          ssh deploy-target 'umask 077; mkdir -p ~/.csbatagi-teamspeak-ops'
+          scp ops/teamspeak/repair-production.py deploy-target:~/.csbatagi-teamspeak-ops/repair-production.py
+          ssh deploy-target 'python3 ~/.csbatagi-teamspeak-ops/repair-production.py --allowlist-only'
+
       - name: Wait for backend stats warmup
         run: |
           ssh deploy-target "bash -s" <<'EOF'

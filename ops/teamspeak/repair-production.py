@@ -4,11 +4,15 @@ import json
 import pathlib
 import subprocess
 import time
+import sys
 
 
 def main():
     root = pathlib.Path.home()
-    admin = dict(line.split('=', 1) for line in (root / '.teamspeak_server_secrets').read_text().splitlines() if '=' in line)
+    if sys.argv[1:] not in [[], ['--allowlist-only']]:
+        raise RuntimeError('Invalid repair option')
+    if not (root / '.teamspeak_secrets').exists():
+        print(json.dumps({'teamspeak_configured': False})); return
     ids = subprocess.run(['docker', 'ps', '-q', '--filter', 'label=com.docker.compose.service=backend'], capture_output=True, text=True, check=True).stdout.split()
     assert len(ids) == 1
     backend = json.loads(subprocess.run(['docker', 'inspect', ids[0]], capture_output=True, text=True, check=True).stdout)[0]
@@ -19,6 +23,9 @@ def main():
     for name in ['query_ip_allowlist.txt', 'query_ip_whitelist.txt']:
         subprocess.run(['docker', 'cp', str(allowlist), 'teamspeak-server:/var/ts3server/' + name], capture_output=True, text=True, check=True)
     print(json.dumps({'query_allowlist_updated_for_current_private_ips': True, 'teamspeak_restarted': False}), flush=True)
+    if sys.argv[1:] == ['--allowlist-only']:
+        return  # Normal CI never reads the bootstrap credential or changes roles.
+    admin = dict(line.split('=', 1) for line in (root / '.teamspeak_server_secrets').read_text().splitlines() if '=' in line)
     subprocess.run(['docker', 'cp', str(root / '.csbatagi-teamspeak-ops' / 'repair-production.cjs'), ids[0] + ':/tmp/repair-teamspeak.cjs'], capture_output=True, text=True, check=True)
     # Native TeamSpeak reloads the IP allowlist every five minutes. Preserve
     # active voice clients and retry only query-flood/disconnect failures.
