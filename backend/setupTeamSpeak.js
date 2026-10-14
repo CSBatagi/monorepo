@@ -59,7 +59,6 @@ async function setup(config, apply = false, openQuery = connectQuery) {
       virtualserver_reserved_slots: Math.min(10, Math.max(0, Number(server.virtualserver_maxclients || 32) - 10)) });
     // Global query login is isolated from serveradmin and receives only the
     // permissions needed for verification, member assignment and revocation.
-    await query.command('use', { sid: 0 });
     const globalGroups = await query.command('servergrouplist');
     const queryName = 'CS Batagi Website Query';
     const queryGroup = globalGroups.find(group => group.name === queryName && group.type === '2')?.sgid ||
@@ -80,13 +79,16 @@ async function setup(config, apply = false, openQuery = connectQuery) {
     }
     for (const [name, value] of Object.entries(needed)) if (supported.has(name)) await addPermission(queryGroup, name, value);
     const loginName = 'csbatagi_website';
+    // Group commands require a selected virtual server, even for type-2 groups.
+    // Only login creation/deletion selects the global client namespace.
+    await query.command('use', { sid: 0 });
     for (const login of await query.command('queryloginlist', { pattern: loginName })) {
       if (login.client_login_name === loginName) await query.command('querylogindel', { cldbid: login.cldbid });
     }
     const login = (await query.command('queryloginadd', { client_login_name: loginName }))[0];
     if (!login?.client_login_password || !login.cldbid) throw new Error('Private query account creation failed');
-    await query.command('servergroupaddclient', { sgid: queryGroup, cldbid: login.cldbid });
     await query.command('use', { sid: 1 });
+    await query.command('servergroupaddclient', { sgid: queryGroup, cldbid: login.cldbid });
     const result = { ...config, groupId, lobbyId, memberChannelId, queryUser: loginName, queryPassword: login.client_login_password };
     const privateQuery = await openQuery(result);
     try {
