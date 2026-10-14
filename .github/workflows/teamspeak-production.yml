@@ -92,7 +92,9 @@ jobs:
         run: printf '%s' "$REGISTRY_TOKEN" | ssh teamspeak-target 'docker login ghcr.io -u ${{ github.actor }} --password-stdin'
       - name: Repair identity persistence permission without restarting TeamSpeak
         if: inputs.operation == 'repair'
-        run: ssh teamspeak-target 'timeout 90s python3 ~/.csbatagi-teamspeak-ops/repair-production.py'
+        run: |
+          scp ops/teamspeak/repair-production.cjs teamspeak-target:~/.csbatagi-teamspeak-ops/repair-production.cjs
+          ssh teamspeak-target 'timeout 90s python3 ~/.csbatagi-teamspeak-ops/repair-production.py'
       - name: Deploy immutable images and private TeamSpeak configuration
         if: inputs.operation == 'deploy'
         run: |
