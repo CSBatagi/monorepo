@@ -25,7 +25,9 @@ async function main() {
   const query = await connectQuery(config);
   try {
     await verifyConfiguration(query, config); passed('live guest/member/channel isolation');
-    await assert.rejects(() => query.command('servergroupaddperm', { sgid: config.groupId, permsid: 'i_client_talk_power', permvalue: 50, permnegated: 0, permskip: 0 }));
+    const permissionId = (await query.command('permissionlist')).find(p => p.permname === 'i_client_talk_power')?.permid;
+    assert.ok(permissionId);
+    await assert.rejects(() => query.command('servergroupaddperm', { sgid: config.groupId, permid: permissionId, permvalue: 50, permnegated: 0, permskip: 0 }));
     passed('website query cannot modify permissions');
     // A server edit with an unchanged name is harmless even if a policy mistake
     // exists, and must be denied to this limited query account.

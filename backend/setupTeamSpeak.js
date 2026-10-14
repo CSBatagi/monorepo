@@ -14,9 +14,10 @@ async function setup(config, apply = false, openQuery = connectQuery) {
     if (!apply) return { apply: false, memberGroupExists: !!existing, changes: ['restricted silent verification lobby', 'Steam member voice group', 'private limited query account'] };
     const permissions = await query.command('permissionlist');
     const supported = new Set(permissions.map(p => p.permname));
+    const permissionIds = new Map(permissions.map(p => [p.permname, p.permid]));
     const addPermission = async (sgid, permsid, value, negated = 0, skip = 0) => {
       if (!supported.has(permsid)) throw new Error('Required permission unavailable');
-      await query.command('servergroupaddperm', { sgid, permsid, permvalue: value, permnegated: negated, permskip: skip });
+      await query.command('servergroupaddperm', { sgid, permid: permissionIds.get(permsid), permvalue: value, permnegated: negated, permskip: skip });
     };
     const groupId = existing?.sgid || (await query.command('servergroupcopy', {
       ssgid: guest.sgid, tsgid: 0, name: GROUP_NAME, type: 1,
@@ -38,16 +39,16 @@ async function setup(config, apply = false, openQuery = connectQuery) {
     const lobbyId = await channel('Steam Doğrulama');
     const memberChannelId = await channel('Kulüp');
     if (!lobbyId || !memberChannelId) throw new Error('Channel setup failed');
-    await query.command('channeladdperm', { cid: lobbyId, permsid: 'i_channel_needed_join_power', permvalue: -1 });
-    await query.command('channeladdperm', { cid: lobbyId, permsid: 'i_client_needed_talk_power', permvalue: 0 });
-    await query.command('channeladdperm', { cid: lobbyId, permsid: 'i_channel_needed_subscribe_power', permvalue: -1 });
+    await query.command('channeladdperm', { cid: lobbyId, permid: permissionIds.get('i_channel_needed_join_power'), permvalue: -1 });
+    await query.command('channeladdperm', { cid: lobbyId, permid: permissionIds.get('i_client_needed_talk_power'), permvalue: 0 });
+    await query.command('channeladdperm', { cid: lobbyId, permid: permissionIds.get('i_channel_needed_subscribe_power'), permvalue: -1 });
     await query.command('channeledit', { cid: lobbyId, channel_flag_default: 1, channel_description: 'csbatagi.com/teamspeak sayfasından Steam ile doğrula. Doğrulanmadan sesli odalara erişilemez.' });
     for (const row of await query.command('channellist')) {
       if (row.cid !== lobbyId) {
         const permissions = await query.command('channelpermlist', { cid: row.cid }, '-permsid');
         const current = Number(permissions.find(p => p.permsid === 'i_channel_needed_join_power')?.permvalue || 0);
         // Preserve stronger existing restrictions, including administrator rooms.
-        if (current < 50) await query.command('channeladdperm', { cid: row.cid, permsid: 'i_channel_needed_join_power', permvalue: 50 });
+        if (current < 50) await query.command('channeladdperm', { cid: row.cid, permid: permissionIds.get('i_channel_needed_join_power'), permvalue: 50 });
       }
     }
     for (const permission of await query.command('servergrouppermlist', { sgid: guest.sgid }, '-permsid')) {
@@ -64,7 +65,7 @@ async function setup(config, apply = false, openQuery = connectQuery) {
     const queryGroup = globalGroups.find(group => group.name === queryName && group.type === '2')?.sgid ||
       (await query.command('servergroupadd', { name: queryName, type: 2 }))[0]?.sgid;
     const needed = {
-      b_group_is_permanent: 1, b_virtualserver_select: 1, b_virtualserver_info_view: 1,
+      b_group_is_permanent: 1, b_virtualserver_select: 1, b_virtualserver_info_view: 1, b_permission_list: 1,
       b_virtualserver_client_list: 1, b_virtualserver_channel_list: 1, b_virtualserver_channel_search: 1,
       b_virtualserver_servergroup_list: 1, b_virtualserver_servergroup_client_list: 1,
       b_virtualserver_servergroup_permission_list: 1, b_virtualserver_channel_permission_list: 1,
@@ -98,7 +99,7 @@ async function setup(config, apply = false, openQuery = connectQuery) {
         throw new Error('Website query account has administrative access');
       };
       await mustDeny('serveredit', { virtualserver_name: 'CS Batağı' });
-      await mustDeny('servergroupaddperm', { sgid: groupId, permsid: 'i_client_talk_power', permvalue: 50, permnegated: 0, permskip: 0 });
+      await mustDeny('servergroupaddperm', { sgid: groupId, permid: permissionIds.get('i_client_talk_power'), permvalue: 50, permnegated: 0, permskip: 0 });
       await mustDeny('tokenlist');
     } finally { privateQuery.close(); }
     return { groupId, lobbyId, memberChannelId, queryUser: result.queryUser, queryPassword: result.queryPassword, queryGroup };
