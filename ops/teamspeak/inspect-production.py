@@ -36,6 +36,9 @@ def main():
                 'mounts': [{key: mount.get(key) for key in ['Type', 'Source', 'Destination']} for mount in item['Mounts']]})
     root = pathlib.Path.home()
     report({'compose_files': [file.name for file in root.glob('*compose*.yml')]})
+    report({'private_files_present': {name: (root / name).exists() for name in ['.teamspeak_secrets', '.teamspeak_server_secrets']}})
+    for folder in sorted(root.glob('teamspeak-web-backup-*'))[-1:]:
+        report({'latest_backup': folder.name, 'private_provisioning_result_exists': (folder / 'website-query.private.json').exists()})
     ts = next((item for item in containers if item['Name'] == '/teamspeak-server'), None)
     if not ts:
         report({'teamspeak': 'not found'}); return

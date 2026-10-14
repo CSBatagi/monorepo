@@ -20,6 +20,7 @@ import time
 def run(*args, input=None, timeout=180):
     result = subprocess.run(args, input=input, capture_output=True, text=True, timeout=timeout)
     if result.returncode:
+        report({'operation_failed': args[0], 'subcommand': args[1] if len(args) > 1 and args[1] in ['exec', 'cp', 'compose', 'pull', 'stop', 'inspect', 'image'] else None, 'exit_code': result.returncode})
         # Numeric setup diagnostics are safe; never print raw Docker/tool output.
         if 'setupTeamSpeak.js' in ' '.join(args):
             try:
@@ -168,6 +169,7 @@ def main():
     output = run('docker', 'exec', '-i', backend['Id'], 'node', '/app/setupTeamSpeak.js', '--apply', '--config-stdin', '--output-private=' + private_output,
                  input=json.dumps(bootstrap), timeout=60)
     public_result = json.loads(output)
+    report({'phase': 'restricted provisioning and administrative denial checks passed'})
     private_config = backup / 'website-query.private.json'
     run('docker', 'cp', backend['Id'] + ':' + private_output, str(private_config))
     private_config.chmod(0o600)
@@ -180,8 +182,10 @@ def main():
     if any(not re.fullmatch(r'[A-Za-z0-9+/_=.-]+', str(value)) for value in values.values()):
         raise RuntimeError('Unexpected private configuration format')
     private_write(secret_file, ''.join(name + '=' + str(value) + '\n' for name, value in values.items()))
+    report({'phase': 'private website credential stored'})
     run(*compose_args, 'up', '-d', '--no-deps', '--force-recreate', 'backend')
     backend = service(containers(), 'backend')
+    report({'phase': 'backend private credential loaded'})
     final_ip = backend['NetworkSettings']['Networks']['db2']['IPAddress']
     if final_ip != backend_ip:
         whitelist.write_text('127.0.0.1\n::1\n' + final_ip + '\n')
@@ -189,6 +193,7 @@ def main():
             run('docker', 'cp', str(whitelist), teamspeak['Id'] + ':/var/ts3server/' + filename)
         run(*compose_args, 'restart', 'teamspeak')
     run(*compose_args, 'up', '-d', '--no-deps', 'frontend-nextjs')
+    report({'phase': 'frontend image started'})
     current = containers()
     if service(current, 'postgres')['Id'] != postgres_id:
         raise RuntimeError('Unexpected PostgreSQL restart')
