@@ -48,6 +48,17 @@ Do not repeatedly run setup against an already configured server: it rotates the
 
 ## Validation and rollback
 
+Production test rollout on 14 October 2026:
+
+- Running backend/frontend images: immutable revision `f00e490b729370ca94c321b19831d2c84f2b7e4d`; later commits updated only operation helpers/documentation.
+- Native member group 9, verification lobby 8, voice room 9. These IDs are public metadata, not credentials.
+- [Live validation run](https://github.com/CSBatagi/monorepo/actions/runs/38630723501) passed **21 checks**, plus localhost Query binding and 0600 credential-file checks. External signed-out probes of all three public APIs returned 401.
+- Local validation passed 138 automated checks, TypeScript and a production build. Browser verification exercised the actual form/proxy using synthetic local fixtures; no real member desktop identity was impersonated.
+- The final deployment guard initially stopped because Docker ignored requested memory limits. The website/native provisioning had already completed; the subsequent independent verification confirmed the live feature. The host capability limitation is documented above.
+- Preserve the private snapshot `teamspeak-web-backup-20261014t200600z` and earlier snapshots until the account-owner desktop flow passes.
+
+This review covers the new identity bridge and its credential boundary. Existing repository dependency alerts were reported by GitHub (including four critical alerts); they have not been remediated by this change. The host audit also found PostgreSQL TCP 5432 published on the host; its external firewall reachability was not assessed here. These pre-existing findings require a separate infrastructure/dependency review.
+
 Local checks:
 
 - Backend: `npm test -- --runTestsByPath test/teamSpeak.test.js test/teamSpeakQuery.test.js test/setupTeamSpeak.test.js test/steamAuth.test.js test/gameServer.test.js`.
