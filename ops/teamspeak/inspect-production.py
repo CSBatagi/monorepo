@@ -36,6 +36,8 @@ def main():
                 'mounts': [{key: mount.get(key) for key in ['Type', 'Source', 'Destination']} for mount in item['Mounts']]})
     root = pathlib.Path.home()
     report({'compose_files': [file.name for file in root.glob('*compose*.yml')]})
+    effective = json.loads(run('docker', 'compose', '-f', str(root / 'docker-compose.yml'), '-f', str(root / 'docker-compose.teamspeak-test.yml'), 'config', '--format', 'json'))
+    report({'effective_web_limits': {name: {'mem_limit': effective['services'][name].get('mem_limit'), 'deploy': effective['services'][name].get('deploy')} for name in ['backend', 'frontend-nextjs']}})
     report({'private_files_present': {name: (root / name).exists() for name in ['.teamspeak_secrets', '.teamspeak_server_secrets']}})
     for folder in sorted(root.glob('teamspeak-web-backup-*'))[-1:]:
         report({'latest_backup': folder.name, 'private_provisioning_result_exists': (folder / 'website-query.private.json').exists()})
