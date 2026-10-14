@@ -31,7 +31,7 @@ jobs:
           folder = pathlib.Path.home() / '.ssh'
           folder.mkdir(mode=0o700, exist_ok=True)
           key = folder / 'teamspeak-deploy-key'
-          key.write_text(os.environ['DEPLOY_KEY'])
+          key.write_text(os.environ['DEPLOY_KEY'].replace('\r\n', '\n').strip() + '\n')
           key.chmod(0o600)
           (folder / 'config').write_text('Host teamspeak-target\n  HostName ' + os.environ['DEPLOY_HOST'] + '\n  User ' + os.environ['DEPLOY_USER'] + '\n  IdentityFile ' + str(key) + '\n  StrictHostKeyChecking accept-new\n  BatchMode yes\n')
           PY
