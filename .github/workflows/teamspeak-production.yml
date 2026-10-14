@@ -39,7 +39,7 @@ jobs:
         run: |
           ssh teamspeak-target 'umask 077; mkdir -p ~/.csbatagi-teamspeak-ops'
           scp ops/teamspeak/inspect-production.py teamspeak-target:~/.csbatagi-teamspeak-ops/inspect-production.py
-          ssh teamspeak-target 'python3 ~/.csbatagi-teamspeak-ops/inspect-production.py'
+          ssh teamspeak-target 'timeout 60s python3 ~/.csbatagi-teamspeak-ops/inspect-production.py'
       - name: Remove runner SSH credentials
         if: always()
         run: rm -f ~/.ssh/teamspeak-deploy-key ~/.ssh/config

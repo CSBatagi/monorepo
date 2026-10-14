@@ -58,7 +58,10 @@ def main():
             connection.sendall((text + '\n').encode())
             rows = []
             while True:
-                line = stream.readline().strip('\r\n')
+                raw = stream.readline()
+                if not raw:
+                    raise RuntimeError('Query disconnected')
+                line = raw.strip('\r\n')
                 if not line or line == 'TS3' or line.startswith('Welcome'): continue
                 if line.startswith('error '):
                     status = query_rows(line[6:])[0]
