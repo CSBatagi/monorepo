@@ -65,7 +65,7 @@ async function setup(config, apply = false, openQuery = connectQuery) {
     const queryGroup = globalGroups.find(group => group.name === queryName && group.type === '2')?.sgid ||
       (await query.command('servergroupadd', { name: queryName, type: 2 }))[0]?.sgid;
     const needed = {
-      b_group_is_permanent: 1, b_virtualserver_select: 1, b_virtualserver_info_view: 1, b_permission_list: 1,
+      b_group_is_permanent: 1, b_virtualserver_select: 1, b_virtualserver_info_view: 1, b_permission_list: 1, b_client_ignore_antiflood: 1,
       b_virtualserver_client_list: 1, b_virtualserver_channel_list: 1, b_virtualserver_channel_search: 1,
       b_virtualserver_servergroup_list: 1, b_virtualserver_servergroup_client_list: 1,
       b_virtualserver_servergroup_permission_list: 1, b_virtualserver_channel_permission_list: 1,

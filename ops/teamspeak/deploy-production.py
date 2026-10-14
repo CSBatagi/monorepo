@@ -149,7 +149,8 @@ def main():
     whitelist = backup / 'query-ip-whitelist.txt'
     whitelist.write_text('127.0.0.1\n::1\n' + backend_ip + '\n')
     whitelist.chmod(0o644)  # Not a credential; TeamSpeak's container UID must read it.
-    run('docker', 'cp', str(whitelist), previous['teamspeak']['Id'] + ':/var/ts3server/query_ip_whitelist.txt')
+    for filename in ['query_ip_allowlist.txt', 'query_ip_whitelist.txt']:
+        run('docker', 'cp', str(whitelist), previous['teamspeak']['Id'] + ':/var/ts3server/' + filename)
     run(*compose_args, 'up', '-d', '--no-deps', 'teamspeak')
     teamspeak = service(containers(), 'teamspeak')
     deadline = time.monotonic() + 90
@@ -184,7 +185,8 @@ def main():
     final_ip = backend['NetworkSettings']['Networks']['db2']['IPAddress']
     if final_ip != backend_ip:
         whitelist.write_text('127.0.0.1\n::1\n' + final_ip + '\n')
-        run('docker', 'cp', str(whitelist), teamspeak['Id'] + ':/var/ts3server/query_ip_whitelist.txt')
+        for filename in ['query_ip_allowlist.txt', 'query_ip_whitelist.txt']:
+            run('docker', 'cp', str(whitelist), teamspeak['Id'] + ':/var/ts3server/' + filename)
         run(*compose_args, 'restart', 'teamspeak')
     run(*compose_args, 'up', '-d', '--no-deps', 'frontend-nextjs')
     current = containers()
