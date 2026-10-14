@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import Link from 'next/link';
+import TeamSpeakConnect from './TeamSpeakConnect';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   ClipboardList,
@@ -50,6 +51,7 @@ export default function ClassicHome() {
       }`}>
         CS Batağı Sitesine Hoş Geldiniz!
       </h2>
+      <TeamSpeakConnect />
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 w-full max-w-7xl mx-auto">
         {tiles.map((tile) => {
           const Icon = tile.icon;

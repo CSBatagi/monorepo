@@ -3,6 +3,7 @@
 import Link from "next/link";
 import LastNightCard from "./LastNightCard";
 import ClubQuotes from "./ClubQuotes";
+import TeamSpeakConnect from "./TeamSpeakConnect";
 import { ArrowRight, ArrowUpRight, BarChart3, Check, ClipboardList, Crosshair, Crown, Dices, Film, Flag, Globe2, ListOrdered, Moon, Network, Swords, Target, TrendingUp, Trophy, Users } from "lucide-react";
 import { useSession } from "@/contexts/SessionContext";
 import { useLivePolling } from "@/lib/useLivePolling";
@@ -51,6 +52,7 @@ export default function ClubHome() {
         <Link prefetch={false} href="/attendance" className="club-card-bottom-link">{error ? 'Katılımı aç ve tekrar dene' : 'Kim geliyor, kim yan çiziyor?'}<ArrowRight size={17} /></Link>
       </div>
     </section>
+    <TeamSpeakConnect />
     <section className="club-match-strip" aria-label="Maç merkezi">
       {[{ href: '/sonmac', label: 'Son maçın detayları', icon: Crosshair }, { href: '/mac-sonuclari', label: 'Maç sonuçları', icon: Flag }, { href: '/mac-videolari', label: 'Maç tekrarları', icon: Film }, { href: '/gece-ortalama', label: 'Gece Ortalaması', icon: Moon }].map(({ href, label, icon: Icon }) => <Link prefetch={false} href={href} key={href}><Icon size={20} /><span>{label}</span><ArrowUpRight size={16} /></Link>)}
     </section>

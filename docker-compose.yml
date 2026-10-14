@@ -38,6 +38,7 @@ services:
 
   backend:
     restart: unless-stopped
+    mem_limit: 256m
     image: ghcr.io/csbatagi/monorepo/backend:latest  # Using the image from GitHub Container Registry with main branch tag
     pull_policy: always  # Force Docker to pull the latest image every time
     logging:
@@ -70,6 +71,9 @@ services:
       # VAPID keys and other shared secrets
       - path: .frontend_secrets
         required: false
+      # Generated privately on the host; normal CI never replaces this file.
+      - path: .teamspeak_secrets
+        required: false
     volumes:
       - ./credentials.json:/app/../credentials.json
       - ./cs2-control:/app/cs2-control
@@ -89,6 +93,7 @@ services:
 
   frontend-nextjs:
     restart: unless-stopped
+    mem_limit: 256m
     image: ghcr.io/csbatagi/monorepo/frontend-nextjs:latest  # Using the image from GitHub Container Registry
     pull_policy: always  # Force Docker to pull the latest image every time
     logging:
@@ -177,12 +182,17 @@ services:
         max-file: "3"
     ports:
       - "9987:9987/udp"   # Voice (required)
-      - "10011:10011"     # ServerQuery (optional, admin)
+      - "127.0.0.1:10011:10011" # ServerQuery: operator access only; backend uses db2
       - "30033:30033"     # File transfer (optional)
     environment:
       - TS3SERVER_LICENSE=accept
+    env_file:
+      - path: .teamspeak_server_secrets
+        required: false
     volumes:
       - /home/clawd/teamspeak/data:/var/ts3server
+    networks:
+      - db2
 
 volumes:
   pgdata:

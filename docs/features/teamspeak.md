@@ -1,0 +1,61 @@
+# TeamSpeak: Steam identity verification and key-free joining
+
+The website offers **Sesliye gel · TeamSpeak** on the home page (all interfaces), in Takım Seçme’s **Sunucu & bağlantı** panel and at `/teamspeak`. The download link selects TeamSpeak 3 on the official downloads page. Voice uses `voice.csbatagi.com:9987` independently of the CS2 VM.
+
+## Member flow
+
+Install TeamSpeak 3, sign into the website with Steam, and click **TeamSpeak’i aç**. The browser may request permission to launch the app. A first-time client enters a restricted, silent **Steam Doğrulama** lobby. The website sends a private message to that connected TeamSpeak identity; enter its ten-character code on the website once. The server binds the verified SteamID to the native TeamSpeak identity, assigns only the club member group and moves that client to **Kulüp**. Later website joins and the saved member bookmark are key-free.
+
+A new TeamSpeak identity requires verification again. **Yeni TeamSpeak kimliği mi?** restarts that flow. No address, server password, privilege-key paste, SteamID entry, special plugin or exported private identity file is required. The website cannot install software, dismiss OS prompts or silently configure audio devices.
+
+## Authentication and security review
+
+[TeamSpeak authenticates native clients with their own cryptographic identities](https://support.teamspeak.com/hc/en-us/articles/360002711518-How-does-the-TeamSpeak-3-user-Authentication-work). Steam OpenID authenticates the website account. This implementation bridges them by proof of control of the connected client, rather than an invitation key.
+
+- No TeamSpeak privilege/invitation key is generated or delivered to the browser. Launch URLs contain only the public host, port, nickname, channel ID and optional bookmark label. ServerQuery credentials and the admin credential remain on the deployment host/backend.
+- Backend join/status/verify routes require the internal bearer credential, a valid signed Steam session, current roster membership and the persisted SteamID/UID pair. Browser-provided SteamIDs, names, admin flags or client IDs never establish authority.
+- The nickname’s random marker locates a candidate client; it does not authorize one. A private, random 40-bit code goes only to that client inside TeamSpeak. API responses never contain it. The user intentionally types this one-time proof into their own authenticated HTTPS page; it is not a TeamSpeak invitation key or server credential.
+- Verification is bound to the SteamID, browser device marker, request UUID and connected native client UID/database ID. It expires three minutes after preparation and permits at most five guesses. Disconnection, ID reuse, an identity already owned by another SteamID, a roster removal or a signature failure prevents assignment. A nickname alone cannot grant membership.
+- Only a keyed digest of the code is kept in bounded, transient backend memory. At most three requests per account and 256 total are kept. Restarting backend invalidates pending proofs; verified identity properties and groups survive in TeamSpeak’s database.
+- Next.js additionally allowlists response fields and launch parameters. Password/key parameters, accidental credential/debug fields and raw backend errors cannot pass through to the browser. Responses use `no-store` and `no-referrer`. Codes never appear in page URLs or browser storage.
+- Default guests have negated, skipped negative join/talk/subscribe/private-message/file powers and cannot create channels. Only the verification lobby has negative needed join/subscribe power; normal rooms require at least 50 join power. Stronger pre-existing room restrictions are preserved. The dedicated member group has no administrative, query-login, permission-editing or group-management rights.
+- The backend uses a separate global Query account with an explicit permission list, group member add/remove powers capped at 50, and no server-edit, permission-edit or privilege-key access. Existing manually granted native administrative/other groups remain under operator control; website role/admin status does not grant TeamSpeak administration.
+- Query TCP 10011 is bound to localhost and privately available on the existing `db2` Docker network. Its allowlist contains localhost and the backend’s current private IP. UDP voice and the existing native file-transfer port remain public; guest file-transfer permissions are denied.
+- Backend maintenance removes this integration’s member group and kicks linked identities when their SteamID leaves the roster (normally within a minute). It also removes unverified guests after approximately three to four minutes. Query/roster outages delay revocation; failures log no credential or code. Independently assigned native groups are outside this group’s revocation scope.
+- Authenticated API traffic is limited to 30 calls per member per minute, and query work is serialized with a bounded queue. Polling occurs only during a visible, user-started verification. There is no new dependency, connection pool, schema migration or increased runtime query parallelism.
+
+## Operator setup and production deployment
+
+Use the manually dispatched **TeamSpeak production operations** workflow:
+
+- `audit`: read-only inventory using the existing GitHub/Tailscale SSH secrets. Docker environments, raw logs, passwords and database contents are not printed.
+- `deploy`: builds immutable native ARM backend/frontend images on CI, verifies their architecture/revision, preserves the current TeamSpeak image, privately backs up existing images/configuration and stopped TeamSpeak data, restricts Query networking, provisions permissions/account, then checks production.
+- `verify`: runs the sanitized live permission/authentication/response checks without deploying.
+
+The current host was audited on 14 October 2026: ARM64 with approximately 8 GiB RAM, rather than the previous 1 GiB GCP web VM. The deployment explicitly enforces the repository’s 256 MiB backend/frontend limits. PostgreSQL and the runtime-data volume are retained; database containers are not restarted or built.
+
+Private host files:
+
+- `.teamspeak_server_secrets`: the privately generated/recovered bootstrap admin credential, used only by TeamSpeak and operator provisioning.
+- `.teamspeak_secrets`: the limited website Query credential and the member/lobby/voice IDs; loaded by backend only.
+- `teamspeak-web-backup-<UTC timestamp>/`: previous image pins, Compose, any prior private configuration and a copy of TeamSpeak data taken while stopped.
+
+Credential files use mode 0600; backup/operation directories use 0700. None are uploaded as CI artifacts or committed. Normal deployment preserves the separate TeamSpeak files instead of rewriting them with `.backend_secrets`. Backend Docker build context excludes environment/private files.
+
+`setupTeamSpeak.js` is read-only by default. Applying requires `--apply`, bootstrap configuration supplied privately and an absolute `--output-private=...` file. Credentials are written with mode 0600, never stdout. The production wrapper passes its bootstrap configuration through stdin and copies the result privately; do not paste credentials into shell commands or public logs.
+
+Do not repeatedly run setup against an already configured server: it rotates the website Query login. Preserve the private backups. If backend is recreated with a different Docker IP, update the Query allowlist and restart TeamSpeak.
+
+## Validation and rollback
+
+Local checks:
+
+- Backend: `npm test -- --runTestsByPath test/teamSpeak.test.js test/teamSpeakQuery.test.js test/setupTeamSpeak.test.js test/steamAuth.test.js test/gameServer.test.js`.
+- Frontend: `node scripts/check-teamspeak.cjs`, `node scripts/check-steam-auth.cjs`, TypeScript and production build checks from local setup.
+- Operations: `python ops/teamspeak/test-deploy-production.py`.
+
+Live checks cover guest/channel isolation, denied website Query administrative/privilege-key actions, current member access, invalid/non-Steam cookies, same-origin protection, key-free response shape, proof-required membership assignment, private port/file permissions and populated stats. A real TeamSpeak desktop join still requires the account owner to complete the one-time code flow. A synthetic session/API check does not establish a completed Steam OpenID login or possession of a real desktop identity.
+
+Rollback images are pinned in the private backup’s `rollback.yml`; its saved Compose and TeamSpeak data preserve the preceding policy. Restoring website images does not undo native permission/database changes. If restoring TeamSpeak data, stop it before restoring the private snapshot and preserve filesystem ownership. Keep Query restricted to localhost/private network even during recovery. Existing website-managed memberships require explicit revocation if the integration is disabled; an absent credential disables both new verification and its maintenance.
+
+Do not delete backups or existing images until the account-owner desktop test has passed.

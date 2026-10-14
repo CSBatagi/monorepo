@@ -1,0 +1,28 @@
+.teamspeak-connect { margin: 20px 0; padding: 20px; border: 1px solid #d7dce3; border-radius: 16px; background: #fff; color: #1c212b; }
+.dark .teamspeak-connect { background: #181a1f; border-color: #353a44; color: #eeeef0; }
+.teamspeak-copy { display: flex; gap: 14px; align-items: flex-start; }
+.teamspeak-icon { display: flex; padding: 10px; border-radius: 12px; background: #fff0e7; color: #b34516; flex-shrink: 0; }
+.teamspeak-connect h2 { margin: 0 0 5px; font-size: 1.1rem; font-weight: 700; }
+.teamspeak-connect p { margin: 0; font-size: .9rem; }
+.teamspeak-connect small { display: block; margin-top: 7px; color: #667080; line-height: 1.5; }
+.dark .teamspeak-connect small { color: #a0a5b0; }
+.teamspeak-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.teamspeak-actions :is(a,button) { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; border: 1px solid #d7dce3; border-radius: 9px; padding: 10px 14px; font-size: .9rem; font-weight: 600; text-decoration: none; color: inherit; background: transparent; cursor: pointer; }
+.teamspeak-actions .teamspeak-join { background: #b34516; border-color: #b34516; color: #fff; }
+.teamspeak-actions .teamspeak-download { border-color: transparent; font-weight: 500; }
+.teamspeak-actions button:disabled { opacity: .6; cursor: wait; }
+.teamspeak-connect :is(a,button):focus-visible { outline: 2px solid #f68a4b; outline-offset: 3px; }
+.teamspeak-connect .teamspeak-feedback { margin-top: 13px; line-height: 1.5; }
+.teamspeak-reset { margin-top: 12px; padding: 6px 0; background: transparent; border: 0; color: inherit; text-decoration: underline; font-size: .8rem; cursor: pointer; }
+.teamspeak-verification { margin-top: 20px; padding-top: 16px; border-top: 1px solid #66708055; }
+.teamspeak-verification label { display: block; margin-bottom: 8px; font-size: .9rem; font-weight: 600; }
+.teamspeak-verification > div { display: flex; gap: 10px; flex-wrap: wrap; }
+.teamspeak-verification input { flex: 1 1 170px; min-width: 0; padding: 10px 12px; min-height: 44px; border: 1px solid #667080; border-radius: 8px; background: transparent; color: inherit; font-family: monospace; letter-spacing: .08em; }
+.teamspeak-verification button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 12px; background: #b34516; border: 0; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; }
+.teamspeak-verification button:disabled { opacity: .6; cursor: wait; }
+.teamspeak-feedback svg { display: inline; vertical-align: middle; }
+html[data-design="modern"] .teamspeak-connect { background: var(--club-surface); color: var(--club-text); border-color: var(--club-line); }
+html[data-design="modern"] .teamspeak-connect small { color: var(--club-muted); }
+html[data-design="cinematic"] .teamspeak-connect { background: rgba(17,20,24,.88); color: #eeeef0; border-color: #444; }
+html[data-design="cinematic"] .teamspeak-connect small { color: #b7bcc5; }
+@media (max-width: 480px) { .teamspeak-connect { padding: 16px; } .teamspeak-actions { align-items: stretch; flex-direction: column; } .teamspeak-actions :is(a,button) { justify-content: center; } }
