@@ -69,7 +69,7 @@ async function setup(config, apply = false, openQuery = connectQuery) {
       b_virtualserver_servergroup_list: 1, b_virtualserver_servergroup_client_list: 1,
       b_virtualserver_servergroup_permission_list: 1, b_virtualserver_channel_permission_list: 1,
       b_virtualserver_client_dbinfo: 1, b_virtualserver_client_dbsearch: 1, b_virtualserver_client_search: 1,
-      b_client_info_view: 1, b_client_custom_info_view: 1, b_client_modify_description: 1,
+      b_client_info_view: 1, b_client_custom_info_view: 1, b_virtualserver_custom_search: 1, b_client_modify_description: 1,
       i_client_private_textmessage_power: 50, i_client_move_power: 50, i_client_kick_from_server_power: 50,
       i_client_modify_power: 50, i_client_info_view_power: 50, i_channel_join_power: 50,
       i_group_member_add_power: 50, i_group_member_remove_power: 50,
