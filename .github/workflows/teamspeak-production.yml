@@ -1,0 +1,45 @@
+name: TeamSpeak production operations
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: teamspeak-production-operations
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Connect to the deployment network
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+      - name: Configure private deployment access
+        env:
+          DEPLOY_HOST: ${{ secrets.PI_HOST }}
+          DEPLOY_USER: ${{ secrets.PI_USER || 'clawd' }}
+          DEPLOY_KEY: ${{ secrets.PI_HOST_SSH_PK }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib
+          folder = pathlib.Path.home() / '.ssh'
+          folder.mkdir(mode=0o700, exist_ok=True)
+          key = folder / 'teamspeak-deploy-key'
+          key.write_text(os.environ['DEPLOY_KEY'])
+          key.chmod(0o600)
+          (folder / 'config').write_text('Host teamspeak-target\n  HostName ' + os.environ['DEPLOY_HOST'] + '\n  User ' + os.environ['DEPLOY_USER'] + '\n  IdentityFile ' + str(key) + '\n  StrictHostKeyChecking accept-new\n  BatchMode yes\n')
+          PY
+      - name: Inspect current production state without printing credentials
+        run: |
+          ssh teamspeak-target 'umask 077; mkdir -p ~/.csbatagi-teamspeak-ops'
+          scp ops/teamspeak/inspect-production.py teamspeak-target:~/.csbatagi-teamspeak-ops/inspect-production.py
+          ssh teamspeak-target 'python3 ~/.csbatagi-teamspeak-ops/inspect-production.py'
+      - name: Remove runner SSH credentials
+        if: always()
+        run: rm -f ~/.ssh/teamspeak-deploy-key ~/.ssh/config
