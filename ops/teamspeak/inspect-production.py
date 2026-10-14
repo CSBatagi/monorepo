@@ -42,7 +42,8 @@ def main():
     env = dict(value.split('=', 1) for value in ts['Config']['Env'] if '=' in value)
     password = env.get('TS3SERVER_SERVERADMIN_PASSWORD')
     if not password:
-        logs = run('docker', 'logs', ts['Id'])
+        captured = subprocess.run(['docker', 'logs', ts['Id']], capture_output=True, text=True, check=True)
+        logs = captured.stdout + captured.stderr
         match = re.search(r'loginname=\s*"serveradmin",\s*password=\s*"([^"\r\n]+)"', logs)
         password = match[1] if match else None
     if not password:
@@ -74,8 +75,8 @@ def main():
         report({'teamspeak_channels': command('channellist')})
         for name in ['queryloginadd', 'queryloginlist', 'customset', 'servergroupcopy']:
             try:
-                lines = command('help', **{'command': name})
-                report({'command': name, 'available': bool(lines)})
+                command('help ' + name)
+                report({'command': name, 'available': True})
             except RuntimeError:
                 report({'command': name, 'available': False})
     report({'teamspeak_query': 'read-only audit completed; bootstrap credential stayed on host'})
