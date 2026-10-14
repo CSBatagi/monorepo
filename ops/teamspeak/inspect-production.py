@@ -27,6 +27,8 @@ def query_rows(value):
 
 def main():
     report({'host': {'architecture': run('uname', '-m').strip(), 'memory_kib': int(re.search(r'MemTotal:\s+(\d+)', pathlib.Path('/proc/meminfo').read_text())[1])}})
+    docker_info = json.loads(run('docker', 'info', '--format', '{{json .}}'))
+    report({'docker_memory_capability': {key: docker_info.get(key) for key in ['MemoryLimit', 'SwapLimit', 'CgroupVersion', 'MemTotal']}})
     ids = run('docker', 'ps', '-aq').split()
     containers = json.loads(run('docker', 'inspect', *ids)) if ids else []
     for item in containers:
