@@ -19,24 +19,8 @@ services:
     env_file:
       - path: .dns_secrets
         required: true
-  #DB for matchzy
-  # get5db:
-  #   image: yobasystems/alpine-mariadb
-  #   container_name: get5db
-  #   restart: unless-stopped 
-  #   environment:
-  #     - MYSQL_DATABASE=get5
-  #     - MYSQL_CHARSET=utf8mb4
-  #     - MYSQL_COLLATION=utf8mb4_general_ci
-  #   env_file:
-  #     - path: .my_sql_secrets
-  #       required: true
-  #   ports:
-  #     - 3306:3306
-  #   volumes:
-  #     - /srv/mysql:/var/lib/mysql
-
   backend:
+    mem_limit: 256m
     restart: unless-stopped
     image: ghcr.io/csbatagi/monorepo/backend:latest  # Using the image from GitHub Container Registry with main branch tag
     pull_policy: always  # Force Docker to pull the latest image every time
@@ -70,6 +54,8 @@ services:
       # VAPID keys and other shared secrets
       - path: .frontend_secrets
         required: false
+      - path: .teamspeak_secrets
+        required: false
     volumes:
       - ./credentials.json:/app/../credentials.json
       - ./cs2-control:/app/cs2-control
@@ -88,6 +74,7 @@ services:
           memory: 256M
 
   frontend-nextjs:
+    mem_limit: 256m
     restart: unless-stopped
     image: ghcr.io/csbatagi/monorepo/frontend-nextjs:latest  # Using the image from GitHub Container Registry
     pull_policy: always  # Force Docker to pull the latest image every time
@@ -166,8 +153,7 @@ services:
       - CADDY_INGRESS_NETWORKS=db2
     
   teamspeak:
-    image: teamspeak:latest
-    platform: linux/amd64  # No native arm64 image; runs via QEMU emulation
+    image: teamspeaksystems/teamspeak6-server:latest
     container_name: teamspeak-server
     restart: unless-stopped
     logging:
@@ -177,12 +163,20 @@ services:
         max-file: "3"
     ports:
       - "9987:9987/udp"   # Voice (required)
-      - "10011:10011"     # ServerQuery (optional, admin)
+      - "127.0.0.1:10022:10022" # SSH Query
+      - "127.0.0.1:10080:10080" # Web Query
       - "30033:30033"     # File transfer (optional)
     environment:
-      - TS3SERVER_LICENSE=accept
+      - TSSERVER_LICENSE_ACCEPTED=accept
+      - TSSERVER_QUERY_SSH_ENABLED=1
+      - TSSERVER_QUERY_HTTP_ENABLED=1
+    env_file:
+      - path: .teamspeak_server_secrets
+        required: false
     volumes:
-      - /home/clawd/teamspeak/data:/var/ts3server
+      - /home/clawd/teamspeak/data:/var/tsserver
+    networks:
+      - db2
 
 volumes:
   pgdata:
