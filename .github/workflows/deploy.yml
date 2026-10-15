@@ -83,7 +83,7 @@ jobs:
       - name: Prepare directories and copy files
         run: |
           # Create directory structure on host
-          ssh deploy-target "mkdir -p ~/frontend-nextjs/public/data"
+          ssh deploy-target "mkdir -p /srv/csbatagi/frontend-nextjs/public/data"
           
           # Copy all config and secret files
           scp \
@@ -95,20 +95,20 @@ jobs:
             ./.my_sql_secrets \
             ./.pg_secrets \
             ./credentials.json \
-            deploy-target:~/
+            deploy-target:/srv/csbatagi/
           
           # Copy data files
           scp \
             ./frontend-nextjs/public/data/players.json \
             ./frontend-nextjs/public/data/season_start.json \
-            deploy-target:~/
+            deploy-target:/srv/csbatagi/
           
           # Move data files to correct locations
-          ssh deploy-target "mv ~/players.json ~/season_start.json ~/frontend-nextjs/public/data/"
+          ssh deploy-target "mv /srv/csbatagi/players.json /srv/csbatagi/season_start.json /srv/csbatagi/frontend-nextjs/public/data/"
 
       - name: Set file permissions on host
         run: |
-          ssh deploy-target "chmod 600 ~/.dns_secrets ~/.backend_secrets ~/.frontend_secrets ~/.my_sql_secrets ~/.pg_secrets credentials.json"
+          ssh deploy-target "chmod 600 /srv/csbatagi/.dns_secrets /srv/csbatagi/.backend_secrets /srv/csbatagi/.frontend_secrets /srv/csbatagi/.my_sql_secrets /srv/csbatagi/.pg_secrets /srv/csbatagi/credentials.json"
 
       - name: Cleanup local secrets
         run: rm -f .dns_secrets .backend_secrets .frontend_secrets .my_sql_secrets .pg_secrets credentials.json
@@ -124,30 +124,30 @@ jobs:
           fi
           if [[ "${{ steps.changes.outputs.docker-compose }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             # If docker-compose changed, restart all services
-            ssh deploy-target "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && docker compose -f ~/docker-compose.yml pull && docker compose -f ~/docker-compose.yml up -d"
+            ssh deploy-target "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && docker compose -f /srv/csbatagi/docker-compose.yml pull && docker compose -f /srv/csbatagi/docker-compose.yml up -d"
           elif [[ -n "$SERVICES_TO_UPDATE" ]]; then
             # Only update specific services
-            ssh deploy-target "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && docker compose -f ~/docker-compose.yml pull $SERVICES_TO_UPDATE && docker compose -f ~/docker-compose.yml up -d $SERVICES_TO_UPDATE"
+            ssh deploy-target "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && docker compose -f /srv/csbatagi/docker-compose.yml pull $SERVICES_TO_UPDATE && docker compose -f /srv/csbatagi/docker-compose.yml up -d $SERVICES_TO_UPDATE"
           else
-            ssh deploy-target "docker compose -f ~/docker-compose.yml up -d"
+            ssh deploy-target "docker compose -f /srv/csbatagi/docker-compose.yml up -d"
           fi
 
       - name: Invalidate stats timestamp if config data changed
         if: steps.changes.outputs.config_data == 'true'
         run: |
-          ssh deploy-target "docker compose -f ~/docker-compose.yml exec -T backend bash -c 'rm -f /app/last_timestamp.txt' && docker compose -f ~/docker-compose.yml restart backend"
+          ssh deploy-target "docker compose -f /srv/csbatagi/docker-compose.yml exec -T backend bash -c 'rm -f /app/last_timestamp.txt' && docker compose -f /srv/csbatagi/docker-compose.yml restart backend"
 
       - name: Refresh TeamSpeak Query flood exception for the current private backend IP
         run: |
-          ssh deploy-target 'umask 077; mkdir -p ~/.csbatagi-teamspeak-ops'
-          scp ops/teamspeak/repair-production.py deploy-target:~/.csbatagi-teamspeak-ops/repair-production.py
-          ssh deploy-target 'python3 ~/.csbatagi-teamspeak-ops/repair-production.py --allowlist-only'
+          ssh deploy-target 'umask 077; mkdir -p /srv/csbatagi/.csbatagi-teamspeak-ops'
+          scp ops/teamspeak/repair-production.py deploy-target:/srv/csbatagi/.csbatagi-teamspeak-ops/repair-production.py
+          ssh deploy-target 'python3 /srv/csbatagi/.csbatagi-teamspeak-ops/repair-production.py --allowlist-only'
 
       - name: Wait for backend stats warmup
         run: |
           ssh deploy-target "bash -s" <<'EOF'
           for i in $(seq 1 48); do
-            if docker compose -f ~/docker-compose.yml exec -T backend node -e 'fetch("http://127.0.0.1:3000/stats/diagnostics", { cache: "no-store" }).then(r => r.json()).then(d => { const sonmac = Number(d?.counts?.sonmac_dates || d?.counts?.sonmac_all_dates || 0); const night = Number(d?.counts?.night_avg_dates || d?.counts?.night_avg_all_dates || 0); if (sonmac > 0 && night > 0) { console.log(JSON.stringify({ ready: true, sonmac_dates: sonmac, night_avg_dates: night, effectiveDataTimestamp: d.effectiveDataTimestamp, lastGeneratedServerTimestamp: d.lastGeneratedServerTimestamp })); process.exit(0); } console.error(JSON.stringify(d)); process.exit(1); }).catch(e => { console.error(e.message); process.exit(1); })'; then
+            if docker compose -f /srv/csbatagi/docker-compose.yml exec -T backend node -e 'fetch("http://127.0.0.1:3000/stats/diagnostics", { cache: "no-store" }).then(r => r.json()).then(d => { const sonmac = Number(d?.counts?.sonmac_dates || d?.counts?.sonmac_all_dates || 0); const night = Number(d?.counts?.night_avg_dates || d?.counts?.night_avg_all_dates || 0); if (sonmac > 0 && night > 0) { console.log(JSON.stringify({ ready: true, sonmac_dates: sonmac, night_avg_dates: night, effectiveDataTimestamp: d.effectiveDataTimestamp, lastGeneratedServerTimestamp: d.lastGeneratedServerTimestamp })); process.exit(0); } console.error(JSON.stringify(d)); process.exit(1); }).catch(e => { console.error(e.message); process.exit(1); })'; then
               exit 0
             fi
             echo "Waiting for backend stats warmup ($i/48)..."
@@ -161,8 +161,8 @@ jobs:
         run: |
           ssh deploy-target "bash -s" <<'EOF'
           for i in $(seq 1 24); do
-            if docker compose -f ~/docker-compose.yml exec -T frontend-nextjs node -e 'const token = process.env.MATCHMAKING_TOKEN; if (!token) { console.error("MATCHMAKING_TOKEN missing in frontend container"); process.exit(1); } fetch("http://127.0.0.1:3000/api/internal/stats/prewarm", { method: "POST", headers: { Authorization: `Bearer ${token}` } }).then(async r => { const text = await r.text(); console.log(text); if (!r.ok) process.exit(1); }).catch(e => { console.error(e.message); process.exit(1); })' && \
-               docker compose -f ~/docker-compose.yml exec -T frontend-nextjs sh -lc 'test -s /app/runtime-data/last_timestamp.txt && test -s /app/runtime-data/sonmac_by_date_all.json && test -s /app/runtime-data/night_avg_all.json'; then
+            if docker compose -f /srv/csbatagi/docker-compose.yml exec -T frontend-nextjs node -e 'const token = process.env.MATCHMAKING_TOKEN; if (!token) { console.error("MATCHMAKING_TOKEN missing in frontend container"); process.exit(1); } fetch("http://127.0.0.1:3000/api/internal/stats/prewarm", { method: "POST", headers: { Authorization: `Bearer ${token}` } }).then(async r => { const text = await r.text(); console.log(text); if (!r.ok) process.exit(1); }).catch(e => { console.error(e.message); process.exit(1); })' && \
+               docker compose -f /srv/csbatagi/docker-compose.yml exec -T frontend-nextjs sh -lc 'test -s /app/runtime-data/last_timestamp.txt && test -s /app/runtime-data/sonmac_by_date_all.json && test -s /app/runtime-data/night_avg_all.json'; then
               exit 0
             fi
             echo "Waiting for frontend stats snapshot prewarm ($i/24)..."
@@ -183,12 +183,12 @@ jobs:
           scp -r \
             ./backend/migrations \
             ./ops/backend/run-migrations.sh \
-            deploy-target:~/
+            deploy-target:/srv/csbatagi/
 
           # Run all SQL migrations as the database superuser; a failing migration fails this step
           status=0
-          ssh deploy-target "bash ~/run-migrations.sh" || status=$?
+          ssh deploy-target "bash /srv/csbatagi/run-migrations.sh" || status=$?
 
           # Cleanup migration files
-          ssh deploy-target "rm -rf ~/migrations ~/run-migrations.sh"
+          ssh deploy-target "rm -rf /srv/csbatagi/migrations /srv/csbatagi/run-migrations.sh"
           exit $status

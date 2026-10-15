@@ -36,7 +36,7 @@ def main():
                 'oom': item['State']['OOMKilled'], 'memory_limit': item['HostConfig']['Memory'],
                 'ports': item['HostConfig']['PortBindings'], 'networks': list(item['NetworkSettings']['Networks']),
                 'mounts': [{key: mount.get(key) for key in ['Type', 'Source', 'Destination']} for mount in item['Mounts']]})
-    root = pathlib.Path.home()
+    root = pathlib.Path('/srv/csbatagi') if pathlib.Path('/srv/csbatagi/docker-compose.yml').exists() else pathlib.Path.home()
     report({'compose_files': [file.name for file in root.glob('*compose*.yml')]})
     effective = json.loads(run('docker', 'compose', '-f', str(root / 'docker-compose.yml'), '-f', str(root / 'docker-compose.teamspeak-test.yml'), 'config', '--format', 'json'))
     report({'effective_web_limits': {name: {'mem_limit': effective['services'][name].get('mem_limit'), 'deploy': effective['services'][name].get('deploy')} for name in ['backend', 'frontend-nextjs']}})
