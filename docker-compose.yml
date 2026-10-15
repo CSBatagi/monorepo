@@ -190,7 +190,7 @@ services:
       - path: .teamspeak_server_secrets
         required: false
     volumes:
-      - /home/clawd/teamspeak/data:/var/ts3server
+      - ./teamspeak/data:/var/ts3server
     networks:
       - db2
 

@@ -110,7 +110,7 @@ def main():
             raise RuntimeError('Unexpected image')
         run('docker', 'pull', image, timeout=600)
         validate_image(image, args.revision)
-    root = pathlib.Path.home()
+    root = pathlib.Path('/srv/csbatagi') if pathlib.Path('/srv/csbatagi/docker-compose.yml').exists() else pathlib.Path.home()
     compose = root / 'docker-compose.yml'
     before = containers()
     previous = {name: service(before, name) for name in ['backend', 'frontend-nextjs', 'teamspeak']}

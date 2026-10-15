@@ -8,7 +8,7 @@ import sys
 
 
 def main():
-    root = pathlib.Path.home()
+    root = pathlib.Path('/srv/csbatagi') if pathlib.Path('/srv/csbatagi/docker-compose.yml').exists() else pathlib.Path.home()
     if sys.argv[1:] not in [[], ['--allowlist-only']]:
         raise RuntimeError('Invalid repair option')
     if not (root / '.teamspeak_secrets').exists():

@@ -7,12 +7,13 @@
 # a failing migration now fails the step.
 set -uo pipefail
 
-DIR="${1:-$HOME/migrations}"
-dc() { sudo docker compose -f "$HOME/docker-compose.yml" "$@"; }
+BASE_DIR="${DEPLOY_BASE_DIR:-/srv/csbatagi}"
+DIR="${1:-$BASE_DIR/migrations}"
+dc() { docker compose -f "$BASE_DIR/docker-compose.yml" "$@"; }
 secret() { grep "^$1=" "$2" 2>/dev/null | head -n 1 | cut -d= -f2- | tr -d '\r'; }
 
 superuser=''
-for user in "$(dc exec -T postgres printenv POSTGRES_USER 2>/dev/null | tr -d '\r')" postgres "$(secret DB_USER "$HOME/.backend_secrets")"; do
+for user in "$(dc exec -T postgres printenv POSTGRES_USER 2>/dev/null | tr -d '\r')" postgres "$(secret DB_USER "$BASE_DIR/.backend_secrets")"; do
   [ -n "$user" ] || continue
   is_super="$(dc exec -T postgres psql -X -U "$user" -d csdm -Atc 'SELECT rolsuper FROM pg_roles WHERE rolname = current_user' 2>/dev/null | tr -d '\r')"
   if [ "$is_super" = t ]; then superuser="$user"; break; fi
@@ -23,7 +24,7 @@ if [ -z "$superuser" ]; then
 fi
 echo "Running migrations as ${superuser}."
 
-analyzer_password="$(secret CSDM_ANALYZER_PASSWORD "$HOME/.pg_secrets")"
+analyzer_password="$(secret CSDM_ANALYZER_PASSWORD "$BASE_DIR/.pg_secrets")"
 status=0
 for file in "$DIR"/*.sql; do
   [ -e "$file" ] || continue
