@@ -63,12 +63,23 @@ def main():
         result = subprocess.run(['docker', 'exec', container, 'node', '/tmp/cs2-control-path-probe.cjs', mode],
                                 capture_output=True, text=True, timeout=60)
         # The reviewed probe emits sanitized structured records only.
-        for line in result.stdout.splitlines():
+        for line in (result.stdout + result.stderr).splitlines():
             if line.startswith('{'):
                 print(json.dumps(json.loads(line)), flush=True)
         if result.returncode:
             raise RuntimeError('control_probe_failed')
 
+    tunnel_ids = run('docker', 'ps', '-aq', '--filter', 'label=com.docker.compose.service=cs2-rcon-tunnel').split()
+    for tunnel_id in tunnel_ids:
+        tunnel = json.loads(run('docker', 'inspect', tunnel_id))[0]
+        logs = subprocess.run(['docker', 'logs', '--tail', '40', tunnel_id], capture_output=True, text=True)
+        text = logs.stdout + logs.stderr
+        print(json.dumps({'tunnelRunning': tunnel['State']['Running'], 'tunnelRestartCount': tunnel['RestartCount'],
+            'tunnelOom': tunnel['State']['OOMKilled'], 'tunnelExitCode': tunnel['State']['ExitCode'],
+            'tunnelNetworks': list(tunnel['NetworkSettings']['Networks']),
+            'tunnelLogSignals': [word for word in ['Read-only file system', 'Permission denied', '4033', '4003',
+                'not authorized', 'unrecognized arguments', 'Failed to refresh', 'invalid_grant',
+                'Listening on port', 'Connection refused', 'failed to connect', 'Unable to connect'] if word in text]}), flush=True)
     probe('audit')
     if sys.argv[1:] != ['--apply']:
         return
