@@ -3,6 +3,7 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import type { NightStatColumn } from '@/lib/nightStatsColumns';
+import HorizontalTableScroll from './HorizontalTableScroll';
 
 const numeric = (value: unknown): number | null => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 
@@ -21,7 +22,7 @@ export default function NightStatsTable({ data, columns, label = 'Gece ortalamas
     if (second === null) return -1;
     return (first - second) * (sort.ascending ? 1 : -1);
   });
-  return <div className="night-table-scroll" role="region" aria-label={`${label} istatistik tablosu`} tabIndex={0}>
+  return <HorizontalTableScroll label={`${label} istatistik tablosu`}>
     <table className="night-stats-table">
       <caption className="sr-only">{label}. Sütun başlıklarıyla sıralayabilirsiniz. Renkler düşükten yükseğe kırmızı, sarı ve yeşildir.</caption>
       <thead><tr>{columns.map(col => <th scope="col" key={col.key} aria-sort={sort.key === col.key ? (sort.ascending ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => setSort(current => ({ key: col.key, ascending: current.key === col.key ? !current.ascending : col.key === 'name' }))}>{col.label.replace('HLTV2 DIFF', 'Δ HLTV 2').replace('ADR DIFF', 'Δ ADR').replace('Nr of Matches', 'Harita')}{sort.key === col.key ? sort.ascending ? <ArrowUp size={12} /> : <ArrowDown size={12} /> : <ArrowUpDown size={11} />}</button></th>)}</tr></thead>
@@ -36,5 +37,5 @@ export default function NightStatsTable({ data, columns, label = 'Gece ortalamas
       })}</tr>)}</tbody>
     </table>
     {!data.length && <p className="night-empty">Bu gece için oyuncu istatistiği bulunamadı.</p>}
-  </div>;
+  </HorizontalTableScroll>;
 }

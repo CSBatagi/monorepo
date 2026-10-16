@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import NightStatsTable from "./NightStatsTable";
+import HorizontalTableScroll from "./HorizontalTableScroll";
 import { sonmacColumns } from "@/lib/nightStatsColumns";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -251,13 +252,11 @@ export default function SonMacClient({ maps }: { maps: Record<string, any> }) {
           {/* Team 1 Table */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-blue-600 mb-2 px-3">{team1.name}</h3>
-            <div className="overflow-x-auto">
-              <NightStatsTable data={team1.players || []} columns={sonmacColumns} label={team1.name} />
-            </div>
+            <NightStatsTable data={team1.players || []} columns={sonmacColumns} label={team1.name} />
           </div>
           {/* Round Summary */}
           <div className="mb-6">
-            <div className="overflow-x-auto">
+            <HorizontalTableScroll label="Raunt geçmişi">
               <table className="sonmac-rounds-table min-w-max w-full border-collapse text-xs">
                 <thead>
                   <tr className="bg-gray-100">
@@ -288,14 +287,12 @@ export default function SonMacClient({ maps }: { maps: Record<string, any> }) {
                   </tr>
                 </tbody>
               </table>
-            </div>
+            </HorizontalTableScroll>
           </div>
           {/* Team 2 Table */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-green-600 mb-2 px-3">{team2.name}</h3>
-            <div className="overflow-x-auto">
-              <NightStatsTable data={team2.players || []} columns={sonmacColumns} label={team2.name} />
-            </div>
+            <NightStatsTable data={team2.players || []} columns={sonmacColumns} label={team2.name} />
           </div>
         </div>
       ) : (
