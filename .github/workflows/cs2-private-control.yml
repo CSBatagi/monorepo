@@ -1,0 +1,71 @@
+name: CS2 private website control
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Install the reviewed private RCON tunnel, preserving the running backend image
+        type: boolean
+        default: false
+  push:
+    branches: [codex/restore-game-server-control]
+    paths: [.github/workflows/cs2-private-control.yml, ops/cs2/control-production.py, ops/cs2/control-path-probe.cjs]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cs2-private-website-control
+  cancel-in-progress: false
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check operation helpers
+        run: |
+          python3 -m py_compile ops/cs2/control-production.py
+          node --check ops/cs2/control-path-probe.cjs
+      - uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+      - name: Configure private deployment access
+        env:
+          DEPLOY_HOST: ${{ secrets.PI_HOST }}
+          DEPLOY_USER: ${{ secrets.PI_USER || 'clawd' }}
+          DEPLOY_KEY: ${{ secrets.PI_HOST_SSH_PK }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib
+          folder = pathlib.Path.home() / '.ssh'
+          folder.mkdir(mode=0o700, exist_ok=True)
+          key = folder / 'cs2-deploy-key'
+          key.write_text(os.environ['DEPLOY_KEY'].replace('\r\n', '\n').strip() + '\n')
+          key.chmod(0o600)
+          (folder / 'config').write_text('Host cs2-web-target\n  HostName ' + os.environ['DEPLOY_HOST'] + '\n  User ' + os.environ['DEPLOY_USER'] + '\n  IdentityFile ' + str(key) + '\n  StrictHostKeyChecking accept-new\n  BatchMode yes\n  ConnectTimeout 15\n')
+          PY
+      - name: Stage reviewed helpers
+        run: |
+          ssh cs2-web-target 'umask 077; mkdir -p /srv/csbatagi/.csbatagi-cs2-control'
+          scp ops/cs2/control-production.py ops/cs2/control-path-probe.cjs docker-compose.yml cs2-web-target:/srv/csbatagi/.csbatagi-cs2-control/
+      - name: Inspect the website control path
+        if: github.event_name == 'push' || !inputs.apply
+        run: ssh cs2-web-target 'python3 /srv/csbatagi/.csbatagi-cs2-control/control-production.py'
+      - name: Install the private control path
+        if: github.event_name == 'workflow_dispatch' && inputs.apply
+        run: ssh cs2-web-target 'python3 /srv/csbatagi/.csbatagi-cs2-control/control-production.py --apply'
+      - name: Verify member API after backend startup
+        if: github.event_name == 'workflow_dispatch' && inputs.apply
+        run: |
+          for attempt in $(seq 1 12); do
+            if ssh cs2-web-target 'cd /srv/csbatagi && id=$(docker compose ps -q backend) && docker cp .csbatagi-cs2-control/control-path-probe.cjs "$id:/tmp/cs2-control-path-probe.cjs" && docker exec "$id" node /tmp/cs2-control-path-probe.cjs verify'; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+      - name: Remove runner SSH credentials
+        if: always()
+        run: rm -f ~/.ssh/cs2-deploy-key ~/.ssh/config

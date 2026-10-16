@@ -36,6 +36,48 @@ services:
   #   volumes:
   #     - /srv/mysql:/var/lib/mysql
 
+  # The ARM website host is outside GCP's private network. Keep RCON private
+  # through IAP; this listener is reachable only inside the Docker network.
+  cs2-rcon-tunnel:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli@sha256:ee2115362cc5e05064ace2398593dc2489444fda581db3f61410a84c318f3066
+    restart: unless-stopped
+    mem_limit: 128m
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE: /run/secrets/gcp.json
+      CLOUDSDK_CONFIG: /tmp/gcloud
+      CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
+      CLOUDSDK_CORE_DISABLE_USAGE_REPORTING: "true"
+    volumes:
+      - ./credentials.json:/run/secrets/gcp.json:ro
+    tmpfs:
+      - /tmp:mode=1777,size=32m
+    entrypoint: [gcloud]
+    command:
+      - compute
+      - start-iap-tunnel
+      - cs2-server
+      - "27015"
+      - --project=esoteric-dryad-256520
+      - --zone=europe-west3-c
+      - --local-host-port=0.0.0.0:27015
+      - --iap-tunnel-disable-connection-check
+      - --quiet
+      - --verbosity=warning
+    networks:
+      - db2
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
   backend:
     restart: unless-stopped
     mem_limit: 256m
@@ -51,6 +93,7 @@ services:
       DB_DATABASE: csdm
       CS2_VM_NAME: cs2-server
       CS2_GCP_ZONE: europe-west3-c
+      CS2_RCON_HOST: cs2-rcon-tunnel
       CS2_MATCH_DIR: /app/cs2-control
       # Demo analysis production write switch. Keep "false" until the analyzer has been proven on a
       # manually queued demo; then set "true" so finished website matches are analyzed unattended.
@@ -86,6 +129,7 @@ services:
       - 3000
     depends_on:
       - postgres  # Ensure the database is started before backend
+      - cs2-rcon-tunnel
     deploy:
       resources:
         limits:
