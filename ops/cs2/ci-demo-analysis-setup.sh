@@ -131,6 +131,15 @@ stop_if_started() {
 # (backend/migrations/csdm_analyzer_role.sql). They were typed by hand at install time before.
 analyzer_database() {
   local ip
+  # The website has moved outside GCP. Preserve its managed reverse-SSH route;
+  # a normal worker update must never point it back at the retired backend VM.
+  local transport
+  transport="$(ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh db transport')"
+  if [ "$transport" = iap-reverse-ssh ]; then
+    echo "Using the managed private database tunnel."
+    ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh db show'
+    return
+  fi
   if [ -z "${CSDM_ANALYZER_PASSWORD:-}" ] || [ -z "${BACKEND_VM:-}" ] || [ -z "${BACKEND_ZONE:-}" ]; then
     warn "CSDM_ANALYZER_PASSWORD, BACKEND_VM or BACKEND_ZONE is not set; database settings on the game VM left as they are."
     ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh db show'

@@ -1,0 +1,76 @@
+name: CS2 analyzer private database
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        options: [audit, apply, retry, verify]
+        default: audit
+        description: Inspect, repair the private route, retry the three incident demos, or verify publication
+  push:
+    branches: [codex/repair-demo-analysis-db]
+    paths: [.github/workflows/cs2-analysis-database.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cs2-analyzer-private-database
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check reviewed helpers
+        run: |
+          python3 -m py_compile ops/cs2/analysis-database-production.py ops/cs2/configure-analysis-database.py ops/cs2/demo-analyzer.py
+          node --check ops/cs2/analysis-recovery.cjs
+          bash -n ops/cs2/analyzer-maintenance.sh ops/cs2/ci-demo-analysis-setup.sh
+          python3 ops/cs2/test-analysis-database.py
+      - uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+      - name: Configure private deployment access
+        env:
+          DEPLOY_HOST: ${{ secrets.PI_HOST }}
+          DEPLOY_USER: ${{ secrets.PI_USER || 'clawd' }}
+          DEPLOY_KEY: ${{ secrets.PI_HOST_SSH_PK }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib
+          folder = pathlib.Path.home() / '.ssh'
+          folder.mkdir(mode=0o700, exist_ok=True)
+          key = folder / 'analysis-deploy-key'
+          key.write_text(os.environ['DEPLOY_KEY'].replace('\r\n', '\n').strip() + '\n')
+          key.chmod(0o600)
+          (folder / 'config').write_text('Host cs2-web-target\n  HostName ' + os.environ['DEPLOY_HOST'] + '\n  User ' + os.environ['DEPLOY_USER'] + '\n  IdentityFile ' + str(key) + '\n  StrictHostKeyChecking accept-new\n  BatchMode yes\n  ConnectTimeout 15\n')
+          PY
+      - name: Stage database operation helpers
+        run: |
+          ssh cs2-web-target 'umask 077; mkdir -p /srv/csbatagi/.csbatagi-analysis-db'
+          scp ops/cs2/analysis-database-production.py ops/cs2/analysis-recovery.cjs ops/cs2/game-ssh-known-hosts docker-compose.yml cs2-web-target:/srv/csbatagi/.csbatagi-analysis-db/
+      - name: Operate the private database route
+        env:
+          OPERATION: ${{ inputs.operation || 'audit' }}
+        run: ssh cs2-web-target "python3 /srv/csbatagi/.csbatagi-analysis-db/analysis-database-production.py $OPERATION"
+      - name: Authenticate to GCP for analyzer configuration
+        if: inputs.operation == 'apply'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
+      - name: Set up Cloud SDK
+        if: inputs.operation == 'apply'
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Configure the analyzer without restarting CS2
+        if: inputs.operation == 'apply'
+        run: |
+          cp ops/cs2/game-ssh-known-hosts ~/.ssh/google_compute_known_hosts
+          gcloud compute scp ops/cs2/configure-analysis-database.py ops/cs2/demo-analyzer.py csbatagi@cs2-server:/tmp/ --project=esoteric-dryad-256520 --zone=europe-west3-c --tunnel-through-iap --quiet
+          gcloud compute ssh csbatagi@cs2-server --project=esoteric-dryad-256520 --zone=europe-west3-c --tunnel-through-iap --quiet --strict-host-key-checking=yes --command='sudo python3 /tmp/configure-analysis-database.py apply'
+      - name: Remove runner SSH credentials
+        if: always()
+        run: rm -f ~/.ssh/analysis-deploy-key ~/.ssh/config

@@ -38,6 +38,54 @@ services:
 
   # The ARM website host is outside GCP's private network. Keep RCON private
   # through IAP; this listener is reachable only inside the Docker network.
+  # The analyzer connects to loopback on the game VM. An SSH reverse forward
+  # carries that connection over IAP into this private Docker network.
+  cs2-analysis-db-tunnel:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli@sha256:159c2b19fee4d45a4ee0d5388f4f6a22d3598b217a26213e9fe3e0387e0d992c
+    user: "1000:1000"
+    restart: unless-stopped
+    mem_limit: 192m
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      HOME: /tmp/home
+      CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE: /run/secrets/gcp.json
+      CLOUDSDK_CONFIG: /tmp/gcloud
+      CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
+      CLOUDSDK_CORE_DISABLE_USAGE_REPORTING: "true"
+    volumes:
+      - ./credentials.json:/run/secrets/gcp.json:ro
+      - ./game-ssh-known-hosts:/run/cs2-known-hosts:ro
+    tmpfs:
+      - /tmp:mode=1777,size=32m
+    entrypoint: [/bin/sh, -c]
+    command:
+      - |
+        set -eu
+        umask 077
+        mkdir -p "$$HOME/.ssh"
+        cp /run/cs2-known-hosts "$$HOME/.ssh/google_compute_known_hosts"
+        exec gcloud compute ssh csbatagi@cs2-server \
+          --project=esoteric-dryad-256520 --zone=europe-west3-c \
+          --tunnel-through-iap --quiet --verbosity=warning \
+          --strict-host-key-checking=yes \
+          --ssh-key-file="$$HOME/.ssh/google_compute_engine" --ssh-key-expire-after=1h \
+          -- -N -R 127.0.0.1:15432:postgres:5432 \
+          -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 \
+          -o ServerAliveCountMax=3 -o BatchMode=yes -o ConnectTimeout=20
+    networks:
+      - db2
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+
   cs2-rcon-tunnel:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli@sha256:ee2115362cc5e05064ace2398593dc2489444fda581db3f61410a84c318f3066
     # Deployment credentials are mode 600 and owned by the host's deployment UID.
