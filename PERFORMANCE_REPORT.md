@@ -8,6 +8,8 @@ The production host audit on 2026-10-14 confirmed the later ARM64 migration: app
 
 ## Architecture
 
+The 16 October private-connection repairs add a 128 MiB-requested RCON IAP service and a 192 MiB-requested analyzer database SSH/IAP service on the audited 8 GiB ARM host. Their temporary filesystems are capped at 32 MiB each. Backend/frontend/PostgreSQL limits and serial analysis are unchanged; the database installer refuses hosts below 4 GiB. Requested limits remain subject to the host's existing cgroup limitation described above. The analyzer runs one CLI job at a time on the separate 8 GiB game VM and checks database availability before taking queued work.
+
 ```
 Internet -> Caddy (reverse proxy, TLS, gzip/zstd)
          -> frontend-nextjs (Next.js 15, ISR, HMAC sessions)

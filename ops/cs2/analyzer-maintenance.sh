@@ -23,7 +23,9 @@ target = pathlib.Path.home() / ".config" / "csdm" / "settings.json"
 settings = json.loads(target.read_text()) if target.exists() else {}
 database = settings.get("database") or {}
 if sys.argv[1] == "transport":
-    print(settings.get("csbatagiDatabaseTransport", "direct"))
+    # CS Demo Manager may rewrite its settings and discard extra metadata.
+    private_loopback = database.get("hostname") == "127.0.0.1" and str(database.get("port")) == "15432"
+    print("iap-reverse-ssh" if private_loopback else settings.get("csbatagiDatabaseTransport", "direct"))
     sys.exit(0)
 def shown(d):
     return ", ".join(f"{key}={d.get(key)!r}" for key in ("hostname", "port", "username", "database"))
