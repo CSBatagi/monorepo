@@ -89,6 +89,7 @@ jobs:
           scp \
             ./Caddyfile \
             ./docker-compose.yml \
+            ./ops/cs2/game-ssh-known-hosts \
             ./.dns_secrets \
             ./.backend_secrets \
             ./.frontend_secrets \

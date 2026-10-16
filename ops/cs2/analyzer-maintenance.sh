@@ -22,6 +22,11 @@ import json, os, pathlib, subprocess, sys
 target = pathlib.Path.home() / ".config" / "csdm" / "settings.json"
 settings = json.loads(target.read_text()) if target.exists() else {}
 database = settings.get("database") or {}
+if sys.argv[1] == "transport":
+    # CS Demo Manager may rewrite its settings and discard extra metadata.
+    private_loopback = database.get("hostname") == "127.0.0.1" and str(database.get("port")) == "15432"
+    print("iap-reverse-ssh" if private_loopback else settings.get("csbatagiDatabaseTransport", "direct"))
+    sys.exit(0)
 def shown(d):
     return ", ".join(f"{key}={d.get(key)!r}" for key in ("hostname", "port", "username", "database"))
 if sys.argv[1] == "set":
@@ -68,7 +73,7 @@ case "${1:-}" in
     systemctl is-active csbatagi-analyzer
     ;;
   db)
-    [ "${2:-}" = show ] || [ "${2:-}" = set ] || { echo "usage: $0 db show | db set HOST PORT USER DATABASE" >&2; exit 2; }
+    [ "${2:-}" = show ] || [ "${2:-}" = set ] || [ "${2:-}" = transport ] || { echo "usage: $0 db show | db transport | db set HOST PORT USER DATABASE" >&2; exit 2; }
     sudo -u steam -H python3 -c "$DB_SETTINGS_PY" "${@:2}"
     ;;
   state)

@@ -208,9 +208,29 @@ def error_summary(output, limit=700):
     return '\n'.join(lines)[-limit:]
 
 
+def database_ready():
+    """Leave jobs queued while the private DB tunnel is reconnecting."""
+    try:
+        settings = json.loads((pathlib.Path.home() / '.config/csdm/settings.json').read_text())['database']
+        result = subprocess.run([
+            'psql', '-X', '-h', str(settings['hostname']), '-p', str(settings.get('port') or 5432),
+            '-U', str(settings['username']), '-d', str(settings['database']), '-Atc', 'SELECT 1'],
+            env={**os.environ, 'PGPASSWORD': str(settings['password']), 'PGCONNECT_TIMEOUT': '3',
+                 'PGOPTIONS': '-c statement_timeout=3000'},
+            capture_output=True, text=True, timeout=5)
+        return result.returncode == 0 and result.stdout.strip() == '1'
+    except (OSError, ValueError, KeyError, subprocess.TimeoutExpired):
+        return False  # Never log connection strings, credentials or raw client errors.
+
+
 def run_once():
     game = game_report()
     busy = server_busy(game)
+    if not busy and not database_ready():
+        # No job handout or healthy-worker heartbeat while we cannot insert stats.
+        # The existing stale-worker grace can then close an idle analysis VM.
+        print('Database unavailable; leaving demo jobs queued.', flush=True)
+        return
     response = api('/demo-analysis/sync', {'busy': busy, 'demos': inventory(), 'game': game})
     for job in [] if busy else response.get('jobs', []):
         if server_busy():
