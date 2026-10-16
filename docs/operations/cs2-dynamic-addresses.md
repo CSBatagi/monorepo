@@ -11,7 +11,19 @@ The game VM uses an ephemeral external IPv4 address with the **Premium** network
 - The team picker passes its existing status poll to the join component; equipment polls the same API independently. Polling refreshes every fifteen seconds, every five seconds during a power transition, and on visibility/pageshow/online resume. Older overlapping responses cannot replace the newest address.
 - Steam launch links and copyable console commands use that discovered address. Missing addresses, failed status requests and startup preparation disable joining; there is no fallback to a former public IP or DNS record.
 
-RCON discovers the private address for each command through the shared cache. Production Compose must not set `CS2_RCON_HOST` to a fixed IP. This variable remains an explicit local/private-network override. On the game VM itself, `rcon-local.py` uses loopback.
+RCON discovers the private address through the shared cache when the backend runs inside GCP's VPC. On the ARM website host, production Compose sets `CS2_RCON_HOST=cs2-rcon-tunnel`, the private Docker service described below. Never use a fixed public IP for this override. On the game VM itself, preserve the installed local RCON helper.
+
+## Website host outside GCP
+
+After the website moved to the ARM host, a RUNNING and verified game VM still appeared unavailable: the backend could discover `10.156.0.11`, but had no route into GCP's private network. Member status calls timed out with HTTP 503, disabling joining and match loading.
+
+The `cs2-rcon-tunnel` Compose service uses [Google's IAP TCP forwarding](https://docs.cloud.google.com/iap/docs/using-tcp-forwarding) to forward Docker-private TCP 27015 to the named game VM. It reuses the existing mounted service-account credential and `roles/iap.tunnelResourceAccessor`; it publishes no host ports. Its Google CLI image is pinned by digest with native ARM64 support. It requests a 128 MiB limit and uses temporary configuration on a 32 MiB tmpfs; backend, frontend and PostgreSQL settings remain unchanged. The 8 GiB ARM host's memory-cgroup limitation in `PERFORMANCE_REPORT.md` still applies.
+
+The VM's `cs2-rcon-iap` cloud firewall rule targets only `cs2-server`, allowing TCP 27015 from `35.235.240.0/20`. The host UFW rule allows that same source range. Public game UDP and Steam relay admission remain unchanged; do not open public TCP RCON. The CLI disables its initial connection check so its listener can remain running while the game VM is off, and resolves the named VM for each new connection. Docker restarts the service if the tunnel process exits. Player addresses still come from current cloud/Steam discovery.
+
+Use **CS2 private website control** in GitHub Actions for a read-only audit. Set `apply=true` only to install the reviewed service and recreate the backend with its existing image. The helper validates Compose privately, tests authenticated RCON before recreating the backend, preserves unrelated host settings and makes a rollback backup at `/srv/csbatagi/cs2-control-backup-<UTC>/`. The final probe checks both member status APIs without logging credentials or session tokens. The game process is never restarted.
+
+Normal website deployments must retain the tunnel service and the backend's Docker-hostname override. The older GCP-only layering installers remove RCON overrides and must not be used on this ARM host. For rollback, restore the backed-up Compose file and use its `keep-backend-image.json` override when recreating only the backend; this restores the previous control path, which requires a host with private VPC connectivity.
 
 The owner reports an existing `ddclient` service on the game VM that updates Cloudflare for its dynamic address. Preserve it: it provides the stable game hostname separately from this website discovery flow. The VM was stopped during this task, so its installed ddclient configuration and successful update after a new boot have not been inspected. Public DNS for `cs2.csbatagi.com` still returned the former IP with a 300-second TTL on 9 October; that does not establish whether ddclient is misconfigured, since it cannot update while the VM is stopped. Confirm its target hostname and DNS-only Cloudflare record during the next normal opening.
 
@@ -27,7 +39,7 @@ The subsequent SDR implementation adds updater-managed persistence, fresh Steam 
 
 ## Rollout and validation
 
-Deploy backend and frontend together, and remove `CS2_RCON_HOST` from the production Compose environment and any backend secret env file. Keep Docker memory limits and VM networking unchanged. Build Next.js on a workstation or CI, never on the 1 GiB backend VM. Copy the updated local RCON helper during the next game-VM maintenance window.
+Deploy backend and frontend together when changing address discovery. Keep `CS2_RCON_HOST=cs2-rcon-tunnel` on the ARM website host; omit the override only on a backend with direct private VPC connectivity. Keep backend/frontend Docker memory limits and game addressing unchanged. Build Next.js on a workstation or CI. Preserve the installed local RCON helper during game-VM maintenance.
 
 Read the actual VM network state without starting it:
 
