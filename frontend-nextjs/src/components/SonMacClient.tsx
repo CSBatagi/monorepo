@@ -103,7 +103,7 @@ function SwitchSidesIcon({ className }: { className?: string }) {
 
 
 
-export default function SonMacClient({ maps, detailed = false }: { maps: Record<string, any>; detailed?: boolean }) {
+export default function SonMacClient({ maps }: { maps: Record<string, any> }) {
   const mapNames = Object.keys(maps);
   const [selectedMap, setSelectedMap] = useState(mapNames[0] || "");
   useEffect(() => {
@@ -223,7 +223,7 @@ export default function SonMacClient({ maps, detailed = false }: { maps: Record<
     return (
       <div className="flex flex-col items-center gap-0.5">
         {icon ? <span className="h-4 w-4 flex items-center justify-center">{icon}</span> : <span className="h-4 w-4" />}
-        {badge ? <span className={`text-[10px] font-semibold ${badge.className}`}>{badge.label}</span> : <span className="h-3" />}
+        {badge ? <span className={`text-[12px] font-semibold ${badge.className}`}>{badge.label}</span> : <span className="h-3" />}
       </div>
     );
   }
@@ -252,7 +252,7 @@ export default function SonMacClient({ maps, detailed = false }: { maps: Record<
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-blue-600 mb-2 px-3">{team1.name}</h3>
             <div className="overflow-x-auto">
-              <NightStatsTable data={team1.players || []} columns={sonmacColumns} detailed={detailed} label={team1.name} />
+              <NightStatsTable data={team1.players || []} columns={sonmacColumns} label={team1.name} />
             </div>
           </div>
           {/* Round Summary */}
@@ -294,7 +294,7 @@ export default function SonMacClient({ maps, detailed = false }: { maps: Record<
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-green-600 mb-2 px-3">{team2.name}</h3>
             <div className="overflow-x-auto">
-              <NightStatsTable data={team2.players || []} columns={sonmacColumns} detailed={detailed} label={team2.name} />
+              <NightStatsTable data={team2.players || []} columns={sonmacColumns} label={team2.name} />
             </div>
           </div>
         </div>

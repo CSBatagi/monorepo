@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { BarChart3, ChevronLeft, ChevronRight, Crosshair, Moon, SlidersHorizontal, Users } from 'lucide-react';
+import { BarChart3, ChevronLeft, ChevronRight, Crosshair, Moon, Users } from 'lucide-react';
 import { buildPeriodWindowOptions, isDateKeyedPeriodPayload, loadDateKeyedPeriodSelection, type DateKeyedPeriodPayload } from '@/lib/statsPeriods';
 import { useStatsRefresh } from '@/lib/useStatsRefresh';
 import { nightAvgColumns } from '@/lib/nightStatsColumns';
@@ -27,7 +27,6 @@ export default function NightCenterClient({ nightPayload: initialNight, matchPay
   const [matchPeriods, setMatchPeriods] = useState(initialMatches.data || {});
   const [loadError, setLoadError] = useState(false);
   const [retry, setRetry] = useState(0);
-  const [detailed, setDetailed] = useState(false);
   const [analysis, setAnalysis] = useState<'table' | 'graph' | 'h2h'>('table');
   const [snapshot, setSnapshot] = useState(false);
   const optionsPayload = nightPayload.periods?.length ? nightPayload : matchPayload;
@@ -86,13 +85,13 @@ export default function NightCenterClient({ nightPayload: initialNight, matchPay
     </section>
     <div className="night-view-switch" role="group" aria-label="İstatistik görünümü"><button type="button" aria-pressed={view === 'ortalama'} onClick={() => navigate({ gorunum: 'ortalama' })}><Moon size={18} /><span>Gece Ortalaması<small>Tüm oyuncular</small></span></button><button type="button" aria-pressed={view === 'maclar'} onClick={() => navigate({ gorunum: 'maclar' })}><Crosshair size={18} /><span>Maç Detayları<small>Harita, takım ve raunt</small></span></button></div>
     <section className="night-data-panel" aria-busy={loading} aria-label={view === 'ortalama' ? 'Gece ortalaması' : 'Maç detayları'}>
-      <div className="night-panel-heading"><div><h2>{loading ? 'Gece yükleniyor…' : date ? formatDate(date) : 'Henüz maç yok'}</h2><p>{Object.keys(maps).length} harita · {rows.length} oyuncu{snapshot ? ' · kayıtlı veri' : ''}{view === 'ortalama' ? ' · maç başına ortalama' : ''}</p></div><button type="button" className="night-detail-toggle" aria-pressed={detailed} onClick={() => setDetailed(!detailed)}><SlidersHorizontal size={15} />{detailed ? 'Özet istatistikler' : 'Tüm istatistikler'}</button></div>
+      <div className="night-panel-heading"><div><h2>{loading ? 'Gece yükleniyor…' : date ? formatDate(date) : 'Henüz maç yok'}</h2><p>{Object.keys(maps).length} harita · {rows.length} oyuncu{snapshot ? ' · kayıtlı veri' : ''}{view === 'ortalama' ? ' · maç başına ortalama' : ''}</p></div></div>
       {loadError ? <p className="night-empty" role="alert">Geçmiş geceler yüklenemedi. <button type="button" onClick={() => setRetry(value => value + 1)}>Tekrar dene</button></p> : loading ? <p className="night-empty" role="status">Gecenin rakamları geliyor…</p> : !date ? <p className="night-empty">Bu sezonda kayıtlı gece yok. Başka bir sezon seçebilirsin.</p> : <>
         {view === 'ortalama' ? <>
           <div className="night-table-toolbar"><div className="night-analysis-switch" role="group" aria-label="Ortalama görünümü">{([{ key: 'table', label: 'Sıralama', icon: Users }, { key: 'graph', label: 'Grafik', icon: BarChart3 }, { key: 'h2h', label: 'Karşılaştırma', icon: Crosshair }] as const).map(({ key, label, icon: Icon }) => <button type="button" key={key} aria-pressed={analysis === key} onClick={() => setAnalysis(key)}><Icon size={14} />{label}</button>)}</div><span className="night-heat-legend"><i />Düşük → yüksek</span></div>
-          {analysis === 'table' ? <NightStatsTable data={rows} columns={nightAvgColumns} detailed={detailed} /> : analysis === 'graph' ? <RadarGraphs data={rows} statConfig={Object.fromEntries(nightAvgColumns.map((col, index) => [col.key, { label: col.label, default: index < 5, format: col.isPercentage ? 'percent' : undefined }]))} playerFilterKey="Nr of Matches" title="Gece ortalaması · grafik" /> : <H2HClient data={rows} columns={nightAvgColumns} matchesKey="Nr of Matches" />}
+          {analysis === 'table' ? <NightStatsTable data={rows} columns={nightAvgColumns} /> : analysis === 'graph' ? <RadarGraphs data={rows} statConfig={Object.fromEntries(nightAvgColumns.map((col, index) => [col.key, { label: col.label, default: index < 5, format: col.isPercentage ? 'percent' : undefined }]))} playerFilterKey="Nr of Matches" title="Gece ortalaması · grafik" /> : <H2HClient data={rows} columns={nightAvgColumns} matchesKey="Nr of Matches" />}
           <p className="night-table-note">Δ HLTV 2 ve Δ ADR, önceki 10 kayıtlı oyun tarihindeki ortalamaya göre farkı gösterir. Başlığa tıklayarak sırala.</p>
-        </> : Object.keys(maps).length ? <SonMacClient key={date} maps={maps} detailed={detailed} /> : <p className="night-empty">Bu gece için harita detayları henüz hazır değil. Gece ortalamasına bakabilirsin.</p>}
+        </> : Object.keys(maps).length ? <SonMacClient key={date} maps={maps} /> : <p className="night-empty">Bu gece için harita detayları henüz hazır değil. Gece ortalamasına bakabilirsin.</p>}
       </>}
     </section>
   </div>;

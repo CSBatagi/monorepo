@@ -6,11 +6,10 @@ import type { NightStatColumn } from '@/lib/nightStatsColumns';
 
 const numeric = (value: unknown): number | null => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 
-export default function NightStatsTable({ data, columns, detailed = false, label = 'Gece ortalaması' }: {
-  data: Record<string, any>[]; columns: NightStatColumn[]; detailed?: boolean; label?: string;
+export default function NightStatsTable({ data, columns, label = 'Gece ortalaması' }: {
+  data: Record<string, any>[]; columns: NightStatColumn[]; label?: string;
 }) {
   const [sort, setSort] = useState({ key: columns[1].key, ascending: false });
-  const visibleColumns = detailed ? columns : columns.filter(col => ['name', 'HLTV 2', 'hltv_2', 'ADR', 'adr', 'K/D', 'kd', 'HLTV2 DIFF', 'ADR DIFF', 'Kills', 'kills', 'Deaths', 'deaths', 'Assists', 'assists', 'Nr of Matches'].includes(col.key));
   const ranges = useMemo(() => Object.fromEntries(columns.filter(col => col.heatmap).map(col => {
     const values = data.map(row => numeric(row[col.key])).filter((value): value is number => value !== null);
     return [col.key, { min: Math.min(...values), max: Math.max(...values) }];
@@ -25,8 +24,8 @@ export default function NightStatsTable({ data, columns, detailed = false, label
   return <div className="night-table-scroll" role="region" aria-label={`${label} istatistik tablosu`} tabIndex={0}>
     <table className="night-stats-table">
       <caption className="sr-only">{label}. Sütun başlıklarıyla sıralayabilirsiniz. Renkler düşükten yükseğe kırmızı, sarı ve yeşildir.</caption>
-      <thead><tr>{visibleColumns.map(col => <th scope="col" key={col.key} aria-sort={sort.key === col.key ? (sort.ascending ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => setSort(current => ({ key: col.key, ascending: current.key === col.key ? !current.ascending : col.key === 'name' }))}>{col.label.replace('HLTV2 DIFF', 'Δ HLTV 2').replace('ADR DIFF', 'Δ ADR').replace('Nr of Matches', 'Harita')}{sort.key === col.key ? sort.ascending ? <ArrowUp size={12} /> : <ArrowDown size={12} /> : <ArrowUpDown size={11} />}</button></th>)}</tr></thead>
-      <tbody>{sorted.map((row, index) => <tr key={row.steam_id || `${row.name}-${index}`}>{visibleColumns.map(col => {
+      <thead><tr>{columns.map(col => <th scope="col" key={col.key} aria-sort={sort.key === col.key ? (sort.ascending ? 'ascending' : 'descending') : 'none'}><button type="button" onClick={() => setSort(current => ({ key: col.key, ascending: current.key === col.key ? !current.ascending : col.key === 'name' }))}>{col.label.replace('HLTV2 DIFF', 'Δ HLTV 2').replace('ADR DIFF', 'Δ ADR').replace('Nr of Matches', 'Harita')}{sort.key === col.key ? sort.ascending ? <ArrowUp size={12} /> : <ArrowDown size={12} /> : <ArrowUpDown size={11} />}</button></th>)}</tr></thead>
+      <tbody>{sorted.map((row, index) => <tr key={row.steam_id || `${row.name}-${index}`}>{columns.map(col => {
         if (col.key === 'name') return <th scope="row" key={col.key}><span className="night-player"><small>{index + 1}</small><span>{row.name}</span></span></th>;
         const value = numeric(row[col.key]), range = ranges[col.key], difference = col.key.includes('DIFF');
         const ratio = value === null || !range || range.max === range.min ? null : (value - range.min) / (range.max - range.min);
