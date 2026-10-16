@@ -8,9 +8,6 @@ on:
         options: [audit, apply, retry, verify]
         default: audit
         description: Inspect, repair the private route, retry the three incident demos, or verify publication
-  push:
-    branches: [codex/repair-demo-analysis-db]
-    paths: [.github/workflows/cs2-analysis-database.yml]
 
 permissions:
   contents: read

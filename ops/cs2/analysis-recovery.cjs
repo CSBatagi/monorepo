@@ -35,9 +35,10 @@ const targets = [
     }
   }
   const rows = (await pool.query(`SELECT f.name,f.map_name,f.archive_state,f.analysis_state,f.analysis_error,
-    f.checksum IS NOT NULL AS linked, m.map_name AS match_map, m.analyze_date,
+    m.checksum IS NOT NULL AS linked, d.map_name AS match_map, m.analyze_date,
     (SELECT count(*)::int FROM rounds r WHERE r.match_checksum=m.checksum) AS rounds
-    FROM demo_files f LEFT JOIN matches m ON m.checksum=f.checksum WHERE f.name=ANY($1::text[]) ORDER BY f.recorded_at`, [targets])).rows;
+    FROM demo_files f LEFT JOIN matches m ON m.checksum=f.checksum LEFT JOIN demos d ON d.checksum=m.checksum
+    WHERE f.name=ANY($1::text[]) ORDER BY f.recorded_at`, [targets])).rows;
   for (const row of rows) console.log(JSON.stringify({ demo: row.name, map: row.map_name, archive: row.archive_state,
     analysis: row.analysis_state, linkedMatch: row.linked, matchMap: row.match_map, rounds: row.rounds,
     errorKind: row.analysis_error ? /Connection|connect|timeout/i.test(row.analysis_error) ? 'database_connection' : 'other' : null }));
