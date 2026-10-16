@@ -81,7 +81,6 @@ export default function HorizontalTableScroll({ children, label }: { children: R
 
   return <div className={`night-horizontal-scroll${dragging ? ' is-dragging' : ''}`}>
     {range.max > 1 && <div className="night-scroll-tools" role="group" aria-label={`${label} yatay kaydırma kontrolleri`}>
-      <span className="night-scroll-hint">Tut ve kaydır</span>
       <button type="button" aria-label={`${label}: sola kaydır`} disabled={range.atStart} onClick={() => step(-1)}><ChevronLeft size={20} /></button>
       <div className="night-scroll-track" ref={topScroll} role="region" aria-label={`${label} yatay kaydırma çubuğu`} tabIndex={0} onScroll={event => syncScroll('top', event.currentTarget)}><div style={{ width: `calc(100% + ${range.max}px)` }} /></div>
       <button type="button" aria-label={`${label}: sağa kaydır`} disabled={range.atEnd} onClick={() => step(1)}><ChevronRight size={20} /></button>

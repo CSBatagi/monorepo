@@ -35,16 +35,16 @@ html[data-design="modern"] .night-center { --nc-bg:var(--club-surface); --nc-rai
 .night-table-scroll { max-width:100%; overflow-x:auto; overscroll-behavior-x:contain; border:1px solid var(--nc-line); border-radius:8px; }
 .night-scroll-tools { display:none; }
 @media(min-width:701px) and (hover:hover) and (pointer:fine) {
-  .night-scroll-tools { display:flex; align-items:center; gap:10px; padding:8px 10px; margin-bottom:12px; background:var(--nc-raised); border:1px solid var(--nc-line); border-radius:8px; }
-  .night-scroll-hint { color:var(--nc-muted); font-size:14px; white-space:nowrap; padding:0 6px; }
-  .night-scroll-tools button { display:grid; place-items:center; width:40px; height:40px; flex-shrink:0; border:1px solid var(--nc-line); border-radius:6px; background:var(--nc-bg); color:var(--nc-accent); }
-  .night-scroll-tools button:not(:disabled):hover { border-color:var(--nc-accent); background:var(--nc-soft); }
+  .night-horizontal-scroll { --night-scroll-thumb:color-mix(in srgb,var(--nc-muted) 80%,var(--nc-line)); }
+  .night-scroll-tools { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .night-scroll-tools button { display:grid; place-items:center; width:40px; height:40px; flex-shrink:0; border:1px solid var(--nc-line); border-radius:6px; background:var(--nc-bg); color:var(--nc-muted); }
+  .night-scroll-tools button:not(:disabled):hover { border-color:var(--night-scroll-thumb); background:var(--nc-raised); color:var(--nc-text); }
   .night-scroll-track { flex:1; min-width:0; height:22px; overflow-x:auto; overflow-y:hidden; }
   .night-scroll-track>div { height:1px; }
-  .night-center .night-horizontal-scroll :is(.night-table-scroll,.night-scroll-track) { scrollbar-width:auto; scrollbar-color:var(--nc-accent) var(--nc-raised); }
+  .night-center .night-horizontal-scroll :is(.night-table-scroll,.night-scroll-track) { scrollbar-width:auto; scrollbar-color:var(--night-scroll-thumb) var(--nc-raised); }
   .night-center .night-horizontal-scroll :is(.night-table-scroll,.night-scroll-track)::-webkit-scrollbar { height:18px; }
   .night-center .night-horizontal-scroll :is(.night-table-scroll,.night-scroll-track)::-webkit-scrollbar-track { background:var(--nc-raised); border-radius:9px; }
-  .night-center .night-horizontal-scroll :is(.night-table-scroll,.night-scroll-track)::-webkit-scrollbar-thumb { background:var(--nc-accent); border:3px solid var(--nc-raised); border-radius:9px; }
+  .night-center .night-horizontal-scroll :is(.night-table-scroll,.night-scroll-track)::-webkit-scrollbar-thumb { background:var(--night-scroll-thumb); border:3px solid var(--nc-raised); border-radius:9px; }
   .night-horizontal-scroll .night-table-scroll { cursor:grab; }
   .night-horizontal-scroll.is-dragging .night-table-scroll,.night-horizontal-scroll.is-dragging .night-table-scroll * { cursor:grabbing; user-select:none; }
 }
