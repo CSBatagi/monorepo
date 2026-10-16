@@ -53,10 +53,12 @@ def main():
         raise ValueError('backend_not_unique')
     backend_id = containers[0]
     backend = json.loads(run('docker', 'inspect', backend_id))[0]
+    credential = (root / 'credentials.json').stat()
     print(json.dumps({'hostArchitecture': run('uname', '-m').strip(),
         'hostMemoryKiB': int(re.search(r'MemTotal:\s+(\d+)', pathlib.Path('/proc/meminfo').read_text())[1]),
         'backendRunning': backend['State']['Running'], 'backendOom': backend['State']['OOMKilled'],
-        'composeProject': backend['Config']['Labels']['com.docker.compose.project']}), flush=True)
+        'composeProject': backend['Config']['Labels']['com.docker.compose.project'],
+        'credentialOwnerUid': credential.st_uid, 'credentialOwnerGid': credential.st_gid}), flush=True)
 
     def probe(mode, container=backend_id):
         run('docker', 'cp', str(stage / 'control-path-probe.cjs'), container + ':/tmp/cs2-control-path-probe.cjs')
@@ -90,6 +92,8 @@ def main():
     probe('audit')
     if sys.argv[1:] != ['--apply']:
         return
+    if credential.st_uid != 1000:
+        raise ValueError('unexpected_credential_owner')
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     backup = root / ('cs2-control-backup-' + stamp)
     backup.mkdir(mode=0o700)

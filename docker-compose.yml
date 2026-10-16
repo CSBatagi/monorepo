@@ -40,6 +40,8 @@ services:
   # through IAP; this listener is reachable only inside the Docker network.
   cs2-rcon-tunnel:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli@sha256:ee2115362cc5e05064ace2398593dc2489444fda581db3f61410a84c318f3066
+    # Deployment credentials are mode 600 and owned by the host's deployment UID.
+    user: "1000:1000"
     restart: unless-stopped
     mem_limit: 128m
     read_only: true
