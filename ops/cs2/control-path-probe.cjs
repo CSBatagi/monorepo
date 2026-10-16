@@ -46,6 +46,8 @@ const pool = new Pool({ host: process.env.DB_HOST, database: process.env.DB_DATA
   if (failed && process.argv[2] !== 'audit') process.exitCode = 1;
 })().catch(error => {
   console.error(JSON.stringify({ controlProbeFailed: true,
+    failure: error.message === 'Game server RCON timed out' ? 'rcon_timeout'
+      : error.message === 'Game server RCON failed' ? 'rcon_connection_failed' : error.name,
     code: /^(?:ECONNREFUSED|ETIMEDOUT|ENOTFOUND|no_member|not_ready)$/.test(error.code || error.message)
       ? error.code || error.message : 'unavailable' }));
   process.exitCode = 1;

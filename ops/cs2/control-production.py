@@ -77,9 +77,16 @@ def main():
         print(json.dumps({'tunnelRunning': tunnel['State']['Running'], 'tunnelRestartCount': tunnel['RestartCount'],
             'tunnelOom': tunnel['State']['OOMKilled'], 'tunnelExitCode': tunnel['State']['ExitCode'],
             'tunnelNetworks': list(tunnel['NetworkSettings']['Networks']),
+            'tunnelErrors': [line[:300] for line in text.splitlines() if line.startswith('ERROR:')
+                and not re.search(r'password|token|authorization|private_key', line, re.I)][-4:],
             'tunnelLogSignals': [word for word in ['Read-only file system', 'Permission denied', '4033', '4003',
                 'not authorized', 'unrecognized arguments', 'Failed to refresh', 'invalid_grant',
                 'Listening on port', 'Connection refused', 'failed to connect', 'Unable to connect'] if word in text]}), flush=True)
+        if tunnel['State']['Running']:
+            try:
+                probe('tunnel')
+            except RuntimeError:
+                pass
     probe('audit')
     if sys.argv[1:] != ['--apply']:
         return

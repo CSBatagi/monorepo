@@ -7,9 +7,6 @@ on:
         description: Install the reviewed private RCON tunnel, preserving the running backend image
         type: boolean
         default: false
-  push:
-    branches: [codex/restore-game-server-control]
-    paths: [.github/workflows/cs2-private-control.yml, ops/cs2/control-production.py, ops/cs2/control-path-probe.cjs]
 
 permissions:
   contents: read
@@ -51,7 +48,7 @@ jobs:
           ssh cs2-web-target 'umask 077; mkdir -p /srv/csbatagi/.csbatagi-cs2-control'
           scp ops/cs2/control-production.py ops/cs2/control-path-probe.cjs docker-compose.yml cs2-web-target:/srv/csbatagi/.csbatagi-cs2-control/
       - name: Inspect the website control path
-        if: github.event_name == 'push' || !inputs.apply
+        if: '!inputs.apply'
         run: ssh cs2-web-target 'python3 /srv/csbatagi/.csbatagi-cs2-control/control-production.py'
       - name: Install the private control path
         if: github.event_name == 'workflow_dispatch' && inputs.apply
