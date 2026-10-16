@@ -1,17 +1,8 @@
 "use client";
-import React, { useState, useMemo } from "react";
-import SeasonStatsTable from "./SeasonStatsTable";
-import { buildSeasonWindowOptions, filterDatesBySeason } from "@/lib/seasonRanges";
+import { useEffect, useState } from "react";
+import NightStatsTable from "./NightStatsTable";
+import { sonmacColumns } from "@/lib/nightStatsColumns";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useStatsRefresh } from "@/lib/useStatsRefresh";
-import {
-  buildPeriodWindowOptions,
-  dateKeysForPeriodPayload,
-  getDateKeyedPeriodData,
-  isDateKeyedPeriodPayload,
-  loadDateKeyedPeriodSelection,
-  type DateKeyedPeriodPayload,
-} from "@/lib/statsPeriods";
 
 type RoundInfo = {
   round_number?: number;
@@ -75,7 +66,7 @@ function BombIcon({ className }: { className?: string }) {
 
 function DefuseIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="#000000" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" viewBox="0 0 380.152 380.152" xmlSpace="preserve">
+    <svg className={className} fill="currentColor" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" viewBox="0 0 380.152 380.152" xmlSpace="preserve">
       <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
       <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
       <g id="SVGRepo_iconCarrier">
@@ -110,129 +101,14 @@ function SwitchSidesIcon({ className }: { className?: string }) {
   );
 }
 
-const sonmacColumns = [
-  { key: "name", label: "Oyuncu" },
-  { key: "hltv_2", label: "HLTV2", decimals: 2, isBadge: true, heatmap: true },
-  { key: "adr", label: "ADR", decimals: 1, isBadge: true, heatmap: true },
-  { key: "kd", label: "K/D", decimals: 2, isBadge: true, heatmap: true },
-  { key: "mvp", label: "MVP", decimals: 2 },
-  { key: "kills", label: "Kills", decimals: 1 },
-  { key: "deaths", label: "Deaths", decimals: 1 },
-  { key: "assists", label: "Assists", decimals: 1 },
-  { key: "hs", label: "HS", decimals: 1 },
-  { key: "hs_ratio", label: "HS/Kill ratio", decimals: 1, isPercentage: true },
-  { key: "first_kill", label: "First Kill", decimals: 1 },
-  { key: "first_death", label: "First Death", decimals: 1 },
-  { key: "bomb_planted", label: "Bomb Planted", decimals: 1 },
-  { key: "bomb_defused", label: "Bomb Defused", decimals: 1 },
-  { key: "hltv", label: "HLTV", decimals: 2 },
-  { key: "kast", label: "KAST", decimals: 1, isPercentage: true },
-  { key: "utl_dmg", label: "Utility Damage", decimals: 1 },
-  { key: "two_kills", label: "2 kills", decimals: 1 },
-  { key: "three_kills", label: "3 kills", decimals: 1 },
-  { key: "four_kills", label: "4 kills", decimals: 1 },
-  { key: "five_kills", label: "5 kills", decimals: 1 },
-  { key: "score", label: "Score", decimals: 0 },
-  { key: "clutches", label: "Nr of clutches", decimals: 0 },
-  { key: "clutches_won", label: "Clutches Won", decimals: 0 },
-];
 
-export default function SonMacClient({
-  allData: initialData,
-  dates: initialDates,
-  seasonStarts,
-  periodPayload: initialPeriodPayload,
-}: {
-  allData: Record<string, any>;
-  dates: string[];
-  seasonStarts: string[];
-  periodPayload?: DateKeyedPeriodPayload<any> | null;
-}) {
-  const [data, setData] = useState<Record<string, any>>(initialData);
-  const [dates, setDates] = useState<string[]>(initialDates);
-  const [periodPayload, setPeriodPayload] = useState<DateKeyedPeriodPayload<any> | null>(initialPeriodPayload || null);
-  const [periodData, setPeriodData] = useState<Record<string, Record<string, any>>>(initialPeriodPayload?.data || {});
 
-  useStatsRefresh({
-    keys: ['sonmac_by_date_periods'],
-    onData: (j) => {
-      if (isDateKeyedPeriodPayload<any>(j?.sonmac_by_date_periods)) {
-        setPeriodPayload(j.sonmac_by_date_periods);
-        setPeriodData(j.sonmac_by_date_periods.data || {});
-        const nextPeriod = j.sonmac_by_date_periods.current_period || "all_time";
-        const newDates = Object.keys(getDateKeyedPeriodData(j.sonmac_by_date_periods, nextPeriod)).sort((a, b) => b.localeCompare(a));
-        setSelectedSeasonId(nextPeriod);
-        setDates(newDates);
-      } else {
-        const incoming = j?.sonmac_by_date;
-        const hasIncomingData = incoming && typeof incoming === "object" && Object.keys(incoming).length > 0;
-        if (hasIncomingData) {
-          setData(incoming);
-          const newDates = Object.keys(incoming).sort((a, b) => b.localeCompare(a));
-          setDates(newDates);
-        }
-      }
-    },
-  });
-
-  const allPeriodDates = useMemo(() => dateKeysForPeriodPayload(periodPayload), [periodPayload]);
-  const seasonOptions = useMemo(
-    () => buildPeriodWindowOptions(periodPayload, seasonStarts || [], allPeriodDates.length ? allPeriodDates : dates),
-    [periodPayload, seasonStarts, allPeriodDates, dates]
-  );
-  const [selectedSeasonId, setSelectedSeasonId] = useState(initialPeriodPayload?.current_period || seasonOptions[0]?.id || "all_time");
-  const selectedSeason = useMemo(
-    () => seasonOptions.find((s) => s.id === selectedSeasonId) || seasonOptions[0] || { id: "all_time", label: "Tum Zamanlar", startDate: null, endDate: null },
-    [seasonOptions, selectedSeasonId]
-  );
-  const visibleData = useMemo(
-    () => periodPayload ? (periodData[selectedSeasonId] || {}) : data,
-    [periodPayload, periodData, selectedSeasonId, data]
-  );
-  const visibleDates = useMemo(() => Object.keys(visibleData || {}).sort((a, b) => b.localeCompare(a)), [visibleData]);
-  const filteredDates = useMemo(
-    () => periodPayload ? visibleDates : filterDatesBySeason(dates, selectedSeason),
-    [periodPayload, visibleDates, dates, selectedSeason]
-  );
-  const [selectedDate, setSelectedDate] = useState(filteredDates[0] || "");
-  const maps = visibleData[selectedDate]?.maps || {};
+export default function SonMacClient({ maps, detailed = false }: { maps: Record<string, any>; detailed?: boolean }) {
   const mapNames = Object.keys(maps);
   const [selectedMap, setSelectedMap] = useState(mapNames[0] || "");
-
-  React.useEffect(() => {
-    if (!seasonOptions.some((s) => s.id === selectedSeasonId)) {
-      setSelectedSeasonId(seasonOptions[0]?.id || "all_time");
-    }
-  }, [seasonOptions, selectedSeasonId]);
-
-  React.useEffect(() => {
-    if (!periodPayload || periodData[selectedSeasonId]) return;
-    let cancelled = false;
-    loadDateKeyedPeriodSelection<any>({
-      dataset: "sonmac_by_date",
-      payload: periodPayload,
-      periodId: selectedSeasonId,
-      loadedData: periodData,
-    }).then((nextData) => {
-      if (!cancelled) setPeriodData(nextData);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [periodPayload, periodData, selectedSeasonId]);
-
-  React.useEffect(() => {
-    if (!filteredDates.includes(selectedDate)) {
-      setSelectedDate(filteredDates[0] || "");
-    }
-  }, [filteredDates, selectedDate]);
-
-  // Update selectedMap if date changes
-  React.useEffect(() => {
-    const newMapNames = Object.keys(visibleData[selectedDate]?.maps || {});
-    setSelectedMap(newMapNames[0] || "");
-  }, [selectedDate, visibleData]);
-
+  useEffect(() => {
+    setSelectedMap(current => Object.hasOwn(maps, current) ? current : Object.keys(maps)[0] || "");
+  }, [maps]);
   const mapData = maps[selectedMap] || {};
   const team1 = mapData.team1;
   const team2 = mapData.team2;
@@ -353,65 +229,15 @@ export default function SonMacClient({
   }
 
   return (
-    <>
-      {/* Date Selector */}
-      <div className={`mb-4 p-4 border rounded-lg shadow-sm ${isDark ? 'bg-dark-surface border-dark-border' : 'bg-gray-50'}`}>
-        <label htmlFor="sonmac-season-selector" className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Donem Secin:</label>
-        <select
-          id="sonmac-season-selector"
-          className={`form-select block w-full mt-1 mb-4 rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${isDark ? 'bg-dark-card border-dark-border text-gray-100 focus:border-blue-500 focus:ring-blue-500/20' : 'border-gray-300 focus:border-indigo-300 focus:ring-indigo-200'}`}
-          value={selectedSeasonId}
-          onChange={e => setSelectedSeasonId(e.target.value)}
-        >
-          {seasonOptions.map(opt => (
-            <option key={opt.id} value={opt.id}>{opt.label}</option>
-          ))}
-        </select>
-        <label htmlFor="sonmac-date-selector" className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Tarih Secin:</label>
-        <select
-          id="sonmac-date-selector"
-          className={`form-select block w-full mt-1 rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${isDark ? 'bg-dark-card border-dark-border text-gray-100 focus:border-blue-500 focus:ring-blue-500/20' : 'border-gray-300 focus:border-indigo-300 focus:ring-indigo-200'}`}
-          value={selectedDate}
-          onChange={e => setSelectedDate(e.target.value)}
-        >
-          {filteredDates.length === 0 ? (
-            <option>Veri yok</option>
-          ) : (
-            filteredDates.map(date => (
-              <option key={date} value={date}>{date}</option>
-            ))
-          )}
-        </select>
+    <div className="night-match-details">
+      <div className="night-map-tabs" role="group" aria-label="Harita seçimi">
+        {mapNames.map(map => <button type="button" key={map} aria-pressed={selectedMap === map} onClick={() => setSelectedMap(map)}>{map.replace(/^de_/, '')}<span>{maps[map]?.team1?.score ?? '—'} : {maps[map]?.team2?.score ?? '—'}</span></button>)}
       </div>
-
-      {/* Map Tabs */}
-      <div className={`mb-4 border-b ${isDark ? 'border-dark-border' : 'border-gray-200'}`}>
-        <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
-          {mapNames.length === 0 ? (
-            <li className={`p-4 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Map yok</li>
-          ) : (
-            mapNames.map(map => (
-              <li key={map} className="mr-2" role="presentation">
-                <button
-                  className={`map-tab-button tab-nav-item inline-block border-b-2 rounded-t-lg ${selectedMap === map ? "active border-blue-600 text-blue-600" : "border-transparent hover:text-gray-600 hover:border-gray-300"}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={selectedMap === map}
-                  onClick={() => setSelectedMap(map)}
-                >
-                  {map}
-                </button>
-              </li>
-            ))
-          )}
-        </ul>
-      </div>
-
       {/* Scoreboard and Team Tables */}
       {team1 && team2 ? (
         <div className="mb-8">
           {/* Scoreboard */}
-          <div className={`flex justify-between md:justify-center md:gap-16 items-center mb-6 px-4 py-3 rounded-lg overflow-x-auto ${isDark ? 'bg-dark-card border border-dark-border' : 'bg-gray-100'}`}>
+          <div className={`night-scoreboard flex justify-between md:justify-center md:gap-16 items-center mb-6 px-4 py-3 rounded-lg overflow-x-auto ${isDark ? 'bg-dark-card border border-dark-border' : 'bg-gray-100'}`}>
             <div className="text-center whitespace-nowrap">
               <h3 className={`text-lg font-bold ${isDark ? 'text-gray-100' : ''}`}>{team1.name}</h3>
               <div className="text-3xl font-extrabold text-blue-600">{team1.score}</div>
@@ -426,7 +252,7 @@ export default function SonMacClient({
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-blue-600 mb-2 px-3">{team1.name}</h3>
             <div className="overflow-x-auto">
-              <SeasonStatsTable data={team1.players} columns={sonmacColumns} tableClassName="styled-table min-w-[1200px] w-full text-sm" />
+              <NightStatsTable data={team1.players || []} columns={sonmacColumns} detailed={detailed} label={team1.name} />
             </div>
           </div>
           {/* Round Summary */}
@@ -468,13 +294,13 @@ export default function SonMacClient({
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-green-600 mb-2 px-3">{team2.name}</h3>
             <div className="overflow-x-auto">
-              <SeasonStatsTable data={team2.players} columns={sonmacColumns} tableClassName="styled-table min-w-[1200px] w-full text-sm" />
+              <NightStatsTable data={team2.players || []} columns={sonmacColumns} detailed={detailed} label={team2.name} />
             </div>
           </div>
         </div>
       ) : (
         <div className={`text-gray-500 p-4 ${isDark ? 'text-gray-400' : ''}`}>Veri yok.</div>
       )}
-    </>
+    </div>
   );
 } 

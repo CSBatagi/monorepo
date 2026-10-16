@@ -1,5 +1,16 @@
 .last-night-card { --night-line:#535b4766; --night-muted:#bac1ad; --night-text:#ecede4; color:var(--night-text); background:#1b2018e8; border:1px solid var(--night-line); padding:22px; min-width:0; display:flex; flex-direction:column; }
 .last-night-card header { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.last-night-destination { display:flex; align-items:center; flex-wrap:wrap; gap:12px; color:var(--night-muted); font-size:10px; letter-spacing:1.5px; margin-bottom:12px; }
+.last-night-destination span { font-size:11px; letter-spacing:0; }
+.last-night-destinations { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px; }
+.last-night-destinations>a { display:flex; align-items:center; gap:12px; border:1px solid var(--night-line); background:#ffffff06; padding:15px; border-radius:8px; }
+.last-night-destinations>a>svg:first-child { color:#e6b65d; flex-shrink:0; }
+.last-night-destinations>a>svg:last-child { margin-left:auto; flex-shrink:0; }
+.last-night-destinations strong { font-size:14px; font-weight:600; display:block; }
+.last-night-destinations small { display:block; font-size:11px; color:var(--night-muted); margin-top:3px; }
+.last-night-destinations>a:hover { border-color:#e6b65d; background:#ffffff0c; }
+html[data-design="modern"] .last-night-destinations>a>svg:first-child { color:var(--club-accent); }
+@media(max-width:700px) { .last-night-destinations { grid-template-columns:1fr; gap:8px; } .last-night-destination span { display:none; } }
 .last-night-card header h2 { font-size:17px; font-weight:650; line-height:1.4; margin:0; }
 .cinema-shell .last-night-card > header h2 { font-size:17px; font-weight:650; line-height:1.4; letter-spacing:-.2px; margin:0; }
 .last-night-card time,.last-night-meta { font-size:11px; color:var(--night-muted); }

@@ -58,8 +58,9 @@ Current usage pattern:
 ## Page to Dataset Mapping
 
 - `season-avg`: `season_avg_periods`
-- `sonmac`, `mac-sonuclari`: `sonmac_by_date_periods`
-- `gece-ortalama`: `night_avg_periods`
+- `gece-ortalama` (Gece & Maçlar): `night_avg_periods`, `sonmac_by_date_periods`; one season/date selection drives both views
+- `sonmac`: redirects to `gece-ortalama?gorunum=maclar`, preserving date, season and interface query parameters
+- `mac-sonuclari`: `sonmac_by_date_periods`
 - `performans-odulleri`: `night_avg_periods`
 - `gecenin-mvpsi`: `night_avg_periods`
 - `batak-allstars`, `token-wars`: `night_avg_periods`, `sonmac_by_date_periods`

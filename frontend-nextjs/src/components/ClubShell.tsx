@@ -25,8 +25,7 @@ export const navigation = [
     { href: ARCHIVE_HREF, label: "Arşiv", icon: Archive },
   ] },
   { label: "MAÇ MERKEZİ", links: [
-    { href: "/gece-ortalama", label: "Gece Ortalaması", icon: Moon },
-    { href: "/sonmac", label: "Son Maç", icon: Crosshair },
+    { href: "/gece-ortalama", label: "Gece & Maçlar", icon: Moon },
     { href: "/mac-sonuclari", label: "Maç Sonuçları", icon: Flag },
     { href: "/mac-videolari", label: "Maç Videoları", icon: Film },
     { href: "/demolar", label: "Demolar", icon: Download },

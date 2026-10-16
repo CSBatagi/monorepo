@@ -17,34 +17,7 @@ import {
   type DateKeyedPeriodPayload,
 } from "@/lib/statsPeriods";
 
-const nightAvgColumns = [
-  { key: "name", label: "Oyuncu" },
-  { key: "HLTV 2", label: "HLTV2", decimals: 2, isBadge: true, heatmap: true },
-  { key: "ADR", label: "ADR", decimals: 1, isBadge: true, heatmap: true },
-  { key: "K/D", label: "K/D", decimals: 2, isBadge: true, heatmap: true },
-  { key: "HLTV2 DIFF", label: "HLTV2 DIFF", decimals: 2, heatmap: true, isBadge: true },
-  { key: "ADR DIFF", label: "ADR DIFF", decimals: 1, heatmap: true, isBadge: true },
-  { key: "MVP", label: "MVP", decimals: 2 },
-  { key: "Kills", label: "Kills", decimals: 1 },
-  { key: "Deaths", label: "Deaths", decimals: 1 },
-  { key: "Assists", label: "Assists", decimals: 1 },
-  { key: "HS", label: "HS", decimals: 1 },
-  { key: "HS/Kill ratio", label: "HS/Kill ratio", decimals: 1, isPercentage: true },
-  { key: "First Kill", label: "First Kill", decimals: 1 },
-  { key: "First Death", label: "First Death", decimals: 1 },
-  { key: "Bomb Planted", label: "Bomb Planted", decimals: 1 },
-  { key: "Bomb Defused", label: "Bomb Defused", decimals: 1 },
-  { key: "HLTV", label: "HLTV", decimals: 2 },
-  { key: "KAST", label: "KAST", decimals: 1, isPercentage: true },
-  { key: "Utility Damage", label: "Utility Damage", decimals: 1 },
-  { key: "2 kills", label: "2 kills", decimals: 1 },
-  { key: "3 kills", label: "3 kills", decimals: 1 },
-  { key: "4 kills", label: "4 kills", decimals: 1 },
-  { key: "5 kills", label: "5 kills", decimals: 1 },
-  { key: "Nr of Matches", label: "Nr of Matches", decimals: 0 },
-  { key: "Clutch Opportunity", label: "Clutch Opportunity", decimals: 0 },
-  { key: "Clutches Won", label: "Clutches Won", decimals: 0 },
-];
+import { nightAvgColumns } from "@/lib/nightStatsColumns";
 
 export default function NightAvgTableClient({
   allData: initialData,

@@ -1,32 +1,12 @@
-import SonMacClient from "@/components/SonMacClient";
-import { readJson } from "@/lib/dataReader";
-import { fetchStats } from "@/lib/statsServer";
-import { normalizeSeasonStarts } from "@/lib/seasonRanges";
-import { getDateKeyedPeriodData, isDateKeyedPeriodPayload } from "@/lib/statsPeriods";
+import { redirect } from 'next/navigation';
 
-export const revalidate = 60; // seconds – data changes only when stats regenerate
-
-export default async function SonMacPage() {
-  const seasonStartRaw = (await readJson("season_start.json")) || {};
-  const seasonStarts = normalizeSeasonStarts(
-    seasonStartRaw?.season_starts,
-    [seasonStartRaw?.season_start].filter(Boolean) as string[]
-  );
-
-  const stats = await fetchStats('sonmac_by_date_periods', 'sonmac_by_date');
-  const periodPayload = isDateKeyedPeriodPayload<any>(stats.sonmac_by_date_periods) ? stats.sonmac_by_date_periods : null;
-  let allData: Record<string, any> = periodPayload?.current_period
-    ? getDateKeyedPeriodData(periodPayload, periodPayload.current_period)
-    : stats.sonmac_by_date || {};
-  if (!Object.keys(allData).length) {
-    allData = stats.sonmac_by_date || {};
+// Keep existing bookmarks and interface links pointed at the match detail view.
+export default async function SonMacPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const incoming = await searchParams;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(incoming)) {
+    if (typeof value === 'string') params.set(key, value);
   }
-  const dates = Object.keys(allData).sort((a, b) => b.localeCompare(a));
-
-  return (
-    <div id="page-sonmac" className="page-content page-content-container">
-      <h2 className="text-2xl font-semibold text-blue-600 mb-4">Son Mac</h2>
-      <SonMacClient allData={allData} dates={dates} seasonStarts={seasonStarts} periodPayload={periodPayload} />
-    </div>
-  );
+  params.set('gorunum', 'maclar');
+  redirect('/gece-ortalama?' + params);
 }
