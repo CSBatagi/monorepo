@@ -29,8 +29,7 @@ class QueueProtectionTests(unittest.TestCase):
              patch.object(worker, 'api', return_value={'jobs': [{'name': 'real.dem'}]}) as api, \
              patch.object(worker, 'analyze') as analyze:
             worker.run_once()
-            self.assertEqual(api.call_count, 1)
-            self.assertTrue(api.call_args.args[1]['busy'])
+            api.assert_not_called()
             analyze.assert_not_called()
 
     def test_database_recovery_processes_the_queued_job(self):

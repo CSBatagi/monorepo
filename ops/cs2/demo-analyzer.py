@@ -225,7 +225,12 @@ def database_ready():
 
 def run_once():
     game = game_report()
-    busy = server_busy(game) or not database_ready()
+    busy = server_busy(game)
+    if not busy and not database_ready():
+        # No job handout or healthy-worker heartbeat while we cannot insert stats.
+        # The existing stale-worker grace can then close an idle analysis VM.
+        print('Database unavailable; leaving demo jobs queued.', flush=True)
+        return
     response = api('/demo-analysis/sync', {'busy': busy, 'demos': inventory(), 'game': game})
     for job in [] if busy else response.get('jobs', []):
         if server_busy():
