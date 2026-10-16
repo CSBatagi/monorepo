@@ -76,8 +76,11 @@ def main():
         tunnel = json.loads(run('docker', 'inspect', tunnel_id))[0]
         logs = subprocess.run(['docker', 'logs', '--tail', '40', tunnel_id], capture_output=True, text=True)
         text = logs.stdout + logs.stderr
+        stats = json.loads(run('docker', 'stats', '--no-stream', '--format', '{{json .}}', tunnel_id))
         print(json.dumps({'tunnelRunning': tunnel['State']['Running'], 'tunnelRestartCount': tunnel['RestartCount'],
             'tunnelOom': tunnel['State']['OOMKilled'], 'tunnelExitCode': tunnel['State']['ExitCode'],
+            'tunnelUser': tunnel['Config']['User'], 'tunnelMemory': stats['MemUsage'],
+            'tunnelPublishesHostPorts': bool(tunnel['HostConfig']['PortBindings']),
             'tunnelNetworks': list(tunnel['NetworkSettings']['Networks']),
             'tunnelErrors': [line[:300] for line in text.splitlines() if line.startswith('ERROR:')
                 and not re.search(r'password|token|authorization|private_key', line, re.I)][-4:],

@@ -18,8 +18,9 @@ const pool = new Pool({ host: process.env.DB_HOST, database: process.env.DB_DATA
     return;
   }
   const cloud = new Gcp();
+  let connection;
   try {
-    const connection = await cloud.getConnectionInfo();
+    connection = await cloud.getConnectionInfo();
     console.log(JSON.stringify({ cloudStatus: connection.status, discoveredPrivateHost: !!connection.privateHost,
       rconOverride: process.env.CS2_RCON_HOST || null }));
   } finally { await cloud.compute.close(); }
@@ -37,10 +38,13 @@ const pool = new Pool({ host: process.env.DB_HOST, database: process.env.DB_DATA
   ]) {
     const response = await fetch(url, { headers, cache: 'no-store', signal: AbortSignal.timeout(20000) });
     const status = await response.json();
-    const ready = response.status === 200 && status.serverReady === true && !!status.connection?.address;
+    const currentAddress = status.connection?.directAddress || status.connection?.address;
+    const ready = response.status === 200 && status.serverReady === true && !!status.connection?.address
+      && currentAddress === connection.address && response.headers.get('cache-control') === 'no-store';
     console.log(JSON.stringify({ check: url, http: response.status, serverReady: status.serverReady,
       address: status.connection?.address || null, transport: status.connection?.transport || null,
-      updateStage: status.update?.stage || null, noStore: response.headers.get('cache-control') === 'no-store' }));
+      updateStage: status.update?.stage || null, matchesCloudAddress: currentAddress === connection.address,
+      noStore: response.headers.get('cache-control') === 'no-store' }));
     if (!ready) failed = true;
   }
   if (failed && process.argv[2] !== 'audit') process.exitCode = 1;
