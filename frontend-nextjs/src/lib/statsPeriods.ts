@@ -47,7 +47,9 @@ export function getDateKeyedPeriodData<T = any>(
 }
 
 export function getStaticStatsHistoryUrl(dataset: "night_avg" | "sonmac_by_date", periodId: string): string {
-  return `/data/stats-history/${dataset}/${periodId}.json`;
+  // Completed match shards gained duel counts; bypass pre-upgrade force-cache entries.
+  const version = dataset === "sonmac_by_date" ? '?v=duels-2026-10' : '';
+  return `/data/stats-history/${dataset}/${periodId}.json${version}`;
 }
 
 export async function fetchStaticDateKeyedPeriod<T = any>(

@@ -74,6 +74,8 @@ Current usage pattern:
 
 The same fields are baked into completed `sonmac_by_date` shards. The manual **Export public match history** workflow runs the reviewed generator in an isolated staging directory on the production backend, using a read-only connection and one query at a time. It produces a public-data artifact without replacing the running application. Download its `sonmac_by_date_all.json` to `runtime-data/history-source/` before baking history. No new runtime dataset or database migration is needed.
 
+Match history URLs include `v=duels-2026-10` so existing browsers bypass their older `force-cache` responses after this schema addition. Advance this version when rebaking a changed completed-match contract.
+
 When adding or modifying a stats-consuming page, keep these rules:
 
 - Use the smallest dataset the page needs. Do not introduce merged all-time date-keyed runtime payloads for `night_avg` or `sonmac_by_date`.
