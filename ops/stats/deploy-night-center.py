@@ -11,6 +11,14 @@ import sys
 def run(*args, timeout=180):
     result = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
     if result.returncode:
+        if '/tmp/verify-night-duels.cjs' in args:
+            for line in (result.stdout + result.stderr).splitlines():
+                try:
+                    diagnostic = json.loads(line)
+                    if diagnostic.get('verified') is False:
+                        print(json.dumps({'verification_failed': str(diagnostic.get('reason', '')).splitlines()[0]}), flush=True)
+                except (ValueError, TypeError, IndexError):
+                    pass
         raise RuntimeError('Command failed: ' + args[0])
     return result.stdout
 

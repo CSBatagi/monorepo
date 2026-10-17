@@ -2,6 +2,11 @@ name: Release night center
 
 on:
   workflow_dispatch:
+    inputs:
+      image_revision:
+        description: Optional previously built full revision to retry a verified immutable image
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -12,6 +17,7 @@ concurrency:
 
 jobs:
   build:
+    if: inputs.image_revision == ''
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     permissions:
@@ -42,6 +48,7 @@ jobs:
           cache-to: type=gha,mode=max
   deploy:
     needs: build
+    if: always() && (needs.build.result == 'success' || (needs.build.result == 'skipped' && inputs.image_revision != ''))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -76,4 +83,8 @@ jobs:
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: printf '%s' "$REGISTRY_TOKEN" | ssh release-target 'docker login ghcr.io -u ${{ github.actor }} --password-stdin'
       - name: Deploy website, verify source counts and snapshot, roll back on failure
-        run: ssh release-target 'python3 /srv/csbatagi/.night-center-release/deploy-night-center.py ${{ github.sha }}'
+        env:
+          IMAGE_REVISION: ${{ inputs.image_revision || github.sha }}
+        run: |
+          [[ "$IMAGE_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          ssh release-target "python3 /srv/csbatagi/.night-center-release/deploy-night-center.py $IMAGE_REVISION"

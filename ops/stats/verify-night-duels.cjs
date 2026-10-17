@@ -82,4 +82,4 @@ async function main() {
   console.log(JSON.stringify({ verified: true, currentSeasonNights: dates.length, matches: maps.length,
     latestNight: dates.at(-1), statsVersion: stats.statsVersion, sourceCountsMatch: true, snapshotMatches: true, pagesServed: true, assetsLoaded: scripts.length }));
 }
-main().catch(error => { console.error(JSON.stringify({ verified: false, reason: error.message })); process.exitCode = 1; });
+main().catch(error => { console.error(JSON.stringify({ verified: false, reason: error.message.split('\n')[0] })); process.exitCode = 1; });
