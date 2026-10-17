@@ -1,0 +1,57 @@
+name: Export public match history
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stats-history-export
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+      - name: Configure private deployment access
+        env:
+          DEPLOY_HOST: ${{ secrets.PI_HOST }}
+          DEPLOY_USER: ${{ secrets.PI_USER || 'clawd' }}
+          DEPLOY_KEY: ${{ secrets.PI_HOST_SSH_PK }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib
+          folder = pathlib.Path.home() / '.ssh'
+          folder.mkdir(mode=0o700, exist_ok=True)
+          key = folder / 'history-key'
+          key.write_text(os.environ['DEPLOY_KEY'].replace('\r\n', '\n').strip() + '\n')
+          key.chmod(0o600)
+          (folder / 'config').write_text('Host history-target\n  HostName ' + os.environ['DEPLOY_HOST'] + '\n  User ' + os.environ['DEPLOY_USER'] + '\n  IdentityFile ' + str(key) + '\n  StrictHostKeyChecking accept-new\n  BatchMode yes\n  ConnectTimeout 15\n')
+          PY
+      - name: Export with a read-only database connection and one query at a time
+        run: |
+          stage=/srv/csbatagi/.stats-history-${{ github.run_id }}
+          ssh history-target "umask 077; mkdir -p $stage"
+          scp backend/statsGenerator.js backend/matchDuels.js ops/stats/export-night-duels.cjs history-target:$stage/
+          ssh history-target "bash -s" <<'SH'
+          set -euo pipefail
+          stage=/srv/csbatagi/.stats-history-${{ github.run_id }}
+          container=$(docker compose -f /srv/csbatagi/docker-compose.yml ps -q backend)
+          test -n "$container"
+          docker cp "$stage/." "$container:/app/.history-export-${{ github.run_id }}"
+          docker exec -e PLAYERS_FILE=/app/config/players.json "$container" node /app/.history-export-${{ github.run_id }}/export-night-duels.cjs
+          docker cp "$container:/app/.history-export-${{ github.run_id }}/sonmac_by_date_all.json" "$stage/sonmac_by_date_all.json"
+          SH
+          mkdir -p exported-history
+          scp history-target:$stage/sonmac_by_date_all.json exported-history/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-match-history
+          path: exported-history/sonmac_by_date_all.json
+          retention-days: 7

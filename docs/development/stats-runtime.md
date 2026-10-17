@@ -58,7 +58,8 @@ Current usage pattern:
 ## Page to Dataset Mapping
 
 - `season-avg`: `season_avg_periods`
-- `gece-ortalama` (Gece & Maçlar): `night_avg_periods`, `sonmac_by_date_periods`; one season/date selection drives both views
+- `gece-ortalama` (Gece & Maçlar): `night_avg_periods`, `sonmac_by_date_periods`; one season/date selection drives averages, match details and duels
+- `duello`: `duello_sezon`; season totals, with a link to night/map duels in Gece & Maçlar
 - `sonmac`: redirects to `gece-ortalama?gorunum=maclar`, preserving date, season and interface query parameters
 - `mac-sonuclari`: `sonmac_by_date_periods`
 - `performans-odulleri`: `night_avg_periods`
@@ -68,6 +69,10 @@ Current usage pattern:
 - `team-picker`: `last10`, `season_avg`, `player_ratings`
 
 ## Adding Stats Pages
+
+`sonmac_by_date` map entries include `match_checksum`, `map_name` and compact `duels` (`players` keyed by Steam identity plus directed `kills` counts). Replayed maps on one date receive separate display keys (`de_mirage · 2`) so scores, rounds, rosters and duels never merge. Night duel totals are summed in the browser from every map in the selected night; a snapshot missing any map's duel data displays an unavailable state instead of a partial total. Self kills and kill events whose participants are absent from that match roster are excluded. Other recorded player kills retain the season-duel counting convention.
+
+The same fields are baked into completed `sonmac_by_date` shards. The manual **Export public match history** workflow runs the reviewed generator in an isolated staging directory on the production backend, using a read-only connection and one query at a time. It produces a public-data artifact without replacing the running application. Download its `sonmac_by_date_all.json` to `runtime-data/history-source/` before baking history. No new runtime dataset or database migration is needed.
 
 When adding or modifying a stats-consuming page, keep these rules:
 

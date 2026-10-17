@@ -16,8 +16,9 @@ html[data-design="modern"] .night-center { --nc-bg:var(--club-surface); --nc-rai
 .night-controls select { width:100%; min-width:0; height:43px; padding:8px 30px 8px 12px; border:1px solid var(--nc-line); border-radius:6px; background:var(--nc-raised); color:var(--nc-text); font-size:16px; }
 .night-date-step { display:flex; gap:6px; }
 .night-date-step button { width:40px; height:43px; display:grid; place-items:center; border:1px solid var(--nc-line); border-radius:6px; background:var(--nc-raised); color:var(--nc-text); }
-.night-view-switch { display:flex; gap:10px; margin:22px 0; }
-.night-view-switch>button { display:flex; align-items:center; gap:12px; padding:13px 20px; border:1px solid var(--nc-line); border-radius:9px; color:var(--nc-muted); background:var(--nc-bg); text-align:left; min-width:220px; }
+.night-view-switch { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:22px 0; }
+.night-view-switch>button { display:flex; align-items:center; gap:12px; padding:13px 20px; border:1px solid var(--nc-line); border-radius:9px; color:var(--nc-muted); background:var(--nc-bg); text-align:left; min-width:0; }
+.night-view-switch>button>svg { flex-shrink:0; }
 .night-view-switch>button[aria-pressed="true"] { color:var(--nc-accent); border-color:var(--nc-accent); background:var(--nc-soft); }
 .night-view-switch>button>span { font-size:16px; font-weight:650; }
 .night-view-switch small { display:block; color:var(--nc-muted); font-size:14px; font-weight:400; margin-top:3px; }
@@ -82,7 +83,7 @@ html:not(.dark) .night-center .night-match-details .text-green-600 { color:#3271
   .night-controls label:first-child { flex-basis:100%; }
   .night-controls label:nth-child(2) { flex:1; }
   .night-view-switch { gap:8px; }
-  .night-view-switch>button { min-width:0; flex:1; padding:12px; gap:8px; }
+  .night-view-switch>button { min-width:0; padding:12px 9px; gap:8px; flex-direction:column; align-items:flex-start; }
   .night-view-switch>button>span { font-size:16px; }
   .night-view-switch small { font-size:13px; }
   .night-data-panel { padding:16px 12px; }
@@ -93,3 +94,24 @@ html:not(.dark) .night-center .night-match-details .text-green-600 { color:#3271
   .night-center .night-stats-table :is(th,td) { padding:12px 10px; }
   .night-center .night-scoreboard h3 { max-width:120px; white-space:normal; overflow-wrap:anywhere; }
 }
+.duel-toolbar { display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:14px; }
+.night-center .duel-toolbar h3 { margin:0 0 6px; font-size:18px; font-weight:650; color:var(--nc-text); text-transform:none; }
+.duel-toolbar p { margin:0; color:var(--nc-muted); font-size:14px; line-height:1.6; }
+.duel-toolbar label { display:grid; gap:6px; color:var(--nc-muted); font-size:14px; }
+.duel-toolbar select { padding:8px 12px; min-width:180px; max-width:100%; border-radius:6px; border:1px solid var(--nc-line); color:var(--nc-text); background:var(--nc-raised); }
+.duel-legend { display:flex; gap:8px; margin-bottom:14px; font-size:13px; }
+.duel-legend>span { padding:3px 8px; border-radius:4px; }
+.night-center .duel-ahead { color:hsl(145 45% var(--nc-stat-light)); background:hsl(145 45% 50% / .12); }
+.night-center .duel-behind { color:hsl(5 55% var(--nc-stat-light)); background:hsl(5 55% 50% / .12); }
+.night-center .duel-even { color:var(--nc-muted); background:var(--nc-raised); }
+.night-center .duel-matrix { width:100%; border-collapse:separate; border-spacing:0; margin:0; background:var(--nc-bg); color:var(--nc-text); font-variant-numeric:tabular-nums; }
+.night-center .duel-matrix :is(th,td) { border:0; border-bottom:1px solid var(--nc-line); padding:12px 10px; text-align:center; font-size:16px; white-space:nowrap; background:var(--nc-bg); }
+.night-center .duel-matrix thead th { font-size:14px; font-weight:550; background:var(--nc-raised); color:var(--nc-muted); }
+.night-center .duel-matrix th:first-child { position:sticky; left:0; z-index:1; min-width:145px; max-width:220px; white-space:normal; overflow-wrap:anywhere; text-align:left; box-shadow:1px 0 0 var(--nc-line); }
+.night-center .duel-matrix thead th:first-child { z-index:2; }
+.duel-value { display:inline-block; min-width:76px; padding:7px 9px; border-radius:5px; }
+.duel-value b { font-weight:700; }
+.night-center .duel-matrix .duel-self { color:var(--nc-muted); background:var(--nc-raised); }
+.night-center .duel-matrix tbody tr:last-child :is(th,td) { border-bottom:0; }
+.duel-season-link { display:inline-block; margin-top:22px; font-size:14px; color:var(--nc-accent); text-decoration:underline; text-underline-offset:4px; }
+.duel-night-link { display:block; margin-bottom:22px; border:1px solid var(--nc-line); padding:16px; border-radius:8px; color:var(--nc-accent); background:var(--nc-soft); font-size:16px; }

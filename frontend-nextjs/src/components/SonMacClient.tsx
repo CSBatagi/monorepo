@@ -104,12 +104,13 @@ function SwitchSidesIcon({ className }: { className?: string }) {
 
 
 
-export default function SonMacClient({ maps }: { maps: Record<string, any> }) {
+export default function SonMacClient({ maps, selectedMap: controlledMap, onMapChange }: { maps: Record<string, any>; selectedMap?: string; onMapChange?: (map: string) => void }) {
   const mapNames = Object.keys(maps);
-  const [selectedMap, setSelectedMap] = useState(mapNames[0] || "");
+  const [localMap, setSelectedMap] = useState(mapNames[0] || "");
   useEffect(() => {
     setSelectedMap(current => Object.hasOwn(maps, current) ? current : Object.keys(maps)[0] || "");
   }, [maps]);
+  const selectedMap = controlledMap !== undefined ? (Object.hasOwn(maps, controlledMap) ? controlledMap : mapNames[0] || "") : localMap;
   const mapData = maps[selectedMap] || {};
   const team1 = mapData.team1;
   const team2 = mapData.team2;
@@ -232,7 +233,7 @@ export default function SonMacClient({ maps }: { maps: Record<string, any> }) {
   return (
     <div className="night-match-details">
       <div className="night-map-tabs" role="group" aria-label="Harita seçimi">
-        {mapNames.map(map => <button type="button" key={map} aria-pressed={selectedMap === map} onClick={() => setSelectedMap(map)}>{map.replace(/^de_/, '')}<span>{maps[map]?.team1?.score ?? '—'} : {maps[map]?.team2?.score ?? '—'}</span></button>)}
+        {mapNames.map(map => <button type="button" key={map} aria-pressed={selectedMap === map} onClick={() => onMapChange ? onMapChange(map) : setSelectedMap(map)}>{map.replace(/^de_/, '')}<span>{maps[map]?.team1?.score ?? '—'} : {maps[map]?.team2?.score ?? '—'}</span></button>)}
       </div>
       {/* Scoreboard and Team Tables */}
       {team1 && team2 ? (

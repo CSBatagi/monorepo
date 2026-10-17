@@ -34,7 +34,7 @@ export const navigation = [
     { href: "/oyuncular", label: "Oyuncular", icon: Users },
     { href: "/season-avg", label: "Sezon Ortalaması", icon: BarChart3 },
     { href: "/last10", label: "Son 10 Maç", icon: ListOrdered },
-    { href: "/duello", label: "Düello", icon: Target },
+    { href: "/duello", label: "Sezon Düelloları", icon: Target },
     { href: "/performance", label: "Performans", icon: TrendingUp },
     { href: "/performans-odulleri", label: "Performans Ödülleri", icon: Trophy },
   ] },

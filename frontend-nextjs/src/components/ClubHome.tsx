@@ -10,7 +10,7 @@ import { useLivePolling } from "@/lib/useLivePolling";
 const analysis = [
   { href: '/season-avg', label: 'Sezon Ortalaması', sub: 'Bir maçla övünmek yok', icon: BarChart3 },
   { href: '/last10', label: 'Son 10 Maç', sub: 'Form mu, iki maçlık gaz mı?', icon: ListOrdered },
-  { href: '/duello', label: 'Düello', sub: 'Çok konuşanı rakamla sustur', icon: Target },
+  { href: '/duello', label: 'Sezon Düelloları', sub: 'Çok konuşanı rakamla sustur', icon: Target },
   { href: '/performance', label: 'Performans Grafikleri', sub: 'Aim gelmiş mi, hâlâ yolda mı?', icon: TrendingUp },
   { href: '/performans-odulleri', label: 'Performans Ödülleri', sub: 'Sonunda eli alışanlar', icon: Trophy },
 ];

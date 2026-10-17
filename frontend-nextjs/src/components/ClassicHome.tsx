@@ -27,7 +27,7 @@ const tiles: { href: string; title: string; desc: string; icon: LucideIcon }[] =
   { href: '/team-picker', title: 'Takım Seçme', desc: 'Oyuncuları takımlara atayın.', icon: Swords },
   { href: '/mundial', title: 'Batak Mundial', desc: 'Yeni sezon: kura, gruplar ve eleme tablosu.', icon: Globe2 },
   { href: '/sonmac', title: 'Son Maç', desc: 'Son maçın detaylı istatistikleri.', icon: Crosshair },
-  { href: '/duello', title: 'Düello', desc: 'Oyuncu karşılaştırma istatistikleri.', icon: Target },
+  { href: '/duello', title: 'Sezon Düelloları', desc: 'Oyuncu karşılaştırma istatistikleri.', icon: Target },
   { href: '/gece-ortalama', title: 'Gece Ortalaması', desc: 'Gecelik ortalama performans verisi.', icon: Moon },
   { href: '/last10', title: 'Son 10 Ortalaması', desc: 'Son 10 maç ortalamaları.', icon: ListOrdered },
   { href: '/season-avg', title: 'Sezon Ortalaması', desc: 'Sezon genel ortalama verileri.', icon: BarChart3 },

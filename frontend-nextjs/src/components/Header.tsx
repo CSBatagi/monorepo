@@ -22,7 +22,7 @@ const navLinks = [
   { href: "/last10", label: "Son 10 Ortalaması" },
   { href: "/season-avg", label: "Sezon Ortalaması" },
   { href: "/oyuncular", label: "Oyuncular" },
-  { href: "/duello", label: "Düello" },
+  { href: "/duello", label: "Sezon Düelloları" },
   { href: "/mac-sonuclari", label: "Maç Sonuçları" },
   { href: "/mac-videolari", label: "Maç Videoları" },
   { href: "/demolar", label: "Demolar" },
