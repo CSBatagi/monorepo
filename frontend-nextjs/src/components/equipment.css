@@ -83,3 +83,11 @@ html[data-design="cinematic"] .equipment { --eq-bg:#171c15; --eq-panel:#20271c; 
 .equipment input,.equipment select { background:var(--eq-bg); color:var(--eq-text); }
 .equipment button:hover { background:color-mix(in srgb,var(--eq-text) 9%,var(--eq-panel)); }
 .equipment .equipment-primary:hover { background:var(--eq-accent); filter:brightness(1.08); }
+
+/* Keep apply/unlock reachable while the item fields scroll on small screens. */
+.equipment-editor { display:flex; flex-direction:column; max-height:calc(100vh - 40px); max-height:calc(100dvh - 40px); overflow:hidden; padding:0; }
+.equipment-editor-body { min-height:0; overflow:auto; overscroll-behavior:contain; padding:28px; }
+.equipment-editor-actions { flex-shrink:0; padding:16px 28px; padding-bottom:max(16px,env(safe-area-inset-bottom)); border-top:1px solid var(--eq-line); background:var(--eq-panel); }
+.equipment-editor-actions .equipment-hint { margin:0 0 12px; }
+.equipment .equipment-close { z-index:1; background:var(--eq-panel); }
+@media(max-width:760px) { .equipment-editor-body { padding:22px; } .equipment-editor-actions { padding:14px 22px; padding-bottom:max(14px,env(safe-area-inset-bottom)); } }

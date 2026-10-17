@@ -36,6 +36,16 @@ The explicit Steam controls were deployed in frontend image `csbatagi-cosmetics-
 
 StatTrak (weapon kills, music kit MVPs) is a session counter, reset when the inventory is fetched again. Sticker position/rotation and charm offsets are not exposed; images show representative items, not a rendered preview of the chosen float/pattern. The catalogue currently includes 13,590 entries (including stickers and charms), not 13,590 weapon skins.
 
+### Missing name-tag investigation, 6 October 2026
+
+The reported member's saved weapon had an empty `nametag`, and the game fetched that state ten seconds after the save. This establishes that the reported name was absent from persistence; it does not establish why the edit was lost. The editor requires **Sete ekle**, followed by **Değişiklikleri kaydet** on the page. Closing the editor discards its edits.
+
+A temporary synthetic loadout verified that deployed validation, PostgreSQL persistence and the authenticated game endpoint preserve a nonempty Turkish name tag, and that changing only the name changes the inventory cache hash. The fixture was removed and no member equipment was modified. An in-game name rendering issue has not been reproduced; verifying that requires a saved nonempty tag and a human client after `!ws` and respawn.
+
+The member's screenshot supplied on 7 October showed a nonempty name and enabled StatTrak in the mobile editor, while both persisted values remained at their defaults. A browser reproduction at 393 × 760 put the apply button below the visible dialog (button top 769 px, viewport height 760 px). The editor now scrolls its fields independently and keeps the apply/unlock action visible in a fixed footer within the dialog, with explicit apply-then-save guidance and a reminder after applying. Closing still cancels the edit; personal loadouts were not changed by this fix.
+
+Verified at 393 × 760 and 320 × 568 with the actual component and isolated API fixtures: the action is visible, the save request contains a Turkish name and StatTrak, and both survive reload. TypeScript and the production build passed. Frontend-only image `csbatagi-cosmetics-frontend-nextjs:20261006t231930z` is deployed; the authenticated production equipment page and all 17 script/style assets returned HTTP 200, including the new footer component and styles. The frontend remains within its 256 MiB limit with zero restarts after startup. Rollback override: `/home/runner/cosmetics-web-backup-20261006t231930z/rollback.yml`. Human in-game rendering acceptance remains pending after the member saves a nonempty name.
+
 ## Progression and premium awards
 
 The progression economy starts at the first successful insertion into `cosmetic_economy` during backend migration. That timestamp is persisted and never reset by restart, reanalysis or a season change. Earlier matches are not backfilled. New Steam-linked wallets receive 30 welcome tokens once per verified SteamID. XP, balances and unlocks persist across seasons; they are independent of Token Wars and other feature currencies.
