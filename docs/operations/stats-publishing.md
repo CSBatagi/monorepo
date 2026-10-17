@@ -169,6 +169,8 @@ An optional full `image_revision` input retries already-built immutable images w
 
 Validation for the change includes TypeScript, the Next.js production build, design/cinematic/auth/pull-to-refresh checks, ten focused backend tests on Node 18 CI (including a British summer time DATE regression), the frontend night-summing regression script, and browser checks at desktop and approximately 390 CSS pixels. A broader local backend run passed 232 tests and skipped 14 database-dependent tests; two unchanged demo-upload socket tests failed with `ECONNRESET` on the Windows Node 22 workstation. Those upload files were not changed by this feature. The release also compares the dates in every historical average/match shard and requires duel data for every archived map.
 
+Production verification on **17 October 2026, 20:00 UTC** passed for image revision `731edf5137ef2b1242be9751a96bfd78fb9f04ae`, stats version **78**: 47 current-season nights / 95 matches matched source SQL and the frontend snapshot; 92 completed nights / 220 matches had aligned average/map dates and duel records. The live all-time selector contained exactly 139 nights. Browser review confirmed 14 players in both averages and duels on 10 June 2025, latest-night totals, per-map selection, the season page, browser navigation and a roughly 390 CSS-pixel mobile layout. All 13 page scripts loaded. Unrelated containers and existing memory settings were preserved. Rollback: `/srv/csbatagi/night-center-backup-20261017t195930z/rollback.yml`. The successful release is [Actions run 39064655510](https://github.com/CSBatagi/monorepo/actions/runs/39064655510).
+
 ## First Checks For A Production Incident
 
 Use diagnostics before forcing another publish:
