@@ -942,7 +942,13 @@ function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
 function numOrNull(v){ if(v===null||v===undefined) return null; const n=parseFloat(v); return isNaN(n)?null:n; }
 function pct(a,b){ if(!b) return 0; return parseFloat(((a/b)*100).toFixed(2)); }
 function safeAvg(a,b){ if(!b) return 0; return parseFloat((a/b).toFixed(2)); }
-function isoDate(d){ if(!d) return null; try { return (typeof d==='string'? new Date(d):d).toISOString().split('T')[0]; } catch(_){ return null; } }
+function isoDate(d) {
+  // These query columns are SQL DATEs. pg constructs them at local midnight;
+  // converting to UTC moves summer dates back a day on London workstations.
+  if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);
+  if (!(d instanceof Date) || !Number.isFinite(d.getTime())) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 async function generateAggregates(pool, opts = {}) {
   loadCanonicalNames();

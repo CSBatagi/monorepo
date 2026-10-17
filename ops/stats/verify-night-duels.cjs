@@ -55,6 +55,23 @@ async function main() {
   const published = await fetch('http://frontend-nextjs:3000/api/stats/check?lastKnownVersion=0&keys=sonmac_by_date_periods', { signal: AbortSignal.timeout(60000) }).then(r => r.json());
   assert.equal(published.statsVersion, stats.statsVersion, 'Frontend snapshot version mismatch');
   assert.deepEqual(published.sonmac_by_date_periods, stats.sonmac_by_date_periods, 'Frontend snapshot differs');
+  let historicalNights = 0, historicalMatches = 0;
+  for (const period of stats.sonmac_by_date_periods.periods || []) {
+    if (period.id === 'all_time' || period.id === stats.sonmac_by_date_periods.current_period) continue;
+    const readHistory = async dataset => {
+      const response = await fetch(`http://frontend-nextjs:3000/data/stats-history/${dataset}/${period.id}.json?v=night-center-2026-10`, { signal: AbortSignal.timeout(30000) });
+      assert(response.ok, 'Historical shard missing');
+      return response.json();
+    };
+    const averages = await readHistory('night_avg');
+    const matches = await readHistory('sonmac_by_date');
+    assert.deepEqual(Object.keys(averages).sort(), Object.keys(matches).sort(), 'Historical night and map dates differ');
+    historicalNights += Object.keys(matches).length;
+    for (const night of Object.values(matches)) for (const map of Object.values(night.maps)) {
+      assert(map.match_checksum && map.duels?.players.length, 'Historical duel counts missing');
+      historicalMatches++;
+    }
+  }
 
   const steamId = maps[0].duels.players.find(p => /^7656119\d{10}$/.test(p.steam_id))?.steam_id;
   assert(steamId, 'Missing member identity for page smoke check');
@@ -80,6 +97,7 @@ async function main() {
   assert.equal(season.status, 200, 'Season page failed');
   assert((await season.text()).includes('Sezon Düelloları'), 'Season page heading missing');
   console.log(JSON.stringify({ verified: true, currentSeasonNights: dates.length, matches: maps.length,
-    latestNight: dates.at(-1), statsVersion: stats.statsVersion, sourceCountsMatch: true, snapshotMatches: true, pagesServed: true, assetsLoaded: scripts.length }));
+    latestNight: dates.at(-1), statsVersion: stats.statsVersion, sourceCountsMatch: true, snapshotMatches: true,
+    historicalNights, historicalMatches, historicalDatesAligned: true, pagesServed: true, assetsLoaded: scripts.length }));
 }
 main().catch(error => { console.error(JSON.stringify({ verified: false, reason: error.message.split('\n')[0] })); process.exitCode = 1; });

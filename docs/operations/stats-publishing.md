@@ -159,6 +159,16 @@ This bypasses the normal dirty-state gate, force-generates stats, writes the ret
 - Backend published but frontend prewarm/write-through did not complete.
 - The page was serving a cached ISR artifact before revalidation.
 
+## Night and map duel releases
+
+The manual **Release night center** workflow builds immutable native ARM backend/frontend images on CI, runs the focused generation/publication tests, and updates only those two website services. `ops/stats/deploy-night-center.py` preserves the installed Compose configuration, credentials, requested memory limits and unrelated containers. It records the old image IDs in `/srv/csbatagi/night-center-backup-<UTC>/rollback.yml` and restores them automatically if verification fails.
+
+`ops/stats/verify-night-duels.cjs` waits for the backend snapshot, explicitly publishes a new stats version for the added fields, compares every current-season map's directed kill counts against independent read-only SQL, prewarms the frontend, compares its payload/version with the backend, and checks both pages and their assets. The separate **Export public match history** workflow audits all historical matches without changing running application files; completed shards are committed with the frontend and versioned in `statsPeriods.ts` to bypass older browser caches.
+
+An optional full `image_revision` input retries already-built immutable images with the current reviewed verification helpers; image architecture and revision labels are checked before either service changes. Source commits use `[skip ci]` before this coordinated workflow to avoid the legacy independent build/deploy race. These operations need no schema migration or game-server restart.
+
+Validation for the change includes TypeScript, the Next.js production build, design/cinematic/auth/pull-to-refresh checks, ten focused backend tests on Node 18 CI (including a British summer time DATE regression), the frontend night-summing regression script, and browser checks at desktop and approximately 390 CSS pixels. A broader local backend run passed 232 tests and skipped 14 database-dependent tests; two unchanged demo-upload socket tests failed with `ECONNRESET` on the Windows Node 22 workstation. Those upload files were not changed by this feature. The release also compares the dates in every historical average/match shard and requires duel data for every archived map.
+
 ## First Checks For A Production Incident
 
 Use diagnostics before forcing another publish:

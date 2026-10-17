@@ -1,5 +1,23 @@
 const { generateHistoricalDateKeyedAllTime } = require('../statsGenerator');
 
+test('SQL calendar dates stay aligned between averages and maps during British summer time', () => {
+  const { execFileSync } = require('node:child_process');
+  const path = require('node:path');
+  const output = execFileSync(process.execPath, ['-e', `
+    const { types } = require('pg');
+    const { generateHistoricalDateKeyedAllTime } = require('./statsGenerator');
+    const date = types.getTypeParser(1082)('2025-06-10');
+    const responses = [
+      [{ match_date: date, steam_id: '101', name: 'Alice' }],
+      [{ match_date: date, match_checksum: 'first', map_name: 'de_mirage', steam_id: '101', name: 'Alice', team_name: 'A' }], [], [],
+    ];
+    const pool = { query: async () => ({ rows: responses.shift() }) };
+    generateHistoricalDateKeyedAllTime(pool).then(data => console.log('DATES:' + JSON.stringify({ averages: Object.keys(data.night_avg_all), maps: Object.keys(data.sonmac_by_date_all) })));
+  `], { cwd: path.join(__dirname, '..'), env: { ...process.env, TZ: 'Europe/London' }, encoding: 'utf8' });
+  const result = JSON.parse(output.split('\n').find(line => line.startsWith('DATES:')).slice(6));
+  expect(result).toEqual({ averages: ['2025-06-10'], maps: ['2025-06-10'] });
+});
+
 test('current-season publication keeps map counts and legacy night counts in their own datasets', async () => {
   const { generateAll } = require('../statsGenerator');
   const duel = { playerrowsteamid: '101', playercolumnsteamid: '102', playerrow: 'Alice', playercolumn: 'Bob', killdeathratio: '8/4' };
