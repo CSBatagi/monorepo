@@ -11,7 +11,7 @@ The game VM uses an ephemeral external IPv4 address with the **Premium** network
 - The team picker passes its existing status poll to the join component; equipment polls the same API independently. Polling refreshes every fifteen seconds, every five seconds during a power transition, and on visibility/pageshow/online resume. Older overlapping responses cannot replace the newest address.
 - Steam launch links and copyable console commands use that discovered address. Missing addresses, failed status requests and startup preparation disable joining; there is no fallback to a former public IP or DNS record.
 
-RCON discovers the private address through the shared cache when the backend runs inside GCP's VPC. On the ARM website host, production Compose sets `CS2_RCON_HOST=cs2-rcon-tunnel`, the private Docker service described below. Never use a fixed public IP for this override. On the game VM itself, preserve the installed local RCON helper.
+RCON discovers the private address through the shared cache when the backend runs inside GCP's VPC. On the ARM website host, production Compose sets `CS2_RCON_HOST=cs2-rcon-tunnel`, the private Docker service described below. Never use a fixed public IP for this override. On the game VM itself, preserve the installed local RCON helper; it tries loopback first, then the VM's private RFC1918 interface, because CS2 can bind RCON only there.
 
 ## Website host outside GCP
 
@@ -35,7 +35,7 @@ SDR is separate from Premium networking and dynamic DNS. Valve's [SDR documentat
 
 The [5Stack CS2 integration](https://docs.5stack.gg/servers/steam-relay) documents a community dedicated-server P2P path: preserve `game/csgo/gameinfo_branchspecific.gi`, set `net_p2p_listen_dedicated` to `1` in its existing ConVars block, and add a NetworkSystem block with `CreateListenSocketP2P` set to `2`. The provider warns that CS2 updates can overwrite these edits. This establishes a candidate integration, not successful SDR operation on our VM or guaranteed Valve support for this configuration.
 
-The subsequent SDR implementation adds updater-managed persistence, fresh Steam identity reporting, relay join links and a password admission gate covering relay and direct connections. See [SDR installation and validation](cs2-sdr.md) for the installation procedure and the current cloud-capacity blocker. Game-VM enablement and real-client relay/latency acceptance remain pending.
+The subsequent SDR implementation adds updater-managed persistence, fresh Steam identity reporting, relay join links and a password admission gate covering relay and direct connections. It was enabled on the game VM on 10 October; native verification and both live status APIs passed with the verified Steam address. Relay joins first worked on 17 October, after the server switched to an anonymous (token-free) Steam login; a token login's `[G:...]` identity is not dialable by CS2 clients. Real clients joined through the relay and the direct fallback. See [SDR installation and validation](cs2-sdr.md) for the deployment records.
 
 ## Rollout and validation
 
