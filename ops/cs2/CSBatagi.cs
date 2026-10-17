@@ -83,6 +83,18 @@ public partial class MatchZy
         {
             if (p == null) c.ReplyToCommand(BatagiStatus());
         });
+        AddCommand("csbatagi_ready_check", "Read-only ready diagnostics; server console only", (p, c) =>
+        {
+            if (p != null) return;
+            c.ReplyToCommand(JsonSerializer.Serialize(new {
+                available = readyAvailable, matchStarted, matchLoaded = isMatchSetup,
+                ctReady = IsTeamReady((int)CsTeam.CounterTerrorist),
+                tReady = IsTeamReady((int)CsTeam.Terrorist),
+                spectatorsReady = IsSpectatorsReady(),
+                playersPerTeam = matchConfig.PlayersPerTeam,
+                minimumReady = matchConfig.MinPlayersToReady
+            }));
+        });
         AddCommand("csbatagi_players", "Player diagnostics; server console only", (p, c) =>
         {
             if (p == null) c.ReplyToCommand(JsonSerializer.Serialize(Utilities.GetPlayers().Select(x => new { x.PlayerName, x.UserId, x.Index, x.Slot, x.IsBot, x.IsHLTV, x.TeamNum })));

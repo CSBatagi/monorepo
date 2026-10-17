@@ -40,11 +40,34 @@ Members can configure weapon skins, knives, gloves, agents, stickers, charms and
 
 1. Use the website's current CS2 launch link or copyable `connect` command with the existing server password. The Premium-tier public IP is ephemeral; see [dynamic address discovery](../../docs/operations/cs2-dynamic-addresses.md).
 2. Warm up indefinitely. `.guns` opens a primary-weapon menu; selections are remembered for the process lifetime. Default loadout is AK, Deagle and knife, with armor and unlimited reserve ammo. Respawns are enabled. Bots fill toward six total combatants when at least one human is connected.
-3. An authenticated website admin loads balanced rosters of 1–10 players per team from the team picker. Connected players and reconnects are automatically moved onto the roster's configured CT/T sides during warmup. Every rostered player uses `.ready`. There is no automatic ready countdown or knife round. A new website match can replace a loaded warmup after its payload is fetched and validated; an active match or recording cannot be replaced.
+3. An authenticated website admin loads balanced rosters of 1–10 players per team from the team picker. Connected players and reconnects are automatically moved onto the roster's configured CT/T sides during warmup. Every rostered player uses `.ready`; the final ready automatically starts the normal match/demo preparation once both complete rosters are connected on the correct sides. There is no automatic ready countdown or knife round. A new website match can replace a loaded warmup after its payload is fetched and validated; an active match or recording cannot be replaced.
 4. Gameplay bots are removed. Live rules are restored. The pistol freeze is held until the demo file exceeds 256 KiB and grows. Defaults are MR12, MR3 overtime, friendly fire, normal economy and no respawns.
 5. `.pause` requests a freeze-time pause. Both teams `.unpause` to resume; existing game admins can override. The pause count and duration are unlimited. Completing demo preflight releases only the recorder's hold and preserves any player/admin pause. Unpause commands cannot release a preflight or failed-demo hold.
 
-Warmup uses all-talk. Live play isolates team voice. Only CSTV gets `All | ListenAll` voice flags, with `tv_relayvoice=1`; this must be tested using real client microphone packets. A bot-only demo cannot demonstrate microphone recording.
+Warmup and live play isolate team voice, including disabling CS2's automatic warmup/halftime all-talk. Only CSTV gets `All | ListenAll` voice flags, with `tv_relayvoice=1`; this must be tested using real client microphone packets. A bot-only demo cannot demonstrate microphone recording.
+
+On 6 October 2026, the installed warmup config still enabled `sv_alltalk` and `sv_full_alltalk`. Both were disabled in the running server and persisted in `cfg/MatchZy/warmup.cfg`; enemy voice and automatic warmup/halftime all-talk were explicitly disabled there and in the base config. RCON readback confirmed all five settings were false. No map change or game restart was needed. Configuration backup: `/home/steam/csbatagi-backups/voice-20261006T215122Z/`. Teammate microphone and CSTV recording acceptance still require real clients.
+
+### Ready checks and Premier round timing
+
+The 7 October investigation found repeated `ArgumentException` failures in `IsTeamReady` during the previous night's `.ready` commands: CounterStrikeSharp's `CsTeam` enum is backed by `byte`, but upstream passed a boxed `int` to `Enum.IsDefined`. The checked integration patch now passes a `CsTeam` value, allowing normal all-ready processing to reach match preparation. It preserves the full-roster and unready-player gates; auto-ready remains disabled. Server-console-only `csbatagi_ready_check` reports the actual team/spectator ready checks without starting a match.
+
+`live_override.cfg` explicitly restores Valve's current timing after MatchZy's live config:
+
+| Timing | Cvar | Value |
+| --- | --- | --- |
+| Premier freeze time | `mp_freezetime` | 20 seconds |
+| Post-round weapon pickup window | `mp_round_restart_delay` | 7 seconds |
+| Buy time | `mp_buytime` | 20 seconds |
+| Round time (defuse/hostage/general) | `mp_roundtime*` | 1.92 minutes (HUD 1:55) |
+| Halftime | `mp_halftime_duration` | 15 seconds |
+| Planted bomb | `mp_c4timer` | 40 seconds |
+
+Sources checked against the installed Valve files and game help on 7 October: [Premier matchmaking override](https://github.com/SteamTracking/GameTracking-CS2/blob/master/game/csgo/cfg/gamemode_competitive_tmm.cfg), [base competitive config](https://github.com/SteamTracking/GameTracking-CS2/blob/master/game/csgo/cfg/gamemode_competitive.cfg), and [engine convar defaults](https://github.com/SteamTracking/GameTracking-CS2/blob/master/DumpSource2/convars.txt). Base competitive freeze time is 15 seconds; the Premier matchmaking override raises it to 20. MatchZy previously used 18 seconds freeze and 5 seconds after a round. Pauses and initial demo preflight are separate from these normal round timers.
+
+Local validation: patch applied twice, .NET 10 plugin compilation passed, all 18 upstream ready-rule tests passed, and a regression harness confirmed the original enum expression throws against the real CounterStrikeSharp API while the compiled patched `IsTeamReady` passes. Full ready rosters pass and absent/unready players block at 1, 5, 7 and 10 players per side. Deployment backup: `/home/steam/csbatagi-backups/ready-timing-20261006T232632Z/`.
+
+Managed startup accepted integration `be479397d49999d955123aadad1d2e8b72a49b01c950dae7bbafa9a148a7d772` with no warning/error. The native `csbatagi_ready_check` succeeded, including the spectator gate. On the empty server, executing the complete installed `MatchZy/live.cfg` and reading all eight timing cvars confirmed the table above; warmup was restored in `finally`. Final guards confirmed healthy CSTV, no humans, no match/recording and no pending uploads. The game service was stopped and the VM returned to its original off state. A complete human all-ready match remains an acceptance check for the next game night; no synthetic match or production demo was generated by the readiness/timing checks.
 
 ## Demos and recovery
 

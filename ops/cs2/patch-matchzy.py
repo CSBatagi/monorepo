@@ -25,6 +25,11 @@ def replace_variant(file, variants, new):
 
 replace('src/MatchZy.cs', 'public override void Load(bool hotReload)\n        {',
         'public override void Load(bool hotReload)\n        {\n            InitializeBatagi();')
+# CsTeam is byte-backed in CounterStrikeSharp. Passing a boxed Int32 to
+# Enum.IsDefined throws before the last .ready can reach CheckLiveRequired.
+replace('src/ReadySystem.cs',
+        'Enum.IsDefined(typeof(CsTeam), team)',
+        'Enum.IsDefined(typeof(CsTeam), (CsTeam)team)')
 replace('src/MatchManagement.cs',
         'string headerValue = command.ArgCount > 3 ? command.ArgByIndex(3) : "";',
         '''string headerValue = command.ArgCount > 3 ? command.ArgByIndex(3) : "";
@@ -88,6 +93,15 @@ replace('src/DatabaseStats.cs',
 replace('src/Utility.cs',
         '            SetupLiveFlagsAndCfg();\n            CrashBreadcrumb("StartLive: after SetupLiveFlagsAndCfg");\n            StartDemoRecording();',
         '            // Live configuration and recording have passed CS Batagi preflight.')
+# Next-map preparation used to rename the current map's teams while its CSTV demo
+# was still flushing. CS Demo Manager then assigned final scores/players to those
+# new names. Apply sides and warmup only after the new level is loaded.
+replace('src/Utility.cs',
+        '                StartWarmup();\n                SetMapSides();',
+        '                // Warmup and next-map sides are applied by OnMapStart after the old demo closes.')
+replace('src/MatchZy.cs',
+        '                    if (isWarmup)\n                    {\n                        StartWarmup();',
+        '                    if (isWarmup)\n                    {\n                        SetMapSides();\n                        StartWarmup();')
 demo_text = (root / 'src/DemoManagement.cs').read_text(encoding='utf-8-sig')
 if 'string demoFileName = DemoFileName.Build(' in demo_text:
     replace('src/DemoManagement.cs', '                team2Score) + ".dem";',
@@ -100,9 +114,13 @@ replace_variant('src/DemoManagement.cs', [
         'Log($"[StartDemoRecording] Demo recording started successfully.");',
         'Log($"[StartDemoRecording] Demo recording started{(sourceTvActive ? " successfully" : " (SourceTV missing, demo likely not written)")}.");'],
         'BatagiRecordingStarted();\n                Log("[StartDemoRecording] Recording requested; awaiting file growth verification.");')
-replace('src/DemoManagement.cs',
+# StopDemoRecording is scheduled by HandleMatchEnd after a live map finishes. Mark
+# completion here as well as OnMapEnd: the final map can return to warmup without
+# changing level, and its first close marker must still qualify as completed.
+replace_variant('src/DemoManagement.cs', [
         '            AddTimer(delay, () =>\n            {\n                if (isDemoRecording)',
-        '            AddTimer(delay, () =>\n            {\n                if (this.activeDemoFile != activeDemoFile) return;\n                BatagiCloseMarker(activeDemoFile, "closed");\n                if (isDemoRecording)')
+        '            AddTimer(delay, () =>\n            {\n                if (this.activeDemoFile != activeDemoFile) return;\n                BatagiCloseMarker(activeDemoFile, "closed");\n                if (isDemoRecording)'],
+        '            AddTimer(delay, () =>\n            {\n                if (this.activeDemoFile != activeDemoFile) return;\n                BatagiCloseMarker(activeDemoFile, "map-ended");\n                if (isDemoRecording)')
 for path in (root / 'src').glob('*.cs'):
     if path.name == 'CSBatagi.cs':
         continue

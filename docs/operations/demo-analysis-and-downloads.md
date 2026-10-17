@@ -31,6 +31,48 @@ Use **CS2 analyzer private database** in GitHub Actions: `audit` inspects the ro
 
 ## Website
 
+### Missing final-map recovery (6 October 2026)
+
+Tuscan and Overpass were recorded locally, but archive uploads larger than gcloud's
+composite-upload threshold failed: temporary chunks went under `gcloud/tmp/`, outside
+the VM account's permitted `resurrection/` prefix. The uploader now explicitly sets
+`CLOUDSDK_STORAGE_PARALLEL_COMPOSITE_UPLOAD_ENABLED=False`. Keep this override: normal
+objects also retain the MD5 used for archive verification. Both archives were recovered
+and their local/remote MD5 values verified.
+
+Overpass's final-map recording was marked `closed` by the delayed stop callback,
+so the website's default completed-only filter hid it. `StopDemoRecording` is called
+from `HandleMatchEnd`; the integration patch now writes `map-ended` there, including
+when the final map returns to warmup without a level change. Interrupted/reset markers
+are still preserved. The corrected patch compiled and is staged on the VM for its next
+managed cold startup. The current recording's marker was backed up and corrected only
+after its analyzed match was verified in PostgreSQL (Team darbe won in overtime).
+
+Production `DEMO_AUTO_ANALYZE` was still `false`; Tuscan had already been analyzed,
+and Overpass was explicitly queued during recovery. This incident did not enable
+automatic analysis. For another `closed` recording, verify match completion before
+changing its marker; do not treat every closed or interrupted demo as a completed map.
+
+### Tuscan team-label correction (6 October 2026)
+
+The first map's submitted rosters were correct, and the raw demo confirms Team darbe
+won 13–7. At tick 138057 (the final round end), Titus remains on `TERRORIST` with
+clan name `Team Titus` and score 7; darbe is on `CT` with `Team darbe` and score 13.
+At tick 139017 the clan names swap while the players' sides and scores stay unchanged.
+CS Demo Manager consequently saved reversed team/player labels and the wrong match
+winner. Event-level labels were still correct, as were the first 19 round records.
+
+The upstream next-map callback ran `StartWarmup()` and `SetMapSides()` before the
+previous demo finished flushing. The integration patch now applies these on the
+new level's `OnMapStart` instead. The patch compiled and is staged for the next
+managed startup; the currently running plugin is unchanged.
+
+Tuscan's 14 player labels, two team labels, match winner and final-round team labels
+were corrected in one guarded transaction. Original rows are retained privately in
+the PostgreSQL schema `incident_tuscan_20261006`. Overpass was not changed. Re-analyzing
+the original Tuscan archive will reproduce its late-label problem; retain this
+correction if re-analysis is needed. The raw archive remains untouched.
+
 `/demolar` lists every demo with date (Istanbul time), map, teams, score once analyzed, size, recording state, analysis state and a download button. "Sadece tamamlanan kayıtlar" hides interrupted recordings. Admins additionally see "Analiz et" / "Yeniden analiz et", and for uploaded demos an analysis type selector and "Sil". The page polls every 30 seconds while any demo is queued or analyzing. "Başka sunucudan demo yükle" opens the upload form for any signed-in member.
 
 ## Backend endpoints
