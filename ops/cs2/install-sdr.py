@@ -86,6 +86,9 @@ def install():
         shutil.chown(target, user='root', group='root')
     config = GAME / 'cfg/server.cfg'
     config.write_text(sdr.gate_config(config.read_text()))
+    # Relay mode logs in anonymously. Moving the token line is lossless, so credentials
+    # stay out of the backup; sdr-enabled 0 makes launch.py use the token again.
+    sdr.separate_token()
     flag = ROOT / 'sdr-enabled'
     flag.write_text('1\n')
     flag.chmod(0o644)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Preserve Valve KeyValues while enabling SDR; report only a verified Steam address."""
+import os
 import pathlib
 import re
 
@@ -9,6 +10,10 @@ HERE = pathlib.Path(__file__).resolve().parent
 BOOT = pathlib.Path('/proc/sys/kernel/random/boot_id')
 READY = pathlib.Path('/run/csbatagi/ready')
 TOKEN = re.compile(r'\s+|//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"|[{}]|[^\s{}"]+')
+IDENTITY = re.compile(r'^\s*(?i:steamid)\s*:\s*\[([AG]):1:([1-9]\d{0,9})(?::(\d{1,7}))?\](?=\s|$)', re.M)
+SECRETS_CONFIG = 'csbatagi_secrets.cfg'
+TOKEN_CONFIG = 'csbatagi_steam_token.cfg'
+TOKEN_LINE = re.compile(r'^[ \t]*sv_setsteamaccount\b[^\n]*(?:\n|$)', re.M)
 
 
 def parse(text):
@@ -115,8 +120,12 @@ def prepare():
 
 
 def relay_address(console):
-    match = re.search(r'^\s*steamid\s*:\s*(\[G:1:[1-9]\d{0,9}(?::\d{1,7})?\])(?=\s|$)', console, re.M | re.I)
-    return match[1] if match else None
+    # CS2 clients dial a token login's [G:1:account] as instance 1, but the server is
+    # instance 0, so only anonymous [A:1:account:instance] identities are reachable.
+    match = IDENTITY.search(console)
+    if not match or match[1] != 'A' or match[3] is None:
+        return None
+    return f'[A:1:{match[2]}:{match[3]}]'
 
 
 def validate(command):
@@ -125,10 +134,46 @@ def validate(command):
     output = command('net_p2p_listen_dedicated')
     if not re.search(r'net_p2p_listen_dedicated"?\s*=\s*"?(?:1|true)\b', output, re.I):
         raise RuntimeError('sdr_listener_not_enabled')
-    address = relay_address(command('status'))
+    console = command('status')
+    identity = IDENTITY.search(console)
+    if identity and identity[1] == 'G':
+        raise RuntimeError('sdr_token_login_unreachable')
+    address = relay_address(console)
     if not address:
         raise RuntimeError('sdr_steam_identity_unavailable')
     return {'address': address}
+
+
+def replace_private(path, text, like):
+    partial = path.with_name(path.name + '.tmp')
+    with os.fdopen(os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), 'w') as stream:
+        stream.write(text)
+    stat = like.stat()
+    partial.chmod(stat.st_mode & 0o777)
+    if hasattr(os, 'chown'):
+        os.chown(partial, stat.st_uid, stat.st_gid)
+    partial.replace(path)
+
+
+def separate_token():
+    """Keep the Steam game-server token for rollback, outside the club secrets.
+
+    launch.py executes the token file only when the relay is disabled. Values are
+    never printed. Returns whether a token line was moved."""
+    secrets_path = GAME / 'cfg' / SECRETS_CONFIG
+    token_path = GAME / 'cfg' / TOKEN_CONFIG
+    text = secrets_path.read_text()
+    lines = TOKEN_LINE.findall(text)
+    if not lines:
+        return False
+    if len(lines) != 1:
+        raise RuntimeError('sdr_token_ambiguous')
+    token = lines[0].rstrip('\r\n') + '\n'
+    if token_path.exists() and token_path.read_text() != token:
+        raise RuntimeError('sdr_token_conflict')
+    replace_private(token_path, token, secrets_path)  # First, so an interruption loses nothing.
+    replace_private(secrets_path, TOKEN_LINE.sub('', text), secrets_path)
+    return True
 
 
 def report(command):

@@ -1,6 +1,7 @@
 """SDR persistence and admission checks, without changing the live game or secrets."""
 import importlib.util
 import json
+import os
 import pathlib
 import tempfile
 import types
@@ -75,10 +76,14 @@ class SdrTests(unittest.TestCase):
             path.write_text(VALVE)
             sdr.prepare(); self.assertIn('CreateListenSocketP2P', path.read_text())
 
-    def test_reads_only_game_server_steam_identity(self):
-        self.assertEqual(sdr.relay_address('steamid : [G:1:12345:0] (901234)\n'), '[G:1:12345:0]')
-        self.assertEqual(sdr.relay_address('steamid : [G:1:12345] (901234)\n'), '[G:1:12345]')
-        for console in ['steamid : [U:1:12345]', 'steamid : [G:1:0]', 'player : [G:1:12345]', 'steamid : [G:1:12345];quit']:
+    def test_reports_only_dialable_anonymous_relay_identity(self):
+        status = 'hostname : Club\nsteamid  : [A:1:2392563733:51945] (90295097016164373)\n'
+        self.assertEqual(sdr.relay_address(status), '[A:1:2392563733:51945]')
+        self.assertEqual(sdr.relay_address('STEAMID : [A:1:12345:7]\n'), '[A:1:12345:7]')
+        # A token login's [G:...] is dialed as instance 1 by CS2 clients and never connects.
+        for console in ['steamid : [G:1:12345] (85568392932930573)', 'steamid : [G:1:12345:0]',
+                        'steamid : [A:1:12345]', 'steamid : [a:1:12345:7]', 'steamid : [U:1:12345:1]',
+                        'steamid : [A:1:0:7]', 'player : [A:1:12345:7]', 'steamid : [A:1:12345:7];quit']:
             self.assertIsNone(sdr.relay_address(console))
 
     def test_every_map_applies_the_password_gate_last_without_replacing_operator_config(self):
@@ -90,7 +95,9 @@ class SdrTests(unittest.TestCase):
 
     def test_validation_requires_enabled_listener_and_steam_identity(self):
         with mock.patch.object(sdr, 'enabled', return_value=True):
-            self.assertEqual(sdr.validate(lambda cmd: 'net_p2p_listen_dedicated = true' if cmd != 'status' else 'steamid : [G:1:12345]'), {'address': '[G:1:12345]'})
+            self.assertEqual(sdr.validate(lambda cmd: 'net_p2p_listen_dedicated = true' if cmd != 'status' else 'steamid : [A:1:12345:7]'), {'address': '[A:1:12345:7]'})
+            with self.assertRaisesRegex(RuntimeError, 'token_login_unreachable'):
+                sdr.validate(lambda cmd: 'net_p2p_listen_dedicated = true' if cmd != 'status' else 'steamid : [G:1:12345] (85568392932930573)')
             for value in ['net_p2p_listen_dedicated = false', 'net_p2p_listen_dedicated = false (default 1)', 'Unknown command']:
                 with self.assertRaisesRegex(RuntimeError, 'listener_not_enabled'):
                     sdr.validate(lambda cmd: value)
@@ -104,8 +111,51 @@ class SdrTests(unittest.TestCase):
             self.assertIsNone(sdr.report(mock.Mock()))
             ready.write_text('old-boot'); self.assertIsNone(sdr.report(mock.Mock()))
             validate.assert_not_called()
-            ready.write_text('new-boot'); validate.return_value = {'address': '[G:1:12345]'}
-            self.assertEqual(sdr.report(mock.Mock()), {'address': '[G:1:12345]'})
+            ready.write_text('new-boot'); validate.return_value = {'address': '[A:1:12345:7]'}
+            self.assertEqual(sdr.report(mock.Mock()), {'address': '[A:1:12345:7]'})
+
+    def test_token_moves_out_of_club_secrets_once_and_losslessly(self):
+        game = self.root / 'game'; (game / 'cfg').mkdir(parents=True)
+        secrets = game / 'cfg/csbatagi_secrets.cfg'
+        secrets.write_text('sv_password "club"\nsv_setsteamaccount "TESTTOKEN"\nrcon_password "admin"\n')
+        secrets.chmod(0o640)
+        with mock.patch.object(sdr, 'GAME', game):
+            self.assertTrue(sdr.separate_token())
+            self.assertEqual(secrets.read_text(), 'sv_password "club"\nrcon_password "admin"\n')
+            token = game / 'cfg/csbatagi_steam_token.cfg'
+            self.assertEqual(token.read_text(), 'sv_setsteamaccount "TESTTOKEN"\n')
+            if os.name != 'nt':
+                self.assertEqual(token.stat().st_mode & 0o777, 0o640)
+                self.assertEqual(secrets.stat().st_mode & 0o777, 0o640)
+            self.assertFalse(sdr.separate_token())  # Re-running the installer changes nothing.
+            # An interruption after the token copy is finished by the next run.
+            secrets.write_text('sv_password "club"\nsv_setsteamaccount "TESTTOKEN"\n')
+            self.assertTrue(sdr.separate_token())
+            self.assertEqual(secrets.read_text(), 'sv_password "club"\n')
+            secrets.write_text('sv_setsteamaccount "OTHER"\n')
+            with self.assertRaisesRegex(RuntimeError, 'token_conflict'):
+                sdr.separate_token()
+            secrets.write_text('sv_setsteamaccount "A"\nsv_setsteamaccount "B"\n')
+            with self.assertRaisesRegex(RuntimeError, 'token_ambiguous'):
+                sdr.separate_token()
+
+    def test_launch_uses_the_token_only_without_the_relay(self):
+        launch = load('launch')
+        classic = launch.arguments('cs2', False)
+        relay = launch.arguments('cs2', True)
+        self.assertIn('csbatagi_steam_token.cfg', classic)
+        self.assertNotIn('csbatagi_steam_token.cfg', relay)
+        for args in [classic, relay]:
+            self.assertLess(args.index('csbatagi_secrets.cfg'), args.index('server.cfg'))
+            self.assertEqual(args[-3:], ['csbatagi_startup_gate.cfg', '+map', 'de_dust2'])
+        token = classic.index('csbatagi_steam_token.cfg')
+        self.assertEqual(classic[token - 1], '+exec')
+        self.assertLess(classic.index('csbatagi_secrets.cfg'), token)  # Token applies after the secrets.
+        self.assertEqual(classic[:token - 1] + classic[token + 1:], relay)
+        with mock.patch.object(launch, 'ROOT', self.root):
+            self.assertFalse(launch.relay_enabled())
+            (self.root / 'sdr-enabled').write_text('0\n'); self.assertFalse(launch.relay_enabled())
+            (self.root / 'sdr-enabled').write_text('1\n'); self.assertTrue(launch.relay_enabled())
 
     def test_gate_opens_only_after_current_boot_verification_and_relay_validation(self):
         game = self.root / 'game'; (game / 'cfg').mkdir(parents=True)
@@ -125,7 +175,17 @@ class SdrTests(unittest.TestCase):
             with self.assertRaises(RuntimeError): gate.open_gate()
             self.assertFalse(ready.exists()); command.assert_not_called()
             modules['sdr'].validate.side_effect = None
-            gate.open_gate()
+            ready.parent.mkdir(mode=0o700)
+            original_chmod = pathlib.Path.chmod
+            previous_umask = os.umask(0o027)
+            try:
+                with mock.patch.object(pathlib.Path, 'chmod', autospec=True, side_effect=original_chmod) as chmod:
+                    gate.open_gate()
+                    chmod.assert_any_call(ready.parent, 0o755)
+            finally:
+                os.umask(previous_umask)
+            if os.name != 'nt':
+                self.assertEqual(ready.parent.stat().st_mode & 0o777, 0o755)
             command.assert_called_once_with('sv_password "test-only-club-password"')
             write_gate.assert_called_once_with('test-only-club-password')
             self.assertEqual(ready.read_text(), 'new-boot')

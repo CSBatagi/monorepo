@@ -62,6 +62,9 @@ def open_gate():
     command(f'sv_password "{password}"')  # Response is deliberately never printed.
     write_gate(password)  # Every map executes server.cfg; keep the verified password.
     READY.parent.mkdir(mode=0o755, exist_ok=True)
+    # Systemd's 0027 umask can create this root-owned directory as 0750.
+    # The steam status reporter must be able to read the non-secret marker.
+    READY.parent.chmod(0o755)
     partial = READY.with_suffix('.tmp')
     partial.write_text(boot)
     partial.chmod(0o644)

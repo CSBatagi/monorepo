@@ -3,7 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const STAGES = new Set(['checking', 'updating_game', 'updating_plugins', 'verifying', 'ready', 'failed']);
 const identifier = value => typeof value === 'string' && /^[a-zA-Z0-9_.:-]{1,100}$/.test(value) ? value : null;
-const relayAddress = value => typeof value === 'string' && /^\[G:1:[1-9]\d{0,9}(?::\d{1,7})?\]$/.test(value) ? value : null;
+// CS2 clients can dial only anonymous game-server identities over the Steam relay;
+// a token login's [G:1:account] resolves to the wrong instance.
+const relayAddress = value => typeof value === 'string' && /^\[A:1:[1-9]\d{0,9}:\d{1,7}\]$/.test(value) ? value : null;
 
 function createGameUpdateStatus(directory, now = () => Date.now()) {
   const file = path.join(directory, 'game-update-status.json');

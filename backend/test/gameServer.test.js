@@ -184,10 +184,10 @@ describe('roster member server power controls', () => {
     expect(gcp.getConnectionInfo).not.toHaveBeenCalled();
   });
   test('prefers a fresh verified relay address and retains the discovered direct-IP fallback', async () => {
-    const report = { stage: 'ready', bootId: 'new-boot', updatedAt: Date.now() / 1000, sdr: { address: '[G:1:12345:0]' } };
+    const report = { stage: 'ready', bootId: 'new-boot', updatedAt: Date.now() / 1000, sdr: { address: '[A:1:12345:7]' } };
     await request(app).post('/game-update-status').set('Authorization', `Bearer ${secret}`).send(report).expect(204);
     const response = await request(app).get('/game-status').set(headers()).expect(200);
-    expect(response.body.connection).toEqual({ address: '[G:1:12345:0]', transport: 'sdr', directAddress: '203.0.113.8:27015' });
+    expect(response.body.connection).toEqual({ address: '[A:1:12345:7]', transport: 'sdr', directAddress: '203.0.113.8:27015' });
     rcon.status.mockResolvedValue({ serverReady: false });
     const unready = await request(app).get('/game-status').set(headers()).expect(200);
     expect(unready.body.connection).toEqual({ address: '203.0.113.8:27015' });
