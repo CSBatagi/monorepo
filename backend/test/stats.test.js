@@ -5,6 +5,8 @@
 */
 
 const request = require('supertest');
+// Stats publication does not call cloud APIs; keep these tests independent of local credentials.
+jest.mock('../gcp', () => jest.fn().mockImplementation(() => ({})));
 
 describe('GET /stats/incremental (integration light)', () => {
   let app;
