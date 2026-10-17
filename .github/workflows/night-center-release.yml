@@ -37,6 +37,9 @@ jobs:
       - name: Validate duel generation and stats publication
         if: matrix.service == 'backend'
         working-directory: backend
+        env:
+          VM_NAME: stats-test-vm
+          GCP_ZONE: stats-test-zone
         run: |
           npm ci
           npm test -- --runTestsByPath test/matchDuels.test.js test/stats.test.js
