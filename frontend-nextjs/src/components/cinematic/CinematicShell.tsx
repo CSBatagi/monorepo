@@ -13,6 +13,9 @@ import { ARCHIVE_HREF, findArchivedFormat } from '@/lib/archivedFormats';
 import CinematicScene from './CinematicScene';
 import { chapters } from './chapters';
 
+// Cinematic chapters keep their own order independently of the club sidebar.
+const cinematicNavigation = chapters.map(chapter => navigation.find(group => group.label === chapter.label.toLocaleUpperCase('tr'))!);
+
 export default function CinematicShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { setDesign } = useTheme();
@@ -27,8 +30,8 @@ export default function CinematicShell({ children }: { children: ReactNode }) {
   // Archived format pages belong to Rekabet, under the Arşiv link.
   const archived = findArchivedFormat(pathname);
   const activePath = archived ? ARCHIVE_HREF : pathname;
-  const groupIndex = navigation.findIndex(group => group.links.some(link => link.href === activePath));
-  const group = navigation[Math.max(0, groupIndex)];
+  const groupIndex = cinematicNavigation.findIndex(group => group.links.some(link => link.href === activePath));
+  const group = cinematicNavigation[Math.max(0, groupIndex)];
   const currentLabel = archived?.label || group.links.find(link => link.href === pathname)?.label || (pathname === '/login' ? 'Giriş yap' : 'Hesabım');
 
   useEffect(() => {
@@ -102,7 +105,7 @@ export default function CinematicShell({ children }: { children: ReactNode }) {
 
     <dialog ref={menu} className="cinema-menu">
       <div className="cinema-menu-heading"><span>CS BATAĞI / TÜM SAYFALAR</span><button autoFocus onClick={() => menu.current?.close()} aria-label="Menüyü kapat"><X size={26} /></button></div>
-      <nav aria-label="Tüm sayfalar">{navigation.map((group, i) => <div key={group.label}><p>0{i + 1} / {group.label}</p>{group.links.map(link => <Link prefetch={false} href={link.href} key={link.href} onClick={() => menu.current?.close()} aria-current={pathname === link.href ? 'page' : undefined}>{link.label}<ArrowUpRight size={16} /></Link>)}</div>)}</nav>
+      <nav aria-label="Tüm sayfalar">{cinematicNavigation.map((group, i) => <div key={group.label}><p>0{i + 1} / {group.label}</p>{group.links.map(link => <Link prefetch={false} href={link.href} key={link.href} onClick={() => menu.current?.close()} aria-current={pathname === link.href ? 'page' : undefined}>{link.label}<ArrowUpRight size={16} /></Link>)}</div>)}</nav>
       <div className="cinema-menu-designs"><button onClick={() => setDesign('modern')}>Kulüp tasarımı ↗</button><button onClick={() => setDesign('classic')}>Klasik arayüz ↗</button></div>
     </dialog>
 

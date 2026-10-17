@@ -19,18 +19,18 @@ export const navigation = [
     { href: "/teamspeak", label: "TeamSpeak", icon: Headphones },
     { href: "/ekipman", label: "Ekipman", icon: Crosshair },
   ] },
+  { label: "MAÇ MERKEZİ", links: [
+    { href: "/gece-ortalama", label: "Gece & Maçlar", icon: Moon },
+    { href: "/mac-videolari", label: "Maç Videoları", icon: Film },
+    { href: "/demolar", label: "Demolar", icon: Download },
+  ] },
   { label: "REKABET", links: [
     { href: "/mundial", label: "Batak Mundial", icon: Globe2 },
     { href: "/gecenin-mvpsi", label: "Gecenin MVP’si", icon: Crown },
     { href: ARCHIVE_HREF, label: "Arşiv", icon: Archive },
   ] },
-  { label: "MAÇ MERKEZİ", links: [
-    { href: "/gece-ortalama", label: "Gece & Maçlar", icon: Moon },
-    { href: "/mac-sonuclari", label: "Maç Sonuçları", icon: Flag },
-    { href: "/mac-videolari", label: "Maç Videoları", icon: Film },
-    { href: "/demolar", label: "Demolar", icon: Download },
-  ] },
   { label: "İSTATİSTİK", links: [
+    { href: "/mac-sonuclari", label: "Maç Sonuçları", icon: Flag },
     { href: "/oyuncular", label: "Oyuncular", icon: Users },
     { href: "/season-avg", label: "Sezon Ortalaması", icon: BarChart3 },
     { href: "/last10", label: "Son 10 Maç", icon: ListOrdered },
