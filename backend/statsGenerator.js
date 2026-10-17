@@ -802,8 +802,8 @@ async function generateAll(pool, opts={}){
   // Batch 2: rounds + duello
   const [roundRows, dLastRows, duelRows] = await Promise.all([
     safeQG(qset.sonmacRounds, 'sonmac_rounds'),
-    safeQG(qset.matchDuels, 'match_duels'),
     safeQG(qset.duello_son_mac, 'duello_son_mac'),
+    safeQG(qset.matchDuels, 'match_duels'),
   ]);
   // Batch 3: remaining datasets
   const [dSeasonRows, perfRows, mapStatsRows, playerRatingRows] = await Promise.all([

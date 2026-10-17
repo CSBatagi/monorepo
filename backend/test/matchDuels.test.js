@@ -1,5 +1,25 @@
 const { generateHistoricalDateKeyedAllTime } = require('../statsGenerator');
 
+test('current-season publication keeps map counts and legacy night counts in their own datasets', async () => {
+  const { generateAll } = require('../statsGenerator');
+  const duel = { playerrowsteamid: '101', playercolumnsteamid: '102', playerrow: 'Alice', playercolumn: 'Bob', killdeathratio: '8/4' };
+  const pool = { query: jest.fn(async sql => {
+    if (sql.includes('COUNT(*) AS kills FROM kills k')) return { rows: [{ match_checksum: 'first', killer_steam_id: '101', victim_steam_id: '102', kills: '8' }] };
+    if (sql.includes('AS PlayerRowSteamId')) return { rows: [duel] };
+    if (sql.includes('teams.name AS team_name')) return { rows: [
+      { match_date: '2026-10-16', map_name: 'de_mirage', match_checksum: 'first', steam_id: '101', name: 'Alice', team_name: 'A' },
+      { match_date: '2026-10-16', map_name: 'de_mirage', match_checksum: 'first', steam_id: '102', name: 'Bob', team_name: 'B' },
+    ] };
+    return { rows: [] };
+  }) };
+  const stats = await generateAll(pool, { seasonStart: '2026-04-06', seasonStarts: ['2026-04-06'] });
+  expect(stats.sonmac_by_date['2026-10-16'].maps.de_mirage.duels.kills).toEqual({ '101': { '102': 8 } });
+  expect(stats.duello_son_mac.playerRows).toEqual(['Alice', 'Bob']);
+  expect(stats.duello_son_mac.duels.Alice.Bob).toEqual({ kills: 8, deaths: 4 });
+  expect(stats.duello_sezon.duels.Alice.Bob).toEqual({ kills: 8, deaths: 4 });
+  expect(stats.__errors).toBeUndefined();
+});
+
 test('keeps replayed maps, rosters, scores, rounds and directed kills separate', async () => {
   const player = (match_checksum, steam_id, name, team_name, team_score) => ({
     match_date: '2026-10-16', map_name: 'de_mirage', match_checksum, steam_id, name, team_name, team_score,
