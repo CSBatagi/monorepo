@@ -1,0 +1,79 @@
+name: Release night center
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: night-center-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [backend, frontend-nextjs]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v2
+      - uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build immutable ARM image on CI
+        uses: docker/build-push-action@v4
+        with:
+          context: ./${{ matrix.service }}
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ghcr.io/csbatagi/monorepo/${{ matrix.service }}:night-center-${{ github.sha }}
+            ghcr.io/csbatagi/monorepo/${{ matrix.service }}:latest
+          labels: org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+      - name: Configure private deployment access
+        env:
+          DEPLOY_HOST: ${{ secrets.PI_HOST }}
+          DEPLOY_USER: ${{ secrets.PI_USER || 'clawd' }}
+          DEPLOY_KEY: ${{ secrets.PI_HOST_SSH_PK }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib
+          folder = pathlib.Path.home() / '.ssh'
+          folder.mkdir(mode=0o700, exist_ok=True)
+          key = folder / 'release-key'
+          key.write_text(os.environ['DEPLOY_KEY'].replace('\r\n', '\n').strip() + '\n')
+          key.chmod(0o600)
+          (folder / 'config').write_text('Host release-target\n  HostName ' + os.environ['DEPLOY_HOST'] + '\n  User ' + os.environ['DEPLOY_USER'] + '\n  IdentityFile ' + str(key) + '\n  StrictHostKeyChecking accept-new\n  BatchMode yes\n  ConnectTimeout 15\n')
+          PY
+      - name: Stage reviewed release and verification helpers
+        run: |
+          ssh release-target 'umask 077; mkdir -p /srv/csbatagi/.night-center-release'
+          scp ops/stats/deploy-night-center.py ops/stats/verify-night-duels.cjs release-target:/srv/csbatagi/.night-center-release/
+      - name: Authenticate registry pull
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$REGISTRY_TOKEN" | ssh release-target 'docker login ghcr.io -u ${{ github.actor }} --password-stdin'
+      - name: Deploy website, verify source counts and snapshot, roll back on failure
+        run: ssh release-target 'python3 /srv/csbatagi/.night-center-release/deploy-night-center.py ${{ github.sha }}'

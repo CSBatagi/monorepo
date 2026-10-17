@@ -59,11 +59,11 @@ The recap shows up to three positive and three negative performances using the e
 
 `HorizontalTableScroll.tsx` wraps the nightly averages, both team tables and the round history. Desktop mouse users can drag the table body, use larger native scrollbars above and below it, or step sideways with the arrow buttons. The controls use muted neutral theme colors without a visible instruction label. The top and bottom bars share the same scroll range. Sorting controls retain normal clicks, both scroll regions support keyboard navigation, and touch/pen gestures retain native scrolling. Desktop controls are hidden on small screens and coarse pointers. A ResizeObserver tracks overflow without polling or a new dependency.
 
-## Production rollout — 2026-09-13
-
-### Night and map duels
+## Night and map duels
 
 Gece & Maçlar now has a third **Düello** view beside Gece Ortalaması and Maç Detayları. A dedicated view keeps the full matrix discoverable without nesting another analysis tab inside each existing view. **Gece Toplamı** sums the selected night's matches; map buttons show the individual match, score and matrix. `harita` preserves the selected map when switching between match details and duels, and URLs/back/forward retain that selection. Changing the date or season clears the map selection. The matrix uses readable kill/death pairs, a sticky player column, semantic colors, horizontal scrolling and an optional player focus. `/duello` now contains only current-season totals and a prominent link to the combined page; navigation calls it **Sezon Düelloları**.
+
+## Production rollout — 2026-09-13
 
 The retained club design, shared night recap, personal equipment dashboard, and roster-member server controls were deployed together with `ops/cs2/deploy-cosmetics-web.py`. The locally built Next.js artifact was layered over the existing production image; no build ran on the 1 GB VM. Backend and frontend image tags are `csbatagi-cosmetics-backend:20260913t165500z` and `csbatagi-cosmetics-frontend-nextjs:20260913t165500z`. Active pins are in `/home/runner/docker-compose.cosmetics.yml`; rollback configuration is `/home/runner/cosmetics-web-backup-20260913t165500z/rollback.yml`.
 
