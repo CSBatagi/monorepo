@@ -190,4 +190,4 @@ sudo -u steam -H csdm analyze /home/steam/cs2/game/csgo/demos/<file>.dem --sourc
 
 The current worker reports a missing link as "the backend sent no signed download link" instead; that one points to the backend log line `[demos] worker link failed`.
 
-The worker never deletes demos. Disk retention on the game VM remains a manual decision (see the [runbook](../../ops/cs2/README.md)). Demos that are neither on the game VM nor in the bucket cannot be analyzed and the admin button is disabled for them.
+The worker never deletes demos. Game-VM retention is a manual step with a fixed rule ([runbook: Disk retention](../../ops/cs2/README.md#disk-retention)): a local demo may be removed once its bucket copy's MD5 matches and its match is in the database. The website row and download stay; re-analysis restores the file from the archive into `csbatagi-state/analysis-downloads/`, which also needs clearing after analysis. Demos that are neither on the game VM nor in the bucket cannot be analyzed and the admin button is disabled for them.

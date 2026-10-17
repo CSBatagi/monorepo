@@ -75,14 +75,18 @@ def run_once(db):
                 '/snap/bin/gcloud', 'storage', 'cp', str(path), f'gs://{BUCKET}/{object_name}',
                 '--if-generation-match=0', '--storage-class=STANDARD', '--quiet'],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1200,
-                env={**os.environ, 'CLOUDSDK_CONFIG': '/home/steam/csbatagi-gcloud'})
+                # Composite uploads use gcloud/tmp/ outside our allowed resurrection/ prefix,
+                # and composite objects have no MD5 for the verification below.
+                env={**os.environ, 'CLOUDSDK_CONFIG': '/home/steam/csbatagi-gcloud',
+                     'CLOUDSDK_STORAGE_PARALLEL_COMPOSITE_UPLOAD_ENABLED': 'False'})
             if remote_md5(object_name) != checksum:
                 raise RuntimeError('remote checksum mismatch')
             db.execute('UPDATE uploads SET state=?,md5=?,object=?,error=NULL WHERE name=?', ('verified', checksum, object_name, path.name))
             print('Verified archive:', path.name, size, flush=True)
         except Exception as error:
-            db.execute('UPDATE uploads SET state=?,error=? WHERE name=?', ('pending', type(error).__name__, path.name))
-            print('Archive pending:', path.name, type(error).__name__, flush=True)
+            detail = type(error).__name__ + (f' HTTP {error.code}' if hasattr(error, 'code') else '')
+            db.execute('UPDATE uploads SET state=?,error=? WHERE name=?', ('pending', detail, path.name))
+            print('Archive pending:', path.name, detail, flush=True)
         db.commit()
     rows = [dict(zip(('name', 'state', 'size', 'object', 'error'), row)) for row in db.execute('SELECT name,state,size,object,error FROM uploads ORDER BY rowid DESC')]
     verified = {row['name'] for row in rows if row['state'] == 'verified'}

@@ -86,6 +86,32 @@ If recording stalls, keep players paused, diagnose disk/CSTV, and use `csbatagi_
 
 Normal single-map completion resets to warmup. The bot simulation can remove CSTV at match end; the integration reloads the map after closing the demo if CSTV is missing. Do not interrupt an active recording with a plugin reload or map change. `css_endmatch` is a destructive match reset intended for admins.
 
+### Disk retention
+
+A map records about 0.3–0.6 GB, so check `df -h /` before a game night: recording needs 4 GiB free plus room for every planned map. Nothing deletes files automatically. Clean up only while `csbatagi_status` shows no match loaded, live, preparing or recording, no humans, and `uploads.pending` 0.
+
+**Local demos: delete as soon as they are analyzed.** A `demos/*.dem` file may be removed when all of these hold:
+
+- its `.closed.json` state is `map-ended`;
+- `uploads.sqlite` says `verified`, and the bucket object `resurrection/<name>`, re-read at deletion time, has the same size and MD5 as the local file;
+- CS Demo Manager's `matches` table has a row whose `demo_path` ends in the file name. The CLI settings in `/home/steam/.config/csdm/settings.json` reach the database.
+
+Keep the small `.closed.json` markers. The website row stays (`on_game_server` turns false), downloads keep working from the bucket, and re-analysis restores the file from the archive. Auto-queueing only considers demos that are still on the VM, which is why analysis must come first. Keep anything that fails a check (interrupted/reset recordings, unanalyzed non-website matches) until an admin decides. The 13 September 2026 test recordings (about 67 MB) are listed as verified in `uploads.sqlite`, but on 17 October 2026 they were no longer in the bucket (no soft delete or versioning), so the local files are the only copies.
+
+`csbatagi-state/analysis-downloads/` holds demos the worker restored or fetched for analysis, and the worker never clears it. Delete a file there once it is analyzed and its bucket copy matches. `uploads/` objects are only readable from a workstation, not by this VM's account.
+
+**Workshop maps.** `host_workshop_map` caches every map it ever loaded in `game/bin/linuxsteamrt64/steamapps/workshop/content/730/<id>/`, and records it in `appworkshop_730.acf` (both `WorkshopItemsInstalled` and `WorkshopItemDetails`). To drop an item that is not in `frontend-nextjs/public/data/maps.json`:
+
+1. Stop `cs2` while it is idle. The running server keeps the manifest in memory and writes the removed entries back.
+2. Back up the `.acf`.
+3. Remove both blocks for the ID, and set `SizeOnDisk` to the sum of the remaining `size` values.
+4. Delete the folder.
+5. Start `cs2`.
+
+Do not touch `game/csgo_community_addons/`, which is Valve's official map content.
+
+On 17 October 2026 this removed 20 non-catalog Workshop items (10.7 GiB; manifest backup `/home/steam/csbatagi-backups/appworkshop_730.acf.before-cleanup-20261017`), ten analyzed match demos from 6–16 October (3.8 GiB) and four analyzed xplay demos from the analysis cache (1.1 GiB). Free space went from 5.2 GB to 21 GB. The unanalyzed 13 October Train demo and the September test recordings stayed. The systemd journal has no size cap (4.1 GB that day) and was left alone.
+
 ## Automatic analysis
 
 `csbatagi-analyzer.service` runs [`demo-analyzer.py`](demo-analyzer.py) as `steam`. It reports the local demo inventory to the backend every minute, and when the backend hands back jobs and no match is live, it runs `csdm analyze <file> --source matchzy` (the CS Demo Manager CLI, pinned to the desktop app's version) under `nice`/`ionice`. Demos members uploaded from other servers arrive with a signed download link, the match time (set as the file's mtime, which CS Demo Manager uses as the match date) and their own `--source` (MatchZy by default; `auto` omits the flag). The backend queues finished website matches automatically and verifies every result against the CS Demo Manager tables. "Analiz et" on the website starts this VM when it is off and the backend stops it again after 15 idle minutes with nobody on it; a VM opened with "Server Aç" is never closed that way. Worker updates are installed by the [Demo analysis setup](../../.github/workflows/demo-analysis-setup.yml) workflow ([`analyzer-maintenance.sh`](analyzer-maintenance.sh) does the on-VM part). First install with [`install-analyzer.sh`](install-analyzer.sh); the database credentials live only in `/home/steam/.config/csdm/settings.json` (mode 600). Details: [demo analysis and downloads](../../docs/operations/demo-analysis-and-downloads.md).
