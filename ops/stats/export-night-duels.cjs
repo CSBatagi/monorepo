@@ -14,6 +14,7 @@ async function main() {
   try {
     const config = resolveSeasonConfig();
     const result = await generateHistoricalDateKeyedAllTime(pool, config);
+    fs.writeFileSync(path.join(__dirname, 'night_avg_all.json'), JSON.stringify(result.night_avg_all));
     const nights = result.sonmac_by_date_all;
     const maps = Object.values(nights).flatMap(night => Object.values(night.maps));
     if (!maps.length || maps.some(map => !map.match_checksum || !map.duels?.players.length)) throw new Error('Incomplete match duel export');

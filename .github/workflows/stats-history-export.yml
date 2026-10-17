@@ -47,10 +47,12 @@ jobs:
           docker cp "$stage/." "$container:/app/.history-export-${{ github.run_id }}"
           docker exec -e PLAYERS_FILE=/app/config/players.json "$container" node /app/.history-export-${{ github.run_id }}/export-night-duels.cjs
           docker cp "$container:/app/.history-export-${{ github.run_id }}/sonmac_by_date_all.json" "$stage/sonmac_by_date_all.json"
+          docker cp "$container:/app/.history-export-${{ github.run_id }}/night_avg_all.json" "$stage/night_avg_all.json"
           docker cp "$container:/app/.history-export-${{ github.run_id }}/duel-source-audit.json" "$stage/duel-source-audit.json"
           SH
           mkdir -p exported-history
           scp history-target:$stage/sonmac_by_date_all.json exported-history/
+          scp history-target:$stage/night_avg_all.json exported-history/
           scp history-target:$stage/duel-source-audit.json exported-history/
       - uses: actions/upload-artifact@v4
         with:
