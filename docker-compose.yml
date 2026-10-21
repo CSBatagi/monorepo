@@ -265,8 +265,7 @@ services:
       - CADDY_INGRESS_NETWORKS=db2
     
   teamspeak:
-    image: teamspeak:latest
-    platform: linux/amd64  # No native arm64 image; runs via QEMU emulation
+    image: teamspeaksystems/teamspeak6-server:latest
     container_name: teamspeak-server
     restart: unless-stopped
     logging:
@@ -276,15 +275,18 @@ services:
         max-file: "3"
     ports:
       - "9987:9987/udp"   # Voice (required)
-      - "127.0.0.1:10011:10011" # ServerQuery: operator access only; backend uses db2
       - "30033:30033"     # File transfer (optional)
+      - "127.0.0.1:10080:10080" # Web Query API (localhost only)
+      - "127.0.0.1:10022:10022" # SSH Query (localhost only)
     environment:
-      - TS3SERVER_LICENSE=accept
+      - TSSERVER_LICENSE_ACCEPTED=accept
+      - TSSERVER_QUERY_HTTP_ENABLED=1
+      - TSSERVER_QUERY_SSH_ENABLED=1
     env_file:
-      - path: .teamspeak_server_secrets
-        required: false
+      - path: .teamspeak6_server_secrets
+        required: true
     volumes:
-      - ./teamspeak/data:/var/ts3server
+      - ./teamspeak6/data:/var/tsserver
     networks:
       - db2
 
