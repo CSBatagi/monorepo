@@ -20,8 +20,9 @@ def main():
     allowlist = root / '.csbatagi-teamspeak-ops' / 'query-ip-allowlist.txt'
     allowlist.write_text('127.0.0.1\n::1\n' + network['IPAddress'] + '\n' + network['Gateway'] + '\n')
     allowlist.chmod(0o644)  # IPs are not credentials; the native UID must read them.
+    target_dir = '/var/tsserver/' if subprocess.run(['docker', 'exec', 'teamspeak-server', 'test', '-d', '/var/tsserver'], capture_output=True).returncode == 0 else '/var/ts3server/'
     for name in ['query_ip_allowlist.txt', 'query_ip_whitelist.txt']:
-        subprocess.run(['docker', 'cp', str(allowlist), 'teamspeak-server:/var/ts3server/' + name], capture_output=True, text=True, check=True)
+        subprocess.run(['docker', 'cp', str(allowlist), f'teamspeak-server:{target_dir}' + name], capture_output=True, text=True, check=True)
     print(json.dumps({'query_allowlist_updated_for_current_private_ips': True, 'teamspeak_restarted': False}), flush=True)
     if sys.argv[1:] == ['--allowlist-only']:
         return  # Normal CI never reads the bootstrap credential or changes roles.
