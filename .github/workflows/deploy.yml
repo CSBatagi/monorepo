@@ -116,6 +116,9 @@ jobs:
 
       - name: Update and start containers
         run: |
+          # Always authenticate to ghcr.io so images with pull_policy: always can be fetched/verified
+          ssh deploy-target "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin"
+
           SERVICES_TO_UPDATE=""
           if [[ "${{ steps.changes.outputs.backend }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE backend"
@@ -125,10 +128,10 @@ jobs:
           fi
           if [[ "${{ steps.changes.outputs.docker-compose }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             # If docker-compose changed, restart all services
-            ssh deploy-target "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && docker compose -f /srv/csbatagi/docker-compose.yml pull && docker compose -f /srv/csbatagi/docker-compose.yml up -d"
+            ssh deploy-target "docker compose -f /srv/csbatagi/docker-compose.yml pull && docker compose -f /srv/csbatagi/docker-compose.yml up -d"
           elif [[ -n "$SERVICES_TO_UPDATE" ]]; then
             # Only update specific services
-            ssh deploy-target "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && docker compose -f /srv/csbatagi/docker-compose.yml pull $SERVICES_TO_UPDATE && docker compose -f /srv/csbatagi/docker-compose.yml up -d $SERVICES_TO_UPDATE"
+            ssh deploy-target "docker compose -f /srv/csbatagi/docker-compose.yml pull $SERVICES_TO_UPDATE && docker compose -f /srv/csbatagi/docker-compose.yml up -d $SERVICES_TO_UPDATE"
           else
             ssh deploy-target "docker compose -f /srv/csbatagi/docker-compose.yml up -d"
           fi
