@@ -25,6 +25,7 @@ Use this folder as the canonical context source.
 - Demo analysis worker, member downloads and uploads from other servers: [`operations/demo-analysis-and-downloads.md`](operations/demo-analysis-and-downloads.md)
 - Scripted CS Demo Manager recording and the demo-to-YouTube render plan: [`operations/demo-video-pipeline-plan.md`](operations/demo-video-pipeline-plan.md)
 - Security and secrets handling: [`operations/security-secrets.md`](operations/security-secrets.md)
+- Automated daily snapshots and GCS disaster recovery: [`operations/snapshots-backup.md`](operations/snapshots-backup.md)
 - Steam avatar integration: [`features/steam-integration.md`](features/steam-integration.md)
 - Steam website login and migration: [`features/steam-login.md`](features/steam-login.md)
 - TeamSpeak one-click joining and Steam membership: [`features/teamspeak.md`](features/teamspeak.md)

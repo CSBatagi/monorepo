@@ -1,0 +1,18 @@
+[Unit]
+Description=csbatagi regular snapshot backup to GCS
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=clawd
+Group=clawd
+WorkingDirectory=/srv/csbatagi
+ExecStart=/srv/csbatagi/ops/backup/backup-to-gcs.sh
+StandardOutput=journal
+StandardError=journal
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target
