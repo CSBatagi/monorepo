@@ -1,0 +1,42 @@
+name: Snapshot Backup to GCS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: csbatagi-snapshot-backup
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PI_HOST_SSH_PK }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          cat >> ~/.ssh/config << 'EOF'
+          Host deploy-target
+            HostName ${{ secrets.PI_HOST }}
+            User ${{ secrets.PI_USER || 'clawd' }}
+            IdentityFile ~/.ssh/deploy_key
+            StrictHostKeyChecking accept-new
+          EOF
+
+      - name: Deploy and execute snapshot backup
+        run: |
+          ssh deploy-target "mkdir -p /srv/csbatagi/ops/backup"
+          scp ops/backup/backup-to-gcs.sh deploy-target:/srv/csbatagi/ops/backup/backup-to-gcs.sh
+          ssh deploy-target "chmod +x /srv/csbatagi/ops/backup/backup-to-gcs.sh"
+          ssh deploy-target "/srv/csbatagi/ops/backup/backup-to-gcs.sh"

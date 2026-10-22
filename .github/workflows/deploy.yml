@@ -177,6 +177,14 @@ jobs:
         run: |
           ssh deploy-target "docker image prune -af --filter 'until=48h'"
 
+      - name: Deploy automated snapshot backup systemd timer and script
+        run: |
+          ssh deploy-target "mkdir -p /srv/csbatagi/ops/backup"
+          scp ops/backup/backup-to-gcs.sh deploy-target:/srv/csbatagi/ops/backup/backup-to-gcs.sh
+          ssh deploy-target "chmod +x /srv/csbatagi/ops/backup/backup-to-gcs.sh"
+          scp ops/backup/csbatagi-backup.service ops/backup/csbatagi-backup.timer deploy-target:/tmp/
+          ssh deploy-target "sudo mv /tmp/csbatagi-backup.service /tmp/csbatagi-backup.timer /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now csbatagi-backup.timer"
+
       - name: Run database migrations if changed
         if: steps.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
         run: |
