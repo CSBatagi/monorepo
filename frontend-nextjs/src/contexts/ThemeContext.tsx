@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 type Theme = "light" | "dark";
-type Design = "modern" | "classic" | "cinematic";
+type Design = "modern" | "boomer" | "cinematic";
 const clubVersion = "warm-graphite";
 interface ThemeContextType {
   theme: Theme;
@@ -16,7 +16,14 @@ const ThemeContext = createContext<ThemeContextType>({
   theme: "dark", toggleTheme: () => {}, isDark: true, design: "modern", setDesign: () => {},
 });
 export function useTheme() { return useContext(ThemeContext); }
-const themeKey = (design: Design) => design === "classic" ? "cs-batagi-theme" : design === "cinematic" ? "cs-batagi-cinematic-theme" : "cs-batagi-modern-theme";
+const themeKey = (design: Design) => design === "boomer" ? "cs-batagi-boomer-theme" : design === "cinematic" ? "cs-batagi-cinematic-theme" : "cs-batagi-modern-theme";
+// Boomer Edition reuses the club styling (data-design="modern") with its own shell and home.
+const cssDesign = (design: Design) => design === "boomer" ? "modern" : design;
+function parseDesign(value: string | null): Design {
+  // The original classic design was retired; its fans land on the Boomer Edition.
+  if (value === "boomer" || value === "classic") return "boomer";
+  return value === "cinematic" ? "cinematic" : "modern";
+}
 function readTheme(design: Design): Theme {
   if (design === "cinematic") return "dark";
   try {
@@ -36,7 +43,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       let saved: string | null = null;
       try { saved = localStorage.getItem("cs-batagi-design"); } catch {}
       const value = requested || saved;
-      chosen = value === "classic" || value === "cinematic" ? value : "modern";
+      chosen = parseDesign(value);
     } catch {}
     updateDesign(chosen);
     setTheme(readTheme(chosen));
@@ -44,7 +51,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
   useEffect(() => {
     if (!mounted) return;
-    document.documentElement.dataset.design = design;
+    document.documentElement.dataset.design = cssDesign(design);
+    document.documentElement.dataset.edition = design === "boomer" ? "boomer" : "";
     document.documentElement.dataset.clubVersion = clubVersion;
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.body.classList.toggle("dark-theme", theme === "dark");

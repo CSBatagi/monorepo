@@ -17,6 +17,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 function LoginPageInner() {
   const { isDark, design } = useTheme();
+  const club = design !== "cinematic";
   const params = useSearchParams();
   const nextParam = params.get("next") || "/";
   const errorCode = params.get("error");
@@ -28,19 +29,19 @@ function LoginPageInner() {
   };
 
   return (
-    <div className={`${design === "modern" ? "club-login" : design === "cinematic" ? "cinema-login-page" : ""} min-h-screen flex items-center justify-center p-6 ${isDark ? 'bg-dark-bg' : 'bg-gray-50'}`}>
-      {design === 'modern' && <div className="club-login-story">
+    <div className={`${club ? "club-login" : "cinema-login-page"} min-h-screen flex items-center justify-center p-6 ${isDark ? 'bg-dark-bg' : 'bg-gray-50'}`}>
+      {club && <div className="club-login-story">
         <div className="club-brand"><Image src="/images/BatakLogo192.png" width={44} height={44} alt="" /><span>CS BATAĞI<small>COUNTER-STRIKE KULÜBÜ</small></span></div>
         <h2>Aynı ekip.<br />Yeni bir <span>gece.</span></h2>
         <p>Katılımını bildir, takımını kur, maçlarını takip et. Ekibin burada.</p>
         <small>COUNTER-STRIKE 2 / CS BATAĞI</small>
       </div>}
-      <div className={`${design === "modern" ? "club-login-form" : ""} w-full max-w-md rounded-xl shadow-md p-6 ${isDark ? 'bg-dark-surface border border-dark-border' : 'bg-white'}`}>
+      <div className={`${club ? "club-login-form" : ""} w-full max-w-md rounded-xl shadow-md p-6 ${isDark ? 'bg-dark-surface border border-dark-border' : 'bg-white'}`}>
         <h1 className={`text-2xl font-semibold text-center mb-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
-          {design === "modern" ? "Kulübe hoş geldin." : "CS Batagi - Giris"}
+          {club ? "Kulübe hoş geldin." : "CS Batağı · Giriş"}
         </h1>
         <p className={`text-center text-sm mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          {design === "modern" ? "Devam etmek için Steam hesabınla giriş yap." : "Giris yapinca tum sayfalara erisebileceksiniz."}
+          Devam etmek için Steam hesabınla giriş yap.
         </p>
 
         {errorMessage && (
@@ -66,7 +67,7 @@ function LoginPageInner() {
         </p>
 
         <p className={`text-xs text-center mt-6 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-          {design === "modern" ? "Katılım · Takım seçimi · Maç istatistikleri" : `Giristen sonra yonlendirileceginiz yer: ${nextParam}`}
+          Katılım · Takım seçimi · Maç istatistikleri
         </p>
       </div>
     </div>

@@ -28,35 +28,43 @@ let h = app();
 assert.equal(h.render().design, 'modern'); assert.equal(h.render().theme, 'dark');
 assert.equal(h.document.documentElement.dataset.design, 'modern');
 assert(h.document.body.classList.values.has('dark-theme'));
-h = app({ 'cs-batagi-theme': 'light', 'cs-batagi-modern-theme': 'dark' });
-h.render().setDesign('classic'); assert.equal(h.render().theme, 'light');
-assert.equal(h.storage.get('cs-batagi-design'), 'classic');
+h = app({ 'cs-batagi-boomer-theme': 'light', 'cs-batagi-modern-theme': 'dark' });
+h.render().setDesign('boomer'); assert.equal(h.render().theme, 'light');
+assert.equal(h.storage.get('cs-batagi-design'), 'boomer');
+// Boomer Edition reuses the club styling under its own edition flag.
+assert.equal(h.document.documentElement.dataset.design, 'modern');
+assert.equal(h.document.documentElement.dataset.edition, 'boomer');
 h.render().toggleTheme(); assert.equal(h.render().theme, 'dark');
 h.render().setDesign('modern'); assert.equal(h.render().theme, 'dark');
+assert.equal(h.document.documentElement.dataset.edition, '');
 h.render().toggleTheme(); assert.equal(h.render().theme, 'light');
-h.render().setDesign('classic'); assert.equal(h.render().theme, 'dark');
+h.render().setDesign('boomer'); assert.equal(h.render().theme, 'dark');
 assert.equal(h.storage.get('cs-batagi-modern-theme'), 'light');
-h = app({ 'cs-batagi-design': 'classic' }); assert.equal(h.render().design, 'classic');
-h = app({ 'cs-batagi-design': 'modern' }, '?ui=classic'); assert.equal(h.render().design, 'classic');
+h = app({ 'cs-batagi-design': 'boomer' }); assert.equal(h.render().design, 'boomer');
+// The retired classic design migrates to the Boomer Edition, saved or linked.
+h = app({ 'cs-batagi-design': 'classic', 'cs-batagi-theme': 'dark' }); assert.equal(h.render().design, 'boomer');
+assert.equal(h.render().theme, 'light'); assert.equal(h.storage.get('cs-batagi-design'), 'boomer');
+h = app({ 'cs-batagi-design': 'modern' }, '?ui=classic'); assert.equal(h.render().design, 'boomer');
+h = app({ 'cs-batagi-design': 'modern' }, '?ui=boomer'); assert.equal(h.render().design, 'boomer');
 h.render().setDesign('modern'); h.render(); assert.equal(new URL(h.window.location.href).searchParams.get('ui'), 'modern');
-h = app({}, '', true); h.render().setDesign('classic'); assert.equal(h.render().design, 'classic');
+h = app({}, '', true); h.render().setDesign('boomer'); assert.equal(h.render().design, 'boomer');
 h.render().toggleTheme(); assert.equal(h.render().theme, 'dark');
-console.log('Interface checks passed: default, saved choice, independent themes, URL override, URL switching, blocked storage.');
+console.log('Interface checks passed: default, saved choice, classic migration, independent themes, URL override, URL switching, blocked storage.');
 
 // All saved historical variants now converge on the retained fifth design.
 for (const version of ['original', 'panels', 'warm', 'graphite', 'warm-graphite', 'unknown']) {
   h = app({ 'cs-batagi-club-version': version }); h.render();
   assert.equal(h.document.documentElement.dataset.clubVersion, 'warm-graphite');
   assert.equal(h.storage.get('cs-batagi-club-version'), 'warm-graphite');
-  h.render().setDesign('classic'); h.render().setDesign('modern'); h.render();
+  h.render().setDesign('boomer'); h.render().setDesign('modern'); h.render();
   assert.equal(h.document.documentElement.dataset.clubVersion, 'warm-graphite');
 }
 h = app({}, '', true); h.render();
 assert.equal(h.document.documentElement.dataset.clubVersion, 'warm-graphite');
-console.log('Club checks passed: retained design, old preference migration, classic switch, blocked storage.');
+console.log('Club checks passed: retained design, old preference migration, boomer switch, blocked storage.');
 
 // Cinematic is a separate mode, so visiting it must not overwrite earlier palettes.
-h = app({ 'cs-batagi-modern-theme': 'light', 'cs-batagi-theme': 'dark', 'cs-batagi-club-version': 'graphite' }, '?ui=cinematic');
+h = app({ 'cs-batagi-modern-theme': 'light', 'cs-batagi-boomer-theme': 'dark', 'cs-batagi-club-version': 'graphite' }, '?ui=cinematic');
 assert.equal(h.render().design, 'cinematic');
 assert.equal(h.render().theme, 'dark');
 assert.equal(h.document.documentElement.dataset.design, 'cinematic');
@@ -64,7 +72,7 @@ assert.equal(h.storage.get('cs-batagi-modern-theme'), 'light');
 h.render().setDesign('modern');
 assert.equal(h.render().theme, 'light');
 h.render(); assert.equal(h.document.documentElement.dataset.clubVersion, 'warm-graphite');
-h.render().setDesign('cinematic'); h.render().setDesign('classic');
+h.render().setDesign('cinematic'); h.render().setDesign('boomer');
 assert.equal(h.render().theme, 'dark');
 h = app({ 'cs-batagi-design': 'cinematic' }); assert.equal(h.render().design, 'cinematic');
 h = app({}, '?ui=cinematic', true); assert.equal(h.render().design, 'cinematic');

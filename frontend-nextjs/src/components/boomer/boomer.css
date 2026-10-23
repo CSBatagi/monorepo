@@ -1,0 +1,76 @@
+/* Batak Boomer Edition: club tokens (data-design="modern"), one column, big targets. */
+.boomer-shell { min-height: 100vh; display: flex; flex-direction: column; }
+html[data-edition="boomer"] .boomer-shell a { text-decoration: none; color: inherit; }
+html[data-edition="boomer"] .app-content { max-width: 1200px; padding: 28px 24px 40px; }
+
+.boomer-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 1200px; width: 100%; margin: 0 auto; padding: 16px 24px 12px; }
+.boomer-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.boomer-brand img { border-radius: 10px; flex-shrink: 0; }
+.boomer-brand > span { font-size: 1.15rem; font-weight: 850; letter-spacing: -.5px; line-height: 1.2; }
+.boomer-brand small { display: block; color: var(--club-accent); font-size: .8rem; font-weight: 700; letter-spacing: .2px; }
+.boomer-actions { display: flex; align-items: center; gap: 10px; }
+html[data-edition="boomer"] .boomer-logout { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 12px; border: 1px solid var(--club-line); border-radius: 8px; background: var(--club-surface); color: var(--club-text); font-size: .9rem; font-weight: 600; cursor: pointer; }
+.boomer-logout:hover { border-color: var(--club-accent); }
+
+.boomer-nav { position: sticky; top: 0; z-index: 30; display: flex; gap: 8px; max-width: 1200px; width: 100%; margin: 0 auto; padding: 10px 24px; overflow-x: auto; scrollbar-width: none; background: var(--club-bg); border-bottom: 1px solid var(--club-line); }
+.boomer-nav::-webkit-scrollbar { display: none; }
+html[data-edition="boomer"] .boomer-nav a { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; min-height: 44px; padding: 9px 15px; border: 1px solid var(--club-line); border-radius: 999px; background: var(--club-surface); color: var(--club-text); font-size: 1rem; font-weight: 600; }
+html[data-edition="boomer"] .boomer-nav a:hover { border-color: var(--club-accent); }
+html[data-edition="boomer"] .boomer-nav a.is-active { background: var(--club-text); border-color: var(--club-text); color: var(--club-bg); }
+
+.boomer-content { flex: 1; }
+.boomer-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; max-width: 1200px; width: 100%; margin: 0 auto; padding: 22px 24px 32px; border-top: 1px solid var(--club-line); color: var(--club-muted); font-size: .9rem; }
+.boomer-footer button { min-height: 44px; padding: 9px 15px; border: 1px solid var(--club-line); border-radius: 8px; background: var(--club-surface); color: var(--club-text); font-weight: 600; cursor: pointer; }
+.boomer-footer button:hover { border-color: var(--club-accent); }
+
+/* Home */
+.boomer-home { display: flex; flex-direction: column; gap: 18px; max-width: 680px; margin: 0 auto; }
+.boomer-card { display: block; padding: 26px; border: 1px solid var(--club-line); border-radius: 18px; background: var(--club-surface); color: var(--club-text); }
+.boomer-eyebrow { margin: 0 0 6px; color: var(--club-muted); font-size: .85rem; font-weight: 750; letter-spacing: 1.8px; }
+.boomer-count { display: flex; align-items: baseline; gap: 14px; }
+.boomer-count strong { font-size: clamp(64px, 16vw, 96px); font-weight: 850; line-height: 1; letter-spacing: -3px; font-variant-numeric: tabular-nums; }
+.boomer-count strong.is-pending { color: var(--club-line); }
+.boomer-count > span { font-size: 1.4rem; font-weight: 650; }
+.boomer-count small { display: block; color: var(--club-amber); font-size: 1rem; font-weight: 600; }
+.boomer-progress { height: 10px; margin: 18px 0 10px; border-radius: 99px; background: var(--club-raised); border: 1px solid var(--club-line); overflow: hidden; }
+.boomer-progress i { display: block; height: 100%; border-radius: inherit; background: var(--club-green); transition: width 300ms ease-out; }
+.boomer-teker { margin: 0; color: var(--club-muted); font-size: 1.05rem; }
+html[data-edition="boomer"] .boomer-card h2 { margin: 26px 0 12px; font-size: 1.35rem; font-weight: 750; letter-spacing: -.3px; }
+
+.boomer-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.boomer-choices button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 84px; padding: 12px 6px; border: 2px solid var(--club-line); border-radius: 14px; background: var(--club-raised); color: var(--club-text); font-size: 1.05rem; font-weight: 700; cursor: pointer; }
+.boomer-choices button:hover:not(:disabled) { border-color: var(--club-text); transform: translateY(-1px); }
+.boomer-choices button[data-status="coming"] svg { color: var(--club-green); }
+.boomer-choices button[data-status="not_coming"] svg { color: #c2412d; }
+.boomer-choices button[data-status="uncertain"] svg { color: var(--club-amber); }
+.boomer-choices button.is-selected[data-status="coming"] { background: #177849; border-color: #177849; color: #fff; }
+.boomer-choices button.is-selected[data-status="not_coming"] { background: #b3361f; border-color: #b3361f; color: #fff; }
+.boomer-choices button.is-selected[data-status="uncertain"] { background: #a86d00; border-color: #a86d00; color: #fff; }
+.boomer-choices button.is-selected svg { color: inherit !important; }
+html[data-edition="boomer"] .boomer-choices button:disabled { cursor: wait; opacity: .65; }
+html[data-edition="boomer"] .boomer-choices button.is-selected:disabled { opacity: 1; }
+
+.boomer-note { margin: 10px 0 0; color: var(--club-muted); }
+.boomer-note.is-error { color: #c2412d; font-weight: 600; }
+.boomer-button { display: inline-flex; align-items: center; min-height: 48px; padding: 10px 18px; border-radius: 10px; background: var(--club-accent); color: #fff !important; font-weight: 700; }
+.boomer-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; min-height: 44px; color: var(--club-accent) !important; font-size: 1.05rem; font-weight: 700; }
+.boomer-link:hover { text-decoration: underline !important; }
+
+.boomer-teams { display: flex; align-items: center; gap: 16px; }
+.boomer-teams:hover { border-color: var(--club-accent); }
+.boomer-teams > span:nth-child(2) { flex: 1; }
+.boomer-teams strong { display: block; font-size: 1.35rem; font-weight: 750; }
+.boomer-teams small { color: var(--club-muted); font-size: 1rem; }
+.boomer-teams-icon { display: flex; padding: 12px; border-radius: 12px; background: var(--club-accent-soft); color: var(--club-accent); }
+html[data-edition="boomer"] .boomer-home .teamspeak-connect { margin: 0; padding: 26px; border-radius: 18px; }
+
+@media (max-width: 600px) {
+  html[data-edition="boomer"] .app-content { padding: 18px 16px 32px; }
+  .boomer-topbar, .boomer-nav, .boomer-footer { padding-left: 16px; padding-right: 16px; }
+  .boomer-logout span { display: none; }
+  .boomer-nav { position: static; flex-wrap: wrap; gap: 6px; }
+  html[data-edition="boomer"] .boomer-nav a { min-height: 42px; padding: 8px 12px; font-size: .95rem; }
+  .boomer-card, html[data-edition="boomer"] .boomer-home .teamspeak-connect { padding: 20px; }
+  .boomer-choices { gap: 8px; }
+  .boomer-choices button { min-height: 76px; font-size: .95rem; }
+}

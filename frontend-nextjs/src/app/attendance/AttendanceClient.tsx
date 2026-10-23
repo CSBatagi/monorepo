@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSession } from '@/contexts/SessionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Player } from '@/types';
 import { useLivePolling } from '@/lib/useLivePolling';
 import { updateAttendance, bulkUpdateAttendance, resetTeamPicker } from '@/lib/liveApi';
+import { useAttendanceWriter } from '@/lib/useAttendanceWriter';
 import EmojiControls from '@/components/Attendance/EmojiControls';
 import AttendanceControls from '@/components/Attendance/AttendanceControls';
 import KaptanlikControl from '@/components/Attendance/KaptanlikControl';
@@ -60,7 +61,7 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
   const { isDark } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState<{[key: string]: boolean}>({});
   const [isClearing, setIsClearing] = useState(false);
-  const tekerFollowUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const writeAttendance = useAttendanceWriter();
 
   const { data: liveData, loading: loadingLiveData, error: liveError, refetch } = useLivePolling<LiveAttendancePayload>({
     url: '/api/live/attendance',
@@ -96,67 +97,14 @@ export default function AttendanceClient({ players }: AttendanceClientProps) {
     }
   }, [user, players, emojis, loadingLiveData]);
 
-  const emitTekerDonduIfNeeded = useCallback(async () => {
-    if (!user) return;
-    try {
-      const res = await fetch('/api/notifications/emit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          topic: 'teker_dondu_reached',
-        }),
-      });
-      if (res.ok) {
-        const json = await res.json() as { skipped?: boolean; reason?: string; settlesAt?: number };
-        if (json.skipped && json.reason === 'settle_pending' && json.settlesAt) {
-          const delayMs = Math.max(json.settlesAt - Date.now(), 0) + 250;
-          if (tekerFollowUpTimerRef.current) clearTimeout(tekerFollowUpTimerRef.current);
-          tekerFollowUpTimerRef.current = setTimeout(() => {
-            tekerFollowUpTimerRef.current = null;
-            void emitTekerDonduIfNeeded();
-          }, delayMs);
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to emit teker_dondu notification event', error);
-    }
-  }, [user]);  // user must be in deps to avoid stale-closure (was [] before)
-
-  useEffect(() => {
-    return () => {
-      if (tekerFollowUpTimerRef.current) clearTimeout(tekerFollowUpTimerRef.current);
-    };
-  }, []);
-
   const handleAttendanceChange = async (player: Player, newAttendance: string) => {
     if (!user) {
       alert("You must be logged in to change status."); return;
     }
     setIsSubmitting(prev => ({ ...prev, [player.steamId]: true }));
     try {
-      const fields: { status: string; is_kaptan?: boolean; kaptan_timestamp?: null } = { status: newAttendance };
-      if (newAttendance !== 'coming') {
-        fields.is_kaptan = false;
-        fields.kaptan_timestamp = null;
-      }
-      await updateAttendance(player.steamId, player.name, fields);
+      await writeAttendance(player.steamId, player.name, newAttendance);
       void refetch();
-
-      if (APPS_SCRIPT_URL) {
-        fetch(APPS_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ steamId: player.steamId, attendance: newAttendance }),
-          mode: 'no-cors'
-        }).catch(err => console.error("Error sending sheet update:", err));
-      }
-
-      if (tekerFollowUpTimerRef.current) {
-        clearTimeout(tekerFollowUpTimerRef.current);
-        tekerFollowUpTimerRef.current = null;
-      }
-      void emitTekerDonduIfNeeded();
     } catch (error) {
       console.error("Error syncing attendance:", error);
       alert("Failed to update attendance. Please try again.");

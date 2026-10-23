@@ -1,5 +1,4 @@
-/* Separate cinematic mode. Existing classic and club designs retain their styles. */
-.cinematic-interface-entry { left: auto; right: 16px; }
+/* Separate cinematic mode. Club and Boomer designs retain their styles. */
 html[data-design="cinematic"] {
   color-scheme: dark; scroll-behavior: smooth;
   --cinema-paper: #eeeae2; --cinema-muted: #b3b0a8; --cinema-accent: #e6ad57;

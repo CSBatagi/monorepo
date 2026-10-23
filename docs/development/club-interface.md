@@ -1,23 +1,24 @@
 # Club interface
 
-The default interface is the modern club dashboard. The classic header, home screen, page components, and existing stylesheet remain available.
+The default interface is the modern club dashboard. **Batak Boomer Edition** is the simplified alternative; it replaced the original classic design (classic header and home were removed).
 
 ## Switching
 
 - The club interface keeps only **Sıcak grafit (design 5)**. The version switch and other variants have been removed. Saved historical version choices migrate to Sıcak grafit on the first render.
-- Modern sidebar: **Klasik arayüze geç**.
-- Classic interface: fixed **Yeni arayüze geç** button at the bottom left.
-- Both interfaces also offer **Sinematik deneyim**. This is an independent layout, accessible directly with `?ui=cinematic`. Its **Arayüz** menu (or the full navigation menu on mobile) returns to the club interface or the classic interface without changing their saved palettes or version.
-- Login has the same switch.
-- Direct links: add `?ui=classic` or `?ui=modern` to any page (use `&ui=...` when other query parameters are present). A logged-out protected-page link retains its query in the existing login redirect.
-- Choice persists in this browser as `cs-batagi-design`. Light/dark choices are independent: the classic interface retains the existing `cs-batagi-theme` value; modern uses `cs-batagi-modern-theme` and defaults to dark.
+- Modern sidebar: **Batak Boomer Edition**.
+- Boomer Edition: footer button **Tam siteye geç** returns to the club interface.
+- The club sidebar also offers **Sinematik deneyim**. This is an independent layout, accessible directly with `?ui=cinematic`. Its **Arayüz** menu (or the full navigation menu on mobile) returns to the club interface or the Boomer Edition without changing their saved palettes or version.
+- Login uses the club login layout for both club and Boomer.
+- Direct links: add `?ui=boomer` or `?ui=modern` to any page (use `&ui=...` when other query parameters are present). A logged-out protected-page link retains its query in the existing login redirect.
+- Choice persists in this browser as `cs-batagi-design`. Light/dark choices are independent: Boomer uses `cs-batagi-boomer-theme` and defaults to light; modern uses `cs-batagi-modern-theme` and defaults to dark. A saved or linked `classic` choice migrates to Boomer.
 - No account preference or server-side setting is changed. Browser storage failures fall back to session-only controls.
 
 ## Design structure
 
-- `src/components/ClubShell.tsx`: grouped navigation, mobile menu, breadcrumb, theme control, existing notification bell, account menu, classic switch.
+- `src/components/ClubShell.tsx`: grouped navigation, mobile menu, breadcrumb, theme control, existing notification bell, account menu, Boomer switch.
 - `src/components/ClubHome.tsx`: match-night actions, actual attendance summary, competition links, match links, and analysis tools. Counts use the existing version-validated `useLivePolling` hook; unavailable data is shown as a dash, never invented counts.
-- `src/components/ClassicHome.tsx`: original home component, preserved verbatim apart from the component name.
+- `src/components/boomer/`: Boomer Edition. `BoomerShell.tsx` is a top bar plus five links (Ana sayfa, Katılım, Takımlar, TeamSpeak, Gece & Maçlar); `BoomerHome.tsx` shows only tonight's headcount, one-tap Geliyorum / Gelmiyorum / Belirsiz for the signed-in player, the attendance list link, team picking and TeamSpeak setup. It sets `data-design="modern"` (so every shared page keeps the club styling) plus `data-edition="boomer"` for its own rules in `boomer.css`.
+- `src/lib/useAttendanceWriter.ts`: the shared attendance write (captaincy reset, sheet mirror, teker döndü notification) used by both the Katılım page and the Boomer home.
 - `src/styles/club-design.css`: modern palette, typography, responsive layouts, status colors, tables, controls, login, and motion. Shared-page overrides are scoped under `html[data-design="modern"]`. Do not place new shared-page rules outside this scope.
 - `src/styles/club-versions.css`: the retained design 5 artwork layout and graphite colours, scoped to the modern interface. Light mode keeps the original graphite artwork cards with light text.
 
@@ -31,7 +32,7 @@ No packages, remote fonts, animation libraries, polling caches, or backend chang
 
 Motion is limited to short transitions and home entrance; reduced-motion preferences disable it. Keyboard focus is visible, the mobile menu supports Escape, active routes use `aria-current`, and a skip link targets page content. Tables retain horizontal scrolling and numeric alignment.
 
-Validation commands from `frontend-nextjs`: `node scripts/check-design.cjs` (preference and classic-switch checks), `node node_modules/typescript/bin/tsc --noEmit`, `node node_modules/next/dist/bin/next build`. Backend regression tests remain `npm test` from `backend`.
+Validation commands from `frontend-nextjs`: `node scripts/check-design.cjs` (preference, Boomer switch and classic migration checks), `node node_modules/typescript/bin/tsc --noEmit`, `node node_modules/next/dist/bin/next build`. Backend regression tests remain `npm test` from `backend`.
 
 This source change uses the existing Next.js/Docker deployment; it is not a migration to Sites hosting. Build and deployment of the frontend through the existing workflow are needed for production rollout. There are no database migrations.
 
@@ -45,7 +46,7 @@ The hero reuses the club design's rotating voice-chat quotes (`src/lib/clubQuote
 
 `CinematicScene.tsx` uses 100 particles on desktop and 42 on mobile, caps canvas pixel ratio at 1.5, and stops its animation frame loop in hidden tabs. No 3D engine, animation package, or new runtime dependency is added. The effect uses a 2D image with camera-like transforms and projected particles, rather than a full 3D world. The generated locally hosted WebP is 141,028 bytes. Asset provenance and the generation prompt are in [cinematic-artwork.md](cinematic-artwork.md).
 
-The footer motion button pauses camera motion, particles, smoke, reveals, and smooth scrolling. Its preference is stored in `cs-batagi-cinema-motion`. System reduced-motion preferences disable motion on initial load and when changed. Cinematic mode uses a fixed dark palette and its own theme storage key so entering it cannot overwrite classic or club light/dark choices. Styling is isolated in `src/styles/cinematic.css`; existing table data and semantic status colors are retained.
+The footer motion button pauses camera motion, particles, smoke, reveals, and smooth scrolling. Its preference is stored in `cs-batagi-cinema-motion`. System reduced-motion preferences disable motion on initial load and when changed. Cinematic mode uses a fixed dark palette and its own theme storage key so entering it cannot overwrite Boomer or club light/dark choices. Styling is isolated in `src/styles/cinematic.css`; existing table data and semantic status colors are retained.
 
 Validation includes the interface preference script, TypeScript, the production build, and browser checks for chapter navigation, camera changes, mobile overflow, the menu, route arrival, and motion controls. No production deployment or authentication change is part of this redesign.
 
