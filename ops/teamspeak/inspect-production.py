@@ -38,11 +38,7 @@ def main():
                 'mounts': [{key: mount.get(key) for key in ['Type', 'Source', 'Destination']} for mount in item['Mounts']]})
     root = pathlib.Path('/srv/csbatagi') if pathlib.Path('/srv/csbatagi/docker-compose.yml').exists() else pathlib.Path.home()
     report({'compose_files': [file.name for file in root.glob('*compose*.yml')]})
-    effective = json.loads(run('docker', 'compose', '-f', str(root / 'docker-compose.yml'), '-f', str(root / 'docker-compose.teamspeak-test.yml'), 'config', '--format', 'json'))
-    report({'effective_web_limits': {name: {'mem_limit': effective['services'][name].get('mem_limit'), 'deploy': effective['services'][name].get('deploy')} for name in ['backend', 'frontend-nextjs']}})
-    report({'private_files_present': {name: (root / name).exists() for name in ['.teamspeak_secrets', '.teamspeak_server_secrets']}})
-    for folder in sorted(root.glob('teamspeak-web-backup-*'))[-1:]:
-        report({'latest_backup': folder.name, 'private_provisioning_result_exists': (folder / 'website-query.private.json').exists()})
+    report({'private_files_present': {name: (root / name).exists() for name in ['.teamspeak6_server_secrets']}})
     ts = next((item for item in containers if item['Name'] == '/teamspeak-server'), None)
     if not ts:
         report({'teamspeak': 'not found'}); return
@@ -74,7 +70,7 @@ def main():
                     status = query_rows(line[6:])[0]
                     if status.get('id') not in ['0', '1281']:
                         raise RuntimeError('Query command unavailable: ' + name + ', code ' + status.get('id', '?'))
-                    return '\n'.join(rows) if name.startswith('help ') else query_rows('|'.join(rows))
+                    return query_rows('|'.join(rows))
                 rows.append(line)
 
         command('login', client_login_name='serveradmin', client_login_password=password)
@@ -83,16 +79,6 @@ def main():
         report({'teamspeak_server': {key: server.get(key) for key in ['virtualserver_name', 'virtualserver_version', 'virtualserver_flag_password', 'virtualserver_default_channel', 'virtualserver_default_server_group', 'virtualserver_clientsonline', 'virtualserver_maxclients']}})
         report({'teamspeak_groups': command('servergrouplist')})
         report({'teamspeak_channels': command('channellist')})
-        report({'identity_permission_names': [row for row in command('permissionlist') if row.get('permid') == '35' or 'custom' in row.get('permname', '') or 'permission_list' in row.get('permname', '')]})
-        report({'query_write_permissions': [row for row in command('servergrouppermlist -permsid', sgid=10) if any(word in row.get('permsid', '') for word in ['custom', 'modify', 'member', 'clone'])]})
-        report({'guest_clone_limit': [row for row in command('servergrouppermlist -permsid', sgid=server['virtualserver_default_server_group']) if 'clone' in row.get('permsid', '')]})
-        report({'customset_help': command('help customset')[:2500]})
-        for name in ['queryloginadd', 'queryloginlist', 'customset', 'servergroupcopy']:
-            try:
-                command('help ' + name)
-                report({'command': name, 'available': True})
-            except RuntimeError:
-                report({'command': name, 'available': False})
     report({'teamspeak_query': 'read-only audit completed; bootstrap credential stayed on host'})
 
 

@@ -7,7 +7,6 @@ import players from "../../../public/data/players.json";
 import { useSession } from "@/contexts/SessionContext";
 import { useLivePolling } from "@/lib/useLivePolling";
 import { useAttendanceWriter } from "@/lib/useAttendanceWriter";
-import TeamSpeakConnect from "../TeamSpeakConnect";
 
 const TEKER_DONDU_THRESHOLD = 10;
 const choices = [
@@ -75,7 +74,5 @@ export default function BoomerHome() {
       <span><strong>Takımları seç</strong><small>Gelenleri iki takıma ayır.</small></span>
       <ArrowRight size={22} />
     </Link>
-
-    <TeamSpeakConnect />
   </div>;
 }

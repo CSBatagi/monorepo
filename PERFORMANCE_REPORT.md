@@ -4,7 +4,7 @@
 
 This report records optimizations for the original **1 GB RAM GCP VM** with 5 Docker containers (ddns, backend, frontend-nextjs, postgres, caddy).
 
-The production host audit on 2026-10-14 confirmed the later ARM64 migration: approximately **8 GiB RAM**, with TeamSpeak added. Compose requests 256 MiB limits for backend and frontend, but Docker reports `MemoryLimit=false`/`SwapLimit=false`; the host kernel ignores them. Enabling memory cgroups requires a planned boot change/reboot. The integration adds no dependencies or database pool, serializes native Query operations and builds images on CI. The older PostgreSQL/Caddy/DDNS measurements below are historical; those production containers also lack enforced limits. See [TeamSpeak operations](docs/features/teamspeak.md).
+The production host audit on 2026-10-14 confirmed the later ARM64 migration: approximately **8 GiB RAM**, with the TeamSpeak voice server added. Compose requests 256 MiB limits for backend and frontend, but Docker reports `MemoryLimit=false`/`SwapLimit=false`; the host kernel ignores them. Enabling memory cgroups requires a planned boot change/reboot. The older PostgreSQL/Caddy/DDNS measurements below are historical; those production containers also lack enforced limits.
 
 ## Architecture
 

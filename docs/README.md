@@ -28,7 +28,6 @@ Use this folder as the canonical context source.
 - Automated daily snapshots and GCS disaster recovery: [`operations/snapshots-backup.md`](operations/snapshots-backup.md)
 - Steam avatar integration: [`features/steam-integration.md`](features/steam-integration.md)
 - Steam website login and migration: [`features/steam-login.md`](features/steam-login.md)
-- TeamSpeak one-click joining and Steam membership: [`features/teamspeak.md`](features/teamspeak.md)
 - Community server skins and equipment: [`features/server-cosmetics.md`](features/server-cosmetics.md)
 - Team picker balance suggestions and the formula behind them: [`features/team-balancer.md`](features/team-balancer.md)
 - Active season (Batak Mundial), draw ceremony, bracket and archived formats: [`features/mundial.md`](features/mundial.md)

@@ -36,7 +36,7 @@ if secrets.exists():
 
 for name, base in before.items():
     folder = stage / name
-    instructions = ('COPY gameServer.js gameUpdateStatus.js gcp.js index.js rcon.js teamSpeak.js teamSpeakQuery.js /app/\n' if name == 'backend' else
+    instructions = ('COPY gameServer.js gameUpdateStatus.js gcp.js index.js rcon.js /app/\n' if name == 'backend' else
                     'USER root\nRUN rm -rf /app/.next\nCOPY --chown=nextjs:nodejs .next /app/.next\n')
     (folder / 'Dockerfile').write_text(f'FROM {base}\nLABEL org.opencontainers.image.revision="{revision}"\n' + instructions)
     run('docker', 'build', '-t', f'csbatagi-connections-{name}:{stamp}', str(folder))

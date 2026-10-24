@@ -5,7 +5,6 @@ import { ArrowDown, ArrowUpRight, Dices, Globe2, MoveUpRight, Swords, Trophy } f
 import { navigation } from '../ClubShell';
 import CinematicBriefing from './CinematicBriefing';
 import CinematicQuote from './CinematicQuote';
-import TeamSpeakConnect from '../TeamSpeakConnect';
 
 export default function CinematicHome() {
   return <div className="cinema-home">
@@ -22,8 +21,6 @@ export default function CinematicHome() {
       <CinematicBriefing />
       <div className="cinema-chapter-bottom"><a href="#rekabet" className="cinema-scroll"><span className="cinema-scroll-line" /> YOKLAMA TAMAMSA, HESAPLAŞMAYA GEÇ <ArrowDown size={14} /></a><span>01 — ÖNCE YOKLAMA</span></div>
     </section>
-
-    <TeamSpeakConnect />
 
     <section className="cinema-chapter cinema-rivalry" id="rekabet" data-cinema-chapter="1" aria-labelledby="rivalry-title">
       <div className="cinema-section-copy"><p className="cinema-kicker">02 / HESAPLAŞMA VAKTİ</p><h2 id="rivalry-title">Dostluk maç<br /><span>başlayana kadar.</span></h2><p className="cinema-lede">Kim tepede, kim yine takıma suç atıyor?<br />Tablo burada. İtirazlar maçtan sonra.</p></div>

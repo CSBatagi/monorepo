@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { ClipboardList, Headphones, Home, LogOut, Moon, Swords } from "lucide-react";
+import { ClipboardList, Home, LogOut, Moon, Swords } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSession } from "@/contexts/SessionContext";
 import ThemeToggle from "../ThemeToggle";
@@ -16,7 +16,6 @@ const links = [
   { href: "/", label: "Ana sayfa", icon: Home },
   { href: "/attendance", label: "Katılım", icon: ClipboardList },
   { href: "/team-picker", label: "Takımlar", icon: Swords },
-  { href: "/teamspeak", label: "TeamSpeak", icon: Headphones },
   { href: "/gece-ortalama", label: "Gece & Maçlar", icon: Moon },
 ];
 

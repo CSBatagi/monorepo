@@ -62,7 +62,6 @@ html[data-edition="boomer"] .boomer-choices button.is-selected:disabled { opacit
 .boomer-teams strong { display: block; font-size: 1.35rem; font-weight: 750; }
 .boomer-teams small { color: var(--club-muted); font-size: 1rem; }
 .boomer-teams-icon { display: flex; padding: 12px; border-radius: 12px; background: var(--club-accent-soft); color: var(--club-accent); }
-html[data-edition="boomer"] .boomer-home .teamspeak-connect { margin: 0; padding: 26px; border-radius: 18px; }
 
 @media (max-width: 600px) {
   html[data-edition="boomer"] .app-content { padding: 18px 16px 32px; }
@@ -70,7 +69,7 @@ html[data-edition="boomer"] .boomer-home .teamspeak-connect { margin: 0; padding
   .boomer-logout span { display: none; }
   .boomer-nav { position: static; flex-wrap: wrap; gap: 6px; }
   html[data-edition="boomer"] .boomer-nav a { min-height: 42px; padding: 8px 12px; font-size: .95rem; }
-  .boomer-card, html[data-edition="boomer"] .boomer-home .teamspeak-connect { padding: 20px; }
+  .boomer-card { padding: 20px; }
   .boomer-choices { gap: 8px; }
   .boomer-choices button { min-height: 76px; font-size: .95rem; }
 }

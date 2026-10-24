@@ -246,9 +246,6 @@ function rateLimiter(req, res, next) {
   // Skip rate limiting for /live/ polling endpoints — they are high-frequency by design
   // and all frontend proxy traffic shares the same Docker-internal IP.
   if (req.path.startsWith('/live/')) return next();
-  // TeamSpeak verification polls are authenticated and limited per Steam member.
-  // The website proxy shares one Docker IP across all members.
-  if (req.method === 'POST' && ['/teamspeak/join', '/teamspeak/status', '/teamspeak/verify'].includes(req.path)) return next();
 
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
   const now = Date.now();
@@ -751,7 +748,6 @@ const analysisServer = pool ? require('./analysisServer').createAnalysisServer({
 if (analysisServer && !TEST_MODE) analysisServer.start();
 // Game controls use persistent match IDs and verified admin sessions.
 require('./gameServer').registerGameServer(app, { pool, rcon: rconConnection, gcp: gcpManager, analysisServer });
-if (pool) require('./teamSpeak').registerTeamSpeak(app, { pool, startMaintenance: !TEST_MODE });
 // Demo archive listing, signed downloads and the analysis queue fed by the game VM worker.
 const { registerDemoRoutes, DEMO_FILES_MIGRATIONS } = require('./demoRoutes');
 if (pool) registerDemoRoutes(app, { pool, analysisServer });

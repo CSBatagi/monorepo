@@ -3,7 +3,7 @@
 import Link from "next/link";
 import LastNightCard from "./LastNightCard";
 import ClubQuotes from "./ClubQuotes";
-import { ArrowRight, ArrowUpRight, BarChart3, Check, ClipboardList, Crosshair, Crown, Film, Flag, Globe2, Headphones, ListOrdered, Swords, Target, TrendingUp, Trophy, Users } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BarChart3, Check, ClipboardList, Crosshair, Crown, Film, Flag, Globe2, ListOrdered, Swords, Target, TrendingUp, Trophy, Users } from "lucide-react";
 import { useSession } from "@/contexts/SessionContext";
 import { useLivePolling } from "@/lib/useLivePolling";
 
@@ -45,7 +45,6 @@ export default function ClubHome() {
         <Link prefetch={false} href="/attendance" className="club-card-bottom-link">{error ? 'Katılımı aç ve tekrar dene' : 'Kim geliyor, kim yan çiziyor?'}<ArrowRight size={17} /></Link>
       </div>
     </section>
-    <Link prefetch={false} href="/teamspeak" className="club-voice-shortcut"><span className="club-voice-icon"><Headphones size={21} /></span><span><strong>Sesliye gel</strong><small>TeamSpeak bağlantısı ve kurulum</small></span><span className="club-voice-cta">TeamSpeak’i aç <ArrowUpRight size={17} /></span></Link>
     <LastNightCard />
     <div className="club-home-quick-links">
       <Link prefetch={false} href="/mundial" className="club-mundial-shortcut"><Globe2 size={34} strokeWidth={1.3} /><span><small>AKTİF SEZON</small><strong>Batak Mundial</strong><span>Gruplar, eşleşmeler ve kupa yolu</span></span><ArrowUpRight size={20} /></Link>

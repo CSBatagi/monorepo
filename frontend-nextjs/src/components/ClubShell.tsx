@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Archive, ArrowUpRight, BarChart3, ChevronRight, ClipboardList, Crosshair, Crown, Download, Film, Flag, Globe2, Headphones, Home, LayoutTemplate, ListOrdered, LogOut, Menu, Moon, Settings, Swords, Target, TrendingUp, Trophy, Users, X } from "lucide-react";
+import { Archive, ArrowUpRight, BarChart3, ChevronRight, ClipboardList, Crosshair, Crown, Download, Film, Flag, Globe2, Home, LayoutTemplate, ListOrdered, LogOut, Menu, Moon, Settings, Swords, Target, TrendingUp, Trophy, Users, X } from "lucide-react";
 import { ARCHIVE_HREF, findArchivedFormat } from "@/lib/archivedFormats";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSession } from "@/contexts/SessionContext";
@@ -16,7 +16,6 @@ export const navigation = [
     { href: "/", label: "Genel Bakış", icon: Home },
     { href: "/attendance", label: "Katılım", icon: ClipboardList },
     { href: "/team-picker", label: "Takım Seçme", icon: Swords },
-    { href: "/teamspeak", label: "TeamSpeak", icon: Headphones },
     { href: "/ekipman", label: "Ekipman", icon: Crosshair },
   ] },
   { label: "MAÇ MERKEZİ", links: [

@@ -15,12 +15,11 @@ Use templates and keep real values local:
 - `frontend-nextjs/.env.example` -> `frontend-nextjs/.env.local`
 - Optional: `.pg_secrets.local`
 
-TeamSpeak production provisioning stores `.teamspeak_server_secrets` (bootstrap
-admin) and `.teamspeak_secrets` (limited website Query account) on the deployment
-host with mode 0600. They are separate from normal deployment's regenerated
-`.backend_secrets`; never copy them into CI artifacts, frontend configuration or
-Docker build contexts. See [TeamSpeak](../features/teamspeak.md) for the key-free
-Steam verification flow and private backup/rollback procedure.
+The TeamSpeak voice server (`teamspeak` Compose service) reads its admin
+credentials from `.teamspeak6_server_secrets` on the deployment host (mode 0600).
+It is separate from normal deployment's regenerated `.backend_secrets`; never copy
+it into CI artifacts, frontend configuration or Docker build contexts. The website
+and backend have no TeamSpeak integration and need no TeamSpeak credentials.
 
 ## Safe vs Unsafe
 

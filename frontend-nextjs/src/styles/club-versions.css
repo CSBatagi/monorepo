@@ -67,12 +67,8 @@ html[data-design="modern"]:not(.dark) :is(.club-attendance-card, .club-match-str
 html[data-design="modern"] .club-night-art { background: linear-gradient(90deg, #24211f 0%, #24211fbf 37%, #24211f08 78%), url('/images/club-match-night.webp') 65% center / cover; }
 html[data-design="modern"] .club-footer { border-top-color: #e2e2e2; }
 
-/* Compact routes to voice chat, the active tournament and match archives. */
-html[data-design="modern"] .club-voice-shortcut { display:flex; align-items:center; gap:14px; padding:15px 18px; margin:20px 0 26px; border:1px solid var(--club-line); border-radius:10px; background:var(--club-surface); }
-html[data-design="modern"] .club-voice-icon { display:grid; place-items:center; width:38px; height:38px; border-radius:8px; background:var(--club-accent-soft); color:var(--club-accent); flex-shrink:0; }
-html[data-design="modern"] .club-voice-shortcut strong { font-size:14px; font-weight:600; }
-html[data-design="modern"] .club-voice-shortcut small { display:block; color:var(--club-muted); font-size:11px; margin-top:2px; }
-html[data-design="modern"] .club-voice-cta { display:flex; align-items:center; gap:10px; margin-left:auto; font-size:12px; color:var(--club-accent); }
+/* Compact routes to the active tournament and match archives. */
+html[data-design="modern"] .club-night-grid { margin-bottom:26px; }
 html[data-design="modern"] .club-home-quick-links { display:grid; grid-template-columns:1.3fr 1fr; gap:18px; margin-bottom:32px; }
 html[data-design="modern"] .club-mundial-shortcut { display:flex; align-items:center; gap:18px; padding:22px; border:1px solid var(--club-line); border-radius:12px; background:var(--club-surface); }
 html[data-design="modern"] .club-mundial-shortcut>svg:first-child { color:var(--club-accent); flex-shrink:0; }
@@ -83,6 +79,5 @@ html[data-design="modern"] .club-mundial-shortcut span>span { display:block; col
 html[data-design="modern"] .club-replay-shortcuts { display:grid; gap:8px; }
 html[data-design="modern"] .club-replay-shortcuts a { display:flex; align-items:center; gap:12px; padding:14px 18px; border:1px solid var(--club-line); border-radius:9px; background:var(--club-surface); color:var(--club-muted); font-size:13px; }
 html[data-design="modern"] .club-replay-shortcuts a>svg:last-child { margin-left:auto; }
-html[data-design="modern"] :is(.club-voice-shortcut,.club-mundial-shortcut,.club-replay-shortcuts a):hover { border-color:var(--club-accent); background:var(--club-hover); }
+html[data-design="modern"] :is(.club-mundial-shortcut,.club-replay-shortcuts a):hover { border-color:var(--club-accent); background:var(--club-hover); }
 @media(max-width:760px) { html[data-design="modern"] .club-home-quick-links { grid-template-columns:1fr; } }
-@media(max-width:450px) { html[data-design="modern"] .club-voice-cta { font-size:0; gap:0; } html[data-design="modern"] .club-voice-shortcut { gap:10px; padding:13px; } }

@@ -147,9 +147,6 @@ services:
       # VAPID keys and other shared secrets
       - path: .frontend_secrets
         required: false
-      # Generated privately on the host; normal CI never replaces this file.
-      - path: .teamspeak_secrets
-        required: false
     volumes:
       - ./credentials.json:/app/../credentials.json
       - ./cs2-control:/app/cs2-control
