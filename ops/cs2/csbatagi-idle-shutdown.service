@@ -1,0 +1,17 @@
+[Unit]
+Description=CS Batagi idle check: power the game VM off after 15 idle minutes
+Documentation=https://github.com/CSBatagi/monorepo/blob/main/docs/operations/cs2-idle-shutdown.md
+
+[Service]
+Type=oneshot
+# Optional overrides (IDLE_SHUTDOWN_MINUTES, ...); see the runbook.
+EnvironmentFile=-/etc/csbatagi/idle-shutdown.env
+ExecStart=/usr/bin/python3 /usr/local/lib/csbatagi/idle-shutdown.py
+SyslogIdentifier=csbatagi-idle-shutdown
+TimeoutStartSec=90
+MemoryMax=64M
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+UMask=0022

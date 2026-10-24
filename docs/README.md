@@ -22,6 +22,7 @@ Use this folder as the canonical context source.
 - CS2 automatic startup updates and recovery: [`operations/cs2-automatic-updates.md`](operations/cs2-automatic-updates.md)
 - CS2 dynamic IP discovery and player connections: [`operations/cs2-dynamic-addresses.md`](operations/cs2-dynamic-addresses.md)
 - CS2 Steam Datagram Relay installation and admission gates: [`operations/cs2-sdr.md`](operations/cs2-sdr.md)
+- CS2 game VM powering itself off after 15 idle minutes: [`operations/cs2-idle-shutdown.md`](operations/cs2-idle-shutdown.md)
 - Demo analysis worker, member downloads and uploads from other servers: [`operations/demo-analysis-and-downloads.md`](operations/demo-analysis-and-downloads.md)
 - Scripted CS Demo Manager recording and the demo-to-YouTube render plan: [`operations/demo-video-pipeline-plan.md`](operations/demo-video-pipeline-plan.md)
 - Security and secrets handling: [`operations/security-secrets.md`](operations/security-secrets.md)

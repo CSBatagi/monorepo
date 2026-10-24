@@ -1,0 +1,11 @@
+[Unit]
+Description=CS Batagi idle check once a minute (power off the idle game VM)
+Documentation=https://github.com/CSBatagi/monorepo/blob/main/docs/operations/cs2-idle-shutdown.md
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
