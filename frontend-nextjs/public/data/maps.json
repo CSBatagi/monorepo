@@ -1,7 +1,6 @@
 [
   { "id": "de_ancient", "name": "Ancient" },
   { "id": "de_anubis", "name": "Anubis" },
-  { "id": "3328271311", "name": "Cache" },
   { "id": "3329387648", "name": "Cobble" },
   { "id": "de_dust2", "name": "Dust II" },
   { "id": "de_inferno", "name": "Inferno" },
@@ -21,5 +20,5 @@
   { "id": "3261289969", "name": "Jura" },
   { "id": "3139403447", "name": "Sandstone" },
   { "id": "3121217565", "name": "Thera" },
-  {"id" : "de_cache", "name": "YeniCache"}
+  {"id" : "de_cache", "name": "Cache"}
 ] 
