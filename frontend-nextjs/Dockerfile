@@ -1,5 +1,5 @@
 # Use the official Node.js runtime as a parent image
-FROM node:18-alpine AS base
+FROM node:22-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -21,8 +21,6 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 # ENV NEXT_TELEMETRY_DISABLED=1
 
-# Debug: confirm next binary exists before building
-RUN ls -l node_modules/.bin || true && ls -l node_modules/next/dist/bin || true && node -v && npm -v && npx next --version
 RUN npm run build
 
 FROM base AS runner
