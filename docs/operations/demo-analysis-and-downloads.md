@@ -92,9 +92,10 @@ correct labels, such as de_overpass on 23 October and on 3 November.
 `BatagiInWarmup` now also requires `!isDemoRecording` for the warmup tick and for roster
 reconciliation.
 
-`backend/migrations/fix_20261030_series_team_labels.sql` corrects de_train and de_mirage:
-per-player team columns by Steam ID, both team names, the final round's labels from
-round 1, and the winner from the corrected scores. The 20 October maps are unchanged.
+`backend/migrations/fix_20261030_series_team_labels.sql` (de_train, de_mirage) and
+`fix_20261020_series_team_labels.sql` (de_cbble_d, de_biome) correct per-player team
+columns by Steam ID, both team names, the final round's labels from round 1, and the
+winner from the corrected scores. The fixed plugin was installed on the VM on 3 November.
 
 `/demolar` lists every demo with date (Istanbul time), map, teams, score once analyzed, size, recording state, analysis state and a download button. "Sadece tamamlanan kayıtlar" hides interrupted recordings. Admins additionally see "Analiz et" / "Yeniden analiz et", and for uploaded demos an analysis type selector and "Sil". The page polls every 30 seconds while any demo is queued or analyzing. "Başka sunucudan demo yükle" opens the upload form for any signed-in member.
 
