@@ -73,6 +73,29 @@ the PostgreSQL schema `incident_tuscan_20261006`. Overpass was not changed. Re-a
 the original Tuscan archive will reproduce its late-label problem; retain this
 correction if re-analysis is needed. The raw archive remains untouched.
 
+### Series team-label swaps (20 and 30 October 2026)
+
+The same reversal hit maps 1 and 2 of two three-map series: de_cbble_d and de_biome on
+20 October, de_train and de_mirage on 30 October. The final maps were correct. Each round
+backup in `MatchZyDataBackup` had the right rosters and sides, and every round except
+the last was labelled correctly. Players, team scores, the match winner and the last
+round's team labels were reversed.
+
+The `OnMapStart` change above was live on both nights. MatchZy's next-map timer still
+sets `isWarmup` 11 s after the map ends, while the demo keeps recording until 14.5 s
+(`tv_delay 0`, no upload URL: restart and flush delays are both 15 s). Within those
+3 seconds, `CSBatagi.cs`'s 5-second tick ran `exec MatchZy/warmup.cfg` on the old level.
+Its `mp_warmup_start` moved every player back to the map's starting side
+(`cs2-console.log` shows `ChangeTeam()` for all ten players just before `Changelevel`).
+The tick lands in that window about 60% of the time. Non-final maps where it missed kept
+correct labels, such as de_overpass on 23 October and on 3 November.
+`BatagiInWarmup` now also requires `!isDemoRecording` for the warmup tick and for roster
+reconciliation.
+
+`backend/migrations/fix_20261030_series_team_labels.sql` corrects de_train and de_mirage:
+per-player team columns by Steam ID, both team names, the final round's labels from
+round 1, and the winner from the corrected scores. The 20 October maps are unchanged.
+
 `/demolar` lists every demo with date (Istanbul time), map, teams, score once analyzed, size, recording state, analysis state and a download button. "Sadece tamamlanan kayıtlar" hides interrupted recordings. Admins additionally see "Analiz et" / "Yeniden analiz et", and for uploaded demos an analysis type selector and "Sil". The page polls every 30 seconds while any demo is queued or analyzing. "Başka sunucudan demo yükle" opens the upload form for any signed-in member.
 
 ## Backend endpoints

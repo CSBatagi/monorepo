@@ -25,6 +25,10 @@ public partial class MatchZy
     private string BatagiStateDir => Path.Combine(Server.GameDirectory, "csgo", "csbatagi-state");
     private static bool BatagiIsTv(CCSPlayerController p) => p.IsHLTV || (p.IsBot && p.TeamNum == 0 && p.PlayerName == "SourceTV");
     private bool BatagiCanReplaceWarmup => isWarmup && !matchStarted && !isMatchLive && !batagiPreparing && !isDemoRecording;
+    // MatchZy's next-map timer sets isWarmup ~3.5 s before the finished map's demo stops. Warmup
+    // work on that level (mp_warmup_start, team moves) puts every player back on the map's starting
+    // side, so the demo ends with each roster under the other team's name.
+    private bool BatagiInWarmup => isWarmup && !matchStarted && !isDemoRecording;
 
     private void InitializeBatagi()
     {
@@ -114,7 +118,7 @@ public partial class MatchZy
 
     private void BatagiAssignWarmupTeams()
     {
-        if (!isMatchSetup || !isWarmup || matchStarted || isSimulationMode) return;
+        if (!isMatchSetup || !BatagiInWarmup || isSimulationMode) return;
         foreach (var player in Utilities.GetPlayers())
         {
             if (!player.IsValid || player.IsBot || player.IsHLTV || player.Connected != PlayerConnectedState.PlayerConnected) continue;
@@ -235,7 +239,7 @@ public partial class MatchZy
             BatagiAssignWarmupTeams();
             // Apply listen-all ONLY to CSTV, leaving human team voice isolation intact.
             foreach (var tv in players.Where(BatagiIsTv)) tv.VoiceFlags = VoiceFlags.All | VoiceFlags.ListenAll;
-            if (isWarmup && !matchStarted && !isPractice && !isSimulationMode)
+            if (BatagiInWarmup && !isPractice && !isSimulationMode)
             {
                 if (!batagiWarmupApplied) { Server.ExecuteCommand("exec MatchZy/warmup.cfg"); batagiWarmupApplied = true; }
                 Server.ExecuteCommand("mp_warmup_pausetimer 1; mp_respawn_on_death_ct 1; mp_respawn_on_death_t 1; mp_free_armor 2");
