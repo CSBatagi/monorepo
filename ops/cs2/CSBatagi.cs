@@ -177,6 +177,23 @@ public partial class MatchZy
         }, TimerFlags.STOP_ON_MAPCHANGE);
     }
 
+    // Called by MatchZy's next-map timer, 3 s before the changelevel and 3.5 s before its own
+    // demo stop. The warmup restart stops the round-end music, which a changelevel alone leaves
+    // playing into the next map; the finished demo must close before it (see BatagiInWarmup).
+    private void BatagiPrepareNextMap()
+    {
+        if (isDemoRecording)
+        {
+            // With a broadcast delay the demo still lacks the map's end; skip warmup on this level.
+            if ((ConVar.Find("tv_delay")?.GetPrimitiveValue<int>() ?? 0) > 0) return;
+            BatagiCloseMarker(activeDemoFile, "map-ended");
+            Server.ExecuteCommand("tv_stoprecord");
+            isDemoRecording = false;
+            Log("[CSBatagi] Closed the finished map's demo before next-map warmup.");
+        }
+        StartWarmup();
+    }
+
     private void BatagiReset()
     {
         if (isDemoRecording) BatagiCloseMarker(activeDemoFile, "reset");

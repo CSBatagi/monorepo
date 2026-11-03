@@ -92,6 +92,13 @@ correct labels, such as de_overpass on 23 October and on 3 November.
 `BatagiInWarmup` now also requires `!isDemoRecording` for the warmup tick and for roster
 reconciliation.
 
+Without that restart the old level changes while the round-end music still plays. On
+3 November, overpass → anubis had no warmup before its `Changelevel`, and players heard the
+music carry into anubis. The next-map timer now calls `BatagiPrepareNextMap()`: it closes
+the finished demo (`tv_delay` is 0, so the demo is complete), then runs upstream's
+`StartWarmup()` on the old level. The restart still cuts the music, but it is no longer
+recorded. A real series transition has not confirmed the music part yet.
+
 `backend/migrations/fix_20261030_series_team_labels.sql` (de_train, de_mirage) and
 `fix_20261020_series_team_labels.sql` (de_cbble_d, de_biome) correct per-player team
 columns by Steam ID, both team names, the final round's labels from round 1, and the

@@ -93,12 +93,13 @@ replace('src/DatabaseStats.cs',
 replace('src/Utility.cs',
         '            SetupLiveFlagsAndCfg();\n            CrashBreadcrumb("StartLive: after SetupLiveFlagsAndCfg");\n            StartDemoRecording();',
         '            // Live configuration and recording have passed CS Batagi preflight.')
-# Next-map preparation used to rename the current map's teams while its CSTV demo
-# was still flushing. CS Demo Manager then assigned final scores/players to those
-# new names. Apply sides and warmup only after the new level is loaded.
+# Next-map preparation runs 3.5 s before HandleMatchEnd's demo stop. Its warmup
+# put players back on their starting sides while CSTV recorded, so CS Demo Manager
+# crossed the team labels; skipping it left the round-end music playing into the
+# next map. Close the demo first, then warm up; next-map sides wait for OnMapStart.
 replace('src/Utility.cs',
         '                StartWarmup();\n                SetMapSides();',
-        '                // Warmup and next-map sides are applied by OnMapStart after the old demo closes.')
+        '                BatagiPrepareNextMap();')
 replace('src/MatchZy.cs',
         '                    if (isWarmup)\n                    {\n                        StartWarmup();',
         '                    if (isWarmup)\n                    {\n                        SetMapSides();\n                        StartWarmup();')
