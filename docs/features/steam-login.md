@@ -31,6 +31,8 @@ node migrateSteamAdmins.js ../steam-admin-migration_secrets.local --apply
 
 Run against the intended deployment database using its existing private environment. The first command is a rollback-only dry-run, including any required member-table creation. A reviewed private mapping for the two existing admins was prepared during this implementation; it is not part of source control.
 
+Later grants go through `backend/migrations/`, the only write path to production. The deploy runs every file there as the database superuser. [`grant_20261110_admins.sql`](../../backend/migrations/grant_20261110_admins.sql) (Nerull, Titus, Cago, Uncle Iroh, ekl1ps) is the pattern to copy. It sets `steam_members.is_admin` by roster SteamID, creating the member row when the person has never signed in. It also records itself in `data_fix_runs`, so later migration runs cannot undo a revocation. To revoke, add a new one-shot file that sets `is_admin = false`. `is_admin` covers every admin control on the site; there is no narrower role.
+
 ## Deployment
 
 Deploy backend and frontend together. The ordinary images copy all new source files. The prebuilt deployment helper must include `steamAuth.js`, `migrateSteamAdmins.js`, `gameServer.js` and `demoRoutes.js` alongside the cosmetics files. Build Next.js locally or in CI, never on the 1 GiB VM. No runtime dependency, background job, connection pool or Docker memory limit was added or increased.
