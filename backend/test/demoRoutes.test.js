@@ -187,6 +187,10 @@ test('a success report without a database row keeps what the CLI said', async ()
   await send('1 demos to process\nDemo /x/y.dem already in database, skipping this demo.');
   expect(errors[1]).toMatch(/skipped it: a demo with the same checksum is already in the database/);
 
+  // CS Demo Manager 3.21.0 words it differently.
+  await send('1 demos to process\n[1/1] y.dem already in the database, skipping it\n✔ 0 analyzed · ↷ 1 skipped');
+  expect(errors[2]).toMatch(/skipped it: a demo with the same checksum is already in the database/);
+
   await send('x'.repeat(5000));
-  expect(errors[2].length).toBeLessThan(800);
+  expect(errors[3].length).toBeLessThan(800);
 });

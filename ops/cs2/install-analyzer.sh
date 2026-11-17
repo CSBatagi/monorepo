@@ -3,14 +3,18 @@
 #
 # Required environment: CSDM_DB_HOST, CSDM_DB_USER, CSDM_DB_PASSWORD (a role limited to the
 # CS Demo Manager tables). Optional: CSDM_DB_PORT (5432), CSDM_DB_NAME (csdm), CSDM_VERSION.
-# The version must match the desktop CS Demo Manager the club uses, because the CLI migrates
-# the shared database schema on connect.
+# The version defaults to the one pinned in csdm-cli.env, which must match the production database
+# schema: the CLI refuses any other schema version, and its restricted role cannot migrate.
+# Later upgrades go through the Demo analysis setup workflow (analyzer-maintenance.sh cli-install).
 set -euo pipefail
 
-VERSION="${CSDM_VERSION:-3.20.1}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+REQUESTED_VERSION="${CSDM_VERSION:-}"
+# shellcheck source=csdm-cli.env
+. "$HERE/csdm-cli.env"
+VERSION="${REQUESTED_VERSION:-$CSDM_VERSION}"
 DEB="cs-demo-manager_${VERSION}_amd64.deb"
 PACKAGES=/home/steam/resurrection-packages
-HERE="$(cd "$(dirname "$0")" && pwd)"
 : "${CSDM_DB_HOST:?set CSDM_DB_HOST}"
 : "${CSDM_DB_USER:?set CSDM_DB_USER}"
 : "${CSDM_DB_PASSWORD:?set CSDM_DB_PASSWORD}"
@@ -21,6 +25,10 @@ if [ ! -f "$DEB" ]; then
   curl -fsSL -o "$DEB" "https://github.com/akiver/cs-demo-manager/releases/download/v${VERSION}/${DEB}"
 fi
 echo "Package checksum: $(sha256sum "$DEB")"
+if [ "$VERSION" = "$CSDM_VERSION" ] && [ "$(sha256sum "$DEB" | cut -d' ' -f1)" != "$CSDM_DEB_SHA256" ]; then
+  echo "Checksum differs from csdm-cli.env ($CSDM_DEB_SHA256); refusing to install." >&2
+  exit 1
+fi
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq

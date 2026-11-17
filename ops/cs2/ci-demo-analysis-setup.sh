@@ -3,8 +3,9 @@
 # (backend-ci, the GOOGLE_CREDENTIALS secret, which is also the backend's credentials.json).
 # Keeps the two parts of demo analysis that live outside the website images in step with the code:
 #   1. write access for that account to gs://$BUCKET/uploads/ (member demo uploads), and
-#   2. ops/cs2/demo-analyzer.py installed on the game VM, which is started for the install when it
-#      is off and stopped again afterwards once nobody is on it.
+#   2. ops/cs2/demo-analyzer.py and the CS Demo Manager CLI pinned in ops/cs2/csdm-cli.env installed
+#      on the game VM, which is started for the install when it is off and stopped again afterwards
+#      once nobody is on it.
 # APPLY=true makes the changes; anything else only reports what it would do.
 set -euo pipefail
 
@@ -15,6 +16,11 @@ APPLY="${APPLY:-false}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 WORKER="$HERE/demo-analyzer.py"
 HELPER="$HERE/analyzer-maintenance.sh"
+# CSDM_VERSION, CSDM_DEB_SHA256, CSDM_SCHEMA
+# shellcheck source=csdm-cli.env
+. "$HERE/csdm-cli.env"
+# How long to wait for the Deploy workflow's database migration before giving up on a CLI upgrade.
+SCHEMA_WAIT_SECONDS="${SCHEMA_WAIT_SECONDS:-1200}"
 ACCOUNT="$(gcloud config get-value account 2>/dev/null)"
 EXPRESSION="resource.name.startsWith(\"projects/_/buckets/${BUCKET}/objects/uploads/\")"
 CONDITION="title=website-demo-uploads,description=Member demo uploads only,expression=${EXPRESSION}"
@@ -153,6 +159,34 @@ analyzer_database() {
   printf '%s\n' "$CSDM_ANALYZER_PASSWORD" | ssh_vm 90 --command "bash /tmp/analyzer-maintenance.sh db set ${ip} 5432 csdm_analyzer csdm"
 }
 
+# The CS Demo Manager CLI pinned in csdm-cli.env. It refuses a database at any other schema version and
+# its restricted role cannot migrate, so it is installed only once the Deploy workflow's migration
+# (backend/migrations/csdm_schema_<N>.sql) has brought production to CSDM_SCHEMA. Both workflows start
+# on the same push, so this waits for that migration for a while.
+game_cli() {
+  local installed schema waited=0
+  installed="$(ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh cli-version' || true)"
+  installed="${installed%%$'\n'*}"
+  if [ "$installed" = "$CSDM_VERSION" ]; then
+    echo "CS Demo Manager CLI already ${CSDM_VERSION}."
+    return 0
+  fi
+  while :; do
+    schema="$(ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh db schema' || true)"
+    schema="${schema%%$'\n'*}"
+    [ "$schema" = "$CSDM_SCHEMA" ] && break
+    if [ "$waited" -ge "$SCHEMA_WAIT_SECONDS" ]; then
+      warn "The production database is at CS Demo Manager schema ${schema:-unknown}; CLI ${CSDM_VERSION} needs ${CSDM_SCHEMA}, so the game VM keeps CLI ${installed:-none}. Check the Deploy workflow's \"Run database migrations\" step, then run this workflow again."
+      return 1
+    fi
+    echo "Database schema is ${schema:-unknown}, waiting for ${CSDM_SCHEMA} (the Deploy workflow's migration)..."
+    sleep 30
+    waited=$((waited + 30))
+  done
+  echo "Installing CS Demo Manager CLI ${CSDM_VERSION} (was ${installed:-none}); database schema ${schema}."
+  ssh_vm 1500 --command "bash /tmp/analyzer-maintenance.sh cli-install ${CSDM_VERSION} ${CSDM_DEB_SHA256}"
+}
+
 game_worker() {
   echo "::group::Analyzer worker on the game VM"
   local status started=false wanted installed
@@ -166,6 +200,7 @@ game_worker() {
     elif wait_for_ssh; then
       scp_vm "$HELPER" "${GAME_VM}:/tmp/analyzer-maintenance.sh" >/dev/null
       echo "Installed now: $(ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh installed' | tr '\n' ' ')"
+      echo "CS Demo Manager CLI: $(ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh cli-version' | tr -d '\n'), pinned ${CSDM_VERSION} (needs schema ${CSDM_SCHEMA})"
       ssh_vm 90 --command 'bash /tmp/analyzer-maintenance.sh db show' || warn "The analyzer cannot log in to the database with its current settings."
       ssh_vm 60 --command "rm -f /tmp/analyzer-maintenance.sh" >/dev/null 2>&1 || true
     else
@@ -218,6 +253,10 @@ game_worker() {
     fi
     if [ "$ok" = true ] && ! analyzer_database; then
       warn "The analyzer cannot log in to the database; analyses will fail until this is fixed."
+      ok=false
+    fi
+    if [ "$ok" = true ] && ! game_cli; then
+      warn "Installing CS Demo Manager CLI ${CSDM_VERSION} failed; see the output above."
       ok=false
     fi
   fi
