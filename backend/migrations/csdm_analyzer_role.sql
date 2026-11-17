@@ -3,13 +3,13 @@
 --   psql -v csdm_analyzer_password=... (the CSDM_ANALYZER_PASSWORD secret).
 -- Idempotent: every run sets the password and rebuilds the role's privileges from scratch.
 --
--- What the CS Demo Manager 3.20.1 CLI needs, and why:
+-- What the CS Demo Manager 3.21.0 CLI needs, and why:
 --   * Before every command it runs `CREATE TABLE IF NOT EXISTS migrations (...)`. Postgres checks
 --     CREATE on the schema even when the table exists, so the role needs CREATE on schema public.
 --     The event trigger below turns that into "may run no-op DDL only": any statement by this role
 --     that would create or change an object is rolled back. The role also owns no tables, so it
 --     cannot alter or drop them, and CS Demo Manager can never migrate or reset the schema from the
---     game VM (the desktop app that pushes official stats does that).
+--     game VM. Schema upgrades ship as deploy migrations instead (csdm_schema_15.sql).
 --   * Data access to CS Demo Manager's own tables only (migrations: read only). The same database
 --     holds the website's tables (admins, steam_members, notification_subscriptions, ...), which
 --     this role must not touch: the game VM is exposed to the internet.
@@ -57,7 +57,8 @@ DECLARE
     'grenade_positions', 'grenade_projectiles_destroy', 'he_grenades_explode', 'hostage_pick_up_start',
     'hostage_picked_up', 'hostage_positions', 'hostage_rescued', 'ignored_steam_accounts', 'inferno_positions',
     'kills', 'timestamps', 'maps', 'matches', 'player_ban_per_match', 'player_comments', 'round_comments',
-    'player_blinds', 'player_buys', 'player_economies', 'player_positions', 'players', 'renown_accounts',
+    'player_blinds', 'player_buys', 'player_economies', 'player_position_samples', 'player_positions', 'players',
+    'renown_accounts',
     'round_tags', 'rounds', 'shots', 'smokes_start', 'steam_accounts', 'steam_account_overrides',
     'steam_account_tags', 'tags', 'teams'];
   name text;
@@ -96,5 +97,6 @@ COMMIT;
 \echo csdm_analyzer: CSDM_ANALYZER_PASSWORD is not set; role left unchanged
 \endif
 
--- Must be 14 for CS Demo Manager 3.20.1: the CLI refuses a newer schema and cannot migrate an older one.
+-- Must be 15 for CS Demo Manager 3.21.0: the CLI refuses a newer schema and cannot migrate an older one.
+-- This file runs before csdm_schema_15.sql, so the first deploy with that migration still prints 14.
 SELECT max(schema_version) AS csdm_schema_version FROM migrations;

@@ -33,7 +33,8 @@ CSDM = os.environ.get('CSDM_CLI', '/usr/local/bin/csdm')
 BUCKET = os.environ.get('DEMO_BUCKET', 'csbatagi-demos')
 INTERVAL = int(os.environ.get('ANALYZER_INTERVAL', '60'))
 ANALYZE_TIMEOUT = int(os.environ.get('ANALYZER_TIMEOUT', '3600'))
-# `csdm analyze --source` values of CS Demo Manager 3.20.1; "auto" lets the CLI detect the source.
+# `csdm analyze --source` values of CS Demo Manager 3.21.0 (unchanged since 3.20.1); "auto" lets the
+# CLI detect the source.
 SOURCES = {
     'matchzy', 'valve', 'faceit', 'esea', 'esl', 'ebot', 'esplay', 'esportal', 'esportligaen', 'fastcup',
     '5eplay', 'gamersclub', 'challengermode', 'perfectworld', 'popflash', 'pracc', 'renown',
@@ -44,6 +45,11 @@ SIGNED_HOST = 'https://storage.googleapis.com/'
 UPLOAD_PREFIX = 'uploads/'
 STACK_FRAME = re.compile(r'^\s+at\s')
 UNDEFINED_FIELD = re.compile(r'^\s+\w+: undefined,?$')
+# Go panics from the demo parser (CS Demo Analyzer), matched on stripped lines: the message comes first,
+# then "stacktrace:", "goroutine N [running]:", "pkg.(*Type).func(args)" / "file.go:12 +0x3f" pairs and
+# "created by ...". Kept, those frames pushed the message out of the summary (17 November 2026).
+GO_STACK_LINE = re.compile(
+    r'^(stacktrace:|goroutine \d+ \[.*\]:|created by .*|\S+\.go:\d+( \+0x[0-9a-f]+)?|[\w./*()@-]+\(.*\)|undefined)$')
 
 
 def api(route, payload):
@@ -195,16 +201,18 @@ def analyze(job):
     output = (result.stdout + '\n' + result.stderr).strip()
     print(output[-4000:], flush=True)  # the whole story for journalctl
     if result.returncode != 0:
+        # Since 3.21.0 the CLI also exits 1 when the analyzer or the insertion failed.
         raise RuntimeError(f'csdm exited {result.returncode}: {error_summary(output)}')
-    # The CLI also exits 0 when it skipped a demo or rolled a failed insertion back; the backend
-    # shows this output when the demo is not in the database.
+    # The CLI exits 0 when it skipped a demo (and 3.20.1 also when it rolled a failed insertion
+    # back); the backend shows this output when the demo is not in the database.
     return error_summary(output)
 
 
 def error_summary(output, limit=700):
     """The CLI prints errors with long stack traces; the website should get the messages, not the frames."""
     lines = [line.strip() for line in output.splitlines()
-             if line.strip() and not STACK_FRAME.match(line) and not UNDEFINED_FIELD.match(line)]
+             if line.strip() and not STACK_FRAME.match(line) and not UNDEFINED_FIELD.match(line)
+             and not GO_STACK_LINE.match(line.strip())]
     return '\n'.join(lines)[-limit:]
 
 

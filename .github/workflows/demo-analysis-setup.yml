@@ -2,7 +2,8 @@ name: Demo analysis setup
 
 # Keeps the parts of demo analysis that live outside the website images in step with the code
 # (ops/cs2/ci-demo-analysis-setup.sh): the backend account's write access to
-# gs://csbatagi-demos/uploads/ for member uploads, and the analyzer worker on the game VM.
+# gs://csbatagi-demos/uploads/ for member uploads, and the analyzer worker and the CS Demo Manager
+# CLI version (ops/cs2/csdm-cli.env) on the game VM.
 # On main it applies them; on any other branch it is a dry run that only checks permissions and
 # reachability. Run it again from the GitHub app with Actions > Demo analysis setup > Run workflow.
 on:
@@ -12,6 +13,7 @@ on:
       - 'ops/cs2/demo-analyzer.py'
       - 'ops/cs2/analyzer-maintenance.sh'
       - 'ops/cs2/ci-demo-analysis-setup.sh'
+      - 'ops/cs2/csdm-cli.env'
       - '.github/workflows/demo-analysis-setup.yml'
 
 permissions:
@@ -24,7 +26,9 @@ concurrency:
 jobs:
   setup:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Worst case: VM boot and SSH (~15 min), a running analysis to finish (15), the wait for the
+    # Deploy workflow's schema migration (20) and the CLI install.
+    timeout-minutes: 75
     env:
       APPLY: ${{ github.ref == 'refs/heads/main' }}
       BUCKET: csbatagi-demos

@@ -19,7 +19,7 @@ const MIN_BYTES = 1024 * 1024;
 const MAX_PARALLEL_CHUNKS = 2; // bounds the chunk buffers held by the 256 MB backend container
 const STALE_UPLOAD = '2 hours';
 const PLATFORMS = ['xplay', 'faceit', 'other'];
-// `csdm analyze --source` values accepted by CS Demo Manager 3.20.1 (@akiver/cs-demo-analyzer 1.10.5),
+// `csdm analyze --source` values accepted by CS Demo Manager 3.21.0 (@akiver/cs-demo-analyzer 1.14.2; same as 3.20.1),
 // plus "auto" to let the CLI detect the source itself. xplay.gg demos often carry nothing the CLI
 // recognises and only analyze as "matchzy", which is why it is the default.
 const ANALYSIS_SOURCES = ['matchzy', 'auto', 'valve', 'faceit', 'esea', 'esl', 'ebot', 'esplay', 'esportal', 'esportligaen',

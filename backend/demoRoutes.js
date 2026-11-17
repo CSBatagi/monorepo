@@ -130,9 +130,10 @@ const ANALYZED_CHECKSUM_SQL = `
   ) found ORDER BY rank LIMIT 1`;
 
 // The CLI exits 0 even when it skipped a demo or rolled its insertion back; its output says why.
+// 3.20.1 prints "already in database, skipping this demo", 3.21.0 "already in the database, skipping it".
 function notInDatabaseReason(log) {
   const output = typeof log === 'string' ? log.trim().slice(-700) : '';
-  if (/already in database, skipping/i.test(output)) {
+  if (/already in (the )?database, skipping/i.test(output)) {
     return 'CS Demo Manager skipped it: a demo with the same checksum is already in the database under another name (analyzed from the desktop app?), so its statistics are already there';
   }
   return output ? `Analysis finished but the demo is not in the database. CS Demo Manager said: ${output}` : 'Analysis finished but the demo is not in the database';
