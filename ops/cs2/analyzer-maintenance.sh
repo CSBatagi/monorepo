@@ -103,11 +103,13 @@ case "${1:-}" in
     [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ "$sha256" =~ ^[0-9a-f]{64}$ ]] || { echo "cli-install: bad version or sha256" >&2; exit 2; }
     deb="$PACKAGES/cs-demo-manager_${version}_amd64.deb"
     sudo install -d -o steam -g steam "$PACKAGES"
-    if [ ! -f "$deb" ] || [ "$(sha256sum "$deb" | cut -d' ' -f1)" != "$sha256" ]; then
+    # The SSH user cannot read the steam user's home (17 November 2026: "sha256sum: Permission
+    # denied"), so every look at the package goes through sudo.
+    if ! sudo test -f "$deb" || [ "$(sudo sha256sum "$deb" | cut -d' ' -f1)" != "$sha256" ]; then
       sudo rm -f "$deb" "$deb.part"
       sudo -u steam curl -fsSL --retry 3 -o "$deb.part" \
         "https://github.com/akiver/cs-demo-manager/releases/download/v${version}/cs-demo-manager_${version}_amd64.deb"
-      got="$(sha256sum "$deb.part" | cut -d' ' -f1)"
+      got="$(sudo sha256sum "$deb.part" | cut -d' ' -f1)"
       if [ "$got" != "$sha256" ]; then
         sudo rm -f "$deb.part"
         echo "cli-install: sha256 mismatch for $version (got $got)" >&2
