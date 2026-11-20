@@ -4,20 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 
 /** Voice-chat lines shared by the club home heading and the cinematic hero. */
 export const QUOTES = [
-  "Orda olduğumu nasıl biliyor???",
-  "Ooo masada sikiş olmuş",
-  "Kara Miraj…",
-  "Beyler kaptan yok mu?",
-  "En geç 22:30’da başlayalım",
   "Beyler akşama yokum, çocuğun waffle kursu var",
-  "Balını sikiyim yaa",
-  "Altın keleş, altın kalleş",
-  "Krieg yasaklansın",
-  "Kimse arkaya bakmıyor mu yaa???",
-  "Beyler kaptanı dinleyin",
-  "Serbest abi, isteyen istediğini yapsın",
-  "Beyler info?",
-  "Teknik mi Tarık mı?",
+  "Trakyalıyız ikimiz, keser sapı gibi sikimiz",
+  "Masada sikmek sünnettir, Peygamberimiz de öyle yapardı",
+  "Bu kadar gülecek ne vardı?",
 ];
 export const QUOTE_FADE_MS = 1100;
 const ROTATION_MS = 4200;
