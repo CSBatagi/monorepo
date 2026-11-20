@@ -79,9 +79,11 @@ jobs:
             fi
           else
             BEFORE="${{ github.event.before }}"
-            # Compare against the last successfully deployed commit on this branch so that
-            # queued pushes that replace pending runs do not miss un-deployed changes.
-            LAST_SUCCESS_SHA=$(gh run list --workflow="deploy.yml" --branch="${{ github.ref_name }}" --status=success --limit=1 --json headSha -q '.[0].headSha' 2>/dev/null || echo "")
+            # Compare against the last successfully deployed commit from a full push run
+            # on this branch. We restrict to --event=push because manual workflow_dispatch runs
+            # can be partial (e.g. only frontend, only backend, or run_migrations: false) and
+            # therefore do not establish that all services and migrations at their commit were deployed.
+            LAST_SUCCESS_SHA=$(gh run list --workflow="deploy.yml" --branch="${{ github.ref_name }}" --event=push --status=success --limit=1 --json headSha -q '.[0].headSha' 2>/dev/null || echo "")
             CURRENT_SHA=$(git rev-parse HEAD)
 
             if [ -n "$LAST_SUCCESS_SHA" ] && ! git cat-file -e "$LAST_SUCCESS_SHA" 2>/dev/null; then
