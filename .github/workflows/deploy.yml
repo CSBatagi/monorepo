@@ -26,6 +26,7 @@ on:
 permissions:
   contents: read
   packages: write
+  actions: read
 
 concurrency:
   group: production-deploy
@@ -48,6 +49,8 @@ jobs:
 
       - name: Check for changes
         id: changes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             SERVICE="${{ inputs.service }}"
@@ -69,14 +72,25 @@ jobs:
               echo "docker-compose=false" >> $GITHUB_OUTPUT
               echo "config_data=false" >> $GITHUB_OUTPUT
             fi
-            if [[ "$MIGRATIONS" == "true" || "$SERVICE" == "all" ]]; then
+            if [[ "$MIGRATIONS" == "true" ]]; then
               echo "migrations=true" >> $GITHUB_OUTPUT
             else
               echo "migrations=false" >> $GITHUB_OUTPUT
             fi
           else
             BEFORE="${{ github.event.before }}"
-            if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE" 2>/dev/null; then
+            # Compare against the last successfully deployed commit on this branch so that
+            # queued pushes that replace pending runs do not miss un-deployed changes.
+            LAST_SUCCESS_SHA=$(gh run list --workflow="deploy.yml" --branch="${{ github.ref_name }}" --status=success --limit=1 --json headSha -q '.[0].headSha' 2>/dev/null || echo "")
+            CURRENT_SHA=$(git rev-parse HEAD)
+
+            if [ -n "$LAST_SUCCESS_SHA" ] && ! git cat-file -e "$LAST_SUCCESS_SHA" 2>/dev/null; then
+              git fetch origin "$LAST_SUCCESS_SHA" --depth=1 2>/dev/null || true
+            fi
+
+            if [ -n "$LAST_SUCCESS_SHA" ] && [ "$LAST_SUCCESS_SHA" != "$CURRENT_SHA" ] && git cat-file -e "$LAST_SUCCESS_SHA" 2>/dev/null; then
+              DIFF_RANGE="$LAST_SUCCESS_SHA HEAD"
+            elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE" 2>/dev/null; then
               DIFF_RANGE="$BEFORE HEAD"
             else
               DIFF_RANGE="HEAD~1 HEAD"
@@ -95,7 +109,8 @@ jobs:
             echo "config_data=$CONFIG_CHANGED" >> $GITHUB_OUTPUT
             echo "migrations=$MIGRATIONS_CHANGED" >> $GITHUB_OUTPUT
 
-            echo "Detected changes (range: $DIFF_RANGE):"
+            echo "Base revision for diff: $DIFF_RANGE"
+            echo "Detected changes:"
             echo "  backend: $BACKEND_CHANGED"
             echo "  frontend-nextjs: $FRONTEND_CHANGED"
             echo "  docker-compose: $COMPOSE_CHANGED"
@@ -346,7 +361,7 @@ jobs:
           ssh deploy-target "sudo mv /tmp/csbatagi-backup.service /tmp/csbatagi-backup.timer /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now csbatagi-backup.timer"
 
       - name: Run database migrations if changed
-        if: needs.check-changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
+        if: needs.check-changes.outputs.migrations == 'true'
         run: |
           # Copy migration files and their runner to host
           scp -r \
