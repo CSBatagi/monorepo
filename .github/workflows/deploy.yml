@@ -2,6 +2,20 @@ name: Deploy via Tailscale (Backend and Frontend)
 
 on:
   workflow_dispatch:
+    inputs:
+      service:
+        description: 'Services to build and update'
+        type: choice
+        options:
+          - all
+          - backend
+          - frontend
+          - none
+        default: all
+      run_migrations:
+        description: 'Run database migrations'
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths-ignore:
@@ -10,29 +24,195 @@ on:
       - '**/Test**'
 
 permissions:
-  contents: 'read'
-  packages: 'read'   # Required for GitHub Container Registry
+  contents: read
+  packages: write
+  actions: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  check-changes:
     runs-on: ubuntu-latest
-    # Use a larger runner for faster execution if available
-    # runs-on: ubuntu-latest-4-cores  # Uncomment if you have access to larger runners
-
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend-nextjs: ${{ steps.changes.outputs.frontend-nextjs }}
+      docker-compose: ${{ steps.changes.outputs.docker-compose }}
+      config_data: ${{ steps.changes.outputs.config_data }}
+      migrations: ${{ steps.changes.outputs.migrations }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4  # Updated to latest version
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # Needed for git diff
+          fetch-depth: 0
 
       - name: Check for changes
         id: changes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "backend=$(git diff --name-only HEAD~1 HEAD | grep -q '^backend/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          echo "frontend-nextjs=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          echo "docker-compose=$(git diff --name-only HEAD~1 HEAD | grep -q 'docker-compose.yml\|Caddyfile' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          echo "config_data=$(git diff --name-only HEAD~1 HEAD | grep -q '^frontend-nextjs/public/data/players.json$\|^frontend-nextjs/public/data/season_start.json$' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          echo "migrations=$(git diff --name-only HEAD~1 HEAD | grep -qE '^(backend/migrations/|ops/backend/run-migrations.sh)' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            SERVICE="${{ inputs.service }}"
+            MIGRATIONS="${{ inputs.run_migrations }}"
+            if [[ "$SERVICE" == "all" || "$SERVICE" == "backend" ]]; then
+              echo "backend=true" >> $GITHUB_OUTPUT
+            else
+              echo "backend=false" >> $GITHUB_OUTPUT
+            fi
+            if [[ "$SERVICE" == "all" || "$SERVICE" == "frontend" ]]; then
+              echo "frontend-nextjs=true" >> $GITHUB_OUTPUT
+            else
+              echo "frontend-nextjs=false" >> $GITHUB_OUTPUT
+            fi
+            if [[ "$SERVICE" == "all" ]]; then
+              echo "docker-compose=true" >> $GITHUB_OUTPUT
+              echo "config_data=true" >> $GITHUB_OUTPUT
+            else
+              echo "docker-compose=false" >> $GITHUB_OUTPUT
+              echo "config_data=false" >> $GITHUB_OUTPUT
+            fi
+            if [[ "$MIGRATIONS" == "true" ]]; then
+              echo "migrations=true" >> $GITHUB_OUTPUT
+            else
+              echo "migrations=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            BEFORE="${{ github.event.before }}"
+            # Compare against the last successfully deployed commit from a full push run
+            # on this branch. We restrict to --event=push because manual workflow_dispatch runs
+            # can be partial (e.g. only frontend, only backend, or run_migrations: false) and
+            # therefore do not establish that all services and migrations at their commit were deployed.
+            LAST_SUCCESS_SHA=$(gh run list --workflow="deploy.yml" --branch="${{ github.ref_name }}" --event=push --status=success --limit=1 --json headSha -q '.[0].headSha' 2>/dev/null || echo "")
+            CURRENT_SHA=$(git rev-parse HEAD)
+
+            if [ -n "$LAST_SUCCESS_SHA" ] && ! git cat-file -e "$LAST_SUCCESS_SHA" 2>/dev/null; then
+              git fetch origin "$LAST_SUCCESS_SHA" --depth=1 2>/dev/null || true
+            fi
+
+            if [ -n "$LAST_SUCCESS_SHA" ] && [ "$LAST_SUCCESS_SHA" != "$CURRENT_SHA" ] && git cat-file -e "$LAST_SUCCESS_SHA" 2>/dev/null; then
+              DIFF_RANGE="$LAST_SUCCESS_SHA HEAD"
+            elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE" 2>/dev/null; then
+              DIFF_RANGE="$BEFORE HEAD"
+            else
+              DIFF_RANGE="HEAD~1 HEAD"
+            fi
+            DIFF_FILES=$(git diff --name-only $DIFF_RANGE 2>/dev/null || echo "")
+
+            BACKEND_CHANGED=$(echo "$DIFF_FILES" | grep -q '^backend/' && echo 'true' || echo 'false')
+            FRONTEND_CHANGED=$(echo "$DIFF_FILES" | grep -q '^frontend-nextjs/' && echo 'true' || echo 'false')
+            COMPOSE_CHANGED=$(echo "$DIFF_FILES" | grep -qE '^(docker-compose\.yml|Caddyfile)' && echo 'true' || echo 'false')
+            CONFIG_CHANGED=$(echo "$DIFF_FILES" | grep -qE '^frontend-nextjs/public/data/(players|season_start)\.json$' && echo 'true' || echo 'false')
+            MIGRATIONS_CHANGED=$(echo "$DIFF_FILES" | grep -qE '^(backend/migrations/|ops/backend/run-migrations\.sh)' && echo 'true' || echo 'false')
+
+            echo "backend=$BACKEND_CHANGED" >> $GITHUB_OUTPUT
+            echo "frontend-nextjs=$FRONTEND_CHANGED" >> $GITHUB_OUTPUT
+            echo "docker-compose=$COMPOSE_CHANGED" >> $GITHUB_OUTPUT
+            echo "config_data=$CONFIG_CHANGED" >> $GITHUB_OUTPUT
+            echo "migrations=$MIGRATIONS_CHANGED" >> $GITHUB_OUTPUT
+
+            echo "Base revision for diff: $DIFF_RANGE"
+            echo "Detected changes:"
+            echo "  backend: $BACKEND_CHANGED"
+            echo "  frontend-nextjs: $FRONTEND_CHANGED"
+            echo "  docker-compose: $COMPOSE_CHANGED"
+            echo "  config_data: $CONFIG_CHANGED"
+            echo "  migrations: $MIGRATIONS_CHANGED"
+          fi
+
+  build-backend:
+    needs: check-changes
+    if: needs.check-changes.outputs.backend == 'true'
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/backend
+          tags: |
+            type=sha,format=short
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=true
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-frontend:
+    needs: check-changes
+    if: needs.check-changes.outputs.frontend-nextjs == 'true'
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/frontend-nextjs
+          tags: |
+            type=sha,format=short
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=true
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend-nextjs
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: [check-changes, build-backend, build-frontend]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Connect to Tailscale
         uses: tailscale/github-action@v3
@@ -54,37 +234,37 @@ jobs:
 
       - name: Create all secret files
         run: |
-            echo "CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}" > .dns_secrets
+          echo "CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}" > .dns_secrets
 
-            echo "MATCHMAKING_TOKEN=${{secrets.AUTH_TOKEN}}" > .frontend_secrets
-            echo "AUTH_TOKEN=${{secrets.AUTH_TOKEN}}" >> .frontend_secrets
-            echo "SERVERACPASS=${{ secrets.SERVERACPASS }}" >> .frontend_secrets
-            echo "STEAM_API_KEY=${{ secrets.STEAM_API_KEY }}" >> .frontend_secrets
-            echo "VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" >> .frontend_secrets
-            echo "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" >> .frontend_secrets
-            echo "VAPID_SUBJECT=mailto:csbatagi@gmail.com" >> .frontend_secrets
-            echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" >> .frontend_secrets
-          
-            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" > .backend_secrets
-            echo "AUTH_TOKEN=${{ secrets.AUTH_TOKEN }}" >> .backend_secrets
-            echo "DB_USER=${{ secrets.DB_USER }}" >> .backend_secrets
-            echo "RCON_PASSWORD=${{ secrets.RCON_PASSWORD }}" >> .backend_secrets
-          
-            echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > .my_sql_secrets
-            echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> .my_sql_secrets
-            echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> .my_sql_secrets
-          
-            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > .pg_secrets
-            echo "POSTGRES_READONLY_PASSWORD=${{ secrets.POSTGRES_READONLY_PASSWORD }}" >> .pg_secrets
-            echo "CSDM_ANALYZER_PASSWORD=${{ secrets.CSDM_ANALYZER_PASSWORD }}" >> .pg_secrets
-          
-            echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
+          echo "MATCHMAKING_TOKEN=${{ secrets.AUTH_TOKEN }}" > .frontend_secrets
+          echo "AUTH_TOKEN=${{ secrets.AUTH_TOKEN }}" >> .frontend_secrets
+          echo "SERVERACPASS=${{ secrets.SERVERACPASS }}" >> .frontend_secrets
+          echo "STEAM_API_KEY=${{ secrets.STEAM_API_KEY }}" >> .frontend_secrets
+          echo "VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" >> .frontend_secrets
+          echo "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" >> .frontend_secrets
+          echo "VAPID_SUBJECT=mailto:csbatagi@gmail.com" >> .frontend_secrets
+          echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}" >> .frontend_secrets
+
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" > .backend_secrets
+          echo "AUTH_TOKEN=${{ secrets.AUTH_TOKEN }}" >> .backend_secrets
+          echo "DB_USER=${{ secrets.DB_USER }}" >> .backend_secrets
+          echo "RCON_PASSWORD=${{ secrets.RCON_PASSWORD }}" >> .backend_secrets
+
+          echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > .my_sql_secrets
+          echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> .my_sql_secrets
+          echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> .my_sql_secrets
+
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > .pg_secrets
+          echo "POSTGRES_READONLY_PASSWORD=${{ secrets.POSTGRES_READONLY_PASSWORD }}" >> .pg_secrets
+          echo "CSDM_ANALYZER_PASSWORD=${{ secrets.CSDM_ANALYZER_PASSWORD }}" >> .pg_secrets
+
+          echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
 
       - name: Prepare directories and copy files
         run: |
           # Create directory structure on host
           ssh deploy-target "mkdir -p /srv/csbatagi/frontend-nextjs/public/data"
-          
+
           # Copy all config and secret files
           scp \
             ./Caddyfile \
@@ -97,13 +277,13 @@ jobs:
             ./.pg_secrets \
             ./credentials.json \
             deploy-target:/srv/csbatagi/
-          
+
           # Copy data files
           scp \
             ./frontend-nextjs/public/data/players.json \
             ./frontend-nextjs/public/data/season_start.json \
             deploy-target:/srv/csbatagi/
-          
+
           # Move data files to correct locations
           ssh deploy-target "mv /srv/csbatagi/players.json /srv/csbatagi/season_start.json /srv/csbatagi/frontend-nextjs/public/data/"
 
@@ -120,13 +300,13 @@ jobs:
           ssh deploy-target "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin"
 
           SERVICES_TO_UPDATE=""
-          if [[ "${{ steps.changes.outputs.backend }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          if [[ "${{ needs.check-changes.outputs.backend }}" == "true" ]]; then
             SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE backend"
           fi
-          if [[ "${{ steps.changes.outputs.frontend-nextjs }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          if [[ "${{ needs.check-changes.outputs.frontend-nextjs }}" == "true" ]]; then
             SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE frontend-nextjs"
           fi
-          if [[ "${{ steps.changes.outputs.docker-compose }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          if [[ "${{ needs.check-changes.outputs.docker-compose }}" == "true" ]]; then
             # If docker-compose changed, restart all services
             ssh deploy-target "docker compose -f /srv/csbatagi/docker-compose.yml pull && docker compose -f /srv/csbatagi/docker-compose.yml up -d"
           elif [[ -n "$SERVICES_TO_UPDATE" ]]; then
@@ -137,7 +317,7 @@ jobs:
           fi
 
       - name: Invalidate stats timestamp if config data changed
-        if: steps.changes.outputs.config_data == 'true'
+        if: needs.check-changes.outputs.config_data == 'true'
         run: |
           ssh deploy-target "docker compose -f /srv/csbatagi/docker-compose.yml exec -T backend bash -c 'rm -f /app/last_timestamp.txt' && docker compose -f /srv/csbatagi/docker-compose.yml restart backend"
 
@@ -183,7 +363,7 @@ jobs:
           ssh deploy-target "sudo mv /tmp/csbatagi-backup.service /tmp/csbatagi-backup.timer /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now csbatagi-backup.timer"
 
       - name: Run database migrations if changed
-        if: steps.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
+        if: needs.check-changes.outputs.migrations == 'true'
         run: |
           # Copy migration files and their runner to host
           scp -r \
