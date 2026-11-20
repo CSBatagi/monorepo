@@ -1,7 +1,8 @@
 [
   { "id": "de_ancient", "name": "Ancient" },
   { "id": "de_anubis", "name": "Anubis" },
-  { "id": "3329387648", "name": "Cobble" },
+  { "id": "3329387648", "name": "Eski Cobble" },
+  { "id": "de_cobble", "name": "Cobble" },
   { "id": "de_dust2", "name": "Dust II" },
   { "id": "de_inferno", "name": "Inferno" },
   { "id": "de_mirage", "name": "Mirage" },
